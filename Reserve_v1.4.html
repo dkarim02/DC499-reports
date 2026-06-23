@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reserve v1.0 — Stock Control</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f5f3; --surface: #fff; --surface2: #efefed;
+    --border: #ddd; --border-light: #f0f0f0; --border-mid: #e5e5e5;
+    --text: #1a1a1a; --text-muted: #666; --text-hint: #888;
+    --bar-bg: #e5e5e5; --drop-hover: #f0f0ee;
+  }
+  [data-theme="dark"] {
+    --bg: #1a1a1a; --surface: #252525; --surface2: #2e2e2e;
+    --border: #3a3a3a; --border-light: #2e2e2e; --border-mid: #333;
+    --text: #f0f0ee; --text-muted: #999; --text-hint: #777;
+    --bar-bg: #3a3a3a; --drop-hover: #2e2e2e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; transition: background 0.2s, color 0.2s; }
+  .container { max-width: 720px; margin: 0 auto; }
+  .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: var(--text-muted); }
+  .dark-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; background: none; border: 0.5px solid var(--border); border-radius: 8px; padding: 6px 12px; font-family: inherit; white-space: nowrap; }
+  .dark-toggle:hover { background: var(--surface2); }
+  .toggle-track { width: 28px; height: 16px; border-radius: 8px; background: var(--bar-bg); position: relative; transition: background 0.2s; flex-shrink: 0; }
+  .toggle-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text-hint); position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
+  [data-theme="dark"] .toggle-track { background: #534AB7; }
+  [data-theme="dark"] .toggle-thumb { left: 14px; background: #fff; }
+  .tabs { display: flex; align-items: center; border-bottom: 1.5px solid var(--border); margin-bottom: 1.5rem; }
+  .tabs-left { display: flex; align-items: center; }
+  .tabs-right { margin-left: auto; }
+  .tab { font-size: 14px; padding: 8px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1.5px; color: var(--text-hint); background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; transition: color 0.15s; }
+  .tab:hover { color: var(--text); }
+  .tab.active-pick { color: #9B4DCA; border-bottom-color: #9B4DCA; font-weight: 500; }
+  .tab.active-replen { color: #185FA5; border-bottom-color: #185FA5; font-weight: 500; }
+  .tab-settings { font-size: 14px; padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1.5px; color: var(--text-hint); background: none; border-top: none; border-left: 1px solid var(--border); border-right: none; font-family: inherit; transition: color 0.15s; }
+  .tab-settings:hover { color: var(--text); }
+  .tab-settings.active-settings { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .drop-zone { border: 1.5px dashed var(--border); border-radius: 12px; padding: 3rem; text-align: center; cursor: pointer; transition: background 0.15s; background: var(--surface); }
+  .drop-zone:hover, .drop-zone.dragover { background: var(--drop-hover); }
+  .drop-zone .icon { font-size: 36px; margin-bottom: 12px; color: var(--text-hint); }
+  .drop-zone p { color: var(--text); font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+  .drop-zone small { color: var(--text-hint); font-size: 13px; }
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1rem; }
+  .metric { background: var(--surface2); border-radius: 8px; padding: 1rem; text-align: center; }
+  .metric-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .metric-value { font-size: 24px; font-weight: 500; color: var(--text); }
+  .metric-sub { font-size: 11px; color: var(--text-hint); margin-top: 4px; }
+  .progress-wrap { background: var(--bar-bg); border-radius: 4px; height: 5px; margin-top: 6px; overflow: hidden; }
+  .progress-fill-pick { height: 100%; border-radius: 4px; background: #9B4DCA; transition: width 0.4s; }
+  .progress-fill-replen { height: 100%; border-radius: 4px; background: #185FA5; transition: width 0.4s; }
+  .remaining-label { font-size: 11px; color: var(--text-hint); margin-top: 4px; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted); padding: 8px 12px; border-bottom: 0.5px solid var(--border-mid); text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 10px 12px; border-bottom: 0.5px solid var(--border-light); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tfoot td { font-weight: 500; border-top: 0.5px solid var(--border); border-bottom: none; padding-top: 12px; }
+  .bar-wrap { background: var(--bar-bg); border-radius: 4px; height: 6px; flex: 1; overflow: hidden; }
+  .bar-fill-pick { height: 100%; border-radius: 4px; background: #9B4DCA; }
+  .bar-fill-replen { height: 100%; border-radius: 4px; background: #185FA5; }
+  .badge-pick { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 6px; background: #F3E8FF; color: #9B4DCA; margin: 2px; }
+  .badge-replen { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 6px; background: #e8f0fb; color: #185FA5; margin: 2px; }
+  [data-theme="dark"] .badge-pick { background: #4A1D6E; color: #D8A8F5; }
+  [data-theme="dark"] .badge-replen { background: #0C447C; color: #B5D4F4; }
+  .shift-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 5px; margin-left: 8px; font-weight: 500; }
+  .shift-badge-2nd { background: #e8f0fb; color: #185FA5; }
+  [data-theme="dark"] .shift-badge-2nd { background: #0C447C; color: #B5D4F4; }
+  .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .file-name { font-weight: 500; font-size: 15px; color: var(--text); }
+  .run-time { font-size: 12px; color: var(--text-hint); margin-top: 2px; }
+  .header-btns { display: flex; align-items: center; gap: 8px; }
+  .reset-btn-pick { font-family: inherit; font-size: 13px; padding: 6px 14px; border: 0.5px solid #9B4DCA; border-radius: 6px; background: #F3E8FF; cursor: pointer; color: #9B4DCA; font-weight: 500; }
+  .reset-btn-pick:hover { background: #D8A8F5; }
+  .reset-btn-replen { font-family: inherit; font-size: 13px; padding: 6px 14px; border: 0.5px solid #185FA5; border-radius: 6px; background: #e8f0fb; cursor: pointer; color: #185FA5; font-weight: 500; }
+  .reset-btn-replen:hover { background: #B5D4F4; }
+  [data-theme="dark"] .reset-btn-pick { background: #4A1D6E; color: #D8A8F5; border-color: #9B4DCA; }
+  [data-theme="dark"] .reset-btn-pick:hover { background: #9B4DCA; color: #fff; }
+  [data-theme="dark"] .reset-btn-replen { background: #0C447C; color: #B5D4F4; border-color: #185FA5; }
+  [data-theme="dark"] .reset-btn-replen:hover { background: #185FA5; color: #fff; }
+  .copy-btn { font-family: inherit; font-size: 12px; padding: 5px 10px; border: 0.5px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; color: var(--text-muted); }
+  .copy-btn:hover { background: var(--surface2); }
+  .excluded-label { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; }
+  .error-msg { border-radius: 8px; padding: 1rem; font-size: 14px; margin-bottom: 1rem; display: none; background: #fcebeb; border: 0.5px solid #f09595; color: #A32D2D; }
+  [data-theme="dark"] .error-msg { background: #501313; border-color: #A32D2D; color: #F7C1C1; }
+  .results { display: none; }
+  .chart-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem 1.25rem 1rem; margin-bottom: 1rem; }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .chart-title { font-size: 12px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .chart-controls { display: flex; align-items: center; gap: 6px; }
+  .chart-mode-btn { font-family: inherit; padding: 3px 8px; border-radius: 5px; cursor: pointer; border: 0.5px solid var(--border); background: none; color: var(--text-hint); transition: all 0.15s; display: flex; align-items: center; }
+  .chart-mode-btn.active-pick { background: #F3E8FF; color: #9B4DCA; border-color: #9B4DCA; }
+  .chart-mode-btn.active-replen { background: #e8f0fb; color: #185FA5; border-color: #185FA5; }
+  [data-theme="dark"] .chart-mode-btn.active-pick { background: #4A1D6E; color: #D8A8F5; border-color: #9B4DCA; }
+  [data-theme="dark"] .chart-mode-btn.active-replen { background: #0C447C; color: #B5D4F4; border-color: #185FA5; }
+  .chart-dl-btn { font-family: inherit; font-size: 11px; padding: 3px 9px; border-radius: 5px; cursor: pointer; border: 0.5px solid var(--border); background: none; color: var(--text-hint); text-decoration: none; display: inline-flex; align-items: center; }
+  .chart-dl-btn:hover { background: var(--surface2); color: var(--text); }
+  .chart-wrap { position: relative; height: 200px; }
+  .peak-label { font-size: 12px; color: var(--text-hint); margin-top: 6px; text-align: center; }
+  /* Settings */
+  .shift-label { font-size: 11px; color: var(--text-hint); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .roster-member { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 0.5px solid var(--border-light); font-size: 14px; color: var(--text); }
+  .roster-member:last-child { border-bottom: none; }
+  .roster-remove { background: none; border: none; cursor: pointer; color: var(--bar-bg); font-size: 20px; padding: 0 4px; font-family: inherit; line-height: 1; }
+  .roster-remove:hover { color: #A32D2D; }
+  .member-controls { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .member-email { flex: 1; font-size: 14px; color: var(--text); }
+  .member-email.disabled { color: var(--text-hint); text-decoration: line-through; opacity: 0.5; }
+  .enable-toggle { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
+  .enable-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .enable-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--bar-bg); border-radius: 18px; transition: background 0.2s; }
+  .enable-slider:before { position: absolute; content: ""; height: 12px; width: 12px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
+  .enable-toggle input:checked + .enable-slider { background: #0F6E56; }
+  .enable-toggle input:checked + .enable-slider:before { transform: translateX(14px); }
+  .add-row { display: flex; gap: 8px; margin-top: 1rem; }
+  .add-row input { flex: 1; font-family: inherit; font-size: 14px; padding: 8px 12px; border: 0.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); outline: none; }
+  .add-row input:focus { border-color: #7F77DD; }
+  .add-btn { font-family: inherit; font-size: 13px; padding: 8px 16px; border: 0.5px solid #7F77DD; border-radius: 8px; background: #EEEDFE; cursor: pointer; color: #534AB7; white-space: nowrap; font-weight: 500; }
+  .add-btn:hover { background: #CECBF6; }
+  [data-theme="dark"] .add-btn { background: #3C3489; color: #CECBF6; border-color: #7F77DD; }
+  [data-theme="dark"] .add-btn:hover { background: #534AB7; color: #fff; }
+  .roster-notice { font-size: 12px; color: var(--text-hint); margin-top: 10px; }
+  .saved-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 6px; background: #E1F5EE; color: #0F6E56; margin-left: 8px; opacity: 0; transition: opacity 0.3s; }
+  [data-theme="dark"] .saved-badge { background: #085041; color: #9FE1CB; }
+  .roster-count { font-size: 13px; color: var(--text-hint); }
+  .roster-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .roster-title { font-size: 15px; font-weight: 500; color: var(--text); }
+  .goals-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+  .goals-item { background: var(--surface2); border-radius: 8px; padding: 10px 14px; }
+  .goals-dept { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .goals-val { font-size: 22px; font-weight: 500; color: var(--text); }
+  .goals-drop-zone { border: 1.5px dashed var(--border); border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; font-size: 13px; color: var(--text-hint); background: var(--surface2); transition: background 0.15s; }
+  .goals-drop-zone:hover, .goals-drop-zone.dragover { background: var(--drop-hover); }
+  .goals-status { font-size: 12px; color: var(--text-hint); min-height: 16px; margin-top: 6px; }
+  .goals-manual-input { width: 100%; margin-top: 4px; font-family: inherit; font-size: 14px; padding: 6px 10px; border: 0.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); outline: none; }
+  .goals-manual-input:focus { border-color: #7F77DD; }
+  .goals-divider { margin-top: 0.75rem; border-top: 0.5px solid var(--border); padding-top: 0.75rem; }
+  .goals-manual-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .nordstrom-tag { font-size: 11px; color: var(--text-hint); text-align: center; margin-top: 2rem; }
+  .roster-scroll { max-height: 300px; overflow-y: auto; border: 0.5px solid var(--border); border-radius: 8px; margin-bottom: 0; }
+  .roster-scroll .roster-member { padding: 8px 12px; }
+  .roster-scroll::-webkit-scrollbar { width: 6px; }
+  .roster-scroll::-webkit-scrollbar-track { background: transparent; }
+  .roster-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .roster-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-hint); }
+
+  .stale-banner { display:none; background:#5C3A00; color:#FFD77A; font-size:12px; padding:6px 14px; border-radius:8px; margin-bottom:1rem; text-align:center; }
+  [data-theme="light"] .stale-banner, body:not([data-theme="dark"]) .stale-banner { background:#FFF3CD; color:#7A4F00; }
+
+
+  .pph-calc { background: var(--surface2); border-radius: 10px; padding: 14px; margin-top: 1rem; }
+  .pph-calc-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .pph-calc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .pph-calc-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
+  .pph-calc-input { width: 100%; font-family: inherit; font-size: 14px; padding: 6px 10px; border: 0.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); outline: none; }
+  .pph-calc-input:focus { border-color: #7F77DD; }
+  .pph-calc-btn { width: 100%; font-family: inherit; font-size: 13px; padding: 8px; border: 0.5px solid #7F77DD; border-radius: 8px; background: #EEEDFE; cursor: pointer; color: #534AB7; font-weight: 500; margin-top: 4px; }
+  .pph-calc-btn:hover { background: #CECBF6; }
+  [data-theme="dark"] .pph-calc-btn { background: #3C3489; color: #CECBF6; border-color: #7F77DD; }
+  [data-theme="dark"] .pph-calc-btn:hover { background: #534AB7; color: #fff; }
+  .pph-calc-result { font-size: 12px; color: var(--text-hint); margin-top: 6px; min-height: 16px; text-align: center; }
+  .pph-calc-result.success { color: #0F6E56; font-weight: 500; }
+  [data-theme="dark"] .pph-calc-result.success { color: #9FE1CB; }
+
+
+  .tab.active-day { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
+  .day-drop-zone { border: 1.5px dashed #7F77DD; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: background 0.15s; background: var(--surface); margin-bottom: 1rem; }
+  .day-drop-zone:hover, .day-drop-zone.dragover { background: var(--drop-hover); }
+  .day-drop-zone .icon { font-size: 28px; margin-bottom: 8px; color: #7F77DD; }
+  .day-drop-zone p { color: var(--text); font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .day-drop-zone small { color: var(--text-hint); font-size: 12px; }
+  .day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .day-title { font-size: 15px; font-weight: 500; color: var(--text); }
+  .day-meta { font-size: 12px; color: var(--text-hint); margin-top: 2px; }
+  .day-btns { display: flex; gap: 8px; align-items: center; }
+  .day-clear-btn { font-family: inherit; font-size: 12px; padding: 5px 12px; border: 0.5px solid #A32D2D; border-radius: 6px; background: #fcebeb; cursor: pointer; color: #A32D2D; }
+  .day-clear-btn:hover { background: #f09595; }
+  [data-theme="dark"] .day-clear-btn { background: #501313; border-color: #A32D2D; color: #F7C1C1; }
+  .day-files-list { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 1rem; }
+  .day-file-chip { font-size: 11px; padding: 3px 10px; border-radius: 5px; background: #EEEDFE; color: #534AB7; }
+  [data-theme="dark"] .day-file-chip { background: #3C3489; color: #CECBF6; }
+  .day-empty { text-align: center; padding: 3rem; color: var(--text-hint); font-size: 14px; }
+  .day-shift-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 5px; background: #EEEDFE; color: #534AB7; margin-left: 8px; }
+  [data-theme="dark"] .day-shift-badge { background: #3C3489; color: #CECBF6; }
+
+
+  .roster-search { width:100%; font-family:inherit; font-size:14px; padding:8px 12px; border:0.5px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); outline:none; margin-bottom:8px; }
+  .roster-search:focus { border-color:#7F77DD; }
+  .roster-search::placeholder { color:var(--text-hint); }
+  .roster-member.hidden { display:none; }
+  .roster-no-results { font-size:13px; color:var(--text-hint); padding:12px; text-align:center; display:none; }
+
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="top-bar">
+    <div>
+      <h1>Reserve Stock Report Processor</h1>
+      <p style="font-size:11px;color:#9B4DCA;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">Reserve v1.0</p>
+      <p class="subtitle" id="main-subtitle">2nd Shift · Upload a CSV to get started</p>
+    </div>
+    <button class="dark-toggle" onclick="toggleDark()">
+      <span id="toggle-label">Dark mode</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </button>
+  </div>
+
+  <div class="tabs">
+    <div class="tabs-left">
+      <button class="tab active-pick" id="tab-pick" onclick="switchTab('pick')">Picking</button>
+      <button class="tab" id="tab-replen" onclick="switchTab('replen')">Replenishment</button>
+    </div>
+    <button class="tab" id="tab-day" onclick="switchTab('day')">&#x1F4C5; Day Report</button>
+    <div class="tabs-right">
+      <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
+    </div>
+  </div>
+
+  <!-- PICK TAB -->
+  <div class="tab-panel active" id="panel-pick">
+    <div id="pick-upload">
+      <div class="drop-zone" id="dz-pick" onclick="document.getElementById('fi-pick').click()">
+        <div class="icon">&#x2B06;</div>
+        <p>Drop picking report CSV here</p>
+        <small>or click to browse</small>
+        <input type="file" id="fi-pick" accept=".csv" style="display:none;">
+      </div>
+    </div>
+    <div class="error-msg" id="err-pick"></div>
+    <div class="stale-banner" id="stale-pick"></div>
+    <div class="results" id="res-pick">
+      <div class="header-row">
+        <div>
+          <div class="file-name" id="rn-pick"></div>
+          <div class="run-time" id="rt-pick"></div>
+          <div class="run-time" id="tf-pick"></div>
+          <div class="run-time" id="fd-pick"></div>
+        </div>
+        <div class="header-btns">
+          <button class="copy-btn" onclick="copyTable('pick')">&#x1F4CB; Copy</button>
+          <button class="reset-btn-pick" onclick="resetPanel('pick')">&#x21BA; New file</button>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">Team Total</div><div class="metric-value" id="m-pick-total">—</div></div>
+        <div class="metric">
+          <div class="metric-label">Daily Goal</div>
+          <div class="metric-value" id="m-pick-goal">—</div>
+          <div class="metric-sub" id="m-pick-pct"></div>
+          <div class="progress-wrap" id="m-pick-pw" style="display:none;"><div class="progress-fill-pick" id="m-pick-pb" style="width:0%"></div></div>
+          <div class="remaining-label" id="m-pick-remaining"></div>
+        </div>
+        <div class="metric"><div class="metric-label">Associates</div><div class="metric-value" id="m-pick-assoc">—</div></div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Associate</th><th style="text-align:right;">Units Picked</th><th style="text-align:right;width:35%;">Share</th></tr></thead>
+          <tbody id="tb-pick"></tbody>
+          <tfoot><tr><td>Team total</td><td style="text-align:right;" id="ft-pick"></td><td></td></tr></tfoot>
+        </table>
+      </div>
+      <div class="card" id="ex-pick-wrap" style="display:none;">
+        <div class="excluded-label">Excluded associates</div>
+        <div id="ex-pick-list"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Units picked by hour</div>
+          <div class="chart-controls">
+            <button class="chart-mode-btn active-pick" id="mode-smooth-pick" onclick="setMode('pick','smooth')" title="Smooth">
+              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><path d="M1 10 C4 10 4 2 9 2 C14 2 14 10 17 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+            </button>
+            <button class="chart-mode-btn" id="mode-spiky-pick" onclick="setMode('pick','spiky')" title="Spiky">
+              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><polyline points="1,10 5,10 7,2 9,10 11,2 13,10 17,10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </button>
+            <a class="chart-dl-btn" onclick="downloadChart('chart-pick','pick-chart')">&#x2193; Save</a>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-pick"></canvas></div>
+        <div class="peak-label" id="peak-pick"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPLEN TAB -->
+  <div class="tab-panel" id="panel-replen">
+    <div id="replen-upload">
+      <div class="drop-zone" id="dz-replen" onclick="document.getElementById('fi-replen').click()">
+        <div class="icon">&#x2B06;</div>
+        <p>Drop replen report CSV here</p>
+        <small>or click to browse</small>
+        <input type="file" id="fi-replen" accept=".csv" style="display:none;">
+      </div>
+    </div>
+    <div class="error-msg" id="err-replen"></div>
+    <div class="stale-banner" id="stale-replen"></div>
+    <div class="results" id="res-replen">
+      <div class="header-row">
+        <div>
+          <div class="file-name" id="rn-replen"></div>
+          <div class="run-time" id="rt-replen"></div>
+          <div class="run-time" id="tf-replen"></div>
+          <div class="run-time" id="fd-replen"></div>
+        </div>
+        <div class="header-btns">
+          <button class="copy-btn" onclick="copyTable('replen')">&#x1F4CB; Copy</button>
+          <button class="reset-btn-replen" onclick="resetPanel('replen')">&#x21BA; New file</button>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">Team Total</div><div class="metric-value" id="m-replen-total">—</div></div>
+        <div class="metric">
+          <div class="metric-label">Daily Goal</div>
+          <div class="metric-value" id="m-replen-goal">—</div>
+          <div class="metric-sub" id="m-replen-pct"></div>
+          <div class="progress-wrap" id="m-replen-pw" style="display:none;"><div class="progress-fill-replen" id="m-replen-pb" style="width:0%"></div></div>
+          <div class="remaining-label" id="m-replen-remaining"></div>
+        </div>
+        <div class="metric"><div class="metric-label">Associates</div><div class="metric-value" id="m-replen-assoc">—</div></div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Associate</th><th style="text-align:right;">Completed Qty</th><th style="text-align:right;width:35%;">Share</th></tr></thead>
+          <tbody id="tb-replen"></tbody>
+          <tfoot><tr><td>Team total</td><td style="text-align:right;" id="ft-replen"></td><td></td></tr></tfoot>
+        </table>
+      </div>
+      <div class="card" id="ex-replen-wrap" style="display:none;">
+        <div class="excluded-label">Excluded associates</div>
+        <div id="ex-replen-list"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Completed quantity by hour</div>
+          <div class="chart-controls">
+            <button class="chart-mode-btn active-replen" id="mode-smooth-replen" onclick="setMode('replen','smooth')" title="Smooth">
+              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><path d="M1 10 C4 10 4 2 9 2 C14 2 14 10 17 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+            </button>
+            <button class="chart-mode-btn" id="mode-spiky-replen" onclick="setMode('replen','spiky')" title="Spiky">
+              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><polyline points="1,10 5,10 7,2 9,10 11,2 13,10 17,10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </button>
+            <a class="chart-dl-btn" onclick="downloadChart('chart-replen','replen-chart')">&#x2193; Save</a>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart-replen"></canvas></div>
+        <div class="peak-label" id="peak-replen"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY REPORT TAB -->
+  <div class="tab-panel" id="panel-day">
+    <div class="day-drop-zone" id="dz-day" onclick="document.getElementById('fi-day').click()">
+      <div class="icon">&#x2B06;</div>
+      <p>Add more files to today's report</p>
+      <small>All CSVs dropped here or on other tabs accumulate for the shift</small>
+      <input type="file" id="fi-day" accept=".csv" multiple style="display:none;">
+    </div>
+    <div id="day-report-content">
+      <div class="day-empty">&#x1F4C5; No data yet for this shift.<br><small>Upload CSVs on any tab — they accumulate here automatically.</small></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="tab-panel" id="panel-settings">
+    <div class="card">
+      <div class="roster-header">
+        <div class="roster-title">Team members — 2nd Shift <span class="saved-badge" id="saved-badge">Saved &#x2713;</span></div>
+        <div class="roster-count" id="roster-count"></div>
+      </div>
+      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Toggle off to exclude from reports without removing.</p>
+      <div class="roster-scroll"><div id="roster-list"></div></div>
+      <div class="add-row">
+        <input type="text" id="new-email" placeholder="associate@nordstrom.com" />
+        <button class="add-btn" onclick="addMember()">+ Add</button>
+      </div>
+      <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
+    </div>
+
+    <div class="card" style="margin-top:1rem;">
+      <div class="roster-header">
+        <div class="roster-title">Daily goals <span class="saved-badge" id="goals-saved-badge">Saved &#x2713;</span></div>
+        <div style="font-size:12px;color:var(--text-hint);" id="goals-date-label"></div>
+      </div>
+      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Drop a CSV export of the goals sheet or enter manually.</p>
+      <div id="goals-current" style="display:none;margin-bottom:1rem;">
+        <div class="goals-row">
+          <div class="goals-item"><div class="goals-dept">Picking</div><div class="goals-val" id="goal-pick-display">—</div></div>
+          <div class="goals-item"><div class="goals-dept">Replenishment</div><div class="goals-val" id="goal-replen-display">—</div></div>
+        </div>
+      </div>
+      <div class="goals-drop-zone" id="goals-dz" onclick="document.getElementById('goals-file').click()">
+        <span id="goals-dz-label">&#x1F4CB; Drop goals CSV here or click to browse</span>
+        <input type="file" id="goals-file" accept=".csv" style="display:none;">
+      </div>
+      <div class="goals-status" id="goals-status"></div>
+      <div class="goals-divider">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Or enter goals manually:</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div><label class="goals-manual-label">Picking goal</label><input type="number" id="manual-pick-goal" class="goals-manual-input" placeholder="e.g. 1620" /></div>
+          <div><label class="goals-manual-label">Replen goal</label><input type="number" id="manual-replen-goal" class="goals-manual-input" placeholder="e.g. 5253" /></div>
+        </div>
+        <button class="add-btn" onclick="saveManualGoals()" style="margin-top:8px;width:100%;text-align:center;">Save manual goals</button>
+      </div>
+      
+      <div class="pph-calc" id="calc-pick">
+        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Picking</div>
+        <div class="pph-calc-row">
+          <div>
+            <div class="pph-calc-label">Total Hours</div>
+            <input type="number" class="pph-calc-input" id="calc-hrs-pick" placeholder="e.g. 32" step="0.01" min="0" />
+          </div>
+          <div>
+            <div class="pph-calc-label">Financial PPH</div>
+            <input type="number" class="pph-calc-input" id="calc-pph-pick" placeholder="e.g. 93.1" step="0.01" min="0" />
+          </div>
+        </div>
+        <button class="pph-calc-btn" onclick="calcGoal('pick')">Calculate &amp; Set Goal</button>
+        <div class="pph-calc-result" id="calc-result-pick"></div>
+      </div>
+
+      <div class="pph-calc" id="calc-replen">
+        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Replenishment</div>
+        <div class="pph-calc-row">
+          <div>
+            <div class="pph-calc-label">Total Hours</div>
+            <input type="number" class="pph-calc-input" id="calc-hrs-replen" placeholder="e.g. 48" step="0.01" min="0" />
+          </div>
+          <div>
+            <div class="pph-calc-label">Financial PPH</div>
+            <input type="number" class="pph-calc-input" id="calc-pph-replen" placeholder="e.g. 83.38" step="0.01" min="0" />
+          </div>
+        </div>
+        <button class="pph-calc-btn" onclick="calcGoal('replen')">Calculate &amp; Set Goal</button>
+        <div class="pph-calc-result" id="calc-result-replen"></div>
+      </div>
+      <p class="roster-notice" style="margin-top:8px;">Goals save to this browser until updated.</p>
+    </div>
+
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v1.4</p>
+  </div>
+
+  <p class="nordstrom-tag">Nordstrom &middot; Reserve v1.0 &middot; Last updated: <span id="last-updated"></span></p>
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────
+const DEFAULT_TEAM = [
+  {email:'isaiah.hedlin@nordstrom.com', enabled:true},
+  {email:'veronica.chavezmagdaleno@nordstrom.com', enabled:true},
+  {email:'anastaciaquiroz675@gmail.com', enabled:true},
+  {email:'filli.kheav@randstadusa.com', enabled:true},
+  {email:'gavin.kester@randstadusa.com', enabled:true},
+  {email:'lydia.robles@randstadusa.com', enabled:true},
+  {email:'sandra.lopezflores@randstadusa.com', enabled:true},
+  {email:'adedamola.isikalu@randstadusa.com', enabled:true},
+  {email:'johnny.buford@randstadusa.com', enabled:true},
+  {email:'mayra.poncecardoso@randstadusa.com', enabled:true},
+  {email:'shaleshni.r.narayan@nordstrom.com', enabled:true},
+  {email:'thibault@nordstrom.com', enabled:false},
+  {email:'jessie.tatum@nordstrom.com', enabled:true},
+  {email:'alfredo.mendoza@nordstrom.com', enabled:true},
+  {email:'danielle.givens@nordstrom.com', enabled:true}
+];
+const STORAGE_KEY = 'rs_roster_v1';
+const GOALS_KEY = 'rs_goals_v1';
+const PICK_TX = ['Non Haz Retail Pick To oLPN Cart'];
+const REPLEN_TX = ['iLPN Replen Fill', 'iLPN Replen Fill Large'];
+const SHIFT_BOUNDS = {start:14, end:25}; // 2nd shift
+
+let charts = {pick:null, replen:null};
+const chartModes = {pick:'smooth', replen:'smooth'};
+const chartData = {pick:{labels:[],data:[]}, replen:{labels:[],data:[]}};
+const lastUpload = {pick:{rows:null,fileName:null}, replen:{rows:null,fileName:null}};
+
+// ── THEME ──────────────────────────────────────────────
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
+  Object.values(charts).forEach(function(c) { if (c) updateChartTheme(c, dark); });
+  try { localStorage.setItem('dc499_reserve_theme_v1', dark ? 'dark' : 'light'); } catch(e) {}
+}
+function updateChartTheme(chart, dark) {
+  const grid = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const tick = dark ? '#777' : '#888';
+  chart.options.scales.x.ticks.color = tick;
+  chart.options.scales.y.ticks.color = tick;
+  chart.options.scales.x.grid.color = grid;
+  chart.options.scales.y.grid.color = grid;
+  chart.update('none');
+}
+(function() {
+  var saved;
+  try { saved = localStorage.getItem('dc499_reserve_theme_v1'); } catch(e) {}
+  applyTheme(saved ? saved === 'dark' : prefersDark.matches);
+})();
+prefersDark.addEventListener('change', function(e) { applyTheme(e.matches); });
+function toggleDark() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
+
+// ── TABS ──────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('tab-pick').className = 'tab' + (tab === 'pick' ? ' active-pick' : '');
+  document.getElementById('tab-replen').className = 'tab' + (tab === 'replen' ? ' active-replen' : '');
+  document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
+  ['pick','replen','settings','day'].forEach(function(t) {
+    document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
+  });
+  document.getElementById('tab-day').className = 'tab' + (tab === 'day' ? ' active-day' : '');
+  if (tab === 'settings') { renderRoster(); renderGoalsCard(); }
+  if (tab === 'day') { renderDayReport(); }
+}
+
+// ── ROSTER ──────────────────────────────────────────────
+function loadRoster() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+      const parsed = JSON.parse(s);
+      return parsed.map(function(m) { return typeof m === 'string' ? {email:m, enabled:true} : m; });
+    }
+  } catch(e) {}
+  return DEFAULT_TEAM.map(function(m) { return {email:m.email, enabled:m.enabled}; });
+}
+function saveRoster(r) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {} }
+function getTeamSet() { return new Set(loadRoster().filter(function(m) { return m.enabled; }).map(function(m) { return m.email; })); }
+function flashBadge(id) { const b = document.getElementById(id); if (b) { b.style.opacity = '1'; setTimeout(function() { b.style.opacity = '0'; }, 1800); } }
+
+function renderRoster() {
+  const roster = loadRoster(), list = document.getElementById('roster-list');
+  list.innerHTML = '';
+  const active = roster.filter(function(m) { return m.enabled; }).length;
+  document.getElementById('roster-count').textContent = active + ' active / ' + roster.length + ' total';
+  roster.forEach(function(m, i) {
+    const div = document.createElement('div');
+    div.className = 'roster-member';
+    const label = document.createElement('label');
+    label.className = 'enable-toggle';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = m.enabled;
+    cb.addEventListener('change', (function(idx) { return function() { toggleMember(idx); }; })(i));
+    const slider = document.createElement('span');
+    slider.className = 'enable-slider';
+    label.appendChild(cb); label.appendChild(slider);
+    const emailSpan = document.createElement('span');
+    emailSpan.className = 'member-email' + (m.enabled ? '' : ' disabled');
+    emailSpan.textContent = m.email;
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'roster-remove';
+    removeBtn.title = 'Remove';
+    removeBtn.textContent = '\u00d7';
+    removeBtn.addEventListener('click', (function(idx) { return function() { removeMember(idx); }; })(i));
+    const controls = document.createElement('div');
+    controls.className = 'member-controls';
+    controls.appendChild(label); controls.appendChild(emailSpan); controls.appendChild(removeBtn);
+    div.appendChild(controls);
+    list.appendChild(div);
+  });
+}
+function addMember() {
+  const input = document.getElementById('new-email'), email = input.value.trim().toLowerCase();
+  if (!email || !email.includes('@')) { input.style.borderColor = '#f09595'; setTimeout(function() { input.style.borderColor = ''; }, 1000); return; }
+  const roster = loadRoster();
+  if (roster.find(function(m) { return m.email === email; })) { input.style.borderColor = '#FAC775'; setTimeout(function() { input.style.borderColor = ''; }, 1000); return; }
+  roster.push({email:email, enabled:true});
+  saveRoster(roster); input.value = ''; renderRoster();
+}
+function removeMember(idx) { const r = loadRoster(); r.splice(idx,1); saveRoster(r); renderRoster(); reprocessAll(); }
+function toggleMember(idx) { const r = loadRoster(); r[idx].enabled = !r[idx].enabled; saveRoster(r); renderRoster(); reprocessAll(); }
+document.getElementById('new-email').addEventListener('keydown', function(e) { if (e.key === 'Enter') addMember(); });
+
+// ── GOALS ──────────────────────────────────────────────
+function loadGoals() { try { const s = localStorage.getItem(GOALS_KEY); if (s) return JSON.parse(s); } catch(e) {} return {pick:null, replen:null, date:null}; }
+function saveGoals(g) { try { localStorage.setItem(GOALS_KEY, JSON.stringify(g)); flashBadge('goals-saved-badge'); } catch(e) {} }
+
+function renderGoalsCard() {
+  const g = loadGoals(), cur = document.getElementById('goals-current');
+  if (g.pick || g.replen) {
+    cur.style.display = 'block';
+    document.getElementById('goal-pick-display').textContent = g.pick ? g.pick.toLocaleString() : '\u2014';
+    document.getElementById('goal-replen-display').textContent = g.replen ? g.replen.toLocaleString() : '\u2014';
+    document.getElementById('goals-date-label').textContent = g.date ? 'Set ' + g.date : '';
+  } else {
+    cur.style.display = 'none';
+    document.getElementById('goals-date-label').textContent = '';
+  }
+}
+
+function updateGoalMetric(type, actual) {
+  const g = loadGoals(), goal = type === 'pick' ? g.pick : g.replen;
+  const goalEl = document.getElementById('m-' + type + '-goal');
+  const pctEl = document.getElementById('m-' + type + '-pct');
+  const pw = document.getElementById('m-' + type + '-pw');
+  const pb = document.getElementById('m-' + type + '-pb');
+  const remEl = document.getElementById('m-' + type + '-remaining');
+  if (!goal) { goalEl.textContent = 'No goal set'; pctEl.textContent = 'Set in Settings'; pw.style.display = 'none'; remEl.textContent = ''; return; }
+  const pct = Math.min(Math.round((actual / goal) * 100), 100);
+  const over = actual >= goal;
+  goalEl.textContent = goal.toLocaleString();
+  pctEl.textContent = (over ? '\u2713 ' : '') + pct + '% of goal' + (over ? ' \u2014 exceeded!' : '');
+  pctEl.style.color = over ? '#0F6E56' : (pct >= 75 ? '#B07B00' : 'var(--text-hint)');
+  pw.style.display = 'block';
+  pb.style.width = pct + '%';
+  remEl.textContent = over ? '' : (goal - actual).toLocaleString() + ' remaining';
+}
+
+function saveManualGoals() {
+  const p = parseInt(document.getElementById('manual-pick-goal').value);
+  const r = parseInt(document.getElementById('manual-replen-goal').value);
+  if (isNaN(p) && isNaN(r)) return;
+  const existing = loadGoals();
+  saveGoals({pick: isNaN(p) ? existing.pick : Math.ceil(p), replen: isNaN(r) ? existing.replen : Math.ceil(r), date: new Date().toLocaleDateString()});
+  renderGoalsCard();
+  document.getElementById('goals-status').textContent = '\u2713 Saved';
+  setTimeout(function() { document.getElementById('goals-status').textContent = ''; }, 2000);
+  reprocessAll();
+}
+
+function processGoalsCsv(file) {
+  const status = document.getElementById('goals-status');
+  status.textContent = 'Reading...';
+  Papa.parse(file, {header:false, skipEmptyLines:true, complete:function(res) {
+    try {
+      const rows = res.data;
+      let pickGoal = null, replenGoal = null, goalColIdx = -1, deptColIdx = -1;
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        for (let j = 0; j < row.length; j++) {
+          const cell = (row[j] || '').toString().trim().toLowerCase();
+          if (cell === 'planned goal') goalColIdx = j;
+          if (cell === 'department') deptColIdx = j;
+        }
+        if (goalColIdx > -1 && deptColIdx > -1) break;
+      }
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const dept = deptColIdx > -1 ? (row[deptColIdx]||'').toString().toLowerCase() : row.join(' ').toLowerCase();
+        const valCol = goalColIdx > -1 ? row[goalColIdx] : null;
+        if (dept.includes('picking')) { const v = valCol ? parseFloat(valCol.toString().replace(/,/g,'')) : null; if (v && !isNaN(v)) pickGoal = Math.ceil(v); }
+        if (dept.includes('stock control') && dept.includes('replen')) { const v = valCol ? parseFloat(valCol.toString().replace(/,/g,'')) : null; if (v && !isNaN(v)) replenGoal = Math.ceil(v); }
+      }
+      if (!pickGoal && !replenGoal) throw new Error('Could not find goal values');
+      const existing = loadGoals();
+      saveGoals({pick: pickGoal||existing.pick, replen: replenGoal||existing.replen, date: new Date().toLocaleDateString()});
+      renderGoalsCard(); reprocessAll();
+      status.textContent = '\u2713 Goals updated';
+      setTimeout(function() { status.textContent = ''; }, 3000);
+    } catch(e) {
+      status.textContent = '\u26A0 Could not read \u2014 try manual entry';
+      setTimeout(function() { status.textContent = ''; }, 4000);
+    }
+  }});
+}
+
+
+// ── PPH CALCULATOR ─────────────────────────────────────
+function calcGoal(type) {
+  var hrsEl = document.getElementById('calc-hrs-' + type);
+  var pphEl = document.getElementById('calc-pph-' + type);
+  var resEl = document.getElementById('calc-result-' + type);
+  var hrs = parseFloat(hrsEl.value);
+  var pph = parseFloat(pphEl.value);
+  if (isNaN(hrs) || isNaN(pph) || hrs <= 0 || pph <= 0) {
+    resEl.textContent = 'Enter valid hours and PPH';
+    resEl.className = 'pph-calc-result';
+    return;
+  }
+  var goal = Math.round(hrs * pph);
+  // Save to goals
+  var g = loadGoals();
+  if (type === 'pick') g.pick = goal;
+  if (type === 'replen') g.replen = goal;
+  g.date = new Date().toLocaleDateString();
+  saveGoals(g);
+  renderGoalsCard();
+  reprocessAll();
+  resEl.textContent = hrs + ' hrs × ' + pph + ' PPH = ' + goal.toLocaleString() + ' ✔ Set as goal';
+  resEl.className = 'pph-calc-result success';
+}
+
+
+function filterRoster(query) {
+  var q = query.toLowerCase().trim();
+  var members = document.querySelectorAll('#roster-list .roster-member');
+  var visible = 0;
+  members.forEach(function(el) {
+    var email = el.querySelector('.member-email');
+    var text = email ? email.textContent.toLowerCase() : '';
+    if (!q || text.includes(q)) { el.classList.remove('hidden'); visible++; }
+    else { el.classList.add('hidden'); }
+  });
+  var noResults = document.getElementById('roster-no-results');
+  if (noResults) noResults.style.display = visible === 0 && q ? 'block' : 'none';
+}
+
+// ── REPROCESS ALL ──────────────────────────────────────
+function reprocessAll() {
+  ['pick','replen'].forEach(function(type) {
+    const u = lastUpload[type];
+    if (u && u.rows && u.fileName) processData(u.rows, u.fileName, type);
+  });
+}
+
+// ── FILE HANDLING ──────────────────────────────────────
+const dzPick = document.getElementById('dz-pick');
+const fiPick = document.getElementById('fi-pick');
+dzPick.addEventListener('dragover', function(e) { e.preventDefault(); dzPick.classList.add('dragover'); });
+dzPick.addEventListener('dragleave', function() { dzPick.classList.remove('dragover'); });
+dzPick.addEventListener('drop', function(e) { e.preventDefault(); dzPick.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], 'pick'); });
+fiPick.addEventListener('change', function() { handleFile(fiPick.files[0], 'pick'); });
+
+const dzReplen = document.getElementById('dz-replen');
+const fiReplen = document.getElementById('fi-replen');
+dzReplen.addEventListener('dragover', function(e) { e.preventDefault(); dzReplen.classList.add('dragover'); });
+dzReplen.addEventListener('dragleave', function() { dzReplen.classList.remove('dragover'); });
+dzReplen.addEventListener('drop', function(e) { e.preventDefault(); dzReplen.classList.remove('dragover'); handleFile(e.dataTransfer.files[0], 'replen'); });
+fiReplen.addEventListener('change', function() { handleFile(fiReplen.files[0], 'replen'); });
+
+const goalsDz = document.getElementById('goals-dz');
+const goalsFile = document.getElementById('goals-file');
+goalsDz.addEventListener('dragover', function(e) { e.preventDefault(); goalsDz.classList.add('dragover'); });
+goalsDz.addEventListener('dragleave', function() { goalsDz.classList.remove('dragover'); });
+goalsDz.addEventListener('drop', function(e) { e.preventDefault(); goalsDz.classList.remove('dragover'); if (e.dataTransfer.files[0]) processGoalsCsv(e.dataTransfer.files[0]); });
+goalsFile.addEventListener('change', function() { if (goalsFile.files[0]) processGoalsCsv(goalsFile.files[0]); });
+
+function showError(type, msg) { const el = document.getElementById('err-' + type); el.textContent = msg; el.style.display = 'block'; }
+
+function handleFile(file, type) {
+  if (!file) return;
+  document.getElementById('err-' + type).style.display = 'none';
+  Papa.parse(file, {header:true, skipEmptyLines:true, complete:function(r) {
+    lastUpload[type] = {rows:r.data, fileName:file.name, file:file};
+    processData(r.data, file.name, type);
+    addToDayReport(r.data, file.name);
+  }});
+}
+
+function processData(rows, fileName, type) {
+  if (type === 'pick') {
+    const filtered = rows.filter(function(r) { return PICK_TX.includes((r['Transaction ID']||'').trim()) && (parseFloat(r['Quantity'])||0) > 0; });
+    if (!filtered.length) { showError(type, 'No picking transactions found. Please check you uploaded the correct report.'); return; }
+    renderPick(filtered, fileName);
+  } else {
+    const filtered = rows.filter(function(r) { return REPLEN_TX.includes((r['Transaction ID']||'').trim()); });
+    if (!filtered.length) { showError(type, 'No replenishment transactions found. Please check you uploaded the correct report.'); return; }
+    renderReplen(filtered, fileName);
+  }
+}
+
+// ── RENDER ─────────────────────────────────────────────
+function getFileDate(file){if(!file||!file.lastModified)return '';return 'File date: '+new Date(file.lastModified).toLocaleDateString();}
+
+function getTimeframe(rows) {
+  var times = [];
+  rows.forEach(function(r) {
+    var d = parseDT(r['Activity Datetime']);
+    if (d) times.push(d);
+  });
+  if (!times.length) return '';
+  times.sort(function(a,b) { return a-b; });
+  var earliest = times[0], latest = times[times.length-1];
+  function fmt(d) {
+    var h = d.getHours(), m = d.getMinutes();
+    var period = h >= 12 ? 'PM' : 'AM';
+    var h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return h12 + ':' + (m < 10 ? '0' : '') + m + ' ' + period;
+  }
+  return 'Captured: ' + fmt(earliest) + ' – ' + fmt(latest);
+}
+
+function renderPick(rows, fileName) {
+  const TEAM = getTeamSet(), totals = {}, excluded = new Set();
+  rows.forEach(function(r) {
+    const e = (r['Employee']||'').trim(), q = parseFloat(r['Quantity'])||0;
+    if (TEAM.has(e)) totals[e] = (totals[e]||0) + q;
+    else if (e) excluded.add(e);
+  });
+  const sorted = Object.entries(totals).sort(function(a,b) { return b[1]-a[1]; });
+  const grand = sorted.reduce(function(s,v) { return s+v[1]; }, 0);
+    startStaleTimer('pick', document.getElementById('stale-pick'));
+  document.getElementById('rn-pick').textContent = fileName;
+  document.getElementById('rt-pick').textContent = 'Processed ' + new Date().toLocaleString();
+  document.getElementById('fd-pick').textContent = getFileDate(lastUpload['pick'] && lastUpload['pick'].file ? lastUpload['pick'].file : null);
+  document.getElementById('tf-pick').textContent = getTimeframe(rows);
+  document.getElementById('m-pick-total').textContent = grand.toLocaleString();
+  document.getElementById('m-pick-assoc').textContent = sorted.length;
+  document.getElementById('ft-pick').textContent = grand.toLocaleString();
+  buildTable('tb-pick', sorted, grand, 'pick');
+  buildExcluded('ex-pick', excluded, 'pick');
+  updateGoalMetric('pick', grand);
+  const teamRows = rows.filter(function(r) { return TEAM.has((r['Employee']||'').trim()); });
+  const hourly = buildHourlyChart(teamRows, 'Quantity', false);
+  showPeakLabel('peak-pick', hourly.labels, hourly.data, 'pick');
+  document.getElementById('pick-upload').style.display = 'none';
+  document.getElementById('res-pick').style.display = 'block';
+  setTimeout(function() { drawChart('chart-pick', 'pick', hourly.labels, hourly.data, chartModes.pick); }, 50);
+}
+
+function renderReplen(rows, fileName) {
+  const TEAM = getTeamSet(), totals = {}, excluded = new Set();
+  rows.forEach(function(r) {
+    const e = (r['Employee']||'').trim(), q = parseFloat(r['Completed Quantity'])||0;
+    if (TEAM.has(e)) totals[e] = (totals[e]||0) + q;
+    else if (e) excluded.add(e);
+  });
+  const sorted = Object.entries(totals).sort(function(a,b) { return b[1]-a[1]; });
+  const grand = sorted.reduce(function(s,v) { return s+v[1]; }, 0);
+    startStaleTimer('replen', document.getElementById('stale-replen'));
+  document.getElementById('rn-replen').textContent = fileName;
+  document.getElementById('rt-replen').textContent = 'Processed ' + new Date().toLocaleString();
+  document.getElementById('fd-replen').textContent = getFileDate(lastUpload['replen'] && lastUpload['replen'].file ? lastUpload['replen'].file : null);
+  document.getElementById('tf-replen').textContent = getTimeframe(rows);
+  document.getElementById('m-replen-total').textContent = grand.toLocaleString();
+  document.getElementById('m-replen-assoc').textContent = sorted.length;
+  document.getElementById('ft-replen').textContent = grand.toLocaleString();
+  buildTable('tb-replen', sorted, grand, 'replen');
+  buildExcluded('ex-replen', excluded, 'replen');
+  updateGoalMetric('replen', grand);
+  const teamRows = rows.filter(function(r) { return TEAM.has((r['Employee']||'').trim()); });
+  const hourly = buildHourlyChart(teamRows, 'Completed Quantity', false);
+  showPeakLabel('peak-replen', hourly.labels, hourly.data, 'replen');
+  document.getElementById('replen-upload').style.display = 'none';
+  document.getElementById('res-replen').style.display = 'block';
+  setTimeout(function() { drawChart('chart-replen', 'replen', hourly.labels, hourly.data, chartModes.replen); }, 50);
+}
+
+function buildTable(tbId, sorted, grand, type) {
+  const tbody = document.getElementById(tbId); tbody.innerHTML = '';
+  sorted.forEach(function(entry, idx) {
+    const emp = entry[0], val = entry[1];
+    const pct = grand > 0 ? Math.round((val/grand)*100) : 0;
+    const short = emp.split('@')[0];
+    const tr = document.createElement('tr');
+    const trophy = idx === 0 && sorted.length > 1 ? ' &#x1F3C6;' : '';
+    tr.innerHTML = '<td>' + short + trophy + '</td><td style="text-align:right;font-weight:500;">' + val.toLocaleString() + '</td><td><div style="display:flex;align-items:center;gap:8px;"><div class="bar-wrap"><div class="bar-fill-' + type + '" style="width:' + pct + '%"></div></div><span style="font-size:12px;color:var(--text-hint);min-width:32px;text-align:right;">' + pct + '%</span></div></td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function buildExcluded(prefix, excluded, type) {
+  const wrap = document.getElementById(prefix + '-wrap'), list = document.getElementById(prefix + '-list');
+  list.innerHTML = '';
+  if (excluded.size > 0) {
+    excluded.forEach(function(e) { const s = document.createElement('span'); s.className = 'badge-' + type; s.textContent = e.split('@')[0]; list.appendChild(s); });
+    wrap.style.display = 'block';
+  } else wrap.style.display = 'none';
+}
+
+function resetPanel(type) {
+  clearStaleTimer(type);
+  document.getElementById(type + '-upload').style.display = 'block';
+  document.getElementById('res-' + type).style.display = 'none';
+  document.getElementById('err-' + type).style.display = 'none';
+  document.getElementById('fi-' + type).value = '';
+  if (charts[type]) { charts[type].destroy(); charts[type] = null; }
+  lastUpload[type] = {rows:null, fileName:null};
+}
+
+function copyTable(type) {
+  const g = loadGoals(), goal = type === 'pick' ? g.pick : g.replen;
+  const total = document.getElementById('m-' + type + '-total').textContent;
+  const tbody = document.getElementById('tb-' + type);
+  const tf = document.getElementById('tf-' + type).textContent;
+  let text = (type === 'pick' ? 'Picking' : 'Replenishment') + ' Summary \u2014 ' + new Date().toLocaleString() + '\nReserve Stock \u00b7 2nd Shift' + (tf ? '\n' + tf : '') + '\n\n';
+  text += 'Associate\t' + (type === 'pick' ? 'Units Picked' : 'Completed Qty') + '\tShare\n';
+  Array.from(tbody.rows).forEach(function(row) { text += Array.from(row.cells).map(function(c) { return c.textContent.trim(); }).join('\t') + '\n'; });
+  text += '\nTeam Total: ' + total;
+  if (goal) text += '\nGoal: ' + goal.toLocaleString() + ' (' + document.getElementById('m-' + type + '-pct').textContent + ')';
+    // Clipboard fallback for local file:// context
+  var btn = event.target, orig = btn.textContent;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function(){
+        btn.textContent = '\u2713 Copied!';
+        setTimeout(function(){btn.textContent=orig;},2000);
+      });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = '\u2713 Copied!';
+      setTimeout(function(){btn.textContent=orig;},2000);
+    }
+  } catch(e) {
+    alert('Copy failed \u2014 try selecting the table manually.');
+  }
+}
+
+// ── CHART ──────────────────────────────────────────────
+function parseDT(str) {
+  if (!str) return null;
+  const clean = str.replace(/\s+[A-Z]{2,4}$/, '').replace(' at ', ' ');
+  const d = new Date(clean);
+  return isNaN(d) ? null : d;
+}
+function formatHourLabel(h) {
+  const hNorm = h % 24, period = hNorm >= 12 ? 'PM' : 'AM', h12 = hNorm === 0 ? 12 : hNorm > 12 ? hNorm - 12 : hNorm;
+  return h12 + ':00 ' + period;
+}
+function buildHourlyChart(rows, valueKey, countMode) {
+  const bounds = SHIFT_BOUNDS, rawMap = {};
+  rows.forEach(function(r) {
+    const d = parseDT(r['Activity Datetime']);
+    if (!d) return;
+    let h = d.getHours();
+    if (h < 5) h += 24;
+    const val = countMode ? 1 : (parseFloat(r[valueKey])||0);
+    rawMap[h] = (rawMap[h]||0) + val;
+  });
+  if (!Object.keys(rawMap).length) return {labels:[], data:[]};
+  const validHours = Object.keys(rawMap).map(Number).filter(function(h) { return h >= bounds.start && h <= bounds.end; });
+  if (!validHours.length) return {labels:[], data:[]};
+  const startH = Math.max(bounds.start, Math.min.apply(null, validHours));
+  const endH = Math.min(bounds.end, Math.max.apply(null, validHours));
+  const labels = [], data = [];
+  for (let h = startH; h <= endH; h++) { labels.push(formatHourLabel(h)); data.push(rawMap[h]||0); }
+  return {labels, data};
+}
+function showPeakLabel(elId, labels, data, type) {
+  const el = document.getElementById(elId);
+  if (!labels.length) { el.textContent = ''; return; }
+  const maxVal = Math.max.apply(null, data), maxIdx = data.indexOf(maxVal);
+  el.textContent = '\u26A1 Peak: ' + labels[maxIdx] + ' \u2014 ' + maxVal.toLocaleString() + (type === 'pick' ? ' units' : ' units replenished');
+}
+function drawChart(canvasId, type, labels, data, mode) {
+  mode = mode || 'smooth';
+  chartModes[type] = mode;
+  chartData[type] = {labels, data};
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const color = type === 'pick' ? '#9B4DCA' : '#185FA5';
+  const fillColor = type === 'pick' ? 'rgba(155,77,202,0.1)' : 'rgba(24,95,165,0.1)';
+  const grid = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const tick = isDark ? '#777' : '#888';
+  if (charts[type]) { charts[type].destroy(); charts[type] = null; }
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  charts[type] = new Chart(ctx, {
+    type:'line',
+    data:{labels, datasets:[{data, borderColor:color, backgroundColor:fillColor, borderWidth:2, pointRadius:3, pointHoverRadius:6, pointBackgroundColor:color, fill:true, tension: mode==='smooth'?0.35:0}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(ctx) { return (type==='pick'?'Units: ':'Qty: ')+ctx.parsed.y.toLocaleString(); }}}},
+      scales:{
+        x:{ticks:{color:tick, font:{size:11}, maxRotation:45, autoSkip:false}, grid:{color:grid}, border:{display:false}},
+        y:{ticks:{color:tick, font:{size:11}, precision:0}, grid:{color:grid}, border:{display:false}, beginAtZero:true}
+      }
+    }
+  });
+}
+function setMode(type, mode) {
+  const d = chartData[type];
+  if (!d.labels.length) return;
+  ['smooth','spiky'].forEach(function(m) {
+    const btn = document.getElementById('mode-' + m + '-' + type);
+    btn.className = 'chart-mode-btn' + (m === mode ? ' active-' + type : '');
+  });
+  drawChart('chart-' + type, type, d.labels, d.data, mode);
+}
+function downloadChart(canvasId, filename) {
+  const link = document.createElement('a');
+  link.download = (filename||'chart') + '.png';
+  link.href = document.getElementById(canvasId).toDataURL('image/png');
+  link.click();
+}
+
+
+// ── STALE REFRESH ──────────────────────────────────────
+var staleTimers = {};
+var uploadTimes = {};
+
+function startStaleTimer(type, bannerEl) {
+  if (staleTimers[type]) clearInterval(staleTimers[type]);
+  uploadTimes[type] = Date.now();
+  if (bannerEl) bannerEl.style.display = 'none';
+  staleTimers[type] = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - uploadTimes[type]) / 60000);
+    if (elapsed >= 60 && bannerEl) {
+      bannerEl.style.display = 'block';
+      bannerEl.textContent = '⚠ Report is ' + elapsed + ' min old — consider re-uploading';
+    }
+  }, 60000);
+}
+
+function clearStaleTimer(type) {
+  if (staleTimers[type]) clearInterval(staleTimers[type]);
+  delete staleTimers[type];
+  delete uploadTimes[type];
+}
+
+
+// ── DAY REPORT ─────────────────────────────────────────
+var DAY_KEY = 'dc499_reserve_day_v1';
+var DAY_SHIFT_START = 14; // 2nd shift starts at 14:00
+
+function getDayData() {
+  try {
+    var s = localStorage.getItem(DAY_KEY);
+    if (s) {
+      var d = JSON.parse(s);
+      // Auto-clear if stored date is before today's shift start
+      var now = new Date();
+      var shiftStart = new Date(now);
+      shiftStart.setHours(DAY_SHIFT_START, 15, 0, 0);
+      if (now < shiftStart) shiftStart.setDate(shiftStart.getDate() - 1);
+      if (!d.shiftStart || new Date(d.shiftStart) < shiftStart) {
+        clearDayData();
+        return { files: [], rows: [], shiftStart: shiftStart.toISOString() };
+      }
+      return d;
+    }
+  } catch(e) {}
+  var now = new Date();
+  var shiftStart = new Date(now);
+  shiftStart.setHours(DAY_SHIFT_START, 15, 0, 0);
+  if (now < shiftStart) shiftStart.setDate(shiftStart.getDate() - 1);
+  return { files: [], rows: [], shiftStart: shiftStart.toISOString() };
+}
+
+function saveDayData(d) {
+  try { localStorage.setItem(DAY_KEY, JSON.stringify(d)); } catch(e) {}
+}
+
+function clearDayData() {
+  try { localStorage.removeItem(DAY_KEY); } catch(e) {}
+  renderDayReport();
+}
+
+function addToDayReport(rows, fileName) {
+  var d = getDayData();
+  if (d.files.indexOf(fileName) !== -1) { renderDayReport(); return; }
+  d.files.push(fileName);
+  // Store only relevant columns to stay under localStorage 5MB limit
+  var slim = rows.map(function(r) {
+    return {
+      'Employee': r['Employee'] || '',
+      'Transaction ID': r['Transaction ID'] || '',
+      'Transaction Type': r['Transaction Type'] || '',
+      'Completed Quantity': r['Completed Quantity'] || '',
+      'Quantity': r['Quantity'] || '',
+      'Container ID': r['Container ID'] || '',
+      'CP Trace Id': r['CP Trace Id'] || '',
+      'Activity Datetime': r['Activity Datetime'] || ''
+    };
+  });
+  // Deduplicate by Container ID or CP Trace Id
+  var seen = {};
+  d.rows.forEach(function(r) {
+    var key = r['Container ID'] || r['CP Trace Id'] || (r['Employee'] + r['Activity Datetime']);
+    seen[key] = true;
+  });
+  slim.forEach(function(r) {
+    var key = r['Container ID'] || r['CP Trace Id'] || (r['Employee'] + r['Activity Datetime']);
+    if (!seen[key]) { seen[key] = true; d.rows.push(r); }
+  });
+  try {
+    saveDayData(d);
+  } catch(e) {
+    // If storage full, just render without saving
+    console.warn('Day report storage full:', e);
+  }
+  renderDayReport();
+}
+
+function renderDayReport() {
+  var d = getDayData();
+  var panel = document.getElementById('day-report-content');
+  if (!panel) return;
+
+  if (!d.rows.length) {
+    panel.innerHTML = '<div class="day-empty">&#x1F4C5; No data yet for this shift.<br><small>Upload CSVs on any tab — they accumulate here automatically.</small></div>';
+    return;
+  }
+
+  var TEAM = getTeamSet();
+  var types = ["pick", "replen"];
+  var html = '';
+
+  // Files loaded
+  html += '<div class="day-header"><div><div class="day-title">Day Report <span class="day-shift-badge">2nd Shift</span></div>';
+  html += '<div class="day-meta">' + d.files.length + ' file' + (d.files.length !== 1 ? 's' : '') + ' loaded &middot; ' + d.rows.length + ' total rows</div></div>';
+  html += '<div class="day-btns"><button class="day-clear-btn" onclick="clearDayData()">&#x1F5D1; Clear shift data</button></div></div>';
+  
+  html += '<div class="day-files-list">';
+  d.files.forEach(function(f) { html += '<span class="day-file-chip">&#x1F4C4; ' + f + '</span>'; });
+  html += '</div>';
+
+  types.forEach(function(typ) {
+    var filtered = d.rows.filter(function(r) {
+      return filterRowForType(r, typ);
+    });
+    if (!filtered.length) return;
+
+    // Dedup by Container ID or CP Trace Id
+    var seen = {};
+    var deduped = filtered.filter(function(r) {
+      var key = r['Container ID'] || r['CP Trace Id'] || (r['Employee'] + r['Activity Datetime']);
+      if (seen[key]) return false;
+      seen[key] = true; return true;
+    });
+
+    var totals = {};
+    deduped.forEach(function(r) {
+      var e = (r['Employee'] || '').trim();
+      if (TEAM.has(e)) totals[e] = (totals[e] || 0) + getMetricForType(r, typ);
+    });
+
+    var sorted = Object.entries(totals).sort(function(a,b){ return b[1]-a[1]; });
+    var grand = sorted.reduce(function(s,v){return s+v[1];}, 0);
+    if (!grand) return;
+
+    var label = typ.charAt(0).toUpperCase() + typ.slice(1);
+    html += '<div class="card"><div style="font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em;">' + label + ' &mdash; ' + grand.toLocaleString() + ' total</div>';
+    html += '<table><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="text-align:right;width:35%;">Share</th></tr></thead><tbody>';
+    sorted.forEach(function(entry, idx) {
+      var emp = entry[0], val = entry[1];
+      var pct = grand > 0 ? Math.round((val/grand)*100) : 0;
+      var short = emp.split('@')[0];
+      var trophy = idx === 0 && sorted.length > 1 ? ' &#x1F3C6;' : '';
+      html += '<tr><td>' + short + trophy + '</td><td style="text-align:right;font-weight:500;">' + val.toLocaleString() + '</td>';
+      html += '<td><div style="display:flex;align-items:center;gap:8px;"><div class="bar-wrap"><div style="height:100%;border-radius:4px;background:#7F77DD;width:' + pct + '%"></div></div>';
+      html += '<span style="font-size:12px;color:var(--text-hint);min-width:32px;text-align:right;">' + pct + '%</span></div></td></tr>';
+    });
+    html += '</tbody><tfoot><tr><td>Shift total</td><td style="text-align:right;">' + grand.toLocaleString() + '</td><td></td></tr></tfoot></table></div>';
+  });
+
+  panel.innerHTML = html;
+}
+
+function filterRowForType(r, typ) {
+  if (typ === 'pick') return (r['Transaction ID']||'').trim() === 'Non Haz Retail Pick To oLPN Cart' && (parseFloat(r['Quantity'])||0) > 0;
+  if (typ === 'replen') return ['iLPN Replen Fill','iLPN Replen Fill Large'].indexOf((r['Transaction ID']||'').trim()) !== -1;
+  return false;
+}
+function getMetricForType(r, typ) {
+  if (typ === 'pick') return parseFloat(r['Quantity'])||0;
+  if (typ === 'replen') return parseFloat(r['Completed Quantity'])||0;
+  return 0;
+}
+
+
+// Day Report drop zone
+var dzDay = document.getElementById('dz-day');
+var fiDay = document.getElementById('fi-day');
+if (dzDay) {
+  dzDay.addEventListener('dragover', function(e) { e.preventDefault(); dzDay.classList.add('dragover'); });
+  dzDay.addEventListener('dragleave', function() { dzDay.classList.remove('dragover'); });
+  dzDay.addEventListener('drop', function(e) {
+    e.preventDefault(); dzDay.classList.remove('dragover');
+    Array.from(e.dataTransfer.files).filter(function(f){return f.name.endsWith('.csv');}).forEach(function(file) {
+      Papa.parse(file, {header:true, skipEmptyLines:true, complete:function(r){ addToDayReport(r.data, file.name); }});
+    });
+  });
+  fiDay.addEventListener('change', function() {
+    Array.from(fiDay.files).forEach(function(file) {
+      Papa.parse(file, {header:true, skipEmptyLines:true, complete:function(r){ addToDayReport(r.data, file.name); }});
+    });
+    fiDay.value = '';
+  });
+}
+
+// ── INIT ───────────────────────────────────────────────
+document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
+renderRoster();
+renderGoalsCard();
+renderDayReport();
+</script>
+</body>
+</html>
