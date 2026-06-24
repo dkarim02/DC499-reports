@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════
+  DC499 Stock Control Report Suite
+  Built by dean.karim
+  ════════════════════════════════════════════════════════
+-->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DC499 — Changelog</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+[data-theme="light"] {
+  --bg: #f5f5f3; --surface: #fff; --surface2: #efefed;
+  --border: #ddd; --text: #1a1a1a; --text-muted: #666; --text-hint: #888;
+}
+[data-theme="dark"] {
+  --bg: #1a1a1a; --surface: #252525; --surface2: #2e2e2e;
+  --border: #3a3a3a; --text: #f0f0ee; --text-muted: #999; --text-hint: #777;
+}
+
+body { background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 3rem; transition: background 0.2s, color 0.2s; }
+
+/* ── TOP BAR ── */
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 100; }
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.back-btn { font-family: inherit; font-size: 13px; padding: 5px 11px; border: 0.5px solid var(--border); border-radius: 7px; background: none; color: var(--text-muted); cursor: pointer; }
+.back-btn:hover { background: var(--surface2); color: var(--text); }
+.app-title { font-size: 16px; font-weight: 600; }
+.app-sub { font-size: 12px; color: var(--text-hint); margin-top: 1px; }
+.dark-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); cursor: pointer; background: none; border: 0.5px solid var(--border); border-radius: 8px; padding: 5px 11px; font-family: inherit; }
+.dark-toggle:hover { background: var(--surface2); }
+.toggle-track { width: 26px; height: 15px; border-radius: 8px; background: #444; position: relative; flex-shrink: 0; }
+.toggle-thumb { width: 11px; height: 11px; border-radius: 50%; background: #888; position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
+[data-theme="dark"] .toggle-track { background: #534AB7; }
+[data-theme="dark"] .toggle-thumb { left: 13px; background: #fff; }
+
+/* ── LAYOUT ── */
+.main { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 0; }
+
+/* ── RELEASE BLOCK ── */
+.release { margin-bottom: 2.5rem; }
+.release-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 1.25rem; padding-bottom: 10px; border-bottom: 1.5px solid var(--border); }
+.release-version { font-size: 20px; font-weight: 700; color: var(--text); }
+.release-date { font-size: 13px; color: var(--text-hint); }
+.release-author { font-size: 12px; color: var(--text-hint); margin-left: auto; }
+.release-latest { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 5px; background: #0e2e1a; color: #4CC38A; margin-left: 8px; }
+[data-theme="light"] .release-latest { background: #e2f6ec; color: #0F6E56; }
+
+/* ── APP GROUP ── */
+.app-group { margin-bottom: 1.25rem; }
+.app-label { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.app-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.app-dot-ecom      { background: #185FA5; }
+.app-dot-reserve   { background: #9B4DCA; }
+.app-dot-itemprep  { background: #E67E22; }
+.app-dot-receiving { background: #0E9E8E; }
+.app-dot-megadash  { background: #534AB7; }
+.app-dot-suite     { background: #555; }
+.app-dot-menu      { background: #888; }
+.change-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.change-list li { font-size: 13px; color: var(--text-muted); padding-left: 16px; position: relative; line-height: 1.5; }
+.change-list li::before { content: '•'; position: absolute; left: 4px; color: var(--text-hint); }
+
+/* ── EMPTY / ERROR ── */
+.state-msg { text-align: center; padding: 3rem 1rem; color: var(--text-hint); }
+.state-icon { font-size: 36px; margin-bottom: 10px; }
+.state-title { font-size: 15px; font-weight: 500; color: var(--text-muted); margin-bottom: 6px; }
+.state-sub { font-size: 13px; }
+
+/* ── FOOTER ── */
+.app-footer { margin-top: 2rem; text-align: center; font-size: 11px; color: var(--text-hint); padding: 1rem; border-top: 0.5px solid var(--border); }
+
+/* ── HOW TO ADD ── */
+.how-to { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 2rem; }
+.how-to-title { font-size: 12px; font-weight: 600; color: var(--text-hint); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.how-to-body { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+.how-to-body code { font-family: 'SF Mono','Consolas',monospace; font-size: 11px; background: var(--surface2); padding: 1px 5px; border-radius: 4px; color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <button class="back-btn" onclick="goBack()">← Menu</button>
+    <div>
+      <div class="app-title">Changelog</div>
+      <div class="app-sub">DC499 · All updates</div>
+    </div>
+  </div>
+  <button class="dark-toggle" onclick="toggleDark()">
+    <span id="theme-label">Light mode</span>
+    <div class="toggle-track"><div class="toggle-thumb"></div></div>
+  </button>
+</div>
+
+<div class="main">
+
+  <div class="how-to">
+    <div class="how-to-title">Adding entries</div>
+    <div class="how-to-body">
+      Edit <code>changelog.json</code> in GitHub and prepend a new release object to the top of the array.
+      Each entry needs: <code>version</code>, <code>date</code>, <code>author</code>, and an <code>apps</code> array
+      where each item has an <code>app</code> name and a <code>changes</code> array of strings.
+      This page reads the file automatically — no other changes needed.
+    </div>
+  </div>
+
+  <div id="changelog-container">
+    <div class="state-msg">
+      <div class="state-icon">⏳</div>
+      <div class="state-title">Loading changelog…</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="app-footer">
+  Nordstrom &middot; Changelog &middot; DC499 &middot; dean.karim &middot; <span id="footer-date"></span>
+  <br><span style="color:#555;font-size:10px">Last Updated: <span id="footer-ts"></span></span>
+</div>
+
+<script>
+// ── APP COLOR MAP ──────────────────────────────────────
+const APP_COLORS = {
+  ecom:      { dot: 'app-dot-ecom',      label: 'Ecom' },
+  reserve:   { dot: 'app-dot-reserve',   label: 'Reserve Stock' },
+  itemprep:  { dot: 'app-dot-itemprep',  label: 'Item Prep' },
+  receiving: { dot: 'app-dot-receiving', label: 'Receiving' },
+  megadash:  { dot: 'app-dot-megadash',  label: 'MegaDash' },
+  suite:     { dot: 'app-dot-suite',     label: 'Suite' },
+  menu:      { dot: 'app-dot-menu',      label: 'Menu' }
+};
+
+function getDotClass(appName) {
+  const key = appName.toLowerCase().replace(/\s/g,'');
+  return APP_COLORS[key] ? APP_COLORS[key].dot : 'app-dot-suite';
+}
+
+// ── RENDER ────────────────────────────────────────────
+function renderChangelog(data) {
+  const container = document.getElementById('changelog-container');
+
+  if (!data || !data.length) {
+    container.innerHTML = `
+      <div class="state-msg">
+        <div class="state-icon">📋</div>
+        <div class="state-title">No entries yet</div>
+        <div class="state-sub">Add entries to changelog.json to see them here</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = data.map((release, idx) => {
+    const isLatest = idx === 0;
+    const appsHtml = release.apps.map(group => {
+      const dotClass = getDotClass(group.app);
+      const changesHtml = group.changes
+        .map(c => `<li>${escHtml(c)}</li>`)
+        .join('');
+      return `
+        <div class="app-group">
+          <div class="app-label">
+            <div class="app-dot ${dotClass}"></div>
+            ${escHtml(group.app)}
+          </div>
+          <ul class="change-list">${changesHtml}</ul>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="release">
+        <div class="release-header">
+          <div class="release-version">v${escHtml(release.version)}${isLatest ? '<span class="release-latest">Latest</span>' : ''}</div>
+          <div class="release-date">${formatDate(release.date)}</div>
+          <div class="release-author">${escHtml(release.author)}</div>
+        </div>
+        ${appsHtml}
+      </div>`;
+  }).join('');
+
+  // Update footer timestamp
+  const ts = new Date();
+  document.getElementById('footer-ts').textContent = ts.toLocaleString();
+}
+
+function formatDate(iso) {
+  try {
+    return new Date(iso + 'T12:00:00').toLocaleDateString([], { year:'numeric', month:'long', day:'numeric' });
+  } catch(e) { return iso; }
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── FETCH changelog.json ───────────────────────────────
+async function loadChangelog() {
+  try {
+    const res = await fetch('changelog.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    renderChangelog(data);
+  } catch(e) {
+    document.getElementById('changelog-container').innerHTML = `
+      <div class="state-msg">
+        <div class="state-icon">⚠️</div>
+        <div class="state-title">Could not load changelog</div>
+        <div class="state-sub">Make sure changelog.json is in the same folder as this file.<br>
+        If running locally (file://), use a local server or GitHub Pages.</div>
+      </div>`;
+  }
+}
+
+// ── THEME ─────────────────────────────────────────────
+const THEME_KEY = 'dc499_changelog_theme_v1';
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('theme-label').textContent = dark ? 'Light mode' : 'Dark mode';
+  try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
+}
+function toggleDark() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
+function initTheme() {
+  let saved; try { saved = localStorage.getItem(THEME_KEY); } catch(e) {}
+  applyTheme(saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+
+// ── NAV ───────────────────────────────────────────────
+function goBack() {
+  const base = window.location.href.replace(/\/[^\/]*$/, '/');
+  window.location.href = base + 'Menu_v1.5.html';
+}
+
+// ── INIT ──────────────────────────────────────────────
+document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
+initTheme();
+loadChangelog();
+</script>
+</body>
+</html>
