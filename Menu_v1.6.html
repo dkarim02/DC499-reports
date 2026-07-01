@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DC499 — Menu v1.6</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1e1e1e; color: #f0f0ee;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 1.5rem;
+    transition: background 0.2s, color 0.2s;
+  }
+  body.light { background: #f5f5f3; color: #1a1a1a; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 2rem; }
+  .header h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .header p { font-size: 13px; color: #888; }
+  body.light .header p { color: #666; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; max-width: 420px; }
+  .card {
+    background: #2a2a2a; border: 1.5px solid #3a3a3a; border-radius: 20px;
+    padding: 1.75rem 1rem 1.25rem;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+    min-height: 150px; position: relative; font-family: inherit; color: #f0f0ee;
+    text-decoration: none;
+  }
+  body.light .card { background: #fff; border-color: #ddd; color: #1a1a1a; }
+  .card:hover { transform: scale(1.04); }
+  .card:active { transform: scale(0.97); }
+
+  .card-receiving { border-color: #0E9E8E; }
+  .card-receiving:hover { background: #0a2e2c; box-shadow: 0 0 0 3px rgba(14,158,142,0.2); }
+  .card-itemprep  { border-color: #E67E22; }
+  .card-itemprep:hover  { background: #2e1a08; box-shadow: 0 0 0 3px rgba(230,126,34,0.2); }
+  .card-ecom      { border-color: #185FA5; }
+  .card-ecom:hover      { background: #081a30; box-shadow: 0 0 0 3px rgba(24,95,165,0.2); }
+  .card-reserve   { border-color: #9B4DCA; }
+  .card-reserve:hover   { background: #1e0a30; box-shadow: 0 0 0 3px rgba(155,77,202,0.2); }
+
+  body.light .card-receiving:hover { background: #E6F7F5; }
+  body.light .card-itemprep:hover  { background: #FEF0E0; }
+  body.light .card-ecom:hover      { background: #e8f0fb; }
+  body.light .card-reserve:hover   { background: #F3E8FF; }
+
+  .card-version { position: absolute; top: 10px; right: 13px; font-size: 10px; color: #555; }
+  body.light .card-version { color: #aaa; }
+  .card-icon { font-size: 40px; margin-bottom: 12px; line-height: 1; }
+  .card-name { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+  .card-sub  { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+  body.light .card-sub { color: #999; }
+
+  .card-receiving .card-name { color: #0E9E8E; }
+  .card-itemprep  .card-name { color: #E67E22; }
+  .card-ecom      .card-name { color: #5B9BD5; }
+  .card-reserve   .card-name { color: #B57FDD; }
+
+  /* Footer */
+  .footer { margin-top: 1.75rem; font-size: 11px; color: #555; text-align: center; }
+  body.light .footer { color: #aaa; }
+
+  /* Theme toggle — top right */
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 200;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #666; cursor: pointer;
+    background: #2a2a2a; border: 1.5px solid #3a3a3a;
+    border-radius: 10px; padding: 6px 12px; font-family: inherit;
+    transition: background 0.15s;
+  }
+  .theme-toggle:hover { background: #333; }
+  body.light .theme-toggle { background: #fff; border-color: #ddd; color: #888; }
+  body.light .theme-toggle:hover { background: #f0f0ee; }
+  .toggle-track { width: 26px; height: 15px; border-radius: 8px; background: #444; position: relative; transition: background 0.2s; flex-shrink: 0; }
+  .toggle-thumb { width: 11px; height: 11px; border-radius: 50%; background: #888; position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
+  body.light .toggle-track { background: #ddd; }
+
+  /* Missing files warning */
+  .warning {
+    display: none; margin-top: 1rem; padding: 10px 16px;
+    background: #2e1a08; border: 0.5px solid #E67E22; border-radius: 8px;
+    font-size: 12px; color: #E67E22; text-align: center; max-width: 420px;
+  }
+  body.light .warning { background: #FEF0E0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>DC499</h1>
+  <p>Select a department to open its report processor</p>
+</div>
+
+<div class="grid">
+  <button class="card card-receiving" onclick="openApp('Receiving_v1.6.html')">
+    <span class="card-version">v1.6</span>
+    <div class="card-icon">&#x1F69B;</div>
+    <div class="card-name">Receiving</div>
+    <div class="card-sub">Inbound</div>
+  </button>
+
+  <button class="card card-itemprep" onclick="openApp('ItemPrep_v1.9.html')">
+    <span class="card-version">v1.9</span>
+    <div class="card-icon">&#x1F9E5;</div>
+    <div class="card-name">Item Prep</div>
+    <div class="card-sub">Crossdock Pack</div>
+  </button>
+
+  <button class="card card-ecom" onclick="openApp('Ecom_v2.4.html')">
+    <span class="card-version">v2.4</span>
+    <div class="card-icon">&#x1F4E6;</div>
+    <div class="card-name">Ecom</div>
+    <div class="card-sub">Replen &middot; Putaway</div>
+  </button>
+
+  <button class="card card-reserve" onclick="openApp('Reserve_v1.5.html')">
+    <span class="card-version">v1.5</span>
+    <div class="card-icon">&#x1F3EA;</div>
+    <div class="card-name">Reserve Stock</div>
+    <div class="card-sub">Pick F1 &middot; Pick F2 &middot; Replen &middot; Putaway</div>
+  </button>
+</div>
+
+<div class="warning" id="warning">
+  &#x26A0; Make sure all dept files are in the same folder as this menu file.
+</div>
+
+<div class="footer">
+  Nordstrom &middot; Menu v1.6 &middot; dean.karim &middot; <span id="date"></span>
+  <br><button onclick="toggleWhatsNew()" style="background:none;border:none;color:#555;font-size:11px;cursor:pointer;margin-top:4px;font-family:inherit;text-decoration:underline;">What's new?</button>
+</div>
+
+<div id="whats-new-panel" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:340px;background:#2a2a2a;border:1px solid #3a3a3a;border-radius:14px;padding:1.25rem;z-index:500;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <div style="font-size:13px;font-weight:600;color:#f0f0ee;">What's New</div>
+    <button onclick="toggleWhatsNew()" style="background:none;border:none;color:#666;font-size:18px;cursor:pointer;line-height:1;font-family:inherit;">&times;</button>
+  </div>
+  <div id="whats-new-content" style="font-size:12px;color:#999;line-height:1.7;">Loading...</div>
+</div>
+
+<button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">
+  <span id="theme-label">Light mode</span>
+  <div class="toggle-track" id="toggle-track">
+    <div class="toggle-thumb" id="toggle-thumb"></div>
+  </div>
+</button>
+
+<script>
+// ── OPEN APP ───────────────────────────────────────────
+function openApp(filename) {
+  // Navigate to the file in the same directory
+  const base = window.location.href.replace(/\/[^\/]*$/, '/');
+  const url = base + filename;
+  window.location.href = url;
+}
+
+// ── THEME ──────────────────────────────────────────────
+const THEME_KEY = 'dc499_theme_v1';
+let isDark = true;
+
+function applyTheme(dark) {
+  isDark = dark;
+  document.body.className = dark ? '' : 'light';
+  document.getElementById('theme-label').textContent = dark ? 'Light mode' : 'Dark mode';
+  document.getElementById('toggle-track').style.background = dark ? '#444' : '#ddd';
+  document.getElementById('toggle-thumb').style.left = dark ? '2px' : '13px';
+  document.getElementById('toggle-thumb').style.background = dark ? '#888' : '#fff';
+  try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
+}
+
+function toggleTheme() { applyTheme(!isDark); }
+
+// Load saved preference, fall back to system
+function initTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved) { applyTheme(saved === 'dark'); return; }
+  } catch(e) {}
+  applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+  try { if (!localStorage.getItem(THEME_KEY)) applyTheme(e.matches); } catch(e) {}
+});
+
+// ── INIT ───────────────────────────────────────────────
+document.getElementById('date').textContent = new Date().toLocaleDateString();
+initTheme();
+
+function toggleWhatsNew() {
+  var panel = document.getElementById('whats-new-panel');
+  var isHidden = panel.style.display === 'none';
+  panel.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) loadWhatsNew();
+}
+
+function loadWhatsNew() {
+  var el = document.getElementById('whats-new-content');
+  fetch('changelog.json?t=' + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data || !data.length) { el.textContent = 'No updates yet.'; return; }
+      var release = data[0];
+      var html = '<div style="color:#888;margin-bottom:8px;">v' + release.version + ' &middot; ' + formatDate(release.date) + '</div>';
+      release.apps.forEach(function(group) {
+        html += '<div style="color:#ccc;font-weight:500;margin-bottom:4px;">' + group.app + '</div>';
+        group.changes.forEach(function(c) {
+          html += '<div style="padding-left:10px;color:#888;">&#x2022; ' + c + '</div>';
+        });
+        html += '<div style="height:8px;"></div>';
+      });
+      el.innerHTML = html;
+    })
+    .catch(function() { el.textContent = 'Could not load updates.'; });
+}
+
+function formatDate(iso) {
+  try { return new Date(iso + 'T12:00:00').toLocaleDateString([], {year:'numeric',month:'long',day:'numeric'}); }
+  catch(e) { return iso; }
+}
+</script>
+</body>
+</html>
