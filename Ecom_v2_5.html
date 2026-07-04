@@ -927,11 +927,11 @@ function handleFile(file, type) {
 function processData(rows, fileName, type) {
   if (type === 'replen') {
     const replenTx = ['iLPN Replen Fill','Retail iLPN Replen Pull','iLPN Replen Pull','iLPN Replen Fill Large','iLPN Replen Pull Large'];
-    const filtered = rows.filter(r => replenTx.includes((r['Transaction ID'] || '').trim()));
+    const filtered = rows.filter(r => replenTx.includes((r['Transaction ID'] || '').trim()) && rowBelongsToEcom(r));
     if (!filtered.length) { showError(type, 'No replenishment transactions found. Please check you uploaded the correct report.'); return; }
     renderReplen(filtered, fileName);
   } else {
-    const filtered = rows.filter(r => ['System Directed Putaway','User Directed Putaway'].indexOf((r['Transaction ID'] || '').trim()) !== -1);
+    const filtered = rows.filter(r => ['System Directed Putaway','User Directed Putaway'].indexOf((r['Transaction ID'] || '').trim()) !== -1 && rowBelongsToEcom(r));
     if (!filtered.length) { showError(type, 'No Putaway transactions found. Please check you uploaded the correct report.'); return; }
     renderPutaway(filtered, fileName);
   }
@@ -1178,6 +1178,28 @@ var assocCharts = {};
 // ── FULL REPORT ────────────────────────────────────────
 var SORT_CRITERIA = 'NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA';
 
+// ── LOCATION-BASED DEPT FILTER ─────────────────────────
+// For shared transaction IDs only — determines if a row belongs to Ecom or Reserve
+// based on Current Location (primary) then Previous Location (fallback)
+const SHARED_TX = [
+  'System Directed Putaway','User Directed Putaway',
+  'iLPN Replen Fill','iLPN Replen Fill Large',
+  'iLPN Replen Pull','iLPN Replen Pull Large','Retail iLPN Replen Pull'
+];
+function getLocationZone(loc) {
+  if (!loc || typeof loc !== 'string' || loc.trim().length < 3) return null;
+  return loc.trim()[2].toUpperCase();
+}
+function rowBelongsToEcom(r) {
+  var txId = (r['Transaction ID'] || '').trim();
+  if (SHARED_TX.indexOf(txId) === -1) return true; // not shared — trust transaction ID
+  var curZone = getLocationZone(r['Current Location']);
+  if (curZone !== null) return curZone !== 'H'; // Current Location wins
+  var prevZone = getLocationZone(r['Previous Location']);
+  if (prevZone !== null) return prevZone !== 'H'; // Previous as fallback
+  return true; // both blank — default to Ecom
+}
+
 var FULL_TX = {
   replen:  ['iLPN Replen Fill','Retail iLPN Replen Pull','iLPN Replen Pull','iLPN Replen Fill Large','iLPN Replen Pull Large'],
   putaway: ['System Directed Putaway','User Directed Putaway'],
@@ -1225,9 +1247,10 @@ function addToFullReport(rows, fileName) {
   // Store this file's keys
   fullReportKeysByFile[fileName] = thisFileKeys;
 
-  // Add rows — skip cross-file dupes (first occurrence wins)
+  // Add rows — skip cross-file dupes (first occurrence wins) and Reserve rows
   var seenCross = {};
   rows.forEach(function(r) {
+    if (!rowBelongsToEcom(r)) return; // exclude rows that belong to Reserve Stock
     var key = (r['Employee']||'') + '|' + (r['Transaction ID']||'') + '|' + (r['Activity Datetime']||'');
     if (crossFileKeys[key]) {
       if (seenCross[key]) return; // already added from previous file
