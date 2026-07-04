@@ -1415,6 +1415,7 @@ function renderSidePanel(typ) {
   var empTotals={};
   fullReportRows.forEach(function(r){
     if(!txList||txList.indexOf((r['Transaction ID']||'').trim())===-1)return;
+    if(!rowBelongsToReserve(r))return;
     var e=(r['Employee']||'').trim();if(!e)return;
     var val=metricKey?(parseFloat(r[metricKey])||0):1;
     empTotals[e]=(empTotals[e]||0)+val;
@@ -1628,12 +1629,12 @@ function renderFullReport() {
   html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Picking</div>';
   html+='<div style="font-size:22px;font-weight:500;color:var(--text);">'+pickingGrand.toLocaleString()+'</div></div>';
   // Replen tile
-  var replenMeta=fullReportRows.filter(function(r){return RES_TX.replen.indexOf((r['Transaction ID']||'').trim())!==-1;}).reduce(function(s,r){var e=(r['Employee']||'').trim();if(!TEAM.has(e))return s;return s+(parseFloat(r['Completed Quantity'])||0);},0);
+  var replenMeta=fullReportRows.filter(function(r){return RES_TX.replen.indexOf((r['Transaction ID']||'').trim())!==-1&&rowBelongsToReserve(r);}).reduce(function(s,r){var e=(r['Employee']||'').trim();if(!TEAM.has(e))return s;return s+(parseFloat(r['Completed Quantity'])||0);},0);
   html+='<div class="full-tile" id="tile-replen" data-typ="replen" onclick="clickTile(this.dataset.typ)" style="color:'+RES_COLORS.replen+';">';
   html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Replenishment</div>';
   html+='<div style="font-size:18px;font-weight:500;color:var(--text);">'+replenMeta.toLocaleString()+'</div></div>';
   // Putaway tile
-  var putawayMeta=fullReportRows.filter(function(r){return RES_TX.putaway.indexOf((r['Transaction ID']||'').trim())!==-1;}).reduce(function(s,r){var e=(r['Employee']||'').trim();if(!TEAM.has(e))return s;return s+1;},0);
+  var putawayMeta=fullReportRows.filter(function(r){return RES_TX.putaway.indexOf((r['Transaction ID']||'').trim())!==-1&&rowBelongsToReserve(r);}).reduce(function(s,r){var e=(r['Employee']||'').trim();if(!TEAM.has(e))return s;return s+(parseFloat(r['Completed Quantity'])||0);},0);
   html+='<div class="full-tile" id="tile-putaway" data-typ="putaway" onclick="clickTile(this.dataset.typ)" style="color:'+RES_COLORS.putaway+';">';
   html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Putaway</div>';
   html+='<div style="font-size:18px;font-weight:500;color:var(--text);">'+putawayMeta.toLocaleString()+'</div></div>';
