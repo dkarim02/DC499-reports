@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Report Processor v2.8</title>
+<title>Ecom Report Processor v2.9</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -157,19 +157,6 @@
   .roster-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
   .roster-title { font-size: 15px; font-weight: 500; color: var(--text); }
 
-  /* ── GOALS ── */
-  .goals-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
-  .goals-item { background: var(--surface2); border-radius: 8px; padding: 10px 14px; }
-  .goals-dept { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
-  .goals-val { font-size: 22px; font-weight: 500; color: var(--text); }
-  .goals-drop-zone { border: 1.5px dashed var(--border); border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; font-size: 13px; color: var(--text-hint); background: var(--surface2); transition: background 0.15s; }
-  .goals-drop-zone:hover, .goals-drop-zone.dragover { background: var(--drop-hover); }
-  .goals-status { font-size: 12px; color: var(--text-hint); min-height: 16px; margin-top: 6px; }
-  .goals-manual-input { width: 100%; margin-top: 4px; font-family: inherit; font-size: 14px; padding: 6px 10px; border: 0.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); outline: none; }
-  .goals-manual-input:focus { border-color: #7F77DD; }
-  .goals-divider { margin-top: 0.75rem; border-top: 0.5px solid var(--border); padding-top: 0.75rem; }
-  .goals-manual-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-
   /* ── FOOTER ── */
   .nordstrom-tag { font-size: 11px; color: var(--text-hint); text-align: center; margin-top: 2rem; }
   .roster-scroll { max-height: 300px; overflow-y: auto; border: 0.5px solid var(--border); border-radius: 8px; margin-bottom: 0; }
@@ -182,20 +169,6 @@
   .stale-banner { display:none; background:#5C3A00; color:#FFD77A; font-size:12px; padding:6px 14px; border-radius:8px; margin-bottom:1rem; text-align:center; }
   [data-theme="light"] .stale-banner, body:not([data-theme="dark"]) .stale-banner { background:#FFF3CD; color:#7A4F00; }
 
-
-  .pph-calc { background: var(--surface2); border-radius: 10px; padding: 14px; margin-top: 1rem; }
-  .pph-calc-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
-  .pph-calc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-  .pph-calc-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
-  .pph-calc-input { width: 100%; font-family: inherit; font-size: 14px; padding: 6px 10px; border: 0.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); outline: none; }
-  .pph-calc-input:focus { border-color: #7F77DD; }
-  .pph-calc-btn { width: 100%; font-family: inherit; font-size: 13px; padding: 8px; border: 0.5px solid #7F77DD; border-radius: 8px; background: #EEEDFE; cursor: pointer; color: #534AB7; font-weight: 500; margin-top: 4px; }
-  .pph-calc-btn:hover { background: #CECBF6; }
-  [data-theme="dark"] .pph-calc-btn { background: #3C3489; color: #CECBF6; border-color: #7F77DD; }
-  [data-theme="dark"] .pph-calc-btn:hover { background: #534AB7; color: #fff; }
-  .pph-calc-result { font-size: 12px; color: var(--text-hint); margin-top: 6px; min-height: 16px; text-align: center; }
-  .pph-calc-result.success { color: #0F6E56; font-weight: 500; }
-  [data-theme="dark"] .pph-calc-result.success { color: #9FE1CB; }
 
   .tab.active-day { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
   .day-drop-zone { border: 1.5px dashed #7F77DD; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: background 0.15s; background: var(--surface); margin-bottom: 1rem; }
@@ -286,6 +259,16 @@
   .full-side-disable-btn:hover { background:var(--surface2); }
   .full-layout-with-panel { display:grid; grid-template-columns:1fr 280px; gap:14px; align-items:start; }
 
+  /* ── PPH COLLAPSIBLE ── */
+  .pph-toggle { display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:8px 0 6px; border-top:0.5px solid var(--border); margin-top:10px; user-select:none; }
+  .pph-toggle-label { font-size:11px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; }
+  .pph-toggle-arrow { font-size:11px; color:var(--text-hint); transition:transform 0.2s; }
+  .pph-toggle-arrow.open { transform:rotate(180deg); }
+  .pph-body { display:none; padding-top:8px; }
+  .pph-body.open { display:block; }
+  .pph-input { width:100%; font-family:inherit; font-size:13px; padding:5px 8px; border:0.5px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); outline:none; text-align:right; }
+  .pph-input:focus { border-color:#185FA5; }
+
   /* ── HEADCOUNT STEPPER ── */
   .hc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
   .hc-item { display:flex; flex-direction:column; gap:4px; }
@@ -368,54 +351,6 @@
       <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
     </div>
 
-    <!-- Daily goals -->
-    <div class="card" style="margin-top:1rem;">
-      <div class="roster-header">
-        <div class="roster-title">Daily goals <span class="saved-badge" id="goals-saved-badge">Saved &#x2713;</span></div>
-        <div style="font-size:12px;color:var(--text-hint);" id="goals-date-label"></div>
-      </div>
-      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Drop a CSV export of the goals sheet — Replen and Putaway goals are read automatically.</p>
-      <div id="goals-current" style="display:none;margin-bottom:1rem;">
-        <div class="goals-row">
-          <div class="goals-item"><div class="goals-dept">Stock Control Replen</div><div class="goals-val" id="goal-replen-display">—</div></div>
-          <div class="goals-item"><div class="goals-dept">Stock Control Putaway</div><div class="goals-val" id="goal-putaway-display">—</div></div>
-        </div>
-      </div>
-      <div class="goals-drop-zone" id="goals-dz" onclick="document.getElementById('goals-file').click()">
-        <span id="goals-dz-label">&#x1F4CB; Drop goals CSV here or click to browse</span>
-        <input type="file" id="goals-file" accept=".csv" style="display:none;">
-      </div>
-      <div class="goals-status" id="goals-status"></div>
-      <div class="goals-divider">
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Or enter goals manually:</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div><label class="goals-manual-label">Replen goal</label><input type="number" id="manual-replen-goal" class="goals-manual-input" placeholder="e.g. 5253" /></div>
-          <div><label class="goals-manual-label">Putaway goal</label><input type="number" id="manual-putaway-goal" class="goals-manual-input" placeholder="e.g. 32" /></div>
-        </div>
-        <button class="add-btn" onclick="saveManualGoals()" style="margin-top:8px;width:100%;text-align:center;">Save manual goals</button>
-      </div>
-
-      <div class="pph-calc" id="calc-replen">
-        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Replenishment</div>
-        <div class="pph-calc-row">
-          <div><div class="pph-calc-label">Total Hours</div><input type="number" class="pph-calc-input" id="calc-hrs-replen" placeholder="e.g. 48" step="0.01" min="0" /></div>
-          <div><div class="pph-calc-label">Financial PPH</div><input type="number" class="pph-calc-input" id="calc-pph-replen" placeholder="e.g. 83.38" step="0.01" min="0" /></div>
-        </div>
-        <button class="pph-calc-btn" onclick="calcGoal('replen')">Calculate &amp; Set Goal</button>
-        <div class="pph-calc-result" id="calc-result-replen"></div>
-      </div>
-      <div class="pph-calc" id="calc-putaway">
-        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Putaway</div>
-        <div class="pph-calc-row">
-          <div><div class="pph-calc-label">Total Hours</div><input type="number" class="pph-calc-input" id="calc-hrs-putaway" placeholder="e.g. 16" step="0.01" min="0" /></div>
-          <div><div class="pph-calc-label">Financial PPH</div><input type="number" class="pph-calc-input" id="calc-pph-putaway" placeholder="e.g. 14" step="0.01" min="0" /></div>
-        </div>
-        <button class="pph-calc-btn" onclick="calcGoal('putaway')">Calculate &amp; Set Goal</button>
-        <div class="pph-calc-result" id="calc-result-putaway"></div>
-      </div>
-      <p class="roster-notice" style="margin-top:8px;">Goals save to this browser until updated.</p>
-    </div>
-
     <!-- Dept Headcount -->
     <div class="card" style="margin-top:1rem;">
       <div class="roster-header">
@@ -427,9 +362,21 @@
         <!-- rendered by renderHeadcountCard() -->
       </div>
       <div id="hc-detected-date" class="hc-detected"></div>
+
+      <!-- PPH Targets collapsible -->
+      <div class="pph-toggle" onclick="togglePPHSection()">
+        <span class="pph-toggle-label">PPH Targets</span>
+        <span class="pph-toggle-arrow" id="pph-arrow">&#x25BC;</span>
+      </div>
+      <div class="pph-body" id="pph-body">
+        <div class="hc-grid" id="pph-grid">
+          <!-- rendered by renderPPHSection() -->
+        </div>
+        <button class="add-btn" onclick="resetPPHToDefaults()" style="width:100%;text-align:center;margin-top:8px;font-size:11px;padding:5px 10px;">Reset to defaults</button>
+      </div>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;">v2.8</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;">v2.9</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Ecom &middot; Last updated: <span id="last-updated"></span></p>
@@ -468,7 +415,6 @@ const DEFAULT_TEAM_2ND = [
 const DEFAULT_TEAM_1ST = ['john.smith@nordstrom.com','jane.doe@nordstrom.com','alex.johnson@nordstrom.com','maria.garcia@nordstrom.com','chris.lee@nordstrom.com'];
 const STORAGE_KEY_2ND = 'sc_roster_2nd_v5';
 const STORAGE_KEY_1ST = 'sc_roster_1st_v1';
-const GOALS_KEY = 'sc_goals_v1';
 const SHIFT_KEY = 'sc_shift_v1';
 const SHIFT_BOUNDS = { '1st': {start:3, end:13}, '2nd': {start:14, end:25} };
 
@@ -495,7 +441,7 @@ function switchTab(tab) {
   ['full','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
-  if (tab === 'settings') { renderRoster(); renderGoalsCard(); renderHeadcountCard(); }
+  if (tab === 'settings') { renderRoster(); renderHeadcountCard(); }
   if (tab === 'full') { renderFullReport(); }
 }
 
@@ -585,105 +531,7 @@ function toggleMember(idx) {
 }
 
 
-// ── GOALS ──────────────────────────────────────────────
-function loadGoals() { try { const s = localStorage.getItem(GOALS_KEY); if (s) return JSON.parse(s); } catch(e) {} return {replen: null, putaway: null, date: null}; }
-function saveGoals(g) { try { localStorage.setItem(GOALS_KEY, JSON.stringify(g)); flashBadge('goals-saved-badge'); } catch(e) {} }
 function flashBadge(id) { const b = document.getElementById(id); if (b) { b.style.opacity = '1'; setTimeout(() => b.style.opacity = '0', 1800); } }
-
-function renderGoalsCard() {
-  const g = loadGoals(), cur = document.getElementById('goals-current');
-  if (g.replen || g.putaway) {
-    cur.style.display = 'block';
-    document.getElementById('goal-replen-display').textContent = g.replen ? g.replen.toLocaleString() : '—';
-    document.getElementById('goal-putaway-display').textContent = g.putaway ? g.putaway.toLocaleString() : '—';
-    document.getElementById('goals-date-label').textContent = g.date ? 'Set ' + g.date : '';
-  } else {
-    cur.style.display = 'none';
-    document.getElementById('goals-date-label').textContent = '';
-  }
-}
-
-
-function saveManualGoals() {
-  const r = parseInt(document.getElementById('manual-replen-goal').value);
-  const p = parseInt(document.getElementById('manual-putaway-goal').value);
-  if (isNaN(r) && isNaN(p)) return;
-  const existing = loadGoals();
-  saveGoals({replen: isNaN(r) ? existing.replen : Math.ceil(r), putaway: isNaN(p) ? existing.putaway : Math.ceil(p), date: new Date().toLocaleDateString()});
-  renderGoalsCard();
-  document.getElementById('goals-status').textContent = '✓ Saved';
-  setTimeout(() => document.getElementById('goals-status').textContent = '', 2000);
-  renderFullReport();
-}
-
-function processGoalsCsv(file) {
-  const status = document.getElementById('goals-status');
-  status.textContent = 'Reading...';
-  Papa.parse(file, { header: false, skipEmptyLines: true, complete: function(res) {
-    try {
-      const rows = res.data;
-      let replenGoal = null, putawayGoal = null, goalColIdx = -1, deptColIdx = -1;
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        for (let j = 0; j < row.length; j++) {
-          const cell = (row[j] || '').toString().trim().toLowerCase();
-          if (cell === 'planned goal') goalColIdx = j;
-          if (cell === 'department') deptColIdx = j;
-        }
-        if (goalColIdx > -1 && deptColIdx > -1) break;
-      }
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const dept = deptColIdx > -1 ? (row[deptColIdx] || '').toString().toLowerCase() : row.join(' ').toLowerCase();
-        const valCol = goalColIdx > -1 ? row[goalColIdx] : null;
-        if (dept.includes('stock control') && dept.includes('replen')) {
-          const v = valCol ? parseFloat(valCol.toString().replace(/,/g,'')) : null;
-          if (v && !isNaN(v)) replenGoal = Math.ceil(v);
-        }
-        if (dept.includes('stock control') && dept.includes('putaway')) {
-          const v = valCol ? parseFloat(valCol.toString().replace(/,/g,'')) : null;
-          if (v && !isNaN(v)) putawayGoal = Math.ceil(v);
-        }
-      }
-      if (!replenGoal && !putawayGoal) throw new Error('Could not find goal values');
-      const existing = loadGoals();
-      saveGoals({replen: replenGoal || existing.replen, putaway: putawayGoal || existing.putaway, date: new Date().toLocaleDateString()});
-      renderGoalsCard();
-      renderFullReport();
-      status.textContent = '✓ Goals updated';
-      document.getElementById('goals-dz-label').textContent = '📋 Drop new goals CSV or click to browse';
-      setTimeout(() => status.textContent = '', 3000);
-    } catch(err) {
-      status.textContent = '⚠ Could not read — try manual entry';
-      setTimeout(() => status.textContent = '', 4000);
-    }
-  }});
-}
-
-
-
-
-// ── PPH CALCULATOR ─────────────────────────────────────
-function calcGoal(type) {
-  var hrs = parseFloat(document.getElementById('calc-hrs-' + type).value);
-  var pph = parseFloat(document.getElementById('calc-pph-' + type).value);
-  var resEl = document.getElementById('calc-result-' + type);
-  if (isNaN(hrs) || isNaN(pph) || hrs <= 0 || pph <= 0) {
-    resEl.textContent = 'Enter valid hours and PPH';
-    resEl.className = 'pph-calc-result';
-    return;
-  }
-  var goal = Math.round(hrs * pph);
-  var g = loadGoals();
-  if (type === 'replen') g.replen = goal;
-  if (type === 'putaway') g.putaway = goal;
-  g.date = new Date().toLocaleDateString();
-  saveGoals(g);
-  renderGoalsCard();
-  renderFullReport();
-  resEl.textContent = hrs + ' hrs × ' + pph + ' PPH = ' + goal.toLocaleString() + ' ✔ Set as goal';
-  resEl.className = 'pph-calc-result success';
-}
 
 
 function filterRoster(query) {
@@ -699,14 +547,6 @@ function filterRoster(query) {
   var noResults = document.getElementById('roster-no-results');
   if (noResults) noResults.style.display = visible === 0 && q ? 'block' : 'none';
 }
-
-// ── FILE HANDLING ──────────────────────────────────────
-const goalsDz = document.getElementById('goals-dz');
-const goalsFile = document.getElementById('goals-file');
-goalsDz.addEventListener('dragover', e => { e.preventDefault(); goalsDz.classList.add('dragover'); });
-goalsDz.addEventListener('dragleave', () => goalsDz.classList.remove('dragover'));
-goalsDz.addEventListener('drop', e => { e.preventDefault(); goalsDz.classList.remove('dragover'); if (e.dataTransfer.files[0]) processGoalsCsv(e.dataTransfer.files[0]); });
-goalsFile.addEventListener('change', () => { if (goalsFile.files[0]) processGoalsCsv(goalsFile.files[0]); });
 
 // ── CHART ──────────────────────────────────────────────
 function parseDT(str) {
@@ -788,6 +628,68 @@ var FIN_FCST_PPH = {
   replen:111.6, putaway:19.6, picking:93.1,
   packing:24.3, shipping:245.9, sorting:81.4
 };
+
+var PPH_KEY = 'ecom_pph_v1';
+
+function loadPPH() {
+  try {
+    var s = localStorage.getItem(PPH_KEY);
+    if (s) {
+      var parsed = JSON.parse(s);
+      // merge with defaults so new depts always have a value
+      var merged = {};
+      HC_DEPTS.forEach(function(d){ merged[d] = (parsed[d] != null ? parsed[d] : FIN_FCST_PPH[d]); });
+      return merged;
+    }
+  } catch(e) {}
+  return Object.assign({}, FIN_FCST_PPH);
+}
+
+function savePPH(vals) {
+  try { localStorage.setItem(PPH_KEY, JSON.stringify(vals)); } catch(e) {}
+}
+
+function getPPH(typ) {
+  return loadPPH()[typ] || FIN_FCST_PPH[typ] || 0;
+}
+
+function setPPHValue(typ, val) {
+  var vals = loadPPH();
+  var n = parseFloat(val);
+  vals[typ] = isNaN(n) || n <= 0 ? FIN_FCST_PPH[typ] : n;
+  savePPH(vals);
+}
+
+function resetPPHToDefaults() {
+  savePPH(Object.assign({}, FIN_FCST_PPH));
+  renderPPHSection();
+}
+
+function togglePPHSection() {
+  var body = document.getElementById('pph-body');
+  var arrow = document.getElementById('pph-arrow');
+  if (!body) return;
+  var isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  arrow.classList.toggle('open', !isOpen);
+  if (!isOpen) renderPPHSection();
+}
+
+function renderPPHSection() {
+  var grid = document.getElementById('pph-grid');
+  if (!grid) return;
+  var vals = loadPPH();
+  var html = '';
+  HC_DEPTS.forEach(function(typ) {
+    var v = vals[typ] != null ? vals[typ] : FIN_FCST_PPH[typ];
+    html += '<div class="hc-item">';
+    html += '<div class="hc-label">'+HC_LABELS[typ]+'</div>';
+    html += '<input class="pph-input" type="number" min="0.1" step="0.1" value="'+v+'" id="pph-input-'+typ+'"';
+    html += ' onchange="setPPHValue(\''+typ+'\',this.value)" onblur="setPPHValue(\''+typ+'\',this.value)">';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+}
 
 var MIN_TX = { replen:10, putaway:5, picking:10, packing:4, shipping:7, sorting:5 };
 
@@ -911,7 +813,7 @@ function getElapsedProdHrs() {
 
 function getTilePace(typ, grand, filteredRows, TEAM) {
   if (getShift() !== '2nd') return null;
-  var pph = FIN_FCST_PPH[typ];
+  var pph = getPPH(typ);
   if (!pph) return null;
   var hcCounts = getHeadcounts();
   var headcount = hcCounts[typ];
@@ -1715,7 +1617,6 @@ async function sendToTeams(btn) {
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
 setShift(getShift());
 renderRoster();
-renderGoalsCard();
 renderHeadcountCard();
 </script>
 </body>
