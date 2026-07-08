@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Item Prep v1.2 — Stock Control</title>
+<title>Item Prep v2.0 — Stock Control</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -188,13 +188,65 @@
   .roster-member.hidden { display:none; }
   .roster-no-results { font-size:13px; color:var(--text-hint); padding:12px; text-align:center; display:none; }
 
+  /* ── FULL REPORT ── */
+  .tab.active-full { color: #E67E22; border-bottom-color: #E67E22; font-weight: 500; }
+  .full-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1rem; }
+  .full-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+  .full-card-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .full-card-total { font-size: 13px; font-weight: 500; color: var(--text); }
+  .full-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .full-table th { text-align: left; font-size: 10px; font-weight: 500; color: var(--text-muted); padding: 5px 8px; border-bottom: 0.5px solid var(--border-mid); text-transform: uppercase; letter-spacing: 0.04em; }
+  .full-table td { padding: 7px 8px; border-bottom: 0.5px solid var(--border-light); color: var(--text); font-size: 12px; }
+  .full-table tr:last-child td { border-bottom: none; }
+  .full-table tfoot td { font-weight: 500; border-top: 0.5px solid var(--border); border-bottom: none; padding-top: 8px; font-size: 12px; }
+  .full-bar-wrap { background: var(--bar-bg); border-radius: 3px; height: 5px; flex: 1; overflow: hidden; min-width: 40px; }
+  .full-bar-fill { height: 100%; border-radius: 3px; }
+  .full-bar-recv { background: #E67E22; }
+  .full-bar-ccode { background: #9B4DCA; }
+  .full-empty { text-align: center; padding: 2rem; color: var(--text-hint); font-size: 13px; }
+  .full-meta { font-size: 11px; color: var(--text-hint); margin-bottom: 1rem; }
+  .full-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .full-title { font-size: 15px; font-weight: 500; color: var(--text); }
+  .full-reset-btn { font-family: inherit; font-size: 12px; padding: 5px 12px; border: 0.5px solid #E67E22; border-radius: 6px; background: #FEF0E0; cursor: pointer; color: #E67E22; }
+  .full-reset-btn:hover { background: #F5C89A; }
+  [data-theme="dark"] .full-reset-btn { background: #5C2E00; color: #F5A55A; }
+  .assoc-row { cursor: pointer; transition: background 0.15s; }
+  .assoc-row:hover td { background: var(--surface2); }
+  .assoc-detail { display: none; padding: 0; }
+  .assoc-detail.open { display: table-row; }
+  .assoc-detail-inner { padding: 12px; background: var(--surface2); border-radius: 8px; margin: 4px 0 8px; }
+  .assoc-detail-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .assoc-chart-wrap { position: relative; height: 160px; overflow-x: auto; overflow-y: hidden; border-radius: 6px; }
+  .assoc-chart-inner { height: 160px; }
+  .assoc-stats { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .assoc-stat { font-size: 11px; color: var(--text-muted); }
+  .assoc-stat span { color: var(--text); font-weight: 500; }
+  .full-tile { text-align:center; padding:10px 4px; background:var(--surface2); border-radius:8px; cursor:pointer; transition:all 0.15s; border:1.5px solid transparent; user-select:none; }
+  .full-tile:hover { filter:brightness(1.1); }
+  .full-tile.active { border-color: currentColor; background:var(--surface); box-shadow:0 0 0 2px rgba(0,0,0,0.08); }
+  .full-side-panel { display:none; background:var(--surface); border:0.5px solid var(--border); border-radius:12px; padding:1rem; margin-bottom:1rem; }
+  .full-side-panel.open { display:block; }
+  .full-side-title { font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px; }
+  .full-side-section { margin-bottom:10px; }
+  .full-side-section-label { font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px; }
+  .full-side-tm { display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:6px;font-size:12px;cursor:pointer;transition:background 0.1s; }
+  .full-side-tm:hover { background:var(--surface2); }
+  .full-side-tm.on-roster { color:var(--text); }
+  .full-side-tm.off-roster { color:var(--text-hint); }
+  .full-side-tm-units { font-size:11px;color:var(--text-muted);font-weight:500; }
+  .full-side-add-btn { font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid #0F6E56;background:rgba(15,110,86,0.1);color:#0F6E56;cursor:pointer;font-family:inherit; }
+  .full-side-add-btn:hover { background:rgba(15,110,86,0.2); }
+  .full-side-disable-btn { font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);background:none;color:var(--text-hint);cursor:pointer;font-family:inherit; }
+  .full-side-disable-btn:hover { background:var(--surface2); }
+  .full-layout-with-panel { display:grid; grid-template-columns:1fr 280px; gap:14px; align-items:start; }
+
 </style>
 </head>
 <body>
 <div class="container">
   <div class="top-bar">
     <div>
-      <p class="dept-label">Item Prep v1.2</p>
+      <p class="dept-label">Item Prep v2.0</p>
       <h1>Item Prep Report Processor</h1>
       <p class="subtitle">2nd Shift · Upload a CSV to get started</p>
     </div>
@@ -209,11 +261,12 @@
       <button class="tab active-recv" id="tab-recv" onclick="switchTab('recv')">Item Level Receive</button>
       <button class="tab" id="tab-ccode" onclick="switchTab('ccode')">Condition Code</button>
     </div>
+    <button class="tab" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
     <button class="tab" id="tab-day" onclick="switchTab('day')">&#x1F4C5; Day Report</button>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
     </div>
-  </div>  </div>
+  </div>
 
   <!-- PACK TAB -->
   <!-- ITEM LEVEL RECEIVE TAB -->
@@ -348,6 +401,20 @@
     </div>
   </div>
 
+  <!-- FULL REPORT TAB -->
+  <div class="tab-panel" id="panel-full">
+    <div class="drop-zone" id="dz-full" onclick="document.getElementById('fi-full').click()" style="margin-bottom:1rem;">
+      <div class="icon">&#x2B06;</div>
+      <p>Drop any Item Prep CSV here</p>
+      <small>Item Level Receive &middot; Condition Code &middot; all detected automatically</small>
+      <input type="file" id="fi-full" accept=".csv" multiple style="display:none;">
+    </div>
+    <div id="full-files-loaded" style="display:none;font-size:12px;color:var(--text-hint);margin-bottom:0.75rem;"></div>
+    <div id="full-content">
+      <div class="full-empty">No data yet — upload a CSV on any tab to populate the Full Report.</div>
+    </div>
+  </div>
+
   <!-- DAY REPORT TAB -->
   <div class="tab-panel" id="panel-day">
     <div class="day-drop-zone" id="dz-day" onclick="document.getElementById('fi-day').click()">
@@ -432,10 +499,11 @@
       <p class="roster-notice" style="margin-top:8px;">Goal saves to this browser until updated.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v1.9</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v2.0</p>
   </div>
 
-  <p class="nordstrom-tag">Nordstrom &middot; Item Prep v1.2 &middot; Last updated: <span id="last-updated"></span></p>
+  <p class="nordstrom-tag">Nordstrom &middot; Item Prep &middot; Last updated: <span id="last-updated"></span></p>
+  <p class="nordstrom-tag" style="margin-top:4px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
 </div>
 
 <script>
@@ -486,13 +554,15 @@ function toggleDark() { applyTheme(document.documentElement.getAttribute('data-t
 function switchTab(tab) {
   document.getElementById('tab-recv').className = 'tab' + (tab === 'recv' ? ' active-recv' : '');
   document.getElementById('tab-ccode').className = 'tab' + (tab === 'ccode' ? ' active-ccode' : '');
+  document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
   document.getElementById('tab-day').className = 'tab' + (tab === 'day' ? ' active-day' : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['recv','ccode','day','settings'].forEach(function(t) {
+  ['recv','ccode','full','day','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
   if (tab === 'settings') { renderRoster(); renderGoalsCard(); }
   if (tab === 'day') { renderDayReport(); }
+  if (tab === 'full') { renderFullReport(); }
 }
 
 // ── ROSTER ──────────────────────────────────────────────
@@ -649,6 +719,12 @@ function handleFileRecv(file) {
     lastUploadRecv = {rows:r.data, fileName:file.name, file:file};
     processDataRecv(r.data, file.name);
     addToDayReport(r.data, file.name);
+    if (fullReportFiles.indexOf(file.name) === -1) {
+      fullReportFiles.push(file.name);
+      addToFullReport(r.data, file.name);
+      var hint = document.getElementById('full-files-loaded');
+      if (hint && fullReportFiles.length > 0) { hint.style.display = 'block'; hint.textContent = fullReportFiles.length + ' file' + (fullReportFiles.length > 1 ? 's' : '') + ' loaded — ' + fullReportRows.length + ' total rows'; }
+    }
   }});
 }
 
@@ -786,6 +862,12 @@ function handleFileCcode(file) {
     lastUploadCcode = {rows:r.data, fileName:file.name, file:file};
     processDataCcode(r.data, file.name);
     addToDayReport(r.data, file.name);
+    if (fullReportFiles.indexOf(file.name) === -1) {
+      fullReportFiles.push(file.name);
+      addToFullReport(r.data, file.name);
+      var hint = document.getElementById('full-files-loaded');
+      if (hint && fullReportFiles.length > 0) { hint.style.display = 'block'; hint.textContent = fullReportFiles.length + ' file' + (fullReportFiles.length > 1 ? 's' : '') + ' loaded — ' + fullReportRows.length + ' total rows'; }
+    }
   }});
 }
 
@@ -1030,6 +1112,345 @@ function calcGoal(type) {
   resEl.className = 'pph-calc-result success';
 }
 
+
+// ── FULL REPORT ────────────────────────────────────────
+var IP_TX = {
+  recv:  ['Item Level Receive'],
+  ccode: ['IlpnConditionCodeRemoval']
+};
+var IP_COLORS = { recv: '#E67E22', ccode: '#9B4DCA' };
+var IP_LABELS = { recv: 'Item Level Receive', ccode: 'Condition Code' };
+var IP_METRIC = { recv: 'Quantity', ccode: 'Quantity' };
+
+var fullReportRows = [];
+var fullReportFiles = [];
+var fullReportKeysByFile = {};
+var _activeTile = null;
+var assocCharts = {};
+
+function addToFullReport(rows, fileName) {
+  var thisFileKeys = {};
+  rows.forEach(function(r) {
+    var key = (r['Employee']||'') + '|' + (r['Transaction ID']||'') + '|' + (r['Activity Datetime']||'');
+    thisFileKeys[key] = true;
+  });
+  var crossFileKeys = {};
+  Object.keys(fullReportKeysByFile).forEach(function(prevFile) {
+    if (prevFile === fileName) return;
+    Object.keys(fullReportKeysByFile[prevFile]).forEach(function(k) { if (thisFileKeys[k]) crossFileKeys[k] = true; });
+  });
+  fullReportKeysByFile[fileName] = thisFileKeys;
+  var seenCross = {};
+  rows.forEach(function(r) {
+    var key = (r['Employee']||'') + '|' + (r['Transaction ID']||'') + '|' + (r['Activity Datetime']||'');
+    if (crossFileKeys[key]) { if (seenCross[key]) return; seenCross[key] = true; return; }
+    fullReportRows.push(r);
+  });
+}
+
+function clickTile(typ) {
+  if (_activeTile === typ) {
+    _activeTile = null;
+    document.querySelectorAll('.full-tile').forEach(function(t){ t.classList.remove('active'); });
+    var sp = document.getElementById('full-side-panel');
+    if (sp) { sp.classList.remove('open'); sp.innerHTML = ''; }
+    drawFullChart();
+    return;
+  }
+  _activeTile = typ;
+  document.querySelectorAll('.full-tile').forEach(function(t){ t.classList.toggle('active', t.dataset.typ === typ); });
+  renderSidePanel(typ);
+  drawFullChart(typ);
+}
+
+function renderSidePanel(typ) {
+  var sp = document.getElementById('full-side-panel');
+  if (!sp) return;
+  var color = IP_COLORS[typ], label = IP_LABELS[typ];
+  var roster = loadRoster(), TEAM = getTeamSet();
+  var txList = IP_TX[typ], metricKey = IP_METRIC[typ];
+  var empTotals = {};
+  // dedup by Container ID before summing for side panel
+  var seenCid = {};
+  fullReportRows.forEach(function(r) {
+    if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return;
+    var cid = (r['Container ID']||'').trim();
+    if (cid) { if (seenCid[cid]) return; seenCid[cid] = true; }
+    var e = (r['Employee']||'').trim(); if (!e) return;
+    var val = metricKey ? (parseFloat(r[metricKey])||0) : 1;
+    empTotals[e] = (empTotals[e]||0) + val;
+  });
+  var onRoster = [], offRoster = [];
+  Object.keys(empTotals).forEach(function(emp) {
+    var entry = roster.find(function(m){ return m.email === emp; });
+    if (entry) onRoster.push({emp:emp, val:empTotals[emp], enabled:entry.enabled});
+    else offRoster.push({emp:emp, val:empTotals[emp]});
+  });
+  onRoster.sort(function(a,b){return b.val-a.val;}); offRoster.sort(function(a,b){return b.val-a.val;});
+  var html = '<div class="full-side-title" style="color:'+color+';">'+label+'</div>';
+  if (onRoster.length) {
+    html += '<div class="full-side-section"><div class="full-side-section-label">On roster ('+onRoster.length+')</div>';
+    onRoster.forEach(function(item) {
+      var short = item.emp.split('@')[0], btnLabel = item.enabled ? 'Disable' : 'Enable';
+      html += '<div class="full-side-tm on-roster"><span>'+short+(item.enabled?'':' <span style="font-size:10px;opacity:0.5;">(off)</span>')+'</span>';
+      html += '<div style="display:flex;align-items:center;gap:6px;"><span class="full-side-tm-units">'+item.val.toLocaleString()+'</span>';
+      html += '<button class="full-side-disable-btn" data-emp="'+item.emp+'" data-typ="'+typ+'" onclick="toggleTMFromPanel(this.dataset.emp,this.dataset.typ)">'+btnLabel+'</button></div></div>';
+    });
+    html += '</div>';
+  }
+  if (offRoster.length) {
+    html += '<div class="full-side-section"><div class="full-side-section-label" style="color:#E67E22;">Not on roster ('+offRoster.length+')</div>';
+    offRoster.forEach(function(item) {
+      var short = item.emp.split('@')[0];
+      html += '<div class="full-side-tm off-roster"><span>'+short+'</span>';
+      html += '<div style="display:flex;align-items:center;gap:6px;"><span class="full-side-tm-units">'+item.val.toLocaleString()+'</span>';
+      html += '<button class="full-side-add-btn" data-emp="'+item.emp+'" data-typ="'+typ+'" onclick="addTMFromPanel(this.dataset.emp,this.dataset.typ)">+ Add</button></div></div>';
+    });
+    html += '</div>';
+  }
+  sp.innerHTML = html; sp.classList.add('open');
+}
+
+function addTMFromPanel(emp, typ) {
+  if (!confirm('Add ' + emp.split('@')[0] + ' to roster?')) return;
+  var roster = loadRoster();
+  if (!roster.find(function(m){ return m.email === emp; })) { roster.push({email:emp, enabled:true}); saveRoster(roster); }
+  renderFullReport();
+  if (_activeTile) setTimeout(function(){ renderSidePanel(_activeTile); }, 50);
+}
+
+function toggleTMFromPanel(emp, typ) {
+  var roster = loadRoster();
+  var idx = roster.findIndex(function(m){ return m.email === emp; });
+  if (idx === -1) return;
+  roster[idx].enabled = !roster[idx].enabled;
+  saveRoster(roster); renderFullReport();
+  if (_activeTile) setTimeout(function(){ renderSidePanel(_activeTile); }, 50);
+}
+
+function setFullChartMode(mode) { window._fullChartMode = mode; drawFullChart(); }
+
+function drawFullChart(filterTyp) {
+  var canvas = document.getElementById('chart-full');
+  if (!canvas) return;
+  if (window._fullChart) { window._fullChart.destroy(); window._fullChart = null; }
+  var mode = window._fullChartMode || 'smooth';
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  var grid = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)', tick = isDark ? '#777' : '#888';
+  var bounds = SHIFT_BOUNDS;
+  var types = ['recv','ccode'];
+  var allHours = new Set(), hourlyData = {};
+  var TEAM = getTeamSet();
+  types.forEach(function(typ) {
+    var txList = IP_TX[typ], metricKey = IP_METRIC[typ], map = {};
+    // dedup by Container ID for chart
+    var seenCid = {};
+    fullReportRows.forEach(function(r) {
+      if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return;
+      var cid = (r['Container ID']||'').trim();
+      if (cid) { if (seenCid[cid]) return; seenCid[cid] = true; }
+      var e = (r['Employee']||'').trim(); if (!TEAM.has(e)) return;
+      var d = parseDT(r['Activity Datetime']); if (!d) return;
+      var h = d.getHours(); if (h < 5) h += 24;
+      if (h < bounds.start || h > bounds.end) return;
+      map[h] = (map[h]||0) + (metricKey ? (parseFloat(r[metricKey])||0) : 1);
+      allHours.add(h);
+    });
+    hourlyData[typ] = map;
+  });
+  if (!allHours.size) return;
+  var sortedHours = Array.from(allHours).sort(function(a,b){return a-b;});
+  var minH = sortedHours[0], maxH = sortedHours[sortedHours.length-1];
+  var labels = [];
+  for (var h = minH; h <= maxH; h++) { var hN=h%24,per=hN>=12?'PM':'AM',h12=hN===0?12:hN>12?hN-12:hN; labels.push(h12+':00 '+per); }
+  if (filterTyp) types = [filterTyp];
+  var datasets = types.map(function(typ) {
+    var data = []; for (var h = minH; h <= maxH; h++) { data.push(hourlyData[typ][h]||0); }
+    return { label:IP_LABELS[typ], data:data, borderColor:IP_COLORS[typ], backgroundColor:'transparent', borderWidth:2, pointRadius:2, pointHoverRadius:5, tension:mode==='smooth'?0.35:0, fill:false };
+  });
+  window._fullChart = new Chart(canvas.getContext('2d'), {
+    type:'line', data:{labels:labels, datasets:datasets},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{mode:'index',intersect:false}},
+      scales:{ x:{ticks:{color:tick,font:{size:10},maxRotation:45,autoSkip:true},grid:{color:grid},border:{display:false}},
+               y:{ticks:{color:tick,font:{size:10},precision:0},grid:{color:grid},border:{display:false},beginAtZero:true} } }
+  });
+}
+
+function drawAssocChart(canvasId, emp, isDark) {
+  if (assocCharts[canvasId]) { assocCharts[canvasId].destroy(); delete assocCharts[canvasId]; }
+  var canvas = document.getElementById(canvasId); if (!canvas) return;
+  var bounds = SHIFT_BOUNDS, GAP_MINS = 10;
+  var events = [];
+  fullReportRows.forEach(function(r) {
+    if ((r['Employee']||'').trim() !== emp) return;
+    var txId = (r['Transaction ID']||'').trim();
+    var found = false, metricKey = null;
+    Object.keys(IP_TX).forEach(function(typ) { if (IP_TX[typ].indexOf(txId) !== -1) { metricKey = IP_METRIC[typ]; found = true; } });
+    if (!found) return;
+    var d = parseDT(r['Activity Datetime']); if (!d) return;
+    var h = d.getHours(); if (h < 5) h += 24;
+    if (h < bounds.start || h > bounds.end) return;
+    var totalMins = h * 60 + d.getMinutes();
+    var val = metricKey ? (parseFloat(r[metricKey])||0) : 1;
+    events.push({mins:totalMins, val:val});
+  });
+  if (!events.length) return;
+  events.sort(function(a,b){return a.mins-b.mins;});
+  function fmtMins(m) { var hh=Math.floor(m/60)%24,mm=m%60,per=hh>=12?'PM':'AM',h12=hh===0?12:hh>12?hh-12:hh; return h12+':'+(mm<10?'0':'')+mm+' '+per; }
+  var rawTimes = events.map(function(e){return e.mins;}), gapPairs = [];
+  for (var i=1;i<rawTimes.length;i++) {
+    var diff = rawTimes[i]-rawTimes[i-1];
+    if (diff > GAP_MINS) { var dm=Math.round(diff),hg=Math.floor(dm/60),mg=dm%60; gapPairs.push({fromRaw:rawTimes[i-1],toRaw:rawTimes[i],from:Math.floor(rawTimes[i-1]/5)*5,to:Math.floor(rawTimes[i]/5)*5,fromFmt:fmtMins(rawTimes[i-1]),toFmt:fmtMins(rawTimes[i]),durStr:hg>0?hg+'h '+mg+'m':mg+' min'}); }
+  }
+  var bucketMap = {};
+  events.forEach(function(e){ var b=Math.floor(e.mins/5)*5; bucketMap[b]=(bucketMap[b]||0)+e.val; });
+  var activeBuckets = Object.keys(bucketMap).map(Number).sort(function(a,b){return a-b;});
+  var labels=[],data=[],pointColors=[];
+  activeBuckets.forEach(function(b){
+    var hh=Math.floor(b/60)%24,mm=b%60,label='';
+    if(mm===0||mm===30){var per=hh>=12?'PM':'AM',h12=hh===0?12:hh>12?hh-12:hh;label=h12+':'+(mm<10?'0':'')+mm+' '+per;}
+    labels.push(label); data.push(bucketMap[b]);
+    var inGap=gapPairs.some(function(g){return b===g.from||b===g.to;});
+    pointColors.push(inGap?'#C0392B':'#E67E22');
+  });
+  var grid=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)',tick=isDark?'#777':'#888';
+  var cw=Math.max(500,activeBuckets.length*14); canvas.style.width=cw+'px'; canvas.width=cw; canvas.style.height='160px'; canvas.height=160;
+  var totalGapMins=Math.round(gapPairs.reduce(function(s,g){return s+(g.toRaw-g.fromRaw);},0));
+  var empKey=canvasId.replace('assoc-chart-',''),gapTotalEl=document.getElementById('assoc-gap-total-'+empKey);
+  if(gapTotalEl){if(totalGapMins>0){var tgh=Math.floor(totalGapMins/60),tgm=totalGapMins%60;gapTotalEl.textContent='⏱ '+(tgh>0?tgh+'h '+tgm+'m total gap time':tgm+' min total gap time');}else gapTotalEl.textContent='';}
+  assocCharts[canvasId] = new Chart(canvas.getContext('2d'),{type:'line',data:{labels:labels,datasets:[{data:data,gapPairs:gapPairs,activeBuckets:activeBuckets,segment:{borderColor:function(ctx){var aB=activeBuckets[ctx.p0DataIndex],bB=activeBuckets[ctx.p1DataIndex];return gapPairs.some(function(g){return aB===g.from&&bB===g.to;})?'#C0392B':'#E67E22';}},backgroundColor:'rgba(230,126,34,0.08)',borderWidth:2,pointRadius:function(ctx){return pointColors[ctx.dataIndex]==='#C0392B'?5:2;},pointBackgroundColor:pointColors,fill:true,tension:0.2,spanGaps:false}]},
+    options:{responsive:false,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var ds=ctx.dataset,idx=ctx.dataIndex,b=ds.activeBuckets?ds.activeBuckets[idx]:null;if(b!==null&&ds.gapPairs){var gap=ds.gapPairs.find(function(g){return g.to===b;});if(gap)return['⚠ Gap: '+gap.fromFmt+' – '+gap.toFmt,'⏱ Duration: '+gap.durStr,'Units at resume: '+ctx.parsed.y];var gA=ds.gapPairs.find(function(g){return g.from===b;});if(gA)return['⚠ Gap: '+gA.fromFmt+' – '+gA.toFmt,'⏱ Duration: '+gA.durStr,'Units at last activity: '+ctx.parsed.y];}return 'Units: '+ctx.parsed.y;}}}},scales:{x:{ticks:{color:tick,font:{size:9},maxRotation:45,autoSkip:false},grid:{color:grid},border:{display:false}},y:{ticks:{color:tick,font:{size:9},precision:0},grid:{color:grid},border:{display:false},beginAtZero:true}}}});
+}
+
+function toggleAssocDetail(empKey) {
+  var detailRow = document.getElementById('assoc-detail-'+empKey); if (!detailRow) return;
+  var isOpen = detailRow.classList.contains('open');
+  document.querySelectorAll('.assoc-detail.open').forEach(function(el){ el.classList.remove('open'); var cid=el.getAttribute('data-canvas'); if(cid&&assocCharts[cid]){assocCharts[cid].destroy();delete assocCharts[cid];} });
+  if (!isOpen) { detailRow.classList.add('open'); var isDark=document.documentElement.getAttribute('data-theme')==='dark'; setTimeout(function(){drawAssocChart('assoc-chart-'+empKey,detailRow.getAttribute('data-emp'),isDark);},50); }
+}
+
+function renderFullReport() {
+  var panel = document.getElementById('full-content'); if (!panel) return;
+  if (!fullReportRows.length) { panel.innerHTML='<div class="full-empty">No data yet — upload a CSV on any tab to populate the Full Report.</div>'; return; }
+  var TEAM = getTeamSet(), types = ['recv','ccode'], html = '';
+  html += '<div class="full-header"><div class="full-title">Full Report</div>';
+  html += '<button class="full-reset-btn" onclick="clearFullReport()">&#x21BA; Clear</button></div>';
+  html += '<div class="full-meta">'+fullReportRows.length+' total rows loaded</div>';
+  // 1. Shift Summary tiles
+  html += '<div class="card" style="margin-bottom:1rem;">';
+  html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">';
+  types.forEach(function(typ) {
+    var txList=IP_TX[typ], metricKey=IP_METRIC[typ], color=IP_COLORS[typ];
+    var seenCid = {};
+    var filtered = fullReportRows.filter(function(r){ return txList && txList.indexOf((r['Transaction ID']||'').trim()) !== -1; });
+    var grand = filtered.reduce(function(s,r){
+      var cid=(r['Container ID']||'').trim();
+      if(cid){if(seenCid[cid])return s;seenCid[cid]=true;}
+      var e=(r['Employee']||'').trim(); if(!TEAM.has(e))return s;
+      return s+(metricKey?(parseFloat(r[metricKey])||0):1);
+    },0);
+    html += '<div class="full-tile" id="tile-'+typ+'" data-typ="'+typ+'" onclick="clickTile(this.dataset.typ)" style="color:'+color+';">';
+    html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">'+IP_LABELS[typ]+'</div>';
+    html += '<div style="font-size:18px;font-weight:500;color:var(--text);">'+grand.toLocaleString()+'</div></div>';
+  });
+  html += '</div></div>';
+  // 2. Activity by Hour chart
+  html += '<div class="card" style="margin-bottom:1rem;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">';
+  html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Activity by Hour</div>';
+  var isSmooth=(window._fullChartMode||'smooth')!=='spiky';
+  html += '<div style="display:flex;gap:6px;">';
+  html += '<button class="chart-mode-btn'+(isSmooth?' active-pack':'')+'" onclick="setFullChartMode(\'smooth\')" title="Smooth"><svg width="18" height="12" viewBox="0 0 18 12" fill="none"><path d="M1 10 C4 10 4 2 9 2 C14 2 14 10 17 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></button>';
+  html += '<button class="chart-mode-btn'+(!isSmooth?' active-pack':'')+'" onclick="setFullChartMode(\'spiky\')" title="Spiky"><svg width="18" height="12" viewBox="0 0 18 12" fill="none"><polyline points="1,10 5,10 7,2 9,10 11,2 13,10 17,10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>';
+  html += '</div></div>';
+  html += '<div style="position:relative;height:220px;"><canvas id="chart-full"></canvas></div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;justify-content:center;">';
+  types.forEach(function(typ){ html+='<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);"><span style="width:12px;height:3px;background:'+IP_COLORS[typ]+';display:inline-block;border-radius:2px;"></span>'+IP_LABELS[typ]+'</span>'; });
+  html += '</div></div>';
+  // 3. Dept grid + side panel (correct layout per handoff guide §2)
+  html += '<div id="full-layout-wrapper">';
+  html += '<div id="full-dept-grid"><div class="full-grid">';
+  types.forEach(function(typ) {
+    var txList=IP_TX[typ], metricKey=IP_METRIC[typ], color=IP_COLORS[typ], label=IP_LABELS[typ], barClass='full-bar-'+typ;
+    var seenCid = {};
+    var filtered = fullReportRows.filter(function(r){ return txList && txList.indexOf((r['Transaction ID']||'').trim()) !== -1; });
+    if (!filtered.length) { html+='<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total" style="color:var(--text-hint);">No data</span></div><div class="full-empty" style="padding:1rem;">No '+label+' transactions found</div></div>'; return; }
+    var totals = {};
+    filtered.forEach(function(r){
+      var cid=(r['Container ID']||'').trim();
+      if(cid){if(seenCid[cid])return;seenCid[cid]=true;}
+      var e=(r['Employee']||'').trim(), val=metricKey?(parseFloat(r[metricKey])||0):1;
+      if(TEAM.has(e))totals[e]=(totals[e]||0)+val;
+    });
+    var sorted=Object.entries(totals).sort(function(a,b){return b[1]-a[1];}), grand=sorted.reduce(function(s,v){return s+v[1];},0);
+    if(!grand) return;
+    html+='<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total">'+grand.toLocaleString()+'</span></div>';
+    html+='<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th></tr></thead><tbody>';
+    sorted.forEach(function(entry,idx){
+      var emp=entry[0],val=entry[1],pct=grand>0?Math.round((val/grand)*100):0,short=emp.split('@')[0],trophy=idx===0&&sorted.length>1?' &#x1F3C6;':'';
+      var empTimes=[]; fullReportRows.forEach(function(r2){if((r2['Employee']||'').trim()!==emp)return;var d2=parseDT(r2['Activity Datetime']);if(!d2)return;empTimes.push(d2.getTime());});
+      empTimes.sort(function(a,b){return a-b;}); var gapCount=0; for(var gi=1;gi<empTimes.length;gi++){if((empTimes[gi]-empTimes[gi-1])>10*60*1000)gapCount++;}
+      var empKey=emp.replace(/[^a-z0-9]/gi,'_')+'_'+typ;
+      html+='<tr class="assoc-row" data-empkey="'+empKey+'" onclick="toggleAssocDetail(this.dataset.empkey)">';
+      html+='<td>'+short+trophy+'</td><td style="text-align:right;font-weight:500;">'+val.toLocaleString()+'</td>';
+      html+='<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill '+barClass+'" style="width:'+pct+'%"></div></div><span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+pct+'%</span></div></td></tr>';
+      html+='<tr class="assoc-detail" id="assoc-detail-'+empKey+'" data-emp="'+emp+'" data-canvas="assoc-chart-'+empKey+'">';
+      html+='<td colspan="3" style="padding:0 4px 8px;"><div class="assoc-detail-inner">';
+      html+='<div class="assoc-detail-name">'+short+' — performance<span style="font-size:10px;color:var(--text-hint);">5-min intervals &middot; click row to collapse</span></div>';
+      html+='<div class="assoc-chart-wrap"><div class="assoc-chart-inner"><canvas id="assoc-chart-'+empKey+'"></canvas></div></div>';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">';
+      html+='<div class="assoc-stats"><div class="assoc-stat">Total: <span>'+val.toLocaleString()+'</span></div>';
+      if(gapCount>0) html+='<div class="assoc-stat" style="color:#C0392B;">&#x26A0; '+gapCount+' gap'+(gapCount>1?'s':'')+' >10 min</div>';
+      html+='</div><div id="assoc-gap-total-'+empKey+'" style="font-size:11px;color:#C0392B;font-weight:500;text-align:right;"></div></div></div></td></tr>';
+    });
+    html+='</tbody><tfoot><tr><td>Total</td><td style="text-align:right;">'+grand.toLocaleString()+'</td><td></td></tr></tfoot></table></div>';
+  });
+  html += '</div></div>';
+  html += '<div id="full-side-panel" class="full-side-panel"></div>';
+  html += '</div>';
+  panel.innerHTML = html;
+  setTimeout(function(){ drawFullChart(); }, 50);
+}
+
+function clearFullReport() {
+  fullReportRows=[]; fullReportFiles=[]; fullReportKeysByFile={};
+  var hint=document.getElementById('full-files-loaded'); if(hint){hint.style.display='none';hint.textContent='';}
+  renderFullReport();
+}
+
+// Full Report independent upload
+var dzFull = document.getElementById('dz-full');
+var fiFull = document.getElementById('fi-full');
+if (dzFull) {
+  dzFull.addEventListener('dragover', function(e){e.preventDefault();dzFull.classList.add('dragover');});
+  dzFull.addEventListener('dragleave', function(){dzFull.classList.remove('dragover');});
+  dzFull.addEventListener('drop', function(e){
+    e.preventDefault(); dzFull.classList.remove('dragover');
+    var files=Array.from(e.dataTransfer.files).filter(function(f){return f.name.endsWith('.csv');});
+    processFullIPFiles(files);
+  });
+  fiFull.addEventListener('change', function(){ processFullIPFiles(Array.from(fiFull.files)); fiFull.value=''; });
+}
+
+function processFullIPFiles(files) {
+  if (!files.length) return;
+  var newFiles=files.filter(function(f){return fullReportFiles.indexOf(f.name)===-1;});
+  if (!newFiles.length) return;
+  var loaded=0;
+  newFiles.forEach(function(file){
+    Papa.parse(file,{header:true,skipEmptyLines:true,complete:function(r){
+      fullReportFiles.push(file.name);
+      addToFullReport(r.data, file.name);
+      loaded++;
+      if(loaded===newFiles.length){
+        var hint=document.getElementById('full-files-loaded');
+        if(hint){hint.style.display='block';hint.textContent=fullReportFiles.length+' file'+(fullReportFiles.length>1?'s':'')+' loaded — '+fullReportRows.length+' total rows';}
+        if(document.getElementById('panel-full').className.includes('active')) renderFullReport();
+      }
+    }});
+  });
+}
 
 // ── DAY REPORT ─────────────────────────────────────────
 var DAY_KEY = 'dc499_itemprep_day_v1';
