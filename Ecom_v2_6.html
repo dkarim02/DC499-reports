@@ -45,6 +45,8 @@
   .tabs-right { margin-left: auto; }
   .tab { font-size: 14px; padding: 8px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1.5px; color: var(--text-hint); background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; transition: color 0.15s; }
   .tab:hover { color: var(--text); }
+  .tab.active-replen { color: #185FA5; border-bottom-color: #185FA5; font-weight: 500; }
+  .tab.active-putaway { color: #0F6E56; border-bottom-color: #0F6E56; font-weight: 500; }
   .tab-settings { font-size: 14px; padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1.5px; color: var(--text-hint); background: none; border-top: none; border-left: 1px solid var(--border); border-right: none; font-family: inherit; transition: color 0.15s; }
   .tab-settings:hover { color: var(--text); }
   .tab-settings.active-settings { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
@@ -65,6 +67,8 @@
   .metric-value { font-size: 24px; font-weight: 500; color: var(--text); }
   .metric-sub { font-size: 11px; color: var(--text-hint); margin-top: 4px; }
   .progress-wrap { background: var(--bar-bg); border-radius: 4px; height: 5px; margin-top: 6px; overflow: hidden; }
+  .progress-fill-replen { height: 100%; border-radius: 4px; background: #185FA5; transition: width 0.4s; }
+  .progress-fill-putaway { height: 100%; border-radius: 4px; background: #0F6E56; transition: width 0.4s; }
 
   /* ── CARDS & TABLES ── */
   .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
@@ -74,8 +78,14 @@
   tr:last-child td { border-bottom: none; }
   tfoot td { font-weight: 500; border-top: 0.5px solid var(--border); border-bottom: none; padding-top: 12px; }
   .bar-wrap { background: var(--bar-bg); border-radius: 4px; height: 6px; flex: 1; overflow: hidden; }
+  .bar-fill-replen { height: 100%; border-radius: 4px; background: #185FA5; }
+  .bar-fill-putaway { height: 100%; border-radius: 4px; background: #0F6E56; }
 
   /* ── BADGES ── */
+  .badge-replen { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 6px; background: #e8f0fb; color: #185FA5; margin: 2px; }
+  .badge-putaway { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 6px; background: #E1F5EE; color: #0F6E56; margin: 2px; }
+  [data-theme="dark"] .badge-replen { background: #0C447C; color: #B5D4F4; }
+  [data-theme="dark"] .badge-putaway { background: #085041; color: #9FE1CB; }
   .shift-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 5px; margin-left: 8px; font-weight: 500; }
   .shift-badge-1st { background: #FFF3CD; color: #C47B00; }
   .shift-badge-2nd { background: #e8f0fb; color: #185FA5; }
@@ -86,6 +96,14 @@
   .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
   .file-name { font-weight: 500; font-size: 15px; color: var(--text); }
   .run-time { font-size: 12px; color: var(--text-hint); margin-top: 2px; }
+  .reset-btn-replen { font-family: inherit; font-size: 13px; padding: 6px 14px; border: 0.5px solid #185FA5; border-radius: 6px; background: #e8f0fb; cursor: pointer; color: #185FA5; font-weight: 500; }
+  .reset-btn-replen:hover { background: #B5D4F4; }
+  .reset-btn-putaway { font-family: inherit; font-size: 13px; padding: 6px 14px; border: 0.5px solid #0F6E56; border-radius: 6px; background: #E1F5EE; cursor: pointer; color: #0F6E56; font-weight: 500; }
+  .reset-btn-putaway:hover { background: #9FE1CB; }
+  [data-theme="dark"] .reset-btn-replen { background: #0C447C; color: #B5D4F4; border-color: #185FA5; }
+  [data-theme="dark"] .reset-btn-replen:hover { background: #185FA5; color: #fff; }
+  [data-theme="dark"] .reset-btn-putaway { background: #085041; color: #9FE1CB; border-color: #0F6E56; }
+  [data-theme="dark"] .reset-btn-putaway:hover { background: #0F6E56; color: #fff; }
 
   /* ── ERROR ── */
   .error-msg { border-radius: 8px; padding: 1rem; font-size: 14px; margin-bottom: 1rem; display: none; background: #fcebeb; border: 0.5px solid #f09595; color: #A32D2D; }
@@ -300,7 +318,7 @@
   <div class="tab-panel active" id="panel-full">
     <div class="drop-zone" id="dz-full" onclick="document.getElementById('fi-full').click()" style="margin-bottom:1rem;">
       <div class="icon">&#x2B06;</div>
-      <p>Drop activity CSV here</p>
+      <p>Drop any activity CSV here</p>
       <small>Replen &middot; Putaway &middot; Picking &middot; Packing &middot; Shipping &middot; all detected automatically</small>
       <input type="file" id="fi-full" accept=".csv" multiple style="display:none;">
     </div>
@@ -466,7 +484,6 @@ function setShift(shift) {
   document.getElementById('shift-roster-label').textContent = '(' + shift + ' shift)';
   document.getElementById('main-subtitle').textContent = (shift === '1st' ? '1st Shift · 3:00 AM – 1:45 PM' : '2nd Shift · 2:15 PM – 1:00 AM') + ' · Upload CSV to populate the Full Report';
   renderRoster();
-  // Re-process any active uploads with new shift
   renderFullReport();
 }
 
@@ -675,14 +692,10 @@ function parseDT(str) {
   return isNaN(d) ? null : d;
 }
 
+
 // ── DAY REPORT ─────────────────────────────────────────
 var DAY_KEY = 'dc499_ecom_day_v1';
 var DAY_SHIFT_START = 14; // 2nd shift starts at 14:00
-
-
-
-
-
 
 
 
@@ -1192,7 +1205,7 @@ function renderFullReport() {
   var panel = document.getElementById('full-content');
   if (!panel) return;
   if (!fullReportRows.length) {
-    panel.innerHTML = '<div class="full-empty">No data yet \u2014 upload a CSV above to populate the Full Report.</div>';
+    panel.innerHTML = '<div class="full-empty">No data yet \u2014 upload a CSV on any tab to populate the Full Report.</div>';
     return;
   }
   var TEAM = getTeamSet();
@@ -1200,7 +1213,7 @@ function renderFullReport() {
   var html = '';
   html += '<div class="full-header"><div class="full-title">Full Report <span class="shift-badge shift-badge-2nd">' + getShift() + ' shift</span></div>';
   html += '<div style="display:flex;gap:8px;">';
-  html += '<button class="full-reset-btn" style="border-color:#0F6E56;background:#e6f4f1;color:#0F6E56;" onclick="pushToDashboard(this)" id="push-dash-btn">&#x1F4CA; Push to Dashboard</button>';
+  html += '<button class="full-reset-btn" style="border-color:#6264A7;background:#f0f0fa;color:#6264A7;" onclick="sendToTeams(this)" id="send-teams-btn">&#x1F4E8; Send to Teams</button>';
   html += '<button class="full-reset-btn" onclick="clearFullReport()">&#x21BA; Clear</button>';
   html += '</div></div>';
   html += '<div class="full-meta">' + fullReportRows.length + ' total rows loaded</div>';
@@ -1353,75 +1366,8 @@ function processFullFiles(files) {
   });
 }
 
-// ── EXCEL DASHBOARD PUSH ───────────────────────────────
-const DASH_DRIVE_ID = 'b!BqqqiF0owE6ponKYGHAiPz0HJdD8w7ZKgyhbu8iJ0WlSxRr3W4E1RIskB-MxqR9-';
-const DASH_ITEM_ID  = '01DRZREETI3KCJ34LCMFHJ5TUMKY4QREIE';
-const DASH_CLIENT_ID = '14d82eec-204b-4c2f-b7e8-296a70dab67e'; // Microsoft common
-const DASH_TENANT   = 'common';
-const DASH_SCOPE    = 'https://graph.microsoft.com/Files.ReadWrite offline_access';
-const DEPT_COLORS   = {
-  replen:'#185FA5', putaway:'#0F6E56', picking:'#9B4DCA',
-  packing:'#E67E22', shipping:'#0E9E8E', sorting:'#C0392B'
-};
-
-var _dashToken = null;
-
-function hexToRgb(hex) {
-  var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-  return {r:r, g:g, b:b};
-}
-
-function colorToExcel(hex) {
-  // Excel Graph API expects RRGGBB no hash
-  return hex.replace('#','');
-}
-
-async function getDashToken() {
-  if (_dashToken && _dashToken.exp > Date.now()) return _dashToken.token;
-  return new Promise(function(resolve, reject) {
-    var w = window.open(
-      'https://login.microsoftonline.com/' + DASH_TENANT + '/oauth2/v2.0/authorize' +
-      '?client_id=' + DASH_CLIENT_ID +
-      '&response_type=token' +
-      '&redirect_uri=' + encodeURIComponent(window.location.href.split('?')[0]) +
-      '&scope=' + encodeURIComponent(DASH_SCOPE) +
-      '&response_mode=fragment',
-      'msauth', 'width=480,height=640'
-    );
-    var poll = setInterval(function() {
-      try {
-        var hash = w.location.hash;
-        if (hash && hash.includes('access_token')) {
-          clearInterval(poll);
-          w.close();
-          var params = new URLSearchParams(hash.slice(1));
-          var token = params.get('access_token');
-          var exp = Date.now() + (parseInt(params.get('expires_in')||3600)*1000) - 60000;
-          _dashToken = {token:token, exp:exp};
-          resolve(token);
-        }
-      } catch(e) { /* cross-origin, keep polling */ }
-      if (w.closed) { clearInterval(poll); reject(new Error('Auth window closed')); }
-    }, 500);
-  });
-}
-
-async function graphRequest(token, method, path, body) {
-  var opts = {
-    method: method,
-    headers: {
-      'Authorization': 'Bearer ' + token,
-      'Content-Type': 'application/json'
-    }
-  };
-  if (body) opts.body = JSON.stringify(body);
-  var res = await fetch('https://graph.microsoft.com/v1.0' + path, opts);
-  if (!res.ok) {
-    var err = await res.json().catch(function(){return {};});
-    throw new Error((err.error && err.error.message) || res.status);
-  }
-  return res.status === 204 ? null : res.json();
-}
+// ── TEAMS WEBHOOK ──────────────────────────────────────
+const TEAMS_WEBHOOK = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/eacd8206a4274abb96f43be9d3d01256/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=8Hc0GkQ2Sobr73S7JX8Gu5gldDJaVE4IeiLuzeAsyxY';
 
 function getDeptTotals() {
   var TEAM = getTeamSet(), totals = {};
@@ -1440,160 +1386,142 @@ function getDeptTotals() {
   return totals;
 }
 
-async function ensureDashboardSetup(token, sheets) {
-  var base = '/drives/' + DASH_DRIVE_ID + '/items/' + DASH_ITEM_ID + '/workbook';
-  var sheetNames = sheets.map(function(s){return s.name;});
-
-  // ── Create EcomLog sheet if missing ──
-  if (!sheetNames.includes('EcomLog')) {
-    await graphRequest(token, 'POST', base + '/worksheets', {name:'EcomLog'});
-  }
-
-  // ── Create Dashboard sheet if missing ──
-  if (!sheetNames.includes('Dashboard')) {
-    await graphRequest(token, 'POST', base + '/worksheets', {name:'Dashboard'});
-  }
-
-  // ── Set up EcomLog headers + formatting ──
-  var headers = [['Timestamp','Shift','Replen','Putaway','Picking','Packing','Shipping','Sorting','Total']];
-  await graphRequest(token, 'PATCH', base + '/worksheets/EcomLog/range(address=\'A1:I1\')', {values: headers});
-
-  // Header row formatting — dark background, white bold text
-  await graphRequest(token, 'PATCH', base + '/worksheets/EcomLog/range(address=\'A1:I1\')/format/fill', {color:'1A1A1A'});
-  await graphRequest(token, 'PATCH', base + '/worksheets/EcomLog/range(address=\'A1:I1\')/format/font', {bold:true, color:'FFFFFF', size:11});
-
-  // Color each dept header cell
-  var deptCols = {C:'replen', D:'putaway', E:'picking', F:'packing', G:'shipping', H:'sorting'};
-  for (var col in deptCols) {
-    await graphRequest(token, 'PATCH', base + '/worksheets/EcomLog/range(address=\'' + col + '1\')/format/fill', {color: colorToExcel(DEPT_COLORS[deptCols[col]])});
-  }
-
-  // Column widths on EcomLog
-  await graphRequest(token, 'PATCH', base + '/worksheets/EcomLog/range(address=\'A:A\')/format', {columnWidth:160});
-  await graphRequest(token, 'PATCH', base + '/worksheets/EcomLog/range(address=\'B:I\')/format', {columnWidth:80});
-
-  // ── Build Dashboard sheet ──
-  // Title
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'B2\')', {values:[['DC499 · Ecom Dashboard']]});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'B2\')/format/font', {bold:true, size:16, color:'1A1A1A'});
-
-  // Subtitle
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'B3\')', {values:[['Live shift data — updated each push']]});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'B3\')/format/font', {size:10, color:'888888'});
-
-  // Last Updated label + formula
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'B5\')', {values:[['Last Updated']]});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'B5\')/format/font', {bold:true, size:10, color:'888888'});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'C5\')', {formulas:[['=IF(COUNTA(EcomLog!A:A)>1,INDEX(EcomLog!A:A,COUNTA(EcomLog!A:A)),\"No data yet\")']]});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'C5\')/format/font', {size:10, color:'444444'});
-
-  // Dept tiles — row 7 headers, row 8 values
-  var deptLabels = ['Replen','Putaway','Picking','Packing','Shipping','Sorting'];
-  var deptKeys   = ['replen','putaway','picking','packing','shipping','sorting'];
-  var tileCols   = ['B','C','D','E','F','G'];
-  var logCols    = ['C','D','E','F','G','H'];
-
-  for (var i = 0; i < deptLabels.length; i++) {
-    var col = tileCols[i], lCol = logCols[i], hexColor = colorToExcel(DEPT_COLORS[deptKeys[i]]);
-
-    // Label row
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + '7\')', {values:[[deptLabels[i]]]});
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + '7\')/format/fill', {color: hexColor});
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + '7\')/format/font', {bold:true, color:'FFFFFF', size:11});
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + '7\')/format', {horizontalAlignment:'Center'});
-
-    // Value row — formula pulling latest from EcomLog
-    var formula = '=IF(COUNTA(EcomLog!A:A)>1,INDEX(EcomLog!' + lCol + ':' + lCol + ',COUNTA(EcomLog!A:A)),0)';
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + '8\')', {formulas:[[formula]]});
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + '8\')/format/fill', {color:'F5F5F5'});
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + '8\')/format/font', {bold:true, size:14, color: hexColor});
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + '8\')/format', {horizontalAlignment:'Center'});
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + '8\')/format/numberFormat', {format:'#,##0'});
-
-    // Column width
-    await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'' + col + ':' + col + '\')/format', {columnWidth:90});
-  }
-
-  // Total tile
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H7\')', {values:[['Total']]});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H7\')/format/fill', {color:'1A1A1A'});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H7\')/format/font', {bold:true, color:'FFFFFF', size:11});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H7\')/format', {horizontalAlignment:'Center'});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H8\')', {formulas:[['=IF(COUNTA(EcomLog!A:A)>1,INDEX(EcomLog!I:I,COUNTA(EcomLog!A:A)),0)']]});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H8\')/format/fill', {color:'F0F0EE'});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H8\')/format/font', {bold:true, size:16, color:'1A1A1A'});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H8\')/format', {horizontalAlignment:'Center'});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H8\')/format/numberFormat', {format:'#,##0'});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'H:H\')/format', {columnWidth:90});
-
-  // Disclaimer
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'B11\')', {values:[['Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.']]});
-  await graphRequest(token, 'PATCH', base + '/worksheets/Dashboard/range(address=\'B11\')/format/font', {italic:true, size:9, color:'AAAAAA'});
-}
-
-async function pushToDashboard(btn) {
-  if (!fullReportRows.length) { alert('No Full Report data loaded — upload CSVs first.'); return; }
+async function sendToTeams(btn) {
+  if (!fullReportRows.length) { alert('No Full Report data loaded — upload a CSV first.'); return; }
   var orig = btn.textContent;
-  btn.textContent = '⏳ Connecting…';
+  btn.textContent = '⏳ Sending…';
   btn.disabled = true;
 
+  var totals = getDeptTotals();
+  var ts = new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  var shift = getShift() + ' shift';
+
+  var card = {
+    "type": "message",
+    "attachments": [{
+      "contentType": "application/vnd.microsoft.card.adaptive",
+      "content": {
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "type": "AdaptiveCard",
+        "version": "1.4",
+        "body": [
+          {
+            "type": "Container",
+            "style": "emphasis",
+            "items": [{
+              "type": "ColumnSet",
+              "columns": [
+                {
+                  "type": "Column", "width": "auto",
+                  "items": [{"type":"TextBlock","text":"DC499 · Ecom","weight":"Bolder","size":"Medium","color":"Light"}]
+                },
+                {
+                  "type": "Column", "width": "stretch",
+                  "items": [{"type":"TextBlock","text":shift + " · " + ts,"color":"Light","isSubtle":true,"horizontalAlignment":"Right"}]
+                }
+              ]
+            }]
+          },
+          {
+            "type": "TextBlock",
+            "text": "SHIFT SUMMARY",
+            "size": "Small",
+            "weight": "Bolder",
+            "color": "Accent",
+            "spacing": "Medium"
+          },
+          {
+            "type": "ColumnSet",
+            "columns": [
+              {
+                "type": "Column", "width": "stretch",
+                "style": "emphasis",
+                "items": [
+                  {"type":"TextBlock","text":"REPLEN","size":"Small","weight":"Bolder","color":"Accent"},
+                  {"type":"TextBlock","text": totals.replen.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
+                ]
+              },
+              {
+                "type": "Column", "width": "stretch",
+                "style": "emphasis",
+                "items": [
+                  {"type":"TextBlock","text":"PUTAWAY","size":"Small","weight":"Bolder","color":"Good"},
+                  {"type":"TextBlock","text": totals.putaway.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
+                ]
+              },
+              {
+                "type": "Column", "width": "stretch",
+                "style": "emphasis",
+                "items": [
+                  {"type":"TextBlock","text":"PICKING","size":"Small","weight":"Bolder","color":"Warning"},
+                  {"type":"TextBlock","text": totals.picking.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
+                ]
+              }
+            ]
+          },
+          {
+            "type": "ColumnSet",
+            "columns": [
+              {
+                "type": "Column", "width": "stretch",
+                "style": "emphasis",
+                "items": [
+                  {"type":"TextBlock","text":"PACKING","size":"Small","weight":"Bolder","color":"Warning"},
+                  {"type":"TextBlock","text": totals.packing.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
+                ]
+              },
+              {
+                "type": "Column", "width": "stretch",
+                "style": "emphasis",
+                "items": [
+                  {"type":"TextBlock","text":"SHIPPING","size":"Small","weight":"Bolder","color":"Good"},
+                  {"type":"TextBlock","text": totals.shipping.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
+                ]
+              },
+              {
+                "type": "Column", "width": "stretch",
+                "style": "emphasis",
+                "items": [
+                  {"type":"TextBlock","text":"SORTING","size":"Small","weight":"Bolder","color":"Attention"},
+                  {"type":"TextBlock","text": totals.sorting.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
+                ]
+              }
+            ]
+          },
+          {
+            "type": "TextBlock",
+            "text": "Throughput only · not for performance evaluation · DC499 Reporter",
+            "size": "Small",
+            "isSubtle": true,
+            "wrap": true,
+            "spacing": "Medium"
+          }
+        ]
+      }
+    }]
+  };
+
   try {
-    // ── Auth ──
-    var token = await getDashToken();
-    var base = '/drives/' + DASH_DRIVE_ID + '/items/' + DASH_ITEM_ID + '/workbook';
-
-    btn.textContent = '⏳ Setting up…';
-
-    // ── Check existing sheets ──
-    var sheetsRes = await graphRequest(token, 'GET', base + '/worksheets', null);
-    var sheets = sheetsRes.value || [];
-    var isFirstRun = !sheets.find(function(s){return s.name==='EcomLog';});
-
-    // ── Setup sheets + formatting on first run ──
-    if (isFirstRun) {
-      await ensureDashboardSetup(token, sheets);
+    var res = await fetch(TEAMS_WEBHOOK, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(card)
+    });
+    if (res.ok || res.status === 202) {
+      btn.textContent = '✓ Sent!';
+      btn.style.borderColor = '#6264A7';
+      setTimeout(function(){ btn.textContent = orig; btn.disabled = false; btn.style.borderColor = ''; }, 3000);
+    } else {
+      throw new Error('HTTP ' + res.status);
     }
-
-    btn.textContent = '⏳ Pushing data…';
-
-    // ── Build data row ──
-    var totals = getDeptTotals();
-    var ts = new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-    var shift = getShift() + ' shift';
-    var total = Object.values(totals).reduce(function(s,v){return s+v;},0);
-    var row = [[
-      ts, shift,
-      totals.replen, totals.putaway, totals.picking,
-      totals.packing, totals.shipping, totals.sorting,
-      total
-    ]];
-
-    // ── Find next empty row in EcomLog ──
-    var usedRes = await graphRequest(token, 'GET', base + '/worksheets/EcomLog/usedRange', null);
-    var nextRow = usedRes && usedRes.rowCount ? usedRes.rowCount + 1 : 2;
-    var addr = 'A' + nextRow + ':I' + nextRow;
-    await graphRequest(token, 'PATCH', base + '/worksheets/EcomLog/range(address=\'' + addr + '\')', {values: row});
-
-    // ── Format the new data row — number format on dept + total cols ──
-    await graphRequest(token, 'PATCH', base + '/worksheets/EcomLog/range(address=\'C' + nextRow + ':I' + nextRow + '\')/format/numberFormat', {format:'#,##0'});
-
-    // ── Alternate row shading ──
-    var fillColor = nextRow % 2 === 0 ? 'F9F9F9' : 'FFFFFF';
-    await graphRequest(token, 'PATCH', base + '/worksheets/EcomLog/range(address=\'A' + nextRow + ':I' + nextRow + '\')/format/fill', {color: fillColor});
-
-    btn.textContent = '✓ Pushed!';
-    btn.style.borderColor = '#0F6E56';
-    setTimeout(function(){ btn.textContent = orig; btn.disabled = false; btn.style.borderColor = ''; }, 3000);
-
   } catch(e) {
-    console.error('Dashboard push failed:', e);
+    console.error('Teams send failed:', e);
     btn.textContent = '⚠ Failed — ' + (e.message||'check console');
     btn.style.borderColor = '#C0392B';
     btn.style.color = '#C0392B';
     setTimeout(function(){ btn.textContent = orig; btn.disabled = false; btn.style.borderColor = ''; btn.style.color = ''; }, 4000);
   }
 }
-
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
 setShift(getShift());
