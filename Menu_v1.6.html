@@ -24,6 +24,7 @@
 
   /* Grid */
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; max-width: 420px; }
+  .grid .card:last-child:nth-child(odd) { grid-column: 1 / -1; max-width: 50%; margin: 0 auto; width: 100%; }
   .card {
     background: #2a2a2a; border: 1.5px solid #3a3a3a; border-radius: 20px;
     padding: 1.75rem 1rem 1.25rem;
@@ -38,6 +39,8 @@
 
   .card-receiving { border-color: #0E9E8E; }
   .card-receiving:hover { background: #0a2e2c; box-shadow: 0 0 0 3px rgba(14,158,142,0.2); }
+  .card-recv-live  { border-color: #0E9E8E; }
+  .card-recv-live:hover  { background: #0a2e2c; box-shadow: 0 0 0 3px rgba(14,158,142,0.2); }
   .card-itemprep  { border-color: #E67E22; }
   .card-itemprep:hover  { background: #2e1a08; box-shadow: 0 0 0 3px rgba(230,126,34,0.2); }
   .card-ecom      { border-color: #185FA5; }
@@ -46,6 +49,7 @@
   .card-reserve:hover   { background: #1e0a30; box-shadow: 0 0 0 3px rgba(155,77,202,0.2); }
 
   body.light .card-receiving:hover { background: #E6F7F5; }
+  body.light .card-recv-live:hover  { background: #E6F7F5; }
   body.light .card-itemprep:hover  { background: #FEF0E0; }
   body.light .card-ecom:hover      { background: #e8f0fb; }
   body.light .card-reserve:hover   { background: #F3E8FF; }
@@ -58,6 +62,7 @@
   body.light .card-sub { color: #999; }
 
   .card-receiving .card-name { color: #0E9E8E; }
+  .card-recv-live  .card-name { color: #0E9E8E; }
   .card-itemprep  .card-name { color: #E67E22; }
   .card-ecom      .card-name { color: #5B9BD5; }
   .card-reserve   .card-name { color: #B57FDD; }
@@ -104,6 +109,13 @@
     <div class="card-icon">&#x1F69B;</div>
     <div class="card-name">Receiving</div>
     <div class="card-sub">Inbound</div>
+  </button>
+
+  <button class="card card-recv-live" onclick="openApp('Receiving_live.html')">
+    <span class="card-version">Live</span>
+    <div class="card-icon">&#x1F4E1;</div>
+    <div class="card-name">Receiving Live</div>
+    <div class="card-sub">Live &middot; 2nd Shift</div>
   </button>
 
   <button class="card card-itemprep" onclick="openApp('ItemPrep_v2.0.html')">

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receiving Live -- DC499</title>
+<style>
+  :root {
+    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
+    --text:#1a1a1a;--text-muted:#666;--text-hint:#888;--bar-bg:#e5e5e5;
+    --accent:#0E9E8E;--accent-bg:#E6F7F5;--accent-dark:#085C54;--accent-muted:#9FE1CB;
+  }
+  [data-theme="dark"] {
+    --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;
+    --text:#f0f0ee;--text-muted:#999;--text-hint:#777;--bar-bg:#3a3a3a;
+    --accent-bg:#053D38;--accent-muted:#5BC4B8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; transition: background 0.2s, color 0.2s; }
+  .container { max-width: 720px; margin: 0 auto; }
+
+  /* Top bar */
+  .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; gap: 1rem; }
+  .dept-label { font-size: 11px; color: var(--accent); font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 2px; }
+  .subtitle { font-size: 14px; color: var(--text-muted); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; flex-shrink: 0; animation: livepulse 2s infinite; }
+  @keyframes livepulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.75); } }
+
+  /* Controls */
+  .controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .refresh-btn { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--accent); cursor: pointer; background: var(--accent-bg); border: 0.5px solid var(--accent); border-radius: 8px; padding: 6px 12px; font-family: inherit; font-weight: 500; white-space: nowrap; transition: background 0.15s; }
+  .refresh-btn:hover { background: var(--accent-muted); }
+  [data-theme="dark"] .refresh-btn:hover { background: var(--accent); color: #fff; }
+  .dark-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; background: none; border: 0.5px solid var(--border); border-radius: 8px; padding: 6px 12px; font-family: inherit; white-space: nowrap; }
+  .dark-toggle:hover { background: var(--surface2); }
+  .toggle-track { width: 28px; height: 16px; border-radius: 8px; background: var(--bar-bg); position: relative; transition: background 0.2s; flex-shrink: 0; }
+  .toggle-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text-hint); position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
+  [data-theme="dark"] .toggle-track { background: #534AB7; }
+  [data-theme="dark"] .toggle-thumb { left: 14px; background: #fff; }
+
+  /* Stale banner */
+  .stale-banner { display: none; background: #5C3A00; color: #FFD77A; font-size: 12px; padding: 8px 14px; border-radius: 8px; margin-bottom: 1rem; text-align: center; border: 0.5px solid #9B6500; }
+  body:not([data-theme="dark"]) .stale-banner { background: #FFF3CD; color: #7A4F00; border-color: #E6AC00; }
+
+  /* Status bar */
+  .status-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding: 8px 12px; background: var(--surface2); border-radius: 8px; font-size: 12px; color: var(--text-hint); gap: 8px; }
+  .status-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .shift-badge { font-size: 11px; padding: 2px 8px; border-radius: 5px; background: var(--accent-bg); color: var(--accent); font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+  .generated-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .next-refresh { font-size: 11px; color: var(--text-hint); white-space: nowrap; flex-shrink: 0; }
+
+  /* Card */
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .card-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .assoc-count { font-size: 12px; color: var(--text-hint); }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted); padding: 8px 12px; border-bottom: 0.5px solid var(--border-mid); text-transform: uppercase; letter-spacing: 0.04em; }
+  th.right { text-align: right; }
+  td { padding: 10px 12px; border-bottom: 0.5px solid var(--border-light); color: var(--text); vertical-align: middle; }
+  td.right { text-align: right; }
+  tr:last-child td { border-bottom: none; }
+  .assoc-name { font-weight: 500; font-size: 14px; line-height: 1.3; }
+  .bar-wrap { background: var(--bar-bg); border-radius: 3px; height: 4px; margin-top: 5px; overflow: hidden; max-width: 200px; }
+  .bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.5s ease; }
+  .lpns-val { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .time-val { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .pph-val { font-size: 13px; color: var(--accent); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .pph-dash { font-size: 13px; color: var(--text-hint); }
+
+  /* Empty / error */
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-hint); font-size: 14px; line-height: 1.7; }
+  .empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+  /* Footer */
+  .nordstrom-tag { font-size: 11px; color: var(--text-hint); text-align: center; margin-top: 2rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div>
+      <div class="dept-label">
+        <span class="live-dot"></span>
+        DC499 &middot; Receiving &middot; 2nd Shift &middot; Live
+      </div>
+      <h1>Receiving Leaderboard</h1>
+      <p class="subtitle">Auto-refreshes every 60 seconds</p>
+    </div>
+    <div class="controls">
+      <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
+      <button class="dark-toggle" onclick="toggleDark()">
+        <span id="toggle-label">Light mode</span>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </button>
+    </div>
+  </div>
+
+  <div class="stale-banner" id="stale-banner">
+    &#x26A0; Data is more than 70 minutes old &mdash; the live agent may not be running
+  </div>
+
+  <div class="status-bar">
+    <div class="status-left">
+      <span class="shift-badge" id="shift-badge">2nd Shift</span>
+      <span class="generated-label" id="generated-label">Loading...</span>
+    </div>
+    <span class="next-refresh" id="next-refresh">Refreshing...</span>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Associates on shift</div>
+      <span class="assoc-count" id="assoc-count"></span>
+    </div>
+    <div id="table-container">
+      <div class="empty-state">
+        <div class="empty-icon">&#x1F4E1;</div>
+        Loading live data...
+      </div>
+    </div>
+  </div>
+
+  <p class="nordstrom-tag">Nordstrom &middot; Receiving Live &middot; DC499 &middot; <span id="footer-date"></span></p>
+  <p class="nordstrom-tag" style="margin-top:4px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
+
+</div>
+<script>
+// -- Theme --------------------------------------------------------------------
+var THEME_KEY = 'dc499_receiving_theme_v1'; // shared key with suite
+
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
+  try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
+}
+function toggleDark() {
+  applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
+}
+(function() {
+  var saved; try { saved = localStorage.getItem(THEME_KEY); } catch(e) {}
+  applyTheme(saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+})();
+
+// -- Countdown & auto-refresh -------------------------------------------------
+var countdownTimer = null;
+var secondsLeft = 60;
+
+function startCountdown() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  secondsLeft = 60;
+  updateCountdown();
+  countdownTimer = setInterval(function() {
+    secondsLeft--;
+    updateCountdown();
+    if (secondsLeft <= 0) {
+      clearInterval(countdownTimer);
+      fetchData();
+    }
+  }, 1000);
+}
+
+function updateCountdown() {
+  var el = document.getElementById('next-refresh');
+  if (el) el.textContent = 'Next refresh in ' + secondsLeft + 's';
+}
+
+function manualRefresh() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  fetchData();
+}
+
+// -- Data fetch ---------------------------------------------------------------
+function fetchData() {
+  document.getElementById('next-refresh').textContent = 'Refreshing...';
+  fetch('receiving_live.json?t=' + Date.now())
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      renderTable(data);
+      startCountdown();
+    })
+    .catch(function(err) {
+      showError('Could not load receiving_live.json &mdash; ' + err.message);
+      startCountdown();
+    });
+}
+
+// -- Helpers ------------------------------------------------------------------
+function calcLpnsPerHour(lpns, first, last) {
+  if (!first || !last) return null;
+  var fp = first.split(':'), lp = last.split(':');
+  if (fp.length < 2 || lp.length < 2) return null;
+  var fMins = parseInt(fp[0], 10) * 60 + parseInt(fp[1], 10);
+  var lMins = parseInt(lp[0], 10) * 60 + parseInt(lp[1], 10);
+  var diffMins = lMins - fMins;
+  if (diffMins <= 2) return null; // less than 2 min window is meaningless
+  return (lpns / (diffMins / 60)).toFixed(1);
+}
+
+function isStale(generated) {
+  if (!generated) return false;
+  try {
+    var diffMins = (Date.now() - new Date(generated).getTime()) / 60000;
+    return diffMins > 70;
+  } catch(e) { return false; }
+}
+
+function fmtGenerated(generated) {
+  if (!generated) return '';
+  try {
+    var d = new Date(generated);
+    return 'Updated ' + d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+  } catch(e) { return generated; }
+}
+
+// -- Render -------------------------------------------------------------------
+function renderTable(data) {
+  var stale = isStale(data.generated);
+  document.getElementById('stale-banner').style.display = stale ? 'block' : 'none';
+  document.getElementById('generated-label').textContent = fmtGenerated(data.generated);
+  document.getElementById('shift-badge').textContent = (data.shift || '2nd') + ' Shift';
+
+  var associates = (data.associates || []).slice().sort(function(a, b) { return b.lpns - a.lpns; });
+  document.getElementById('assoc-count').textContent = associates.length ? associates.length + ' active' : '';
+
+  if (!associates.length) {
+    document.getElementById('table-container').innerHTML =
+      '<div class="empty-state"><div class="empty-icon">&#x1F6CF;</div>No associates active yet &mdash; 2nd shift starts at 12:00</div>';
+    return;
+  }
+
+  var maxLpns = associates[0].lpns;
+  var html = '<table><thead><tr>';
+  html += '<th>Associate</th>';
+  html += '<th class="right">LPNs</th>';
+  html += '<th class="right">First Scan</th>';
+  html += '<th class="right">Last Scan</th>';
+  html += '<th class="right">LPNs/hr</th>';
+  html += '</tr></thead><tbody>';
+
+  associates.forEach(function(a, i) {
+    var trophy = (i === 0 && associates.length > 1) ? ' &#x1F3C6;' : '';
+    var pph = calcLpnsPerHour(a.lpns, a.first_scan, a.last_scan);
+    var pct = maxLpns > 0 ? Math.round((a.lpns / maxLpns) * 100) : 0;
+
+    html += '<tr>';
+    html += '<td><div class="assoc-name">' + escHtml(a.name) + trophy + '</div>';
+    html += '<div class="bar-wrap"><div class="bar-fill" style="width:' + pct + '%"></div></div></td>';
+    html += '<td class="right"><span class="lpns-val">' + a.lpns.toLocaleString() + '</span></td>';
+    html += '<td class="right"><span class="time-val">' + escHtml(a.first_scan || '&mdash;') + '</span></td>';
+    html += '<td class="right"><span class="time-val">' + escHtml(a.last_scan || '&mdash;') + '</span></td>';
+    html += '<td class="right">' + (pph !== null
+      ? '<span class="pph-val">' + pph + '</span>'
+      : '<span class="pph-dash">&mdash;</span>') + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('table-container').innerHTML = html;
+}
+
+function showError(msg) {
+  document.getElementById('stale-banner').style.display = 'none';
+  document.getElementById('generated-label').textContent = 'Failed to load';
+  document.getElementById('assoc-count').textContent = '';
+  document.getElementById('table-container').innerHTML =
+    '<div class="empty-state"><div class="empty-icon">&#x26A0;</div>' + msg + '</div>';
+}
+
+function escHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// -- Init ---------------------------------------------------------------------
+document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
+fetchData();
+</script>
+</body>
+</html>
