@@ -22,7 +22,7 @@ $INTERVAL    = 60   # minutes
 
 $SQL = @"
 SELECT CREATED_BY,
-       COUNT(*) AS lpns,
+       COUNT(DISTINCT LPN_ID) AS lpns,
        MIN(CREATED_TIMESTAMP) AS first_scan,
        MAX(CREATED_TIMESTAMP) AS last_scan
 FROM default_receiving.RCV_LPN
@@ -30,6 +30,7 @@ WHERE FACILITY_ID = '$FACILITY'
   AND DATE(CREATED_TIMESTAMP) = CURDATE()
   AND CREATED_BY != 'system-msg-user@$FACILITY'
   AND TIME(CREATED_TIMESTAMP) >= '12:00:00'
+  AND PROCESS = '/lpn/receive'
 GROUP BY CREATED_BY
 ORDER BY lpns DESC
 "@
