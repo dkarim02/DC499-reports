@@ -7,76 +7,119 @@
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
-    --text:#1a1a1a;--text-muted:#666;--text-hint:#888;--bar-bg:#e5e5e5;
+    --text:#1a1a1a;--text-muted:#666;--text-hint:#888;--bar-bg:#e5e5e5;--drop-hover:#f0f0ee;
     --accent:#0E9E8E;--accent-bg:#E6F7F5;--accent-dark:#085C54;--accent-muted:#9FE1CB;
   }
-  [data-theme="dark"] {
+  [data-theme="dark"]{
     --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;
-    --text:#f0f0ee;--text-muted:#999;--text-hint:#777;--bar-bg:#3a3a3a;
+    --text:#f0f0ee;--text-muted:#999;--text-hint:#777;--bar-bg:#3a3a3a;--drop-hover:#2e2e2e;
     --accent-bg:#053D38;--accent-muted:#5BC4B8;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; transition: background 0.2s, color 0.2s; }
-  .container { max-width: 720px; margin: 0 auto; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
+  .container{max-width:720px;margin:0 auto;}
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;}
+  h1{font-size:20px;font-weight:500;margin-bottom:2px;}
+  .dept-label{font-size:11px;color:var(--accent);font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;}
+  .subtitle{font-size:14px;color:var(--text-muted);}
+  .dark-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
+  .dark-toggle:hover{background:var(--surface2);}
+  .toggle-track{width:28px;height:16px;border-radius:8px;background:var(--bar-bg);position:relative;transition:background 0.2s;flex-shrink:0;}
+  .toggle-thumb{width:12px;height:12px;border-radius:50%;background:var(--text-hint);position:absolute;top:2px;left:2px;transition:left 0.2s,background 0.2s;}
+  [data-theme="dark"] .toggle-track{background:#534AB7;}
+  [data-theme="dark"] .toggle-thumb{left:14px;background:#fff;}
 
-  /* Top bar */
-  .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; gap: 1rem; }
-  .dept-label { font-size: 11px; color: var(--accent); font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-  h1 { font-size: 20px; font-weight: 500; margin-bottom: 2px; }
-  .subtitle { font-size: 14px; color: var(--text-muted); }
-  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; flex-shrink: 0; animation: livepulse 2s infinite; }
-  @keyframes livepulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.75); } }
-
-  /* Controls */
-  .controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-  .refresh-btn { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--accent); cursor: pointer; background: var(--accent-bg); border: 0.5px solid var(--accent); border-radius: 8px; padding: 6px 12px; font-family: inherit; font-weight: 500; white-space: nowrap; transition: background 0.15s; }
-  .refresh-btn:hover { background: var(--accent-muted); }
-  [data-theme="dark"] .refresh-btn:hover { background: var(--accent); color: #fff; }
-  .dark-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; background: none; border: 0.5px solid var(--border); border-radius: 8px; padding: 6px 12px; font-family: inherit; white-space: nowrap; }
-  .dark-toggle:hover { background: var(--surface2); }
-  .toggle-track { width: 28px; height: 16px; border-radius: 8px; background: var(--bar-bg); position: relative; transition: background 0.2s; flex-shrink: 0; }
-  .toggle-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text-hint); position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
-  [data-theme="dark"] .toggle-track { background: #534AB7; }
-  [data-theme="dark"] .toggle-thumb { left: 14px; background: #fff; }
+  /* Tabs */
+  .tabs{display:flex;align-items:center;border-bottom:1.5px solid var(--border);margin-bottom:1.5rem;}
+  .tabs-left{display:flex;align-items:center;}
+  .tabs-right{margin-left:auto;}
+  .tab{font-size:14px;padding:8px 20px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1.5px;color:var(--text-hint);background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;transition:color 0.15s;}
+  .tab:hover{color:var(--text);}
+  .tab.active-recv{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
+  .tab-settings{font-size:14px;padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1.5px;color:var(--text-hint);background:none;border-top:none;border-left:1px solid var(--border);border-right:none;font-family:inherit;transition:color 0.15s;}
+  .tab-settings:hover{color:var(--text);}
+  .tab-settings.active-settings{color:#7F77DD;border-bottom-color:#7F77DD;font-weight:500;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
 
   /* Stale banner */
-  .stale-banner { display: none; background: #5C3A00; color: #FFD77A; font-size: 12px; padding: 8px 14px; border-radius: 8px; margin-bottom: 1rem; text-align: center; border: 0.5px solid #9B6500; }
-  body:not([data-theme="dark"]) .stale-banner { background: #FFF3CD; color: #7A4F00; border-color: #E6AC00; }
+  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:12px;padding:8px 14px;border-radius:8px;margin-bottom:1rem;text-align:center;}
+  body:not([data-theme="dark"]) .stale-banner{background:#FFF3CD;color:#7A4F00;}
 
-  /* Status bar */
-  .status-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; padding: 8px 12px; background: var(--surface2); border-radius: 8px; font-size: 12px; color: var(--text-hint); gap: 8px; }
-  .status-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .shift-badge { font-size: 11px; padding: 2px 8px; border-radius: 5px; background: var(--accent-bg); color: var(--accent); font-weight: 500; white-space: nowrap; flex-shrink: 0; }
-  .generated-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .next-refresh { font-size: 11px; color: var(--text-hint); white-space: nowrap; flex-shrink: 0; }
+  /* Metrics */
+  .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1rem;}
+  .metric{background:var(--surface2);border-radius:8px;padding:1rem;text-align:center;}
+  .metric-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;}
+  .metric-value{font-size:24px;font-weight:500;color:var(--text);}
+  .metric-sub{font-size:11px;color:var(--text-hint);margin-top:4px;}
 
-  /* Card */
-  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
-  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-  .card-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .assoc-count { font-size: 12px; color: var(--text-hint); }
+  /* Card / table */
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th{text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);padding:8px 12px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;}
+  th.r{text-align:right;}
+  td{padding:10px 12px;border-bottom:0.5px solid var(--border-light);color:var(--text);vertical-align:middle;}
+  td.r{text-align:right;}
+  tr:last-child td{border-bottom:none;}
+  tfoot td{font-weight:500;border-top:0.5px solid var(--border);border-bottom:none;padding-top:12px;}
+  .bar-wrap{background:var(--bar-bg);border-radius:4px;height:6px;flex:1;overflow:hidden;}
+  .bar-fill-recv{height:100%;border-radius:4px;background:var(--accent);}
+  .badge-recv{display:inline-block;font-size:11px;padding:3px 10px;border-radius:6px;background:var(--accent-bg);color:var(--accent);margin:2px;}
+  .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .header-btns{display:flex;align-items:center;gap:8px;}
+  .refresh-btn-recv{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:500;display:flex;align-items:center;gap:5px;}
+  .refresh-btn-recv:hover{background:var(--accent-muted);}
+  [data-theme="dark"] .refresh-btn-recv:hover{background:var(--accent);color:#fff;}
+  .copy-btn{font-family:inherit;font-size:12px;padding:5px 10px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;color:var(--text-muted);}
+  .copy-btn:hover{background:var(--surface2);}
+  .run-time{font-size:12px;color:var(--text-hint);margin-top:2px;}
+  .excluded-label{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:8px;}
 
-  /* Table */
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted); padding: 8px 12px; border-bottom: 0.5px solid var(--border-mid); text-transform: uppercase; letter-spacing: 0.04em; }
-  th.right { text-align: right; }
-  td { padding: 10px 12px; border-bottom: 0.5px solid var(--border-light); color: var(--text); vertical-align: middle; }
-  td.right { text-align: right; }
-  tr:last-child td { border-bottom: none; }
-  .assoc-name { font-weight: 500; font-size: 14px; line-height: 1.3; }
-  .bar-wrap { background: var(--bar-bg); border-radius: 3px; height: 4px; margin-top: 5px; overflow: hidden; max-width: 200px; }
-  .bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.5s ease; }
-  .lpns-val { font-weight: 500; font-variant-numeric: tabular-nums; }
-  .time-val { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-  .pph-val { font-size: 13px; color: var(--accent); font-weight: 500; font-variant-numeric: tabular-nums; }
-  .pph-dash { font-size: 13px; color: var(--text-hint); }
+  /* Live dot */
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:5px;animation:livepulse 2s infinite;}
+  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.75);}}
 
-  /* Empty / error */
-  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-hint); font-size: 14px; line-height: 1.7; }
-  .empty-icon { font-size: 32px; margin-bottom: 10px; }
+  /* Off-roster section */
+  .off-roster-header{font-size:13px;font-weight:500;color:var(--text-muted);margin:1rem 0 8px;padding-top:1rem;border-top:0.5px solid var(--border);}
 
-  /* Footer */
-  .nordstrom-tag { font-size: 11px; color: var(--text-hint); text-align: center; margin-top: 2rem; }
+  /* Roster / settings */
+  .roster-scroll{max-height:300px;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;}
+  .roster-scroll::-webkit-scrollbar{width:6px;}
+  .roster-scroll::-webkit-scrollbar-track{background:transparent;}
+  .roster-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+  .roster-member{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid var(--border-light);font-size:14px;color:var(--text);}
+  .roster-member:last-child{border-bottom:none;}
+  .roster-remove{background:none;border:none;cursor:pointer;color:var(--bar-bg);font-size:20px;padding:0 4px;font-family:inherit;line-height:1;}
+  .roster-remove:hover{color:#A32D2D;}
+  .member-controls{display:flex;align-items:center;gap:10px;width:100%;}
+  .member-email{flex:1;font-size:14px;color:var(--text);}
+  .member-email.disabled{color:var(--text-hint);text-decoration:line-through;opacity:0.5;}
+  .enable-toggle{position:relative;width:32px;height:18px;flex-shrink:0;}
+  .enable-toggle input{opacity:0;width:0;height:0;position:absolute;}
+  .enable-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--bar-bg);border-radius:18px;transition:background 0.2s;}
+  .enable-slider:before{position:absolute;content:"";height:12px;width:12px;left:3px;bottom:3px;background:white;border-radius:50%;transition:transform 0.2s;}
+  .enable-toggle input:checked + .enable-slider{background:#0F6E56;}
+  .enable-toggle input:checked + .enable-slider:before{transform:translateX(14px);}
+  .add-row{display:flex;gap:8px;margin-top:1rem;}
+  .add-row input{flex:1;font-family:inherit;font-size:14px;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);outline:none;}
+  .add-row input:focus{border-color:#7F77DD;}
+  .add-btn{font-family:inherit;font-size:13px;padding:8px 16px;border:0.5px solid #7F77DD;border-radius:8px;background:#EEEDFE;cursor:pointer;color:#534AB7;white-space:nowrap;font-weight:500;}
+  .add-btn:hover{background:#CECBF6;}
+  [data-theme="dark"] .add-btn{background:#3C3489;color:#CECBF6;border-color:#7F77DD;}
+  [data-theme="dark"] .add-btn:hover{background:#534AB7;color:#fff;}
+  .roster-notice{font-size:12px;color:var(--text-hint);margin-top:10px;}
+  .saved-badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:6px;background:#E1F5EE;color:#0F6E56;margin-left:8px;opacity:0;transition:opacity 0.3s;}
+  [data-theme="dark"] .saved-badge{background:#085041;color:#9FE1CB;}
+  .roster-count{font-size:13px;color:var(--text-hint);}
+  .roster-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+  .roster-title{font-size:15px;font-weight:500;color:var(--text);}
+
+  /* Off-roster add button in table */
+  .add-to-roster-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid #0F6E56;background:rgba(15,110,86,0.1);color:#0F6E56;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .add-to-roster-btn:hover{background:rgba(15,110,86,0.2);}
+
+  .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
 </style>
 </head>
 <body>
@@ -84,55 +127,128 @@
 
   <div class="top-bar">
     <div>
-      <div class="dept-label">
-        <span class="live-dot"></span>
-        DC499 &middot; Receiving &middot; 2nd Shift &middot; Live
+      <p class="dept-label"><span class="live-dot"></span>Receiving Live v1.0</p>
+      <h1>Receiving Live &mdash; 2nd Shift</h1>
+      <p class="subtitle">Live data &middot; Auto-refreshes every 60 min</p>
+    </div>
+    <button class="dark-toggle" onclick="toggleDark()">
+      <span id="toggle-label">Dark mode</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </button>
+  </div>
+
+  <div class="tabs">
+    <div class="tabs-left">
+      <button class="tab active-recv" id="tab-live" onclick="switchTab('live')">Live Leaderboard</button>
+    </div>
+    <div class="tabs-right">
+      <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
+    </div>
+  </div>
+
+  <!-- LIVE TAB -->
+  <div class="tab-panel active" id="panel-live">
+    <div class="stale-banner" id="stale-banner"></div>
+
+    <div class="header-row">
+      <div>
+        <div id="run-time" class="run-time">Not yet loaded</div>
+        <div id="next-refresh" class="run-time" style="margin-top:2px;"></div>
       </div>
-      <h1>Receiving Leaderboard</h1>
-      <p class="subtitle">Auto-refreshes every 60 seconds</p>
-    </div>
-    <div class="controls">
-      <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
-      <button class="dark-toggle" onclick="toggleDark()">
-        <span id="toggle-label">Light mode</span>
-        <div class="toggle-track"><div class="toggle-thumb"></div></div>
-      </button>
-    </div>
-  </div>
-
-  <div class="stale-banner" id="stale-banner">
-    &#x26A0; Data is more than 70 minutes old &mdash; the live agent may not be running
-  </div>
-
-  <div class="status-bar">
-    <div class="status-left">
-      <span class="shift-badge" id="shift-badge">2nd Shift</span>
-      <span class="generated-label" id="generated-label">Loading...</span>
-    </div>
-    <span class="next-refresh" id="next-refresh">Refreshing...</span>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Associates on shift</div>
-      <span class="assoc-count" id="assoc-count"></span>
-    </div>
-    <div id="table-container">
-      <div class="empty-state">
-        <div class="empty-icon">&#x1F4E1;</div>
-        Loading live data...
+      <div class="header-btns">
+        <button class="copy-btn" onclick="copyTable()">&#x1F4CB; Copy</button>
+        <button class="refresh-btn-recv" onclick="manualRefresh()">&#x21BA; Refresh Live Data</button>
       </div>
     </div>
+
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">On-Roster Total</div><div class="metric-value" id="m-total">--</div></div>
+      <div class="metric"><div class="metric-label">Associates</div><div class="metric-value" id="m-assoc">--</div></div>
+      <div class="metric"><div class="metric-label">Facility</div><div class="metric-value" id="m-facility">499</div><div class="metric-sub" id="m-shift">2nd Shift</div></div>
+    </div>
+
+    <div class="card" id="results-card" style="display:none;">
+      <table>
+        <thead><tr>
+          <th>Associate</th>
+          <th class="r">LPNs</th>
+          <th class="r">First Scan</th>
+          <th class="r">Last Scan</th>
+          <th class="r">LPNs/hr</th>
+          <th style="width:30%;"></th>
+        </tr></thead>
+        <tbody id="tb-on-roster"></tbody>
+        <tfoot><tr>
+          <td>Team total</td>
+          <td class="r" id="ft-total"></td>
+          <td colspan="4"></td>
+        </tr></tfoot>
+      </table>
+
+      <div id="off-roster-wrap" style="display:none;">
+        <div class="off-roster-header">Not on roster</div>
+        <table>
+          <thead><tr>
+            <th>Associate</th>
+            <th class="r">LPNs</th>
+            <th class="r">First Scan</th>
+            <th class="r">Last Scan</th>
+            <th class="r">LPNs/hr</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="tb-off-roster"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="empty-state" id="empty-state">
+      <div style="font-size:32px;margin-bottom:10px;">&#x1F4E1;</div>
+      Click <strong>Refresh Live Data</strong> to load the latest receiving data.
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="tab-panel" id="panel-settings">
+    <div class="card">
+      <div class="roster-header">
+        <div class="roster-title">Team members &mdash; 2nd Shift <span class="saved-badge" id="saved-badge">Saved &#x2713;</span></div>
+        <div class="roster-count" id="roster-count"></div>
+      </div>
+      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Toggle off to exclude without removing.</p>
+      <div class="roster-scroll"><div id="roster-list"></div></div>
+      <div class="add-row">
+        <input type="text" id="new-email" placeholder="first.last or first.last@nordstrom.com" />
+        <button class="add-btn" onclick="addMember()">+ Add</button>
+      </div>
+      <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
+    </div>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">Receiving Live v1.0</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Receiving Live &middot; DC499 &middot; <span id="footer-date"></span></p>
   <p class="nordstrom-tag" style="margin-top:4px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
-
 </div>
-<script>
-// -- Theme --------------------------------------------------------------------
-var THEME_KEY = 'dc499_receiving_theme_v1'; // shared key with suite
 
+<script>
+// -- Constants ----------------------------------------------------------------
+var STORAGE_KEY = 'recv_live_roster_v1';
+var THEME_KEY   = 'dc499_receiving_theme_v1'; // shared with suite
+var INTERVAL_MS = 60 * 60 * 1000; // 60 min
+
+var DEFAULT_ROSTER = [
+  'eva.soto','alicia.garcia','gloria.miranda','myintmyint.than',
+  'harley.fox','carmen.caldwell','fayeshawn.davis','marlen.carrerabernal',
+  'gabrielle.borja','jordan.hill1','ginnie.pondler','cynthia.gomez',
+  'marina.martinez','angelina.raudales','karen.revuelta',
+  'berena.quiterio','cecilia.aguilar'
+];
+
+var lastData = null;
+var autoRefreshTimer = null;
+var countdownTimer   = null;
+var nextRefreshAt    = null;
+
+// -- Theme --------------------------------------------------------------------
 function applyTheme(dark) {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
   document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
@@ -146,142 +262,261 @@ function toggleDark() {
   applyTheme(saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
 })();
 
-// -- Countdown & auto-refresh -------------------------------------------------
-var countdownTimer = null;
-var secondsLeft = 60;
+// -- Tabs ---------------------------------------------------------------------
+function switchTab(tab) {
+  document.getElementById('tab-live').className     = 'tab'          + (tab === 'live'     ? ' active-recv'     : '');
+  document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
+  document.getElementById('panel-live').className     = 'tab-panel' + (tab === 'live'     ? ' active' : '');
+  document.getElementById('panel-settings').className = 'tab-panel' + (tab === 'settings' ? ' active' : '');
+  if (tab === 'settings') renderRoster();
+}
 
-function startCountdown() {
-  if (countdownTimer) clearInterval(countdownTimer);
-  secondsLeft = 60;
-  updateCountdown();
-  countdownTimer = setInterval(function() {
-    secondsLeft--;
-    updateCountdown();
-    if (secondsLeft <= 0) {
-      clearInterval(countdownTimer);
-      fetchData();
+// -- Roster -------------------------------------------------------------------
+function loadRoster() {
+  try {
+    var s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+      var p = JSON.parse(s);
+      return p.map(function(m) { return typeof m === 'string' ? {name: m, enabled: true} : m; });
     }
+  } catch(e) {}
+  return DEFAULT_ROSTER.map(function(n) { return {name: n, enabled: true}; });
+}
+function saveRoster(r) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {}
+}
+function getActiveSet() {
+  return new Set(loadRoster().filter(function(m) { return m.enabled; }).map(function(m) { return m.name; }));
+}
+function flashBadge(id) {
+  var b = document.getElementById(id);
+  if (b) { b.style.opacity = '1'; setTimeout(function() { b.style.opacity = '0'; }, 1800); }
+}
+
+function renderRoster() {
+  var roster = loadRoster(), list = document.getElementById('roster-list');
+  list.innerHTML = '';
+  var active = roster.filter(function(m) { return m.enabled; }).length;
+  document.getElementById('roster-count').textContent = active + ' active / ' + roster.length + ' total';
+  roster.forEach(function(m, i) {
+    var div = document.createElement('div'); div.className = 'roster-member';
+    var label = document.createElement('label'); label.className = 'enable-toggle';
+    var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = m.enabled;
+    cb.addEventListener('change', (function(idx) { return function() { toggleMember(idx); }; })(i));
+    var slider = document.createElement('span'); slider.className = 'enable-slider';
+    label.appendChild(cb); label.appendChild(slider);
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'member-email' + (m.enabled ? '' : ' disabled');
+    nameSpan.textContent = m.name;
+    var removeBtn = document.createElement('button'); removeBtn.className = 'roster-remove';
+    removeBtn.title = 'Remove'; removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', (function(idx) { return function() { removeMember(idx); }; })(i));
+    var controls = document.createElement('div'); controls.className = 'member-controls';
+    controls.appendChild(label); controls.appendChild(nameSpan); controls.appendChild(removeBtn);
+    div.appendChild(controls); list.appendChild(div);
+  });
+}
+function addMember() {
+  var input = document.getElementById('new-email');
+  var raw = input.value.trim().toLowerCase();
+  // accept either "first.last" or "first.last@domain"
+  var name = raw.includes('@') ? raw.split('@')[0] : raw;
+  if (!name) { input.style.borderColor = '#f09595'; setTimeout(function() { input.style.borderColor = ''; }, 1000); return; }
+  var roster = loadRoster();
+  if (roster.find(function(m) { return m.name === name; })) {
+    input.style.borderColor = '#FAC775'; setTimeout(function() { input.style.borderColor = ''; }, 1000); return;
+  }
+  roster.push({name: name, enabled: true}); saveRoster(roster); input.value = ''; renderRoster();
+  if (lastData) renderResults(lastData);
+}
+function addMemberByName(name) {
+  var roster = loadRoster();
+  if (roster.find(function(m) { return m.name === name; })) return;
+  roster.push({name: name, enabled: true}); saveRoster(roster);
+  renderRoster();
+  if (lastData) renderResults(lastData);
+}
+function removeMember(idx) { var r = loadRoster(); r.splice(idx, 1); saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
+function toggleMember(idx) { var r = loadRoster(); r[idx].enabled = !r[idx].enabled; saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
+document.getElementById('new-email').addEventListener('keydown', function(e) { if (e.key === 'Enter') addMember(); });
+
+// -- Fetch & auto-refresh -----------------------------------------------------
+function scheduleAutoRefresh() {
+  if (autoRefreshTimer) clearTimeout(autoRefreshTimer);
+  if (countdownTimer)   clearInterval(countdownTimer);
+  nextRefreshAt = Date.now() + INTERVAL_MS;
+  autoRefreshTimer = setTimeout(function() { fetchData(false); }, INTERVAL_MS);
+  countdownTimer = setInterval(function() {
+    var remaining = Math.max(0, Math.round((nextRefreshAt - Date.now()) / 1000));
+    var m = Math.floor(remaining / 60), s = remaining % 60;
+    var el = document.getElementById('next-refresh');
+    if (el) el.textContent = 'Auto-refresh in ' + m + ':' + (s < 10 ? '0' : '') + s;
+    if (remaining === 0) clearInterval(countdownTimer);
   }, 1000);
 }
 
-function updateCountdown() {
-  var el = document.getElementById('next-refresh');
-  if (el) el.textContent = 'Next refresh in ' + secondsLeft + 's';
-}
+function manualRefresh() { fetchData(true); }
 
-function manualRefresh() {
-  if (countdownTimer) clearInterval(countdownTimer);
-  fetchData();
-}
-
-// -- Data fetch ---------------------------------------------------------------
-function fetchData() {
-  document.getElementById('next-refresh').textContent = 'Refreshing...';
+function fetchData(isManual) {
+  var rtEl = document.getElementById('run-time');
+  if (rtEl) rtEl.textContent = 'Loading...';
   fetch('receiving_live.json?t=' + Date.now())
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data) {
-      renderTable(data);
-      startCountdown();
+      lastData = data;
+      renderResults(data);
+      scheduleAutoRefresh();
     })
     .catch(function(err) {
-      showError('Could not load receiving_live.json &mdash; ' + err.message);
-      startCountdown();
+      if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
+      scheduleAutoRefresh();
     });
 }
 
 // -- Helpers ------------------------------------------------------------------
-function calcLpnsPerHour(lpns, first, last) {
+function calcPPH(lpns, first, last) {
   if (!first || !last) return null;
   var fp = first.split(':'), lp = last.split(':');
   if (fp.length < 2 || lp.length < 2) return null;
   var fMins = parseInt(fp[0], 10) * 60 + parseInt(fp[1], 10);
   var lMins = parseInt(lp[0], 10) * 60 + parseInt(lp[1], 10);
-  var diffMins = lMins - fMins;
-  if (diffMins <= 2) return null; // less than 2 min window is meaningless
-  return (lpns / (diffMins / 60)).toFixed(1);
+  var diff = lMins - fMins;
+  if (diff < 2) return null;
+  return (lpns / (diff / 60)).toFixed(1);
 }
 
 function isStale(generated) {
   if (!generated) return false;
-  try {
-    var diffMins = (Date.now() - new Date(generated).getTime()) / 60000;
-    return diffMins > 70;
-  } catch(e) { return false; }
-}
-
-function fmtGenerated(generated) {
-  if (!generated) return '';
-  try {
-    var d = new Date(generated);
-    return 'Updated ' + d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-  } catch(e) { return generated; }
-}
-
-// -- Render -------------------------------------------------------------------
-function renderTable(data) {
-  var stale = isStale(data.generated);
-  document.getElementById('stale-banner').style.display = stale ? 'block' : 'none';
-  document.getElementById('generated-label').textContent = fmtGenerated(data.generated);
-  document.getElementById('shift-badge').textContent = (data.shift || '2nd') + ' Shift';
-
-  var associates = (data.associates || []).slice().sort(function(a, b) { return b.lpns - a.lpns; });
-  document.getElementById('assoc-count').textContent = associates.length ? associates.length + ' active' : '';
-
-  if (!associates.length) {
-    document.getElementById('table-container').innerHTML =
-      '<div class="empty-state"><div class="empty-icon">&#x1F6CF;</div>No associates active yet &mdash; 2nd shift starts at 12:00</div>';
-    return;
-  }
-
-  var maxLpns = associates[0].lpns;
-  var html = '<table><thead><tr>';
-  html += '<th>Associate</th>';
-  html += '<th class="right">LPNs</th>';
-  html += '<th class="right">First Scan</th>';
-  html += '<th class="right">Last Scan</th>';
-  html += '<th class="right">LPNs/hr</th>';
-  html += '</tr></thead><tbody>';
-
-  associates.forEach(function(a, i) {
-    var trophy = (i === 0 && associates.length > 1) ? ' &#x1F3C6;' : '';
-    var pph = calcLpnsPerHour(a.lpns, a.first_scan, a.last_scan);
-    var pct = maxLpns > 0 ? Math.round((a.lpns / maxLpns) * 100) : 0;
-
-    html += '<tr>';
-    html += '<td><div class="assoc-name">' + escHtml(a.name) + trophy + '</div>';
-    html += '<div class="bar-wrap"><div class="bar-fill" style="width:' + pct + '%"></div></div></td>';
-    html += '<td class="right"><span class="lpns-val">' + a.lpns.toLocaleString() + '</span></td>';
-    html += '<td class="right"><span class="time-val">' + escHtml(a.first_scan || '&mdash;') + '</span></td>';
-    html += '<td class="right"><span class="time-val">' + escHtml(a.last_scan || '&mdash;') + '</span></td>';
-    html += '<td class="right">' + (pph !== null
-      ? '<span class="pph-val">' + pph + '</span>'
-      : '<span class="pph-dash">&mdash;</span>') + '</td>';
-    html += '</tr>';
-  });
-
-  html += '</tbody></table>';
-  document.getElementById('table-container').innerHTML = html;
-}
-
-function showError(msg) {
-  document.getElementById('stale-banner').style.display = 'none';
-  document.getElementById('generated-label').textContent = 'Failed to load';
-  document.getElementById('assoc-count').textContent = '';
-  document.getElementById('table-container').innerHTML =
-    '<div class="empty-state"><div class="empty-icon">&#x26A0;</div>' + msg + '</div>';
+  try { return (Date.now() - new Date(generated).getTime()) / 60000 > 70; } catch(e) { return false; }
 }
 
 function escHtml(s) {
-  if (s === null || s === undefined) return '';
+  if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// -- Render -------------------------------------------------------------------
+function renderResults(data) {
+  var staleEl  = document.getElementById('stale-banner');
+  var rtEl     = document.getElementById('run-time');
+  var emptyEl  = document.getElementById('empty-state');
+  var cardEl   = document.getElementById('results-card');
+
+  // Stale check
+  if (isStale(data.generated)) {
+    staleEl.style.display = 'block';
+    var mins = Math.round((Date.now() - new Date(data.generated).getTime()) / 60000);
+    staleEl.textContent = '⚠ Data is ' + mins + ' min old — the live agent may not be running';
+  } else {
+    staleEl.style.display = 'none';
+  }
+
+  // Status line
+  try {
+    var d = new Date(data.generated);
+    rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+      + ' · Facility ' + (data.facility || '499') + ' · ' + (data.shift || '2nd') + ' Shift';
+  } catch(e) { rtEl.textContent = data.generated || ''; }
+
+  document.getElementById('m-shift').textContent    = (data.shift || '2nd') + ' Shift';
+  document.getElementById('m-facility').textContent = data.facility || '499';
+
+  var associates = (data.associates || []).slice().sort(function(a, b) { return b.lpns - a.lpns; });
+  var activeSet  = getActiveSet();
+
+  var onRoster  = associates.filter(function(a) { return activeSet.has(a.name); });
+  var offRoster = associates.filter(function(a) { return !activeSet.has(a.name); });
+
+  var grandTotal = onRoster.reduce(function(s, a) { return s + a.lpns; }, 0);
+  var maxLpns    = onRoster.length ? onRoster[0].lpns : 0;
+
+  document.getElementById('m-total').textContent = grandTotal.toLocaleString();
+  document.getElementById('m-assoc').textContent = onRoster.length;
+  document.getElementById('ft-total').textContent = grandTotal.toLocaleString();
+
+  // On-roster table
+  var tbOn = document.getElementById('tb-on-roster');
+  tbOn.innerHTML = '';
+  if (onRoster.length) {
+    onRoster.forEach(function(a, i) {
+      var trophy = (i === 0 && onRoster.length > 1) ? ' &#x1F3C6;' : '';
+      var pph    = calcPPH(a.lpns, a.first_scan, a.last_scan);
+      var pct    = maxLpns > 0 ? Math.round((a.lpns / maxLpns) * 100) : 0;
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + escHtml(a.name) + trophy + '</td>' +
+        '<td class="r" style="font-weight:500;">' + a.lpns.toLocaleString() + '</td>' +
+        '<td class="r" style="color:var(--text-muted);font-size:13px;">' + escHtml(a.first_scan || '--') + '</td>' +
+        '<td class="r" style="color:var(--text-muted);font-size:13px;">' + escHtml(a.last_scan  || '--') + '</td>' +
+        '<td class="r" style="color:var(--accent);font-size:13px;font-weight:500;">' + (pph !== null ? pph : '<span style="color:var(--text-hint);">--</span>') + '</td>' +
+        '<td><div style="display:flex;align-items:center;gap:8px;"><div class="bar-wrap"><div class="bar-fill-recv" style="width:' + pct + '%"></div></div><span style="font-size:12px;color:var(--text-hint);min-width:32px;text-align:right;">' + pct + '%</span></div></td>';
+      tbOn.appendChild(tr);
+    });
+  } else {
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="6" style="text-align:center;color:var(--text-hint);padding:2rem;font-size:13px;">No roster members active yet — 2nd shift starts at 12:00</td>';
+    tbOn.appendChild(tr);
+  }
+
+  // Off-roster table
+  var offWrap = document.getElementById('off-roster-wrap');
+  var tbOff   = document.getElementById('tb-off-roster');
+  tbOff.innerHTML = '';
+  if (offRoster.length) {
+    offRoster.forEach(function(a) {
+      var pph = calcPPH(a.lpns, a.first_scan, a.last_scan);
+      var tr = document.createElement('tr');
+      var nameEsc = escHtml(a.name);
+      tr.innerHTML =
+        '<td style="color:var(--text-muted);">' + nameEsc + '</td>' +
+        '<td class="r" style="color:var(--text-muted);">' + a.lpns.toLocaleString() + '</td>' +
+        '<td class="r" style="color:var(--text-hint);font-size:13px;">' + escHtml(a.first_scan || '--') + '</td>' +
+        '<td class="r" style="color:var(--text-hint);font-size:13px;">' + escHtml(a.last_scan  || '--') + '</td>' +
+        '<td class="r" style="color:var(--text-hint);font-size:13px;">' + (pph !== null ? pph : '--') + '</td>' +
+        '<td><button class="add-to-roster-btn" data-name="' + nameEsc + '" onclick="addMemberByName(this.dataset.name)">+ Add to roster</button></td>';
+      tbOff.appendChild(tr);
+    });
+    offWrap.style.display = 'block';
+  } else {
+    offWrap.style.display = 'none';
+  }
+
+  emptyEl.style.display = 'none';
+  cardEl.style.display  = 'block';
+}
+
+// -- Copy ---------------------------------------------------------------------
+function copyTable() {
+  var rows = document.querySelectorAll('#tb-on-roster tr');
+  var rtEl = document.getElementById('run-time');
+  var text = 'Receiving Live -- DC499\n' + (rtEl ? rtEl.textContent : '') + '\n\n';
+  text += 'Associate\tLPNs\tFirst Scan\tLast Scan\tLPNs/hr\n';
+  rows.forEach(function(row) {
+    text += Array.from(row.querySelectorAll('td')).slice(0, 5).map(function(c) {
+      return c.textContent.replace(/\s+/g, ' ').trim();
+    }).join('\t') + '\n';
+  });
+  text += '\nTeam total: ' + document.getElementById('ft-total').textContent;
+  var btn = event.target, orig = btn.textContent;
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = '✓ Copied!'; setTimeout(function() { btn.textContent = orig; }, 2000);
+      });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      btn.textContent = '✓ Copied!'; setTimeout(function() { btn.textContent = orig; }, 2000);
+    }
+  } catch(e) { alert('Copy failed -- try selecting the table manually.'); }
 }
 
 // -- Init ---------------------------------------------------------------------
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
-fetchData();
+renderRoster();
+scheduleAutoRefresh(); // start countdown; data loads only on manual Refresh or auto-tick
 </script>
 </body>
 </html>
