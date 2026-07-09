@@ -22,17 +22,16 @@ $INTERVAL    = 60   # minutes
 
 $SQL = @"
 SELECT CREATED_BY,
-       COUNT(DISTINCT LPN_ID) AS lpns,
-       MIN(CREATED_TIMESTAMP) AS first_scan,
-       MAX(CREATED_TIMESTAMP) AS last_scan
+       TIME_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(CREATED_TIMESTAMP) / 300) * 300), '%H:%i') AS time_bucket,
+       COUNT(DISTINCT LPN_ID) AS lpns
 FROM default_receiving.RCV_LPN
 WHERE FACILITY_ID = '$FACILITY'
   AND DATE(CREATED_TIMESTAMP) = CURDATE()
   AND CREATED_BY != 'system-msg-user@$FACILITY'
   AND TIME(CREATED_TIMESTAMP) >= '12:00:00'
   AND PROCESS = '/lpn/receive'
-GROUP BY CREATED_BY
-ORDER BY lpns DESC
+GROUP BY CREATED_BY, time_bucket
+ORDER BY CREATED_BY, time_bucket
 "@
 
 # -- Helpers ------------------------------------------------------------------
@@ -100,14 +99,30 @@ while ($true) {
             throw "Query failed: $($response.error)"
         }
 
-        # 2. Map all rows -- no roster filter, HTML handles that client-side
-        $associates = @()
+        # 2. Aggregate bucket rows into per-associate summaries
+        #    Each row is (CREATED_BY, time_bucket HH:mm, lpns).
+        #    Build a hashtable keyed by name -> {lpns, first_bucket, last_bucket, buckets:[{t,n}]}
+        $byAssoc = [ordered]@{}
         foreach ($row in $response.rows) {
+            $name = ($row.CREATED_BY.ToLower() -split '@')[0]
+            if (-not $byAssoc.Contains($name)) {
+                $byAssoc[$name] = @{ lpns = 0; first_bucket = $row.time_bucket; last_bucket = $row.time_bucket; buckets = [System.Collections.Generic.List[object]]::new() }
+            }
+            $byAssoc[$name].lpns        += [int]$row.lpns
+            $byAssoc[$name].last_bucket  = $row.time_bucket
+            $byAssoc[$name].buckets.Add([ordered]@{ t = $row.time_bucket; n = [int]$row.lpns })
+        }
+
+        # Sort by total lpns desc
+        $associates = @()
+        foreach ($name in ($byAssoc.Keys | Sort-Object { -$byAssoc[$_].lpns })) {
+            $a = $byAssoc[$name]
             $associates += [ordered]@{
-                name       = ($row.CREATED_BY.ToLower() -split '@')[0]
-                lpns       = [int]$row.lpns
-                first_scan = Format-HHmm $row.first_scan
-                last_scan  = Format-HHmm $row.last_scan
+                name       = $name
+                lpns       = $a.lpns
+                first_scan = $a.first_bucket
+                last_scan  = $a.last_bucket
+                buckets    = $a.buckets.ToArray()
             }
         }
 

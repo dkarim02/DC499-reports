@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Receiving Live -- DC499</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -64,7 +65,6 @@
   tfoot td{font-weight:500;border-top:0.5px solid var(--border);border-bottom:none;padding-top:12px;}
   .bar-wrap{background:var(--bar-bg);border-radius:4px;height:6px;flex:1;overflow:hidden;}
   .bar-fill-recv{height:100%;border-radius:4px;background:var(--accent);}
-  .badge-recv{display:inline-block;font-size:11px;padding:3px 10px;border-radius:6px;background:var(--accent-bg);color:var(--accent);margin:2px;}
   .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
   .header-btns{display:flex;align-items:center;gap:8px;}
   .refresh-btn-recv{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:500;display:flex;align-items:center;gap:5px;}
@@ -73,7 +73,6 @@
   .copy-btn{font-family:inherit;font-size:12px;padding:5px 10px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);cursor:pointer;color:var(--text-muted);}
   .copy-btn:hover{background:var(--surface2);}
   .run-time{font-size:12px;color:var(--text-hint);margin-top:2px;}
-  .excluded-label{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:8px;}
 
   /* Live dot */
   .live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:5px;animation:livepulse 2s infinite;}
@@ -81,6 +80,27 @@
 
   /* Off-roster section */
   .off-roster-header{font-size:13px;font-weight:500;color:var(--text-muted);margin:1rem 0 8px;padding-top:1rem;border-top:0.5px solid var(--border);}
+
+  /* Clickable associate rows */
+  .assoc-row{cursor:pointer;transition:background 0.15s;}
+  .assoc-row:hover td{background:var(--surface2);}
+  .assoc-detail{display:none;}
+  .assoc-detail.open{display:table-row;}
+  .assoc-detail-inner{padding:12px;background:var(--surface2);border-radius:8px;margin:4px 0 8px;}
+  .assoc-detail-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+  .assoc-chart-wrap{position:relative;height:160px;overflow-x:auto;overflow-y:hidden;border-radius:6px;}
+  .assoc-chart-inner{height:160px;}
+  .assoc-stats{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;}
+  .assoc-stat{font-size:11px;color:var(--text-muted);}
+  .assoc-stat span{color:var(--text);font-weight:500;}
+
+  /* Disable/Enable button on on-roster rows */
+  .disable-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);background:none;color:var(--text-hint);cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .disable-btn:hover{background:var(--surface2);}
+
+  /* Off-roster add button in table */
+  .add-to-roster-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid #0F6E56;background:rgba(15,110,86,0.1);color:#0F6E56;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .add-to-roster-btn:hover{background:rgba(15,110,86,0.2);}
 
   /* Roster / settings */
   .roster-scroll{max-height:300px;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;}
@@ -114,10 +134,6 @@
   .roster-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
   .roster-title{font-size:15px;font-weight:500;color:var(--text);}
 
-  /* Off-roster add button in table */
-  .add-to-roster-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid #0F6E56;background:rgba(15,110,86,0.1);color:#0F6E56;cursor:pointer;font-family:inherit;white-space:nowrap;}
-  .add-to-roster-btn:hover{background:rgba(15,110,86,0.2);}
-
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
 </style>
@@ -127,7 +143,7 @@
 
   <div class="top-bar">
     <div>
-      <p class="dept-label"><span class="live-dot"></span>Receiving Live v1.0</p>
+      <p class="dept-label"><span class="live-dot"></span>Receiving Live v1.1</p>
       <h1>Receiving Live &mdash; 2nd Shift</h1>
       <p class="subtitle">Live data &middot; Auto-refreshes every 60 min</p>
     </div>
@@ -152,7 +168,7 @@
 
     <div class="header-row">
       <div>
-        <div id="run-time" class="run-time">Not yet loaded</div>
+        <div id="run-time" class="run-time">Loading...</div>
         <div id="next-refresh" class="run-time" style="margin-top:2px;"></div>
       </div>
       <div class="header-btns">
@@ -172,10 +188,10 @@
         <thead><tr>
           <th>Associate</th>
           <th class="r">LPNs</th>
-          <th class="r">First Scan</th>
-          <th class="r">Last Scan</th>
+          <th class="r">First</th>
+          <th class="r">Last</th>
           <th class="r">LPNs/hr</th>
-          <th style="width:30%;"></th>
+          <th style="width:25%;"></th>
         </tr></thead>
         <tbody id="tb-on-roster"></tbody>
         <tfoot><tr>
@@ -191,8 +207,8 @@
           <thead><tr>
             <th>Associate</th>
             <th class="r">LPNs</th>
-            <th class="r">First Scan</th>
-            <th class="r">Last Scan</th>
+            <th class="r">First</th>
+            <th class="r">Last</th>
             <th class="r">LPNs/hr</th>
             <th></th>
           </tr></thead>
@@ -201,9 +217,9 @@
       </div>
     </div>
 
-    <div class="empty-state" id="empty-state">
+    <div class="empty-state" id="empty-state" style="display:none;">
       <div style="font-size:32px;margin-bottom:10px;">&#x1F4E1;</div>
-      Click <strong>Refresh Live Data</strong> to load the latest receiving data.
+      No data yet. Click <strong>Refresh Live Data</strong> to reload.
     </div>
   </div>
 
@@ -222,7 +238,7 @@
       </div>
       <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
     </div>
-    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">Receiving Live v1.0</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">Receiving Live v1.1</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Receiving Live &middot; DC499 &middot; <span id="footer-date"></span></p>
@@ -232,8 +248,8 @@
 <script>
 // -- Constants ----------------------------------------------------------------
 var STORAGE_KEY = 'recv_live_roster_v1';
-var THEME_KEY   = 'dc499_receiving_theme_v1'; // shared with suite
-var INTERVAL_MS = 60 * 60 * 1000; // 60 min
+var THEME_KEY   = 'dc499_receiving_theme_v1';
+var INTERVAL_MS = 60 * 60 * 1000;
 
 var DEFAULT_ROSTER = [
   'eva.soto','alicia.garcia','gloria.miranda','myintmyint.than',
@@ -243,10 +259,11 @@ var DEFAULT_ROSTER = [
   'berena.quiterio','cecilia.aguilar'
 ];
 
-var lastData = null;
+var lastData        = null;
 var autoRefreshTimer = null;
 var countdownTimer   = null;
 var nextRefreshAt    = null;
+var assocCharts      = {};
 
 // -- Theme --------------------------------------------------------------------
 function applyTheme(dark) {
@@ -316,10 +333,10 @@ function renderRoster() {
     div.appendChild(controls); list.appendChild(div);
   });
 }
+
 function addMember() {
   var input = document.getElementById('new-email');
   var raw = input.value.trim().toLowerCase();
-  // accept either "first.last" or "first.last@domain"
   var name = raw.includes('@') ? raw.split('@')[0] : raw;
   if (!name) { input.style.borderColor = '#f09595'; setTimeout(function() { input.style.borderColor = ''; }, 1000); return; }
   var roster = loadRoster();
@@ -329,6 +346,7 @@ function addMember() {
   roster.push({name: name, enabled: true}); saveRoster(roster); input.value = ''; renderRoster();
   if (lastData) renderResults(lastData);
 }
+
 function addMemberByName(name) {
   var roster = loadRoster();
   if (roster.find(function(m) { return m.name === name; })) return;
@@ -336,11 +354,24 @@ function addMemberByName(name) {
   renderRoster();
   if (lastData) renderResults(lastData);
 }
+
 function removeMember(idx) { var r = loadRoster(); r.splice(idx, 1); saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
 function toggleMember(idx) { var r = loadRoster(); r[idx].enabled = !r[idx].enabled; saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
+
+// Toggle enabled state from leaderboard Disable/Enable button
+function toggleMemberByName(name) {
+  var roster = loadRoster();
+  var idx = roster.findIndex(function(m) { return m.name === name; });
+  if (idx === -1) return;
+  roster[idx].enabled = !roster[idx].enabled;
+  saveRoster(roster);
+  renderRoster();
+  if (lastData) renderResults(lastData);
+}
+
 document.getElementById('new-email').addEventListener('keydown', function(e) { if (e.key === 'Enter') addMember(); });
 
-// -- Fetch & auto-refresh -----------------------------------------------------
+// -- Auto-refresh -------------------------------------------------------------
 function scheduleAutoRefresh() {
   if (autoRefreshTimer) clearTimeout(autoRefreshTimer);
   if (countdownTimer)   clearInterval(countdownTimer);
@@ -369,6 +400,7 @@ function fetchData(isManual) {
     })
     .catch(function(err) {
       if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
+      document.getElementById('empty-state').style.display = 'block';
       scheduleAutoRefresh();
     });
 }
@@ -395,14 +427,138 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function safeKey(name) {
+  return name.replace(/[^a-z0-9]/gi, '_');
+}
+
+// -- Associate chart ----------------------------------------------------------
+function drawAssocChart(canvasId, buckets, isDark) {
+  if (assocCharts[canvasId]) { assocCharts[canvasId].destroy(); delete assocCharts[canvasId]; }
+  var canvas = document.getElementById(canvasId);
+  if (!canvas || !buckets || !buckets.length) return;
+
+  var GAP_MINS = 10;
+  // Convert HH:mm bucket labels to total minutes for gap detection
+  function toMins(hhmm) {
+    var parts = hhmm.split(':');
+    var h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+    // 2nd shift crosses midnight; anything < 12:00 is next day
+    if (h < 12) h += 24;
+    return h * 60 + m;
+  }
+
+  // Sort buckets by time
+  var sorted = buckets.slice().sort(function(a, b) { return toMins(a.t) - toMins(b.t); });
+
+  var labels = [], data = [], pointColors = [];
+  var rawMins = sorted.map(function(b) { return toMins(b.t); });
+
+  // Detect gaps
+  var gapPairs = [];
+  for (var i = 1; i < rawMins.length; i++) {
+    var diff = rawMins[i] - rawMins[i-1];
+    if (diff > GAP_MINS) {
+      gapPairs.push({ from: rawMins[i-1], to: rawMins[i] });
+    }
+  }
+
+  sorted.forEach(function(b, i) {
+    // Label only on full or half hours
+    var h = parseInt(b.t.split(':')[0], 10), m = parseInt(b.t.split(':')[1], 10);
+    var hDisp = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+    var period = h >= 12 && h < 24 ? 'PM' : 'AM';
+    labels.push((m === 0 || m === 30) ? hDisp + ':' + (m < 10 ? '0' : '') + m + ' ' + period : '');
+    data.push(b.n);
+    var rm = rawMins[i];
+    var inGap = gapPairs.some(function(g) { return rm === g.from || rm === g.to; });
+    pointColors.push(inGap ? '#C0392B' : 'var(--accent)');
+  });
+
+  var gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  var tickColor = isDark ? '#777' : '#888';
+
+  var canvasWidth = Math.max(400, sorted.length * 16);
+  canvas.style.width = canvasWidth + 'px';
+  canvas.width = canvasWidth;
+  canvas.style.height = '160px';
+  canvas.height = 160;
+
+  assocCharts[canvasId] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        _rawMins: rawMins,
+        _gapPairs: gapPairs,
+        segment: {
+          borderColor: function(ctx) {
+            var aM = rawMins[ctx.p0DataIndex], bM = rawMins[ctx.p1DataIndex];
+            var inG = gapPairs.some(function(g) { return aM === g.from && bM === g.to; });
+            return inG ? '#C0392B' : '#0E9E8E';
+          }
+        },
+        backgroundColor: 'rgba(14,158,142,0.08)',
+        borderWidth: 2,
+        pointRadius: function(ctx) { return pointColors[ctx.dataIndex] === '#C0392B' ? 5 : 2; },
+        pointBackgroundColor: pointColors,
+        fill: true,
+        tension: 0.2,
+        spanGaps: false
+      }]
+    },
+    options: {
+      responsive: false,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var idx = ctx.dataIndex;
+              var rm = rawMins[idx];
+              var gap = gapPairs.find(function(g) { return rm === g.to; });
+              if (gap) return ['Gap before: ' + (gap.to - gap.from) + ' min', 'LPNs: ' + ctx.parsed.y];
+              return 'LPNs: ' + ctx.parsed.y;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: {color:tickColor, font:{size:9}, maxRotation:45, autoSkip:false}, grid:{color:gridColor}, border:{display:false} },
+        y: { ticks: {color:tickColor, font:{size:9}, precision:0}, grid:{color:gridColor}, border:{display:false}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+function toggleAssocDetail(empKey) {
+  var detailRow = document.getElementById('assoc-detail-' + empKey);
+  if (!detailRow) return;
+  var isOpen = detailRow.classList.contains('open');
+  // Close all open details
+  document.querySelectorAll('.assoc-detail.open').forEach(function(el) {
+    el.classList.remove('open');
+    var cid = el.getAttribute('data-canvas');
+    if (cid && assocCharts[cid]) { assocCharts[cid].destroy(); delete assocCharts[cid]; }
+  });
+  if (!isOpen) {
+    detailRow.classList.add('open');
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var buckets = detailRow.getAttribute('data-buckets');
+    try { buckets = JSON.parse(buckets); } catch(e) { buckets = []; }
+    var canvasId = 'assoc-chart-' + empKey;
+    setTimeout(function() { drawAssocChart(canvasId, buckets, isDark); }, 50);
+  }
+}
+
 // -- Render -------------------------------------------------------------------
 function renderResults(data) {
-  var staleEl  = document.getElementById('stale-banner');
-  var rtEl     = document.getElementById('run-time');
-  var emptyEl  = document.getElementById('empty-state');
-  var cardEl   = document.getElementById('results-card');
+  var staleEl = document.getElementById('stale-banner');
+  var rtEl    = document.getElementById('run-time');
+  var emptyEl = document.getElementById('empty-state');
+  var cardEl  = document.getElementById('results-card');
 
-  // Stale check
   if (isStale(data.generated)) {
     staleEl.style.display = 'block';
     var mins = Math.round((Date.now() - new Date(data.generated).getTime()) / 60000);
@@ -411,7 +567,6 @@ function renderResults(data) {
     staleEl.style.display = 'none';
   }
 
-  // Status line
   try {
     var d = new Date(data.generated);
     rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
@@ -423,6 +578,7 @@ function renderResults(data) {
 
   var associates = (data.associates || []).slice().sort(function(a, b) { return b.lpns - a.lpns; });
   var activeSet  = getActiveSet();
+  var roster     = loadRoster();
 
   var onRoster  = associates.filter(function(a) { return activeSet.has(a.name); });
   var offRoster = associates.filter(function(a) { return !activeSet.has(a.name); });
@@ -434,27 +590,75 @@ function renderResults(data) {
   document.getElementById('m-assoc').textContent = onRoster.length;
   document.getElementById('ft-total').textContent = grandTotal.toLocaleString();
 
-  // On-roster table
+  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   var tbOn = document.getElementById('tb-on-roster');
   tbOn.innerHTML = '';
+
+  // Destroy any open charts before re-render
+  Object.keys(assocCharts).forEach(function(cid) {
+    assocCharts[cid].destroy(); delete assocCharts[cid];
+  });
+
   if (onRoster.length) {
     onRoster.forEach(function(a, i) {
       var trophy = (i === 0 && onRoster.length > 1) ? ' &#x1F3C6;' : '';
       var pph    = calcPPH(a.lpns, a.first_scan, a.last_scan);
       var pct    = maxLpns > 0 ? Math.round((a.lpns / maxLpns) * 100) : 0;
+      var empKey = safeKey(a.name);
+      var nameEsc = escHtml(a.name);
+      var bucketsJson = escHtml(JSON.stringify(a.buckets || []));
+
+      // Find enabled state from full roster (not just activeSet) for toggle button label
+      var rosterEntry = roster.find(function(m) { return m.name === a.name; });
+      var isEnabled   = rosterEntry ? rosterEntry.enabled : true;
+      var btnLabel    = isEnabled ? 'Disable' : 'Enable';
+
       var tr = document.createElement('tr');
+      tr.className = 'assoc-row';
+      tr.setAttribute('data-empkey', empKey);
+      tr.addEventListener('click', function(e) {
+        // Don't expand if the click was on the Disable/Enable button
+        if (e.target.classList.contains('disable-btn')) return;
+        toggleAssocDetail(empKey);
+      });
       tr.innerHTML =
-        '<td>' + escHtml(a.name) + trophy + '</td>' +
+        '<td>' + nameEsc + trophy + '</td>' +
         '<td class="r" style="font-weight:500;">' + a.lpns.toLocaleString() + '</td>' +
         '<td class="r" style="color:var(--text-muted);font-size:13px;">' + escHtml(a.first_scan || '--') + '</td>' +
         '<td class="r" style="color:var(--text-muted);font-size:13px;">' + escHtml(a.last_scan  || '--') + '</td>' +
         '<td class="r" style="color:var(--accent);font-size:13px;font-weight:500;">' + (pph !== null ? pph : '<span style="color:var(--text-hint);">--</span>') + '</td>' +
-        '<td><div style="display:flex;align-items:center;gap:8px;"><div class="bar-wrap"><div class="bar-fill-recv" style="width:' + pct + '%"></div></div><span style="font-size:12px;color:var(--text-hint);min-width:32px;text-align:right;">' + pct + '%</span></div></td>';
+        '<td><div style="display:flex;align-items:center;gap:6px;">' +
+          '<div class="bar-wrap"><div class="bar-fill-recv" style="width:' + pct + '%"></div></div>' +
+          '<button class="disable-btn" data-name="' + nameEsc + '" onclick="toggleMemberByName(this.dataset.name)">' + btnLabel + '</button>' +
+        '</div></td>';
       tbOn.appendChild(tr);
+
+      // Expandable detail row
+      var detailTr = document.createElement('tr');
+      detailTr.className = 'assoc-detail';
+      detailTr.id = 'assoc-detail-' + empKey;
+      detailTr.setAttribute('data-canvas', 'assoc-chart-' + empKey);
+      detailTr.setAttribute('data-buckets', bucketsJson);
+      detailTr.innerHTML =
+        '<td colspan="6" style="padding:0 4px 8px;">' +
+          '<div class="assoc-detail-inner">' +
+            '<div class="assoc-detail-name">' + nameEsc + ' &mdash; 5-min intervals' +
+              '<span style="font-size:10px;color:var(--text-hint);">click row to collapse</span>' +
+            '</div>' +
+            '<div class="assoc-chart-wrap"><div class="assoc-chart-inner"><canvas id="assoc-chart-' + empKey + '"></canvas></div></div>' +
+            '<div class="assoc-stats" style="margin-top:8px;">' +
+              '<div class="assoc-stat">LPNs: <span>' + a.lpns.toLocaleString() + '</span></div>' +
+              '<div class="assoc-stat">First: <span>' + escHtml(a.first_scan || '--') + '</span></div>' +
+              '<div class="assoc-stat">Last: <span>' + escHtml(a.last_scan || '--') + '</span></div>' +
+              (pph !== null ? '<div class="assoc-stat">LPNs/hr: <span>' + pph + '</span></div>' : '') +
+            '</div>' +
+          '</div>' +
+        '</td>';
+      tbOn.appendChild(detailTr);
     });
   } else {
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="6" style="text-align:center;color:var(--text-hint);padding:2rem;font-size:13px;">No roster members active yet — 2nd shift starts at 12:00</td>';
+    tr.innerHTML = '<td colspan="6" style="text-align:center;color:var(--text-hint);padding:2rem;font-size:13px;">No roster members active yet &mdash; 2nd shift starts at 12:00</td>';
     tbOn.appendChild(tr);
   }
 
@@ -487,17 +691,17 @@ function renderResults(data) {
 
 // -- Copy ---------------------------------------------------------------------
 function copyTable() {
-  var rows = document.querySelectorAll('#tb-on-roster tr');
+  var rows = document.querySelectorAll('#tb-on-roster tr.assoc-row');
   var rtEl = document.getElementById('run-time');
   var text = 'Receiving Live -- DC499\n' + (rtEl ? rtEl.textContent : '') + '\n\n';
-  text += 'Associate\tLPNs\tFirst Scan\tLast Scan\tLPNs/hr\n';
+  text += 'Associate\tLPNs\tFirst\tLast\tLPNs/hr\n';
   rows.forEach(function(row) {
     text += Array.from(row.querySelectorAll('td')).slice(0, 5).map(function(c) {
       return c.textContent.replace(/\s+/g, ' ').trim();
     }).join('\t') + '\n';
   });
   text += '\nTeam total: ' + document.getElementById('ft-total').textContent;
-  var btn = event.target, orig = btn.textContent;
+  var btn = event.currentTarget, orig = btn.textContent;
   try {
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text).then(function() {
@@ -516,7 +720,8 @@ function copyTable() {
 // -- Init ---------------------------------------------------------------------
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 renderRoster();
-scheduleAutoRefresh(); // start countdown; data loads only on manual Refresh or auto-tick
+fetchData(false);       // auto-fetch on load
+scheduleAutoRefresh();  // start countdown timer
 </script>
 </body>
 </html>
