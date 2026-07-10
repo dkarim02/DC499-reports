@@ -4,6 +4,7 @@
     writes batch_live.json, and commits/pushes it every 60 minutes.
 .NOTES
     Requires: claude CLI on PATH with mawm-data-http-prod MCP configured.
+    Source: default_pickpack.TSK_TASK_DETAIL, RESOURCE_BATCH_ID column (B_ format).
     Run from any directory -- paths are resolved relative to this script.
 #>
 param(
@@ -67,7 +68,7 @@ while ($true) {
     Write-Host ("`n[" + $cycleStart.ToString('HH:mm:ss') + "] Starting cycle...")
 
     try {
-        # Compute 2nd shift window in UTC: 2pm PDT = 21:00 UTC, runs 10 hours
+        # 2nd shift window in UTC: 2pm PDT = 21:00 UTC, runs 10 hours
         $nowUtc       = (Get-Date).ToUniversalTime()
         $shiftHourUtc = 21
         if ($nowUtc.Hour -lt $shiftHourUtc) {
@@ -75,29 +76,28 @@ while ($true) {
         } else {
             $shiftStartUtc = [datetime]::new($nowUtc.Year, $nowUtc.Month, $nowUtc.Day, $shiftHourUtc, 0, 0)
         }
-        $shiftEndUtc = $shiftStartUtc.AddHours(10)
-        $startStr    = $shiftStartUtc.ToString('yyyy-MM-dd HH:mm:ss')
-        $endStr      = $shiftEndUtc.ToString('yyyy-MM-dd HH:mm:ss')
+        $startStr = $shiftStartUtc.ToString('yyyy-MM-dd HH:mm:ss')
 
+        # Query real MAWM batch data from TSK_TASK_DETAIL using RESOURCE_BATCH_ID (B_ format)
+        # Status codes: 1000=pending, 8000=in_progress, 9000=completed
         $SQL = @"
 SELECT
-    WORK_RELEASE_BATCH_ID,
-    TYPE_ID,
-    COUNT(*) AS total_tasks,
-    SUM(CASE WHEN STATUS = '7000' THEN 1 ELSE 0 END) AS completed,
-    SUM(CASE WHEN STATUS = '3000' THEN 1 ELSE 0 END) AS in_progress,
-    SUM(CASE WHEN STATUS = '8000' THEN 1 ELSE 0 END) AS pending,
-    MIN(CREATED_DATE_TIME) AS batch_released,
-    MAX(UPDATED_TIMESTAMP) AS last_updated,
-    GROUP_CONCAT(DISTINCT CURRENT_USER_ID ORDER BY CURRENT_USER_ID SEPARATOR ',') AS workers
-FROM default_task.TSK_TASK
+    RESOURCE_BATCH_ID,
+    COUNT(DISTINCT ORDER_ID)   AS total_orders,
+    COUNT(DISTINCT OLPN_ID)    AS total_olpns,
+    COUNT(*)                   AS total_task_details,
+    COUNT(DISTINCT CASE WHEN STATUS = '9000' THEN OLPN_ID END) AS completed_olpns,
+    COUNT(DISTINCT CASE WHEN STATUS = '8000' THEN OLPN_ID END) AS in_progress_olpns,
+    COUNT(DISTINCT CASE WHEN STATUS = '1000' THEN OLPN_ID END) AS pending_olpns,
+    GROUP_CONCAT(DISTINCT CURRENT_USER_ID ORDER BY CURRENT_USER_ID SEPARATOR ',') AS workers,
+    MIN(CREATED_TIMESTAMP) AS batch_created_utc
+FROM default_pickpack.TSK_TASK_DETAIL
 WHERE FACILITY_ID = '$FACILITY'
-  AND WORK_RELEASE_BATCH_ID IS NOT NULL
-  AND CREATED_DATE_TIME >= '$startStr'
-  AND CREATED_DATE_TIME < '$endStr'
-  AND TYPE_ID IN ('PICK/PACK', 'SINGLES_PICK', 'REPLENISHMENT')
-GROUP BY WORK_RELEASE_BATCH_ID, TYPE_ID
-ORDER BY batch_released DESC
+  AND RESOURCE_BATCH_ID IS NOT NULL
+  AND RESOURCE_BATCH_ID NOT LIKE 'B_00000000000%'
+  AND CREATED_TIMESTAMP >= '$startStr'
+GROUP BY RESOURCE_BATCH_ID
+ORDER BY batch_created_utc DESC
 "@
 
         Write-Host '  Querying MAWM connector...'
@@ -107,66 +107,54 @@ ORDER BY batch_released DESC
             throw "Query failed: $($response.error)"
         }
 
-        # Aggregate rows into per-batch objects (multiple TYPE_IDs share one batch_id)
-        $byBatch = [ordered]@{}
+        $batches = @()
         foreach ($row in $response.rows) {
-            $bid = $row.WORK_RELEASE_BATCH_ID
-            if (-not $byBatch.Contains($bid)) {
-                $byBatch[$bid] = @{
-                    batch_id     = $bid
-                    released_utc = $row.batch_released
-                    types        = [System.Collections.Generic.List[string]]::new()
-                    total        = 0
-                    completed    = 0
-                    in_progress  = 0
-                    pending      = 0
-                    workers      = [System.Collections.Generic.List[string]]::new()
-                }
-            }
-            $b = $byBatch[$bid]
-            if ($row.TYPE_ID -and -not $b.types.Contains($row.TYPE_ID)) {
-                $b.types.Add($row.TYPE_ID)
-            }
-            $b.total       += [int]$row.total_tasks
-            $b.completed   += [int]$row.completed
-            $b.in_progress += [int]$row.in_progress
-            $b.pending     += [int]$row.pending
+            $total     = [int]$row.total_olpns
+            $completed = [int]$row.completed_olpns
+            $inProg    = [int]$row.in_progress_olpns
+            $pending   = [int]$row.pending_olpns
+            $pct       = if ($total -gt 0) { [Math]::Round(($completed / $total) * 100) } else { 0 }
+
+            # Parse workers list, strip email domain
+            $workerList = [System.Collections.Generic.List[string]]::new()
             if ($row.workers) {
                 foreach ($w in ($row.workers -split ',')) {
                     $wname = ($w.Trim().ToLower() -split '@')[0]
-                    if ($wname -and -not $b.workers.Contains($wname)) {
-                        $b.workers.Add($wname)
-                    }
+                    if ($wname) { $workerList.Add($wname) }
                 }
             }
-        }
 
-        $batches = @()
-        foreach ($bid in $byBatch.Keys) {
-            $b   = $byBatch[$bid]
-            $pct = if ($b.total -gt 0) { [Math]::Round(($b.completed / $b.total) * 100) } else { 0 }
+            # Determine batch status label
+            $statusLabel = if ($completed -eq $total -and $total -gt 0) { 'Complete' }
+                           elseif ($inProg -gt 0) { 'Work Started' }
+                           elseif ($pending -eq $total) { 'Released' }
+                           else { 'In Progress' }
+
             $batches += [ordered]@{
-                batch_id     = $b.batch_id
-                released_utc = $b.released_utc
-                types        = $b.types.ToArray()
-                total        = $b.total
-                completed    = $b.completed
-                in_progress  = $b.in_progress
-                pending      = $b.pending
-                pct          = $pct
-                workers      = $b.workers.ToArray()
+                batch_id         = $row.RESOURCE_BATCH_ID
+                status           = $statusLabel
+                total_orders     = [int]$row.total_orders
+                total_olpns      = $total
+                task_details     = [int]$row.total_task_details
+                completed_olpns  = $completed
+                in_progress_olpns= $inProg
+                pending_olpns    = $pending
+                pct              = $pct
+                created_utc      = $row.batch_created_utc
+                workers          = $workerList.ToArray()
             }
         }
 
-        $totalTasks     = 0; $completedTasks = 0; $activeBatches = 0
+        $totalOrders    = 0; $totalOlpns = 0; $completedOlpns = 0; $activeBatches = 0
         foreach ($b in $batches) {
-            $totalTasks     += $b.total
-            $completedTasks += $b.completed
-            if ($b.in_progress -gt 0 -or $b.pending -gt 0) { $activeBatches++ }
+            $totalOrders    += $b.total_orders
+            $totalOlpns     += $b.total_olpns
+            $completedOlpns += $b.completed_olpns
+            if ($b.in_progress_olpns -gt 0 -or $b.pending_olpns -gt 0) { $activeBatches++ }
         }
-        $overallPct = if ($totalTasks -gt 0) { [Math]::Round(($completedTasks / $totalTasks) * 100) } else { 0 }
+        $overallPct = if ($totalOlpns -gt 0) { [Math]::Round(($completedOlpns / $totalOlpns) * 100) } else { 0 }
 
-        Write-Host "  $($batches.Count) batches, $totalTasks total tasks, $overallPct% complete."
+        Write-Host "  $($batches.Count) batches, $totalOrders orders, $totalOlpns oLPNs, $overallPct% complete."
 
         $payload = [ordered]@{
             generated       = $cycleStart.ToString('yyyy-MM-ddTHH:mm:ss')
@@ -174,11 +162,12 @@ ORDER BY batch_released DESC
             shift           = Get-ShiftLabel
             shift_start_utc = $startStr
             summary         = [ordered]@{
-                total_batches   = $batches.Count
-                active_batches  = $activeBatches
-                total_tasks     = $totalTasks
-                completed_tasks = $completedTasks
-                completion_pct  = $overallPct
+                total_batches    = $batches.Count
+                active_batches   = $activeBatches
+                total_orders     = $totalOrders
+                total_olpns      = $totalOlpns
+                completed_olpns  = $completedOlpns
+                completion_pct   = $overallPct
             }
             batches = $batches
         }

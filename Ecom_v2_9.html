@@ -357,7 +357,7 @@
     </div>
     <div class="batch-metrics" id="batch-metrics" style="display:none;">
       <div class="metric"><div class="metric-label">Overall</div><div class="metric-value" id="bm-pct">--</div><div class="metric-sub">completion</div></div>
-      <div class="metric"><div class="metric-label">Total Tasks</div><div class="metric-value" id="bm-total">--</div></div>
+      <div class="metric"><div class="metric-label">Total oLPNs</div><div class="metric-value" id="bm-total">--</div></div>
       <div class="metric"><div class="metric-label">Active Batches</div><div class="metric-value" id="bm-active">--</div></div>
       <div class="metric"><div class="metric-label">All Batches</div><div class="metric-value" id="bm-count">--</div></div>
     </div>
@@ -557,7 +557,7 @@ function renderBatches(data) {
 
   var s = data.summary || {};
   document.getElementById('bm-pct').textContent    = (s.completion_pct || 0) + '%';
-  document.getElementById('bm-total').textContent  = (s.total_tasks    || 0).toLocaleString();
+  document.getElementById('bm-total').textContent  = (s.total_olpns    || 0).toLocaleString();
   document.getElementById('bm-active').textContent = (s.active_batches || 0);
   document.getElementById('bm-count').textContent  = (s.total_batches  || 0);
   metricsEl.style.display = 'grid';
@@ -569,8 +569,8 @@ function renderBatches(data) {
   if (!batches.length) { emptyEl.style.display = 'block'; return; }
   emptyEl.style.display = 'none';
 
-  var active = batches.filter(function(b) { return b.in_progress > 0 || b.pending > 0; });
-  var done   = batches.filter(function(b) { return b.in_progress === 0 && b.pending === 0; });
+  var active = batches.filter(function(b) { return b.status !== 'Complete'; });
+  var done   = batches.filter(function(b) { return b.status === 'Complete'; });
 
   function escH(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -578,26 +578,22 @@ function renderBatches(data) {
     var pct = b.pct || 0;
     var releasePdt = '';
     try {
-      var pdt = new Date(new Date(b.released_utc).getTime() - 7 * 3600000);
+      var pdt = new Date(new Date(b.created_utc).getTime() - 7 * 3600000);
       releasePdt = pdt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     } catch(e) {}
-    var shortId   = b.batch_id ? b.batch_id.substring(9, 15) : b.batch_id;
-    var typeHtml  = (b.types || []).map(function(t) {
-      var cls   = t === 'PICK/PACK' ? 'tag-pick' : t === 'SINGLES_PICK' ? 'tag-singles' : 'tag-replen';
-      var label = t === 'PICK/PACK' ? 'Pick/Pack' : t === 'SINGLES_PICK' ? 'Singles' : 'Replen';
-      return '<span class="batch-type-tag ' + cls + '">' + label + '</span>';
-    }).join('');
-    var barColor = pct === 100 ? '#0E9E8E' : b.in_progress > 0 ? '#7F77DD' : 'var(--bar-bg)';
+    var statusColor = b.status === 'Complete' ? '#0E9E8E' : b.status === 'Work Started' ? '#7F77DD' : 'var(--text-hint)';
+    var statusBadge = '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:var(--surface2);color:' + statusColor + ';font-weight:500;">' + escH(b.status || '') + '</span>';
+    var barColor = pct === 100 ? '#0E9E8E' : b.in_progress_olpns > 0 ? '#7F77DD' : 'var(--bar-bg)';
     var workers  = (b.workers && b.workers.length)
       ? '<div class="batch-workers">Workers: <span>' + escH(b.workers.join(', ')) + '</span></div>' : '';
     return '<div class="batch-card">' +
       '<div class="batch-card-head"><div>' +
-        '<div class="batch-id">' + escH(shortId) + ' &middot; ' + typeHtml + '</div>' +
-        '<div class="batch-meta">Released ' + releasePdt + ' PDT</div>' +
+        '<div class="batch-id">' + escH(b.batch_id) + ' ' + statusBadge + '</div>' +
+        '<div class="batch-meta">Created ' + releasePdt + ' PDT &middot; ' + (b.total_orders || 0) + ' orders</div>' +
       '</div><div class="batch-pct">' + pct + '%</div></div>' +
       '<div class="batch-bar-wrap"><div class="batch-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
-      '<div class="batch-stats"><div>Total: <span>' + b.total + '</span></div><div>Done: <span>' + b.completed + '</span></div>' +
-        '<div>Active: <span>' + b.in_progress + '</span></div><div>Pending: <span>' + b.pending + '</span></div></div>' +
+      '<div class="batch-stats"><div>oLPNs: <span>' + (b.total_olpns || 0) + '</span></div><div>Done: <span>' + (b.completed_olpns || 0) + '</span></div>' +
+        '<div>Active: <span>' + (b.in_progress_olpns || 0) + '</span></div><div>Pending: <span>' + (b.pending_olpns || 0) + '</span></div></div>' +
       workers + '</div>';
   }
 
