@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Receiving Live -- DC499</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -88,18 +87,9 @@
   .off-roster-body::-webkit-scrollbar-track{background:transparent;}
   .off-roster-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 
-  /* Clickable associate rows */
-  .assoc-row{cursor:pointer;transition:background 0.15s;}
+  /* Associate rows */
+  .assoc-row{transition:background 0.15s;}
   .assoc-row:hover td{background:var(--surface2);}
-  .assoc-detail{display:none;}
-  .assoc-detail.open{display:table-row;}
-  .assoc-detail-inner{padding:12px;background:var(--surface2);border-radius:8px;margin:4px 0 8px;}
-  .assoc-detail-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
-  .assoc-chart-wrap{position:relative;height:160px;overflow-x:auto;overflow-y:hidden;border-radius:6px;}
-  .assoc-chart-inner{height:160px;}
-  .assoc-stats{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;}
-  .assoc-stat{font-size:11px;color:var(--text-muted);}
-  .assoc-stat span{color:var(--text);font-weight:500;}
 
   /* Disable/Enable button on on-roster rows */
   .disable-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);background:none;color:var(--text-hint);cursor:pointer;font-family:inherit;white-space:nowrap;}
@@ -275,7 +265,7 @@ var lastData        = null;
 var autoRefreshTimer = null;
 var countdownTimer   = null;
 var nextRefreshAt    = null;
-var assocCharts      = {};
+var assocCharts      = {}; // retained for future chart expansion
 
 // -- Theme --------------------------------------------------------------------
 function applyTheme(dark) {
@@ -448,130 +438,7 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function safeKey(name) {
-  return name.replace(/[^a-z0-9]/gi, '_');
-}
 
-// -- Associate chart ----------------------------------------------------------
-function drawAssocChart(canvasId, buckets, isDark) {
-  if (assocCharts[canvasId]) { assocCharts[canvasId].destroy(); delete assocCharts[canvasId]; }
-  var canvas = document.getElementById(canvasId);
-  if (!canvas || !buckets || !buckets.length) return;
-
-  var GAP_MINS = 10;
-  // Convert HH:mm bucket labels to total minutes for gap detection
-  function toMins(hhmm) {
-    var parts = hhmm.split(':');
-    var h = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
-    // 2nd shift crosses midnight; anything < 12:00 is next day
-    if (h < 12) h += 24;
-    return h * 60 + m;
-  }
-
-  // Sort buckets by time
-  var sorted = buckets.slice().sort(function(a, b) { return toMins(a.t) - toMins(b.t); });
-
-  var labels = [], data = [], pointColors = [];
-  var rawMins = sorted.map(function(b) { return toMins(b.t); });
-
-  // Detect gaps
-  var gapPairs = [];
-  for (var i = 1; i < rawMins.length; i++) {
-    var diff = rawMins[i] - rawMins[i-1];
-    if (diff > GAP_MINS) {
-      gapPairs.push({ from: rawMins[i-1], to: rawMins[i] });
-    }
-  }
-
-  sorted.forEach(function(b, i) {
-    // Label only on full or half hours
-    var h = parseInt(b.t.split(':')[0], 10), m = parseInt(b.t.split(':')[1], 10);
-    var hDisp = h > 12 ? h - 12 : (h === 0 ? 12 : h);
-    var period = h >= 12 && h < 24 ? 'PM' : 'AM';
-    labels.push((m === 0 || m === 30) ? hDisp + ':' + (m < 10 ? '0' : '') + m + ' ' + period : '');
-    data.push(b.n);
-    var rm = rawMins[i];
-    var inGap = gapPairs.some(function(g) { return rm === g.from || rm === g.to; });
-    pointColors.push(inGap ? '#C0392B' : 'var(--accent)');
-  });
-
-  var gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
-  var tickColor = isDark ? '#777' : '#888';
-
-  var canvasWidth = Math.max(400, sorted.length * 16);
-  canvas.style.width = canvasWidth + 'px';
-  canvas.width = canvasWidth;
-  canvas.style.height = '160px';
-  canvas.height = 160;
-
-  assocCharts[canvasId] = new Chart(canvas.getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: data,
-        _rawMins: rawMins,
-        _gapPairs: gapPairs,
-        segment: {
-          borderColor: function(ctx) {
-            var aM = rawMins[ctx.p0DataIndex], bM = rawMins[ctx.p1DataIndex];
-            var inG = gapPairs.some(function(g) { return aM === g.from && bM === g.to; });
-            return inG ? '#C0392B' : '#0E9E8E';
-          }
-        },
-        backgroundColor: 'rgba(14,158,142,0.08)',
-        borderWidth: 2,
-        pointRadius: function(ctx) { return pointColors[ctx.dataIndex] === '#C0392B' ? 5 : 2; },
-        pointBackgroundColor: pointColors,
-        fill: true,
-        tension: 0.2,
-        spanGaps: false
-      }]
-    },
-    options: {
-      responsive: false,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              var idx = ctx.dataIndex;
-              var rm = rawMins[idx];
-              var gap = gapPairs.find(function(g) { return rm === g.to; });
-              if (gap) return ['Gap before: ' + (gap.to - gap.from) + ' min', 'LPNs: ' + ctx.parsed.y];
-              return 'LPNs: ' + ctx.parsed.y;
-            }
-          }
-        }
-      },
-      scales: {
-        x: { ticks: {color:tickColor, font:{size:9}, maxRotation:45, autoSkip:false}, grid:{color:gridColor}, border:{display:false} },
-        y: { ticks: {color:tickColor, font:{size:9}, precision:0}, grid:{color:gridColor}, border:{display:false}, beginAtZero:true }
-      }
-    }
-  });
-}
-
-function toggleAssocDetail(empKey) {
-  var detailRow = document.getElementById('assoc-detail-' + empKey);
-  if (!detailRow) return;
-  var isOpen = detailRow.classList.contains('open');
-  // Close all open details
-  document.querySelectorAll('.assoc-detail.open').forEach(function(el) {
-    el.classList.remove('open');
-    var cid = el.getAttribute('data-canvas');
-    if (cid && assocCharts[cid]) { assocCharts[cid].destroy(); delete assocCharts[cid]; }
-  });
-  if (!isOpen) {
-    detailRow.classList.add('open');
-    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    var buckets = detailRow.getAttribute('data-buckets');
-    try { buckets = JSON.parse(buckets); } catch(e) { buckets = []; }
-    var canvasId = 'assoc-chart-' + empKey;
-    setTimeout(function() { drawAssocChart(canvasId, buckets, isDark); }, 50);
-  }
-}
 
 // -- Render -------------------------------------------------------------------
 function renderResults(data) {
@@ -611,37 +478,22 @@ function renderResults(data) {
   document.getElementById('m-assoc').textContent = onRoster.length;
   document.getElementById('ft-total').textContent = grandTotal.toLocaleString();
 
-  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   var tbOn = document.getElementById('tb-on-roster');
   tbOn.innerHTML = '';
-
-  // Destroy any open charts before re-render
-  Object.keys(assocCharts).forEach(function(cid) {
-    assocCharts[cid].destroy(); delete assocCharts[cid];
-  });
 
   if (onRoster.length) {
     onRoster.forEach(function(a, i) {
       var trophy = (i === 0 && onRoster.length > 1) ? ' &#x1F3C6;' : '';
       var pph    = calcPPH(a.lpns, a.first_scan, a.last_scan);
       var pct    = maxLpns > 0 ? Math.round((a.lpns / maxLpns) * 100) : 0;
-      var empKey = safeKey(a.name);
       var nameEsc = escHtml(a.name);
-      var bucketsJson = escHtml(JSON.stringify(a.buckets || []));
 
-      // Find enabled state from full roster (not just activeSet) for toggle button label
       var rosterEntry = roster.find(function(m) { return m.name === a.name; });
       var isEnabled   = rosterEntry ? rosterEntry.enabled : true;
       var btnLabel    = isEnabled ? 'Disable' : 'Enable';
 
       var tr = document.createElement('tr');
       tr.className = 'assoc-row';
-      tr.setAttribute('data-empkey', empKey);
-      tr.addEventListener('click', function(e) {
-        // Don't expand if the click was on the Disable/Enable button
-        if (e.target.classList.contains('disable-btn')) return;
-        toggleAssocDetail(empKey);
-      });
       tr.innerHTML =
         '<td>' + nameEsc + trophy + '</td>' +
         '<td class="r" style="font-weight:500;">' + a.lpns.toLocaleString() + '</td>' +
@@ -653,29 +505,6 @@ function renderResults(data) {
           '<button class="disable-btn" data-name="' + nameEsc + '" onclick="toggleMemberByName(this.dataset.name)">' + btnLabel + '</button>' +
         '</div></td>';
       tbOn.appendChild(tr);
-
-      // Expandable detail row
-      var detailTr = document.createElement('tr');
-      detailTr.className = 'assoc-detail';
-      detailTr.id = 'assoc-detail-' + empKey;
-      detailTr.setAttribute('data-canvas', 'assoc-chart-' + empKey);
-      detailTr.setAttribute('data-buckets', bucketsJson);
-      detailTr.innerHTML =
-        '<td colspan="6" style="padding:0 4px 8px;">' +
-          '<div class="assoc-detail-inner">' +
-            '<div class="assoc-detail-name">' + nameEsc + ' &mdash; 5-min intervals' +
-              '<span style="font-size:10px;color:var(--text-hint);">click row to collapse</span>' +
-            '</div>' +
-            '<div class="assoc-chart-wrap"><div class="assoc-chart-inner"><canvas id="assoc-chart-' + empKey + '"></canvas></div></div>' +
-            '<div class="assoc-stats" style="margin-top:8px;">' +
-              '<div class="assoc-stat">LPNs: <span>' + a.lpns.toLocaleString() + '</span></div>' +
-              '<div class="assoc-stat">First: <span>' + escHtml(a.first_scan || '--') + '</span></div>' +
-              '<div class="assoc-stat">Last: <span>' + escHtml(a.last_scan || '--') + '</span></div>' +
-              (pph !== null ? '<div class="assoc-stat">LPNs/hr: <span>' + pph + '</span></div>' : '') +
-            '</div>' +
-          '</div>' +
-        '</td>';
-      tbOn.appendChild(detailTr);
     });
   } else {
     var tr = document.createElement('tr');

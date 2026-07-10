@@ -7,6 +7,9 @@
     Requires: claude CLI on PATH with mawm-data-http-prod MCP configured.
     Run from any directory -- paths are resolved relative to this script.
 #>
+param(
+    [switch]$RunOnce
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -21,17 +24,18 @@ $INTERVAL    = 60   # minutes
 # All 2nd-shift associates are written to the JSON.
 
 $SQL = @"
-SELECT CREATED_BY,
-       TIME_FORMAT(FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(CREATED_TIMESTAMP) / 300) * 300), '%H:%i') AS time_bucket,
-       COUNT(DISTINCT LPN_ID) AS lpns
-FROM default_receiving.RCV_LPN
+SELECT
+    CREATED_BY,
+    COUNT(DISTINCT LPN_ID) AS lpns,
+    MIN(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS first_scan,
+    MAX(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS last_scan
+FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '$FACILITY'
-  AND DATE(CREATED_TIMESTAMP) = CURDATE()
+  AND DATE(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) = DATE(CONVERT_TZ(NOW(), '+00:00', '-07:00'))
   AND CREATED_BY != 'system-msg-user@$FACILITY'
-  AND TIME(CREATED_TIMESTAMP) >= '12:00:00'
-  AND PROCESS = '/lpn/receive'
-GROUP BY CREATED_BY, time_bucket
-ORDER BY CREATED_BY, time_bucket
+  AND TIME(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) >= '12:00:00'
+GROUP BY CREATED_BY
+ORDER BY lpns DESC
 "@
 
 # -- Helpers ------------------------------------------------------------------
@@ -88,6 +92,19 @@ Write-Host 'receiving_live_agent started -- polling every 60 min. Press Ctrl+C t
 
 while ($true) {
     $cycleStart = Get-Date
+
+    # Time-window guard: only run 13:59 – 23:59 PDT (UTC-7)
+    $nowPdt      = (Get-Date).ToUniversalTime().AddHours(-7)
+    $windowStart = [datetime]::new($nowPdt.Year, $nowPdt.Month, $nowPdt.Day, 13, 59, 0)
+    $windowEnd   = [datetime]::new($nowPdt.Year, $nowPdt.Month, $nowPdt.Day, 23, 59, 0)
+    if (-not $RunOnce -and ($nowPdt -lt $windowStart -or $nowPdt -gt $windowEnd)) {
+        $sleepTarget = if ($nowPdt -lt $windowStart) { $windowStart } else { $windowStart.AddDays(1) }
+        $sleepSecs   = [Math]::Max(60, [int]($sleepTarget - $nowPdt).TotalSeconds)
+        Write-Host ("  Outside shift window. Sleeping until " + $sleepTarget.ToString('HH:mm') + " PDT (" + [int]($sleepSecs/60) + " min).")
+        Start-Sleep -Seconds $sleepSecs
+        continue
+    }
+
     Write-Host ("`n[" + $cycleStart.ToString('HH:mm:ss') + "] Starting cycle...")
 
     try {
@@ -99,30 +116,15 @@ while ($true) {
             throw "Query failed: $($response.error)"
         }
 
-        # 2. Aggregate bucket rows into per-associate summaries
-        #    Each row is (CREATED_BY, time_bucket HH:mm, lpns).
-        #    Build a hashtable keyed by name -> {lpns, first_bucket, last_bucket, buckets:[{t,n}]}
-        $byAssoc = [ordered]@{}
+        # 2. Map rows into per-associate summaries (SQL already groups and sorts)
+        $associates = @()
         foreach ($row in $response.rows) {
             $name = ($row.CREATED_BY.ToLower() -split '@')[0]
-            if (-not $byAssoc.Contains($name)) {
-                $byAssoc[$name] = @{ lpns = 0; first_bucket = $row.time_bucket; last_bucket = $row.time_bucket; buckets = [System.Collections.Generic.List[object]]::new() }
-            }
-            $byAssoc[$name].lpns        += [int]$row.lpns
-            $byAssoc[$name].last_bucket  = $row.time_bucket
-            $byAssoc[$name].buckets.Add([ordered]@{ t = $row.time_bucket; n = [int]$row.lpns })
-        }
-
-        # Sort by total lpns desc
-        $associates = @()
-        foreach ($name in ($byAssoc.Keys | Sort-Object { -$byAssoc[$_].lpns })) {
-            $a = $byAssoc[$name]
             $associates += [ordered]@{
                 name       = $name
-                lpns       = $a.lpns
-                first_scan = $a.first_bucket
-                last_scan  = $a.last_bucket
-                buckets    = $a.buckets.ToArray()
+                lpns       = [int]$row.lpns
+                first_scan = Format-HHmm $row.first_scan
+                last_scan  = Format-HHmm $row.last_scan
             }
         }
 
@@ -143,9 +145,12 @@ while ($true) {
         Push-Location $REPO_DIR
         try {
             $timestamp = $cycleStart.ToString('yyyy-MM-dd HH:mm')
+            git stash
+            git pull --rebase origin main
+            git stash pop
             git add receiving_live.json
             git commit -m "Live receiving update -- $timestamp"
-            git push
+            git push origin main
             Write-Host '  Committed and pushed.'
         }
         catch {
@@ -158,6 +163,8 @@ while ($true) {
     catch {
         Write-Warning "  Cycle error: $_"
     }
+
+    if ($RunOnce) { break }
 
     # 5. Sleep until next cycle
     $elapsed     = (Get-Date) - $cycleStart
