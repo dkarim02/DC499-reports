@@ -91,52 +91,6 @@
   .assoc-row{transition:background 0.15s;}
   .assoc-row:hover td{background:var(--surface2);}
 
-  /* Batch tab */
-  .tab.active-batch{color:#7F77DD;border-bottom-color:#7F77DD;font-weight:500;}
-  .batch-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem;}
-  .batch-overall-bar{height:8px;border-radius:4px;background:var(--bar-bg);overflow:hidden;margin-bottom:1.25rem;}
-  .batch-overall-fill{height:100%;border-radius:4px;background:#7F77DD;transition:width 0.4s;}
-  .batch-card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:8px;}
-  .batch-card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
-  .batch-id{font-size:13px;font-weight:500;color:var(--text);font-family:monospace;}
-  .batch-meta{font-size:11px;color:var(--text-hint);margin-top:2px;}
-  .batch-pct{font-size:20px;font-weight:600;color:#7F77DD;white-space:nowrap;margin-left:12px;}
-  .batch-bar-wrap{background:var(--bar-bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px;}
-  .batch-bar-fill{height:100%;border-radius:4px;transition:width 0.4s;}
-  .batch-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);}
-  .batch-stats span{color:var(--text);font-weight:500;}
-  .batch-type-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:500;margin-right:4px;margin-bottom:4px;}
-  .tag-pick{background:#E6F7F5;color:#0E9E8E;}
-  .tag-singles{background:#FFF0E6;color:#C05800;}
-  .tag-replen{background:#EEEDFE;color:#534AB7;}
-  [data-theme="dark"] .tag-pick{background:#053D38;color:#5BC4B8;}
-  [data-theme="dark"] .tag-singles{background:#3D1E00;color:#FFA85C;}
-  [data-theme="dark"] .tag-replen{background:#3C3489;color:#CECBF6;}
-  .batch-workers{font-size:11px;color:var(--text-hint);margin-top:6px;}
-  .batch-workers span{color:var(--text-muted);}
-  .batch-section-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);margin:1rem 0 6px;}
-  .batch-card{cursor:pointer;}
-  .batch-card:hover{border-color:var(--accent);}
-  .batch-expand-btn{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-hint);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border-light);}
-  .batch-expand-chevron{font-size:9px;transition:transform 0.2s;}
-  .batch-detail{display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border-mid);}
-  .batch-detail.open{display:block;}
-  .detail-section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-hint);margin:8px 0 5px;}
-  .detail-section-label:first-child{margin-top:0;}
-  .detail-worker-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border-light);font-size:12px;}
-  .detail-worker-row:last-child{border-bottom:none;}
-  .detail-worker-name{min-width:140px;font-weight:500;color:var(--text);}
-  .detail-worker-locs{flex:1;color:var(--text-muted);line-height:1.6;}
-  .detail-loc-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;margin:1px 2px 1px 0;background:var(--surface2);color:var(--text-muted);font-family:monospace;}
-  .detail-loc-tag.putwall{background:#EEEDFE;color:#534AB7;}
-  .detail-loc-tag.workbench{background:#E6F7F5;color:#085C54;}
-  [data-theme="dark"] .detail-loc-tag.putwall{background:#3C3489;color:#CECBF6;}
-  [data-theme="dark"] .detail-loc-tag.workbench{background:#053D38;color:#5BC4B8;}
-  .detail-item-grid{display:flex;flex-wrap:wrap;gap:4px;max-height:120px;overflow-y:auto;}
-  .detail-item-grid::-webkit-scrollbar{height:4px;width:4px;}
-  .detail-item-grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-  .detail-item-chip{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--surface2);color:var(--text-muted);font-family:monospace;white-space:nowrap;}
-
   /* Disable/Enable button on on-roster rows */
   .disable-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);background:none;color:var(--text-hint);cursor:pointer;font-family:inherit;white-space:nowrap;}
   .disable-btn:hover{background:var(--surface2);}
@@ -199,7 +153,6 @@
   <div class="tabs">
     <div class="tabs-left">
       <button class="tab active-recv" id="tab-live" onclick="switchTab('live')">Live Leaderboard</button>
-      <button class="tab" id="tab-batches" onclick="switchTab('batches')">Batches</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -272,35 +225,6 @@
     </div>
   </div>
 
-  <!-- BATCHES TAB -->
-  <div class="tab-panel" id="panel-batches">
-    <div class="stale-banner" id="batch-stale-banner"></div>
-    <div class="header-row">
-      <div>
-        <div id="batch-run-time" class="run-time">Loading...</div>
-      </div>
-      <div class="header-btns">
-        <button class="refresh-btn-recv" onclick="fetchBatchData()">&#x21BA; Refresh Batches</button>
-      </div>
-    </div>
-
-    <div class="batch-metrics" id="batch-metrics" style="display:none;">
-      <div class="metric"><div class="metric-label">Overall</div><div class="metric-value" id="bm-pct">--</div><div class="metric-sub">completion</div></div>
-      <div class="metric"><div class="metric-label">Total oLPNs</div><div class="metric-value" id="bm-total">--</div></div>
-      <div class="metric"><div class="metric-label">Active Batches</div><div class="metric-value" id="bm-active">--</div></div>
-      <div class="metric"><div class="metric-label">All Batches</div><div class="metric-value" id="bm-count">--</div></div>
-    </div>
-    <div class="batch-overall-bar" id="batch-overall-bar" style="display:none;">
-      <div class="batch-overall-fill" id="batch-overall-fill" style="width:0%"></div>
-    </div>
-
-    <div id="batch-list"></div>
-    <div class="empty-state" id="batch-empty" style="display:none;">
-      <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
-      No batch data yet &mdash; agent runs from 2:00&ndash;midnight PDT.
-    </div>
-  </div>
-
   <!-- SETTINGS TAB -->
   <div class="tab-panel" id="panel-settings">
     <div class="card">
@@ -338,7 +262,6 @@ var DEFAULT_ROSTER = [
 ];
 
 var lastData        = null;
-var lastBatchData   = null;
 var autoRefreshTimer = null;
 var countdownTimer   = null;
 var nextRefreshAt    = null;
@@ -360,14 +283,11 @@ function toggleDark() {
 
 // -- Tabs ---------------------------------------------------------------------
 function switchTab(tab) {
-  document.getElementById('tab-live').className     = 'tab'          + (tab === 'live'     ? ' active-recv'  : '');
-  document.getElementById('tab-batches').className  = 'tab'          + (tab === 'batches'  ? ' active-batch' : '');
+  document.getElementById('tab-live').className     = 'tab'          + (tab === 'live'     ? ' active-recv'     : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
   document.getElementById('panel-live').className     = 'tab-panel' + (tab === 'live'     ? ' active' : '');
-  document.getElementById('panel-batches').className  = 'tab-panel' + (tab === 'batches'  ? ' active' : '');
   document.getElementById('panel-settings').className = 'tab-panel' + (tab === 'settings' ? ' active' : '');
   if (tab === 'settings') renderRoster();
-  if (tab === 'batches' && !lastBatchData) fetchBatchData();
 }
 
 // -- Roster -------------------------------------------------------------------
@@ -651,186 +571,6 @@ function copyTable() {
       btn.textContent = '✓ Copied!'; setTimeout(function() { btn.textContent = orig; }, 2000);
     }
   } catch(e) { alert('Copy failed -- try selecting the table manually.'); }
-}
-
-// -- Batch tab ----------------------------------------------------------------
-function fetchBatchData() {
-  var rtEl = document.getElementById('batch-run-time');
-  if (rtEl) rtEl.textContent = 'Loading...';
-  fetch('batch_live.json?t=' + Date.now())
-    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(data) { lastBatchData = data; renderBatches(data); })
-    .catch(function(err) {
-      if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
-      document.getElementById('batch-empty').style.display = 'block';
-    });
-}
-
-function renderBatches(data) {
-  var rtEl     = document.getElementById('batch-run-time');
-  var staleEl  = document.getElementById('batch-stale-banner');
-  var listEl   = document.getElementById('batch-list');
-  var emptyEl  = document.getElementById('batch-empty');
-  var metricsEl = document.getElementById('batch-metrics');
-  var barWrap  = document.getElementById('batch-overall-bar');
-  var barFill  = document.getElementById('batch-overall-fill');
-
-  if (isStale(data.generated)) {
-    var mins = Math.round((Date.now() - new Date(data.generated).getTime()) / 60000);
-    staleEl.textContent = '⚠ Data is ' + mins + ' min old — the batch agent may not be running';
-    staleEl.style.display = 'block';
-  } else {
-    staleEl.style.display = 'none';
-  }
-
-  try {
-    var d = new Date(data.generated);
-    rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-      + ' · Facility ' + (data.facility || '499') + ' · ' + (data.shift || '2nd') + ' Shift';
-  } catch(e) {}
-
-  var s = data.summary || {};
-  document.getElementById('bm-pct').textContent    = (s.completion_pct || 0) + '%';
-  document.getElementById('bm-total').textContent  = (s.total_olpns    || 0).toLocaleString();
-  document.getElementById('bm-active').textContent = (s.active_batches || 0);
-  document.getElementById('bm-count').textContent  = (s.total_batches  || 0);
-  metricsEl.style.display = 'grid';
-  barWrap.style.display   = 'block';
-  barFill.style.width     = (s.completion_pct || 0) + '%';
-
-  var batches = data.batches || [];
-  listEl.innerHTML = '';
-
-  if (!batches.length) { emptyEl.style.display = 'block'; return; }
-  emptyEl.style.display = 'none';
-
-  // Split active vs done using new status field
-  var active = batches.filter(function(b) { return b.status !== 'Complete'; });
-  var done   = batches.filter(function(b) { return b.status === 'Complete'; });
-
-  function buildDetailHtml(b) {
-    var d = b.detail || {};
-    var inProg  = d.in_progress || [];
-    var pending = d.pending     || [];
-    var html = '';
-
-    if (inProg.length) {
-      html += '<div class="detail-section-label">In Progress &mdash; Workers</div>';
-      inProg.forEach(function(w) {
-        var locHtml = '';
-        (w.workbenches || []).forEach(function(l) {
-          locHtml += '<span class="detail-loc-tag workbench">' + escHtml(l) + '</span>';
-        });
-        if ((w.putwalls || []).length) {
-          locHtml += '<span class="detail-loc-tag putwall">putwall &times;' + w.putwalls.length + '</span>';
-        }
-        if (!locHtml) locHtml = '<span style="color:var(--text-hint);font-size:11px;">no location</span>';
-        html += '<div class="detail-worker-row">' +
-          '<div class="detail-worker-name">' + escHtml(w.worker || 'unassigned') + '</div>' +
-          '<div class="detail-worker-locs">' +
-            '<span style="color:var(--text-hint);font-size:11px;margin-right:6px;">' + (w.task_count || 0) + ' tasks &middot; </span>' +
-            locHtml +
-          '</div>' +
-        '</div>';
-      });
-    }
-
-    if (pending.length) {
-      var pendingRow = pending[0];
-      var items = pendingRow.items || [];
-      html += '<div class="detail-section-label" style="margin-top:' + (inProg.length ? '10px' : '0') + ';">Pending &mdash; ' + (pendingRow.task_count || 0) + ' unassigned tasks</div>';
-      if (items.length) {
-        html += '<div class="detail-item-grid">';
-        items.forEach(function(item) {
-          html += '<span class="detail-item-chip">' + escHtml(item) + '</span>';
-        });
-        html += '</div>';
-      }
-    }
-
-    return html || '<div style="font-size:12px;color:var(--text-hint);padding:4px 0;">No active tasks</div>';
-  }
-
-  function batchCard(b, idx) {
-    var pct      = b.pct || 0;
-    var releasePdt = '';
-    try {
-      var utc = new Date(b.created_utc);
-      var pdt = new Date(utc.getTime() - 7 * 3600000);
-      releasePdt = pdt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    } catch(e) {}
-
-    var statusColor = b.status === 'Complete' ? 'var(--accent)' : b.status === 'Work Started' ? '#7F77DD' : 'var(--text-hint)';
-    var statusBadge = '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:var(--surface2);color:' + statusColor + ';font-weight:500;">' + escHtml(b.status || '') + '</span>';
-    var barColor = pct === 100 ? 'var(--accent)' : (b.in_progress_olpns || 0) > 0 ? '#7F77DD' : 'var(--bar-bg)';
-    var cardId   = 'bcard-' + idx;
-    var detailId = 'bdetail-' + idx;
-    var chevId   = 'bchev-' + idx;
-
-    var hasDetail = b.detail && ((b.detail.in_progress && b.detail.in_progress.length) || (b.detail.pending && b.detail.pending.length));
-    var expandBtn = hasDetail
-      ? '<div class="batch-expand-btn" onclick="toggleBatchDetail(\'' + detailId + '\',\'' + chevId + '\',event)">' +
-          '<span class="batch-expand-chevron" id="' + chevId + '">&#9654;</span>' +
-          '<span>Show task detail</span>' +
-        '</div>'
-      : '';
-
-    var detailHtml = hasDetail
-      ? '<div class="batch-detail" id="' + detailId + '">' + buildDetailHtml(b) + '</div>'
-      : '';
-
-    return '<div class="batch-card" id="' + cardId + '">' +
-      '<div class="batch-card-head">' +
-        '<div>' +
-          '<div class="batch-id">' + escHtml(b.batch_id) + ' ' + statusBadge + '</div>' +
-          '<div class="batch-meta">Created ' + releasePdt + ' PDT &middot; ' + (b.total_orders || 0) + ' orders</div>' +
-        '</div>' +
-        '<div class="batch-pct">' + pct + '%</div>' +
-      '</div>' +
-      '<div class="batch-bar-wrap"><div class="batch-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
-      '<div class="batch-stats">' +
-        '<div>oLPNs: <span>' + (b.total_olpns || 0) + '</span></div>' +
-        '<div>Done: <span>' + (b.completed_olpns || 0) + '</span></div>' +
-        '<div>Active: <span>' + (b.in_progress_olpns || 0) + '</span></div>' +
-        '<div>Pending: <span>' + (b.pending_olpns || 0) + '</span></div>' +
-      '</div>' +
-      expandBtn +
-      detailHtml +
-    '</div>';
-  }
-
-  var cardIdx = 0;
-  if (active.length) {
-    var lbl = document.createElement('div');
-    lbl.className = 'batch-section-label';
-    lbl.textContent = 'Active (' + active.length + ')';
-    listEl.appendChild(lbl);
-    active.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b, cardIdx++)); });
-  }
-
-  if (done.length) {
-    var lbl2 = document.createElement('div');
-    lbl2.className = 'batch-section-label';
-    lbl2.style.marginTop = active.length ? '1.25rem' : '0';
-    lbl2.textContent = 'Completed (' + done.length + ')';
-    listEl.appendChild(lbl2);
-    done.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b, cardIdx++)); });
-  }
-}
-
-function toggleBatchDetail(detailId, chevId, event) {
-  if (event) event.stopPropagation();
-  var detail = document.getElementById(detailId);
-  var chev   = document.getElementById(chevId);
-  if (!detail) return;
-  var isOpen = detail.classList.contains('open');
-  detail.classList.toggle('open', !isOpen);
-  if (chev) chev.style.transform = isOpen ? '' : 'rotate(90deg)';
-  var btn = chev && chev.parentElement;
-  if (btn) {
-    var label = btn.querySelector('span:last-child');
-    if (label) label.textContent = isOpen ? 'Show task detail' : 'Hide task detail';
-  }
 }
 
 // -- Init ---------------------------------------------------------------------

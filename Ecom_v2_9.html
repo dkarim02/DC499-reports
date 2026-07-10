@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Report Processor v2.7</title>
+<title>Ecom Report Processor v2.9</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -157,19 +157,6 @@
   .roster-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
   .roster-title { font-size: 15px; font-weight: 500; color: var(--text); }
 
-  /* ── GOALS ── */
-  .goals-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
-  .goals-item { background: var(--surface2); border-radius: 8px; padding: 10px 14px; }
-  .goals-dept { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
-  .goals-val { font-size: 22px; font-weight: 500; color: var(--text); }
-  .goals-drop-zone { border: 1.5px dashed var(--border); border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; font-size: 13px; color: var(--text-hint); background: var(--surface2); transition: background 0.15s; }
-  .goals-drop-zone:hover, .goals-drop-zone.dragover { background: var(--drop-hover); }
-  .goals-status { font-size: 12px; color: var(--text-hint); min-height: 16px; margin-top: 6px; }
-  .goals-manual-input { width: 100%; margin-top: 4px; font-family: inherit; font-size: 14px; padding: 6px 10px; border: 0.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); outline: none; }
-  .goals-manual-input:focus { border-color: #7F77DD; }
-  .goals-divider { margin-top: 0.75rem; border-top: 0.5px solid var(--border); padding-top: 0.75rem; }
-  .goals-manual-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-
   /* ── FOOTER ── */
   .nordstrom-tag { font-size: 11px; color: var(--text-hint); text-align: center; margin-top: 2rem; }
   .roster-scroll { max-height: 300px; overflow-y: auto; border: 0.5px solid var(--border); border-radius: 8px; margin-bottom: 0; }
@@ -183,56 +170,7 @@
   [data-theme="light"] .stale-banner, body:not([data-theme="dark"]) .stale-banner { background:#FFF3CD; color:#7A4F00; }
 
 
-  .pph-calc { background: var(--surface2); border-radius: 10px; padding: 14px; margin-top: 1rem; }
-  .pph-calc-title { font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
-  .pph-calc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-  .pph-calc-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px; }
-  .pph-calc-input { width: 100%; font-family: inherit; font-size: 14px; padding: 6px 10px; border: 0.5px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); outline: none; }
-  .pph-calc-input:focus { border-color: #7F77DD; }
-  .pph-calc-btn { width: 100%; font-family: inherit; font-size: 13px; padding: 8px; border: 0.5px solid #7F77DD; border-radius: 8px; background: #EEEDFE; cursor: pointer; color: #534AB7; font-weight: 500; margin-top: 4px; }
-  .pph-calc-btn:hover { background: #CECBF6; }
-  [data-theme="dark"] .pph-calc-btn { background: #3C3489; color: #CECBF6; border-color: #7F77DD; }
-  [data-theme="dark"] .pph-calc-btn:hover { background: #534AB7; color: #fff; }
-  .pph-calc-result { font-size: 12px; color: var(--text-hint); margin-top: 6px; min-height: 16px; text-align: center; }
-  .pph-calc-result.success { color: #0F6E56; font-weight: 500; }
-  [data-theme="dark"] .pph-calc-result.success { color: #9FE1CB; }
-
-  .tab.active-batch { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
   .tab.active-day { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
-  .batch-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem;}
-  .batch-overall-bar{height:8px;border-radius:4px;background:var(--bar-bg);overflow:hidden;margin-bottom:1.25rem;}
-  .batch-overall-fill{height:100%;border-radius:4px;background:#7F77DD;transition:width 0.4s;}
-  .batch-card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:8px;}
-  .batch-card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
-  .batch-id{font-size:13px;font-weight:500;color:var(--text);font-family:monospace;}
-  .batch-meta{font-size:11px;color:var(--text-hint);margin-top:2px;}
-  .batch-pct{font-size:20px;font-weight:600;color:#7F77DD;white-space:nowrap;margin-left:12px;}
-  .batch-bar-wrap{background:var(--bar-bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px;}
-  .batch-bar-fill{height:100%;border-radius:4px;transition:width 0.4s;}
-  .batch-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);}
-  .batch-stats span{color:var(--text);font-weight:500;}
-  .batch-type-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:500;margin-right:4px;margin-bottom:4px;}
-  .tag-pick{background:#E6F7F5;color:#0E9E8E;} .tag-singles{background:#FFF0E6;color:#C05800;} .tag-replen{background:#EEEDFE;color:#534AB7;}
-  [data-theme="dark"] .tag-pick{background:#053D38;color:#5BC4B8;} [data-theme="dark"] .tag-singles{background:#3D1E00;color:#FFA85C;} [data-theme="dark"] .tag-replen{background:#3C3489;color:#CECBF6;}
-  .batch-workers{font-size:11px;color:var(--text-hint);margin-top:6px;} .batch-workers span{color:var(--text-muted);}
-  .batch-section-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);margin:1rem 0 6px;}
-  .batch-card{cursor:pointer;} .batch-card:hover{border-color:var(--accent);}
-  .batch-expand-btn{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-hint);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border-light);}
-  .batch-expand-chevron{font-size:9px;transition:transform 0.2s;}
-  .batch-detail{display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border-mid);}
-  .batch-detail.open{display:block;}
-  .detail-section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-hint);margin:8px 0 5px;}
-  .detail-section-label:first-child{margin-top:0;}
-  .detail-worker-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border-light);font-size:12px;}
-  .detail-worker-row:last-child{border-bottom:none;}
-  .detail-worker-name{min-width:140px;font-weight:500;color:var(--text);}
-  .detail-worker-locs{flex:1;color:var(--text-muted);line-height:1.6;}
-  .detail-loc-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;margin:1px 2px 1px 0;background:var(--surface2);color:var(--text-muted);font-family:monospace;}
-  .detail-loc-tag.putwall{background:#EEEDFE;color:#534AB7;} .detail-loc-tag.workbench{background:#E6F7F5;color:#085C54;}
-  [data-theme="dark"] .detail-loc-tag.putwall{background:#3C3489;color:#CECBF6;} [data-theme="dark"] .detail-loc-tag.workbench{background:#053D38;color:#5BC4B8;}
-  .detail-item-grid{display:flex;flex-wrap:wrap;gap:4px;max-height:120px;overflow-y:auto;}
-  .detail-item-grid::-webkit-scrollbar{height:4px;width:4px;} .detail-item-grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-  .detail-item-chip{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--surface2);color:var(--text-muted);font-family:monospace;white-space:nowrap;}
   .day-drop-zone { border: 1.5px dashed #7F77DD; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: background 0.15s; background: var(--surface); margin-bottom: 1rem; }
   .day-drop-zone:hover, .day-drop-zone.dragover { background: var(--drop-hover); }
   .day-drop-zone .icon { font-size: 28px; margin-bottom: 8px; color: #7F77DD; }
@@ -321,6 +259,27 @@
   .full-side-disable-btn:hover { background:var(--surface2); }
   .full-layout-with-panel { display:grid; grid-template-columns:1fr 280px; gap:14px; align-items:start; }
 
+  /* ── PPH COLLAPSIBLE ── */
+  .pph-toggle { display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:8px 0 6px; border-top:0.5px solid var(--border); margin-top:10px; user-select:none; }
+  .pph-toggle-label { font-size:11px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; }
+  .pph-toggle-arrow { font-size:11px; color:var(--text-hint); transition:transform 0.2s; }
+  .pph-toggle-arrow.open { transform:rotate(180deg); }
+  .pph-body { display:none; padding-top:8px; }
+  .pph-body.open { display:block; }
+  .pph-input { width:100%; font-family:inherit; font-size:13px; padding:5px 8px; border:0.5px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); outline:none; text-align:right; }
+  .pph-input:focus { border-color:#185FA5; }
+
+  /* ── HEADCOUNT STEPPER ── */
+  .hc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .hc-item { display:flex; flex-direction:column; gap:4px; }
+  .hc-label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; }
+  .hc-stepper { display:flex; align-items:center; gap:0; border:0.5px solid var(--border); border-radius:8px; overflow:hidden; background:var(--surface); }
+  .hc-btn { font-family:inherit; font-size:16px; font-weight:400; width:32px; height:34px; border:none; background:none; color:var(--text-muted); cursor:pointer; line-height:1; flex-shrink:0; }
+  .hc-btn:hover { background:var(--surface2); color:var(--text); }
+  .hc-input { flex:1; font-family:inherit; font-size:14px; font-weight:500; text-align:center; border:none; background:none; color:var(--text); outline:none; width:0; min-width:0; padding:0; }
+  .hc-input::-webkit-inner-spin-button, .hc-input::-webkit-outer-spin-button { -webkit-appearance:none; }
+  .hc-detected { font-size:11px; color:var(--text-hint); margin-top:2px; }
+
 </style>
 </head>
 <body>
@@ -343,7 +302,6 @@
   <div class="tabs">
     <div class="tabs-left">
       <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
-      <button class="tab" id="tab-batches" onclick="switchTab('batches')">&#x1F4E6; Batches</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -365,27 +323,6 @@
   </div>
 
   <!-- SETTINGS TAB -->
-  <!-- BATCHES TAB -->
-  <div class="tab-panel" id="panel-batches">
-    <div class="stale-banner" id="batch-stale-banner" style="display:none;background:#5C3A00;color:#FFD77A;font-size:12px;padding:8px 14px;border-radius:8px;margin-bottom:1rem;text-align:center;"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <div id="batch-run-time" style="font-size:12px;color:var(--text-hint);">Loading...</div>
-      <button class="btn-secondary" onclick="fetchBatchData()" style="font-size:13px;padding:6px 14px;border:0.5px solid #7F77DD;border-radius:6px;background:#EEEDFE;cursor:pointer;color:#534AB7;font-weight:500;font-family:inherit;">&#x21BA; Refresh Batches</button>
-    </div>
-    <div class="batch-metrics" id="batch-metrics" style="display:none;">
-      <div class="metric"><div class="metric-label">Overall</div><div class="metric-value" id="bm-pct">--</div><div class="metric-sub">completion</div></div>
-      <div class="metric"><div class="metric-label">Total oLPNs</div><div class="metric-value" id="bm-total">--</div></div>
-      <div class="metric"><div class="metric-label">Active Batches</div><div class="metric-value" id="bm-active">--</div></div>
-      <div class="metric"><div class="metric-label">All Batches</div><div class="metric-value" id="bm-count">--</div></div>
-    </div>
-    <div class="batch-overall-bar" id="batch-overall-bar" style="display:none;"><div class="batch-overall-fill" id="batch-overall-fill" style="width:0%"></div></div>
-    <div id="batch-list"></div>
-    <div id="batch-empty" style="display:none;text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;">
-      <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
-      No batch data yet &mdash; agent runs from 2:00&ndash;midnight PDT.
-    </div>
-  </div>
-
   <div class="tab-panel" id="panel-settings">
 
     <!-- Shift selector -->
@@ -414,55 +351,32 @@
       <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
     </div>
 
-    <!-- Daily goals -->
+    <!-- Dept Headcount -->
     <div class="card" style="margin-top:1rem;">
       <div class="roster-header">
-        <div class="roster-title">Daily goals <span class="saved-badge" id="goals-saved-badge">Saved &#x2713;</span></div>
-        <div style="font-size:12px;color:var(--text-hint);" id="goals-date-label"></div>
+        <div class="roster-title">Dept Headcount</div>
+        <button class="add-btn" onclick="resetHeadcountToDetected()" style="font-size:11px;padding:4px 10px;">Reset to detected</button>
       </div>
-      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Drop a CSV export of the goals sheet — Replen and Putaway goals are read automatically.</p>
-      <div id="goals-current" style="display:none;margin-bottom:1rem;">
-        <div class="goals-row">
-          <div class="goals-item"><div class="goals-dept">Stock Control Replen</div><div class="goals-val" id="goal-replen-display">—</div></div>
-          <div class="goals-item"><div class="goals-dept">Stock Control Putaway</div><div class="goals-val" id="goal-putaway-display">—</div></div>
-        </div>
+      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Associate count used for PPH projection. Auto-filled from CSV — override as needed.</p>
+      <div class="hc-grid" id="hc-grid">
+        <!-- rendered by renderHeadcountCard() -->
       </div>
-      <div class="goals-drop-zone" id="goals-dz" onclick="document.getElementById('goals-file').click()">
-        <span id="goals-dz-label">&#x1F4CB; Drop goals CSV here or click to browse</span>
-        <input type="file" id="goals-file" accept=".csv" style="display:none;">
-      </div>
-      <div class="goals-status" id="goals-status"></div>
-      <div class="goals-divider">
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Or enter goals manually:</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div><label class="goals-manual-label">Replen goal</label><input type="number" id="manual-replen-goal" class="goals-manual-input" placeholder="e.g. 5253" /></div>
-          <div><label class="goals-manual-label">Putaway goal</label><input type="number" id="manual-putaway-goal" class="goals-manual-input" placeholder="e.g. 32" /></div>
-        </div>
-        <button class="add-btn" onclick="saveManualGoals()" style="margin-top:8px;width:100%;text-align:center;">Save manual goals</button>
-      </div>
+      <div id="hc-detected-date" class="hc-detected"></div>
 
-      <div class="pph-calc" id="calc-replen">
-        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Replenishment</div>
-        <div class="pph-calc-row">
-          <div><div class="pph-calc-label">Total Hours</div><input type="number" class="pph-calc-input" id="calc-hrs-replen" placeholder="e.g. 48" step="0.01" min="0" /></div>
-          <div><div class="pph-calc-label">Financial PPH</div><input type="number" class="pph-calc-input" id="calc-pph-replen" placeholder="e.g. 83.38" step="0.01" min="0" /></div>
-        </div>
-        <button class="pph-calc-btn" onclick="calcGoal('replen')">Calculate &amp; Set Goal</button>
-        <div class="pph-calc-result" id="calc-result-replen"></div>
+      <!-- PPH Targets collapsible -->
+      <div class="pph-toggle" onclick="togglePPHSection()">
+        <span class="pph-toggle-label">PPH Targets</span>
+        <span class="pph-toggle-arrow" id="pph-arrow">&#x25BC;</span>
       </div>
-      <div class="pph-calc" id="calc-putaway">
-        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Putaway</div>
-        <div class="pph-calc-row">
-          <div><div class="pph-calc-label">Total Hours</div><input type="number" class="pph-calc-input" id="calc-hrs-putaway" placeholder="e.g. 16" step="0.01" min="0" /></div>
-          <div><div class="pph-calc-label">Financial PPH</div><input type="number" class="pph-calc-input" id="calc-pph-putaway" placeholder="e.g. 14" step="0.01" min="0" /></div>
+      <div class="pph-body" id="pph-body">
+        <div class="hc-grid" id="pph-grid">
+          <!-- rendered by renderPPHSection() -->
         </div>
-        <button class="pph-calc-btn" onclick="calcGoal('putaway')">Calculate &amp; Set Goal</button>
-        <div class="pph-calc-result" id="calc-result-putaway"></div>
+        <button class="add-btn" onclick="resetPPHToDefaults()" style="width:100%;text-align:center;margin-top:8px;font-size:11px;padding:5px 10px;">Reset to defaults</button>
       </div>
-      <p class="roster-notice" style="margin-top:8px;">Goals save to this browser until updated.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;">v2.7</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;">v2.9</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Ecom &middot; Last updated: <span id="last-updated"></span></p>
@@ -472,36 +386,12 @@
 <script>
 // ── CONSTANTS ──────────────────────────────────────────
 const DEFAULT_TEAM_2ND = [
-  {email:'alexandro.salcedo-lopez@nordstrom.com',enabled:true},
-  {email:'carol.cervantes@nordstrom.com',enabled:true},
-  {email:'danielle.givens@nordstrom.com',enabled:true},
-  {email:'dean.karim@nordstrom.com',enabled:true},
-  {email:'eduardo.alejandre@randstadusa.com',enabled:true},
-  {email:'eduardoalejandre82@gmail.com',enabled:true},
-  {email:'eleonor.maderadegonzalez@nordstrom.com',enabled:true},
-  {email:'emmanuel.sega@nordstrom.com',enabled:true},
-  {email:'gershon.york@nordstrom.com',enabled:true},
-  {email:'hector.sosa@nordstrom.com',enabled:true},
-  {email:'ingrid.floreslopez@randstadusa.com',enabled:true},
-  {email:'ivan.gonzalezmerino@nordstrom.com',enabled:true},
-  {email:'jeremiah.mccardie@nordstrom.com',enabled:true},
-  {email:'justin.cromie@nordstrom.com',enabled:true},
-  {email:'kevin.smith1@nordstrom.com',enabled:true},
-  {email:'laudy.lopez@randstadusa.com',enabled:true},
-  {email:'lucy.puebla@nordstrom.com',enabled:true},
-  {email:'manuel.lopez-rviera@nordstrom.com',enabled:true},
-  {email:'maria.escuintla@nordstrom.com',enabled:true},
-  {email:'rahima.amiri@nordstrom.com',enabled:true},
-  {email:'raminder.kaur@nordstrom.com',enabled:true},
-  {email:'rham.gregorio@nordstrom.com',enabled:true},
-  {email:'waldrup.holmes@nordstrom.com',enabled:true},
-  {email:'yahir.leon@nordstrom.com',enabled:true},
-  {email:'yoczan.millanes@randstadusa.com',enabled:true}
+    {email:'dean.karim@nordstrom.com',enabled:true}
+
 ];
 const DEFAULT_TEAM_1ST = ['john.smith@nordstrom.com','jane.doe@nordstrom.com','alex.johnson@nordstrom.com','maria.garcia@nordstrom.com','chris.lee@nordstrom.com'];
 const STORAGE_KEY_2ND = 'sc_roster_2nd_v5';
 const STORAGE_KEY_1ST = 'sc_roster_1st_v1';
-const GOALS_KEY = 'sc_goals_v1';
 const SHIFT_KEY = 'sc_shift_v1';
 const SHIFT_BOUNDS = { '1st': {start:3, end:13}, '2nd': {start:14, end:25} };
 
@@ -522,160 +412,14 @@ prefersDark.addEventListener('change', e => applyTheme(e.matches));
 function toggleDark() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
 
 // ── TABS ───────────────────────────────────────────────
-var lastBatchData = null;
-
 function switchTab(tab) {
-  document.getElementById('tab-full').className     = 'tab'          + (tab === 'full'     ? ' active-full'     : '');
-  document.getElementById('tab-batches').className  = 'tab'          + (tab === 'batches'  ? ' active-batch'    : '');
+  document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['full','batches','settings'].forEach(function(t) {
+  ['full','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
-  if (tab === 'settings') { renderRoster(); renderGoalsCard(); }
-  if (tab === 'full')     { renderFullReport(); }
-  if (tab === 'batches' && !lastBatchData) { fetchBatchData(); }
-}
-
-// ── BATCH TAB ──────────────────────────────────────────
-function fetchBatchData() {
-  var rtEl = document.getElementById('batch-run-time');
-  if (rtEl) rtEl.textContent = 'Loading...';
-  fetch('batch_live.json?t=' + Date.now())
-    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(data) { lastBatchData = data; renderBatches(data); })
-    .catch(function(err) {
-      if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
-      document.getElementById('batch-empty').style.display = 'block';
-    });
-}
-
-function renderBatches(data) {
-  var rtEl      = document.getElementById('batch-run-time');
-  var staleEl   = document.getElementById('batch-stale-banner');
-  var listEl    = document.getElementById('batch-list');
-  var emptyEl   = document.getElementById('batch-empty');
-  var metricsEl = document.getElementById('batch-metrics');
-  var barWrap   = document.getElementById('batch-overall-bar');
-  var barFill   = document.getElementById('batch-overall-fill');
-
-  var generated = data.generated;
-  var isStaleData = generated && ((Date.now() - new Date(generated).getTime()) / 60000 > 70);
-  if (isStaleData) {
-    var mins = Math.round((Date.now() - new Date(generated).getTime()) / 60000);
-    staleEl.textContent = '⚠ Data is ' + mins + ' min old — batch agent may not be running';
-    staleEl.style.display = 'block';
-  } else { staleEl.style.display = 'none'; }
-
-  try {
-    var d = new Date(generated);
-    rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-      + ' · Facility ' + (data.facility || '499') + ' · ' + (data.shift || '2nd') + ' Shift';
-  } catch(e) {}
-
-  var s = data.summary || {};
-  document.getElementById('bm-pct').textContent    = (s.completion_pct || 0) + '%';
-  document.getElementById('bm-total').textContent  = (s.total_olpns    || 0).toLocaleString();
-  document.getElementById('bm-active').textContent = (s.active_batches || 0);
-  document.getElementById('bm-count').textContent  = (s.total_batches  || 0);
-  metricsEl.style.display = 'grid';
-  barWrap.style.display   = 'block';
-  barFill.style.width     = (s.completion_pct || 0) + '%';
-
-  var batches = data.batches || [];
-  listEl.innerHTML = '';
-  if (!batches.length) { emptyEl.style.display = 'block'; return; }
-  emptyEl.style.display = 'none';
-
-  var active = batches.filter(function(b) { return b.status !== 'Complete'; });
-  var done   = batches.filter(function(b) { return b.status === 'Complete'; });
-
-  function escH(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-  function buildDetailHtml(b) {
-    var d = b.detail || {};
-    var inProg  = d.in_progress || [];
-    var pending = d.pending     || [];
-    var html = '';
-    if (inProg.length) {
-      html += '<div class="detail-section-label">In Progress &mdash; Workers</div>';
-      inProg.forEach(function(w) {
-        var locHtml = '';
-        (w.workbenches || []).forEach(function(l) { locHtml += '<span class="detail-loc-tag workbench">' + escH(l) + '</span>'; });
-        if ((w.putwalls || []).length) { locHtml += '<span class="detail-loc-tag putwall">putwall &times;' + w.putwalls.length + '</span>'; }
-        if (!locHtml) locHtml = '<span style="color:var(--text-hint);font-size:11px;">no location</span>';
-        html += '<div class="detail-worker-row"><div class="detail-worker-name">' + escH(w.worker || 'unassigned') + '</div>' +
-          '<div class="detail-worker-locs"><span style="color:var(--text-hint);font-size:11px;margin-right:6px;">' + (w.task_count || 0) + ' tasks &middot; </span>' + locHtml + '</div></div>';
-      });
-    }
-    if (pending.length) {
-      var pendingRow = pending[0];
-      var items = pendingRow.items || [];
-      html += '<div class="detail-section-label" style="margin-top:' + (inProg.length ? '10px' : '0') + ';">Pending &mdash; ' + (pendingRow.task_count || 0) + ' unassigned tasks</div>';
-      if (items.length) {
-        html += '<div class="detail-item-grid">';
-        items.forEach(function(item) { html += '<span class="detail-item-chip">' + escH(item) + '</span>'; });
-        html += '</div>';
-      }
-    }
-    return html || '<div style="font-size:12px;color:var(--text-hint);padding:4px 0;">No active tasks</div>';
-  }
-
-  function batchCard(b, idx) {
-    var pct = b.pct || 0;
-    var releasePdt = '';
-    try {
-      var pdt = new Date(new Date(b.created_utc).getTime() - 7 * 3600000);
-      releasePdt = pdt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-    } catch(e) {}
-    var statusColor = b.status === 'Complete' ? '#0E9E8E' : b.status === 'Work Started' ? '#7F77DD' : 'var(--text-hint)';
-    var statusBadge = '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:var(--surface2);color:' + statusColor + ';font-weight:500;">' + escH(b.status || '') + '</span>';
-    var barColor  = pct === 100 ? '#0E9E8E' : (b.in_progress_olpns || 0) > 0 ? '#7F77DD' : 'var(--bar-bg)';
-    var detailId  = 'bdetail-e-' + idx;
-    var chevId    = 'bchev-e-'   + idx;
-    var hasDetail = b.detail && ((b.detail.in_progress && b.detail.in_progress.length) || (b.detail.pending && b.detail.pending.length));
-    var expandBtn = hasDetail
-      ? '<div class="batch-expand-btn" onclick="toggleBatchDetail(\'' + detailId + '\',\'' + chevId + '\',event)">' +
-          '<span class="batch-expand-chevron" id="' + chevId + '">&#9654;</span><span>Show task detail</span></div>' : '';
-    var detailHtml = hasDetail ? '<div class="batch-detail" id="' + detailId + '">' + buildDetailHtml(b) + '</div>' : '';
-    return '<div class="batch-card">' +
-      '<div class="batch-card-head"><div>' +
-        '<div class="batch-id">' + escH(b.batch_id) + ' ' + statusBadge + '</div>' +
-        '<div class="batch-meta">Created ' + releasePdt + ' PDT &middot; ' + (b.total_orders || 0) + ' orders</div>' +
-      '</div><div class="batch-pct">' + pct + '%</div></div>' +
-      '<div class="batch-bar-wrap"><div class="batch-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
-      '<div class="batch-stats"><div>oLPNs: <span>' + (b.total_olpns || 0) + '</span></div><div>Done: <span>' + (b.completed_olpns || 0) + '</span></div>' +
-        '<div>Active: <span>' + (b.in_progress_olpns || 0) + '</span></div><div>Pending: <span>' + (b.pending_olpns || 0) + '</span></div></div>' +
-      expandBtn + detailHtml + '</div>';
-  }
-
-  function toggleBatchDetail(detailId, chevId, event) {
-    if (event) event.stopPropagation();
-    var detail = document.getElementById(detailId);
-    var chev   = document.getElementById(chevId);
-    if (!detail) return;
-    var isOpen = detail.classList.contains('open');
-    detail.classList.toggle('open', !isOpen);
-    if (chev) chev.style.transform = isOpen ? '' : 'rotate(90deg)';
-    var btn = chev && chev.parentElement;
-    if (btn) { var label = btn.querySelector('span:last-child'); if (label) label.textContent = isOpen ? 'Show task detail' : 'Hide task detail'; }
-  }
-
-  var cardIdx = 0;
-  if (active.length) {
-    var lbl = document.createElement('div');
-    lbl.className = 'batch-section-label';
-    lbl.textContent = 'Active (' + active.length + ')';
-    listEl.appendChild(lbl);
-    active.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b, cardIdx++)); });
-  }
-  if (done.length) {
-    var lbl2 = document.createElement('div');
-    lbl2.className = 'batch-section-label';
-    if (active.length) lbl2.style.marginTop = '1.25rem';
-    lbl2.textContent = 'Completed (' + done.length + ')';
-    listEl.appendChild(lbl2);
-    done.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b, cardIdx++)); });
-  }
+  if (tab === 'settings') { renderRoster(); renderHeadcountCard(); }
+  if (tab === 'full') { renderFullReport(); }
 }
 
 // ── SHIFT ──────────────────────────────────────────────
@@ -764,105 +508,7 @@ function toggleMember(idx) {
 }
 
 
-// ── GOALS ──────────────────────────────────────────────
-function loadGoals() { try { const s = localStorage.getItem(GOALS_KEY); if (s) return JSON.parse(s); } catch(e) {} return {replen: null, putaway: null, date: null}; }
-function saveGoals(g) { try { localStorage.setItem(GOALS_KEY, JSON.stringify(g)); flashBadge('goals-saved-badge'); } catch(e) {} }
 function flashBadge(id) { const b = document.getElementById(id); if (b) { b.style.opacity = '1'; setTimeout(() => b.style.opacity = '0', 1800); } }
-
-function renderGoalsCard() {
-  const g = loadGoals(), cur = document.getElementById('goals-current');
-  if (g.replen || g.putaway) {
-    cur.style.display = 'block';
-    document.getElementById('goal-replen-display').textContent = g.replen ? g.replen.toLocaleString() : '—';
-    document.getElementById('goal-putaway-display').textContent = g.putaway ? g.putaway.toLocaleString() : '—';
-    document.getElementById('goals-date-label').textContent = g.date ? 'Set ' + g.date : '';
-  } else {
-    cur.style.display = 'none';
-    document.getElementById('goals-date-label').textContent = '';
-  }
-}
-
-
-function saveManualGoals() {
-  const r = parseInt(document.getElementById('manual-replen-goal').value);
-  const p = parseInt(document.getElementById('manual-putaway-goal').value);
-  if (isNaN(r) && isNaN(p)) return;
-  const existing = loadGoals();
-  saveGoals({replen: isNaN(r) ? existing.replen : Math.ceil(r), putaway: isNaN(p) ? existing.putaway : Math.ceil(p), date: new Date().toLocaleDateString()});
-  renderGoalsCard();
-  document.getElementById('goals-status').textContent = '✓ Saved';
-  setTimeout(() => document.getElementById('goals-status').textContent = '', 2000);
-  renderFullReport();
-}
-
-function processGoalsCsv(file) {
-  const status = document.getElementById('goals-status');
-  status.textContent = 'Reading...';
-  Papa.parse(file, { header: false, skipEmptyLines: true, complete: function(res) {
-    try {
-      const rows = res.data;
-      let replenGoal = null, putawayGoal = null, goalColIdx = -1, deptColIdx = -1;
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        for (let j = 0; j < row.length; j++) {
-          const cell = (row[j] || '').toString().trim().toLowerCase();
-          if (cell === 'planned goal') goalColIdx = j;
-          if (cell === 'department') deptColIdx = j;
-        }
-        if (goalColIdx > -1 && deptColIdx > -1) break;
-      }
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const dept = deptColIdx > -1 ? (row[deptColIdx] || '').toString().toLowerCase() : row.join(' ').toLowerCase();
-        const valCol = goalColIdx > -1 ? row[goalColIdx] : null;
-        if (dept.includes('stock control') && dept.includes('replen')) {
-          const v = valCol ? parseFloat(valCol.toString().replace(/,/g,'')) : null;
-          if (v && !isNaN(v)) replenGoal = Math.ceil(v);
-        }
-        if (dept.includes('stock control') && dept.includes('putaway')) {
-          const v = valCol ? parseFloat(valCol.toString().replace(/,/g,'')) : null;
-          if (v && !isNaN(v)) putawayGoal = Math.ceil(v);
-        }
-      }
-      if (!replenGoal && !putawayGoal) throw new Error('Could not find goal values');
-      const existing = loadGoals();
-      saveGoals({replen: replenGoal || existing.replen, putaway: putawayGoal || existing.putaway, date: new Date().toLocaleDateString()});
-      renderGoalsCard();
-      renderFullReport();
-      status.textContent = '✓ Goals updated';
-      document.getElementById('goals-dz-label').textContent = '📋 Drop new goals CSV or click to browse';
-      setTimeout(() => status.textContent = '', 3000);
-    } catch(err) {
-      status.textContent = '⚠ Could not read — try manual entry';
-      setTimeout(() => status.textContent = '', 4000);
-    }
-  }});
-}
-
-
-
-
-// ── PPH CALCULATOR ─────────────────────────────────────
-function calcGoal(type) {
-  var hrs = parseFloat(document.getElementById('calc-hrs-' + type).value);
-  var pph = parseFloat(document.getElementById('calc-pph-' + type).value);
-  var resEl = document.getElementById('calc-result-' + type);
-  if (isNaN(hrs) || isNaN(pph) || hrs <= 0 || pph <= 0) {
-    resEl.textContent = 'Enter valid hours and PPH';
-    resEl.className = 'pph-calc-result';
-    return;
-  }
-  var goal = Math.round(hrs * pph);
-  var g = loadGoals();
-  if (type === 'replen') g.replen = goal;
-  if (type === 'putaway') g.putaway = goal;
-  g.date = new Date().toLocaleDateString();
-  saveGoals(g);
-  renderGoalsCard();
-  renderFullReport();
-  resEl.textContent = hrs + ' hrs × ' + pph + ' PPH = ' + goal.toLocaleString() + ' ✔ Set as goal';
-  resEl.className = 'pph-calc-result success';
-}
 
 
 function filterRoster(query) {
@@ -878,14 +524,6 @@ function filterRoster(query) {
   var noResults = document.getElementById('roster-no-results');
   if (noResults) noResults.style.display = visible === 0 && q ? 'block' : 'none';
 }
-
-// ── FILE HANDLING ──────────────────────────────────────
-const goalsDz = document.getElementById('goals-dz');
-const goalsFile = document.getElementById('goals-file');
-goalsDz.addEventListener('dragover', e => { e.preventDefault(); goalsDz.classList.add('dragover'); });
-goalsDz.addEventListener('dragleave', () => goalsDz.classList.remove('dragover'));
-goalsDz.addEventListener('drop', e => { e.preventDefault(); goalsDz.classList.remove('dragover'); if (e.dataTransfer.files[0]) processGoalsCsv(e.dataTransfer.files[0]); });
-goalsFile.addEventListener('change', () => { if (goalsFile.files[0]) processGoalsCsv(goalsFile.files[0]); });
 
 // ── CHART ──────────────────────────────────────────────
 function parseDT(str) {
@@ -968,7 +606,173 @@ var FIN_FCST_PPH = {
   packing:24.3, shipping:245.9, sorting:81.4
 };
 
-// 2nd shift production parameters
+var PPH_KEY = 'ecom_pph_v1';
+
+function loadPPH() {
+  try {
+    var s = localStorage.getItem(PPH_KEY);
+    if (s) {
+      var parsed = JSON.parse(s);
+      // merge with defaults so new depts always have a value
+      var merged = {};
+      HC_DEPTS.forEach(function(d){ merged[d] = (parsed[d] != null ? parsed[d] : FIN_FCST_PPH[d]); });
+      return merged;
+    }
+  } catch(e) {}
+  return Object.assign({}, FIN_FCST_PPH);
+}
+
+function savePPH(vals) {
+  try { localStorage.setItem(PPH_KEY, JSON.stringify(vals)); } catch(e) {}
+}
+
+function getPPH(typ) {
+  return loadPPH()[typ] || FIN_FCST_PPH[typ] || 0;
+}
+
+function setPPHValue(typ, val) {
+  var vals = loadPPH();
+  var n = parseFloat(val);
+  vals[typ] = isNaN(n) || n <= 0 ? FIN_FCST_PPH[typ] : n;
+  savePPH(vals);
+}
+
+function resetPPHToDefaults() {
+  savePPH(Object.assign({}, FIN_FCST_PPH));
+  renderPPHSection();
+}
+
+function togglePPHSection() {
+  var body = document.getElementById('pph-body');
+  var arrow = document.getElementById('pph-arrow');
+  if (!body) return;
+  var isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  arrow.classList.toggle('open', !isOpen);
+  if (!isOpen) renderPPHSection();
+}
+
+function renderPPHSection() {
+  var grid = document.getElementById('pph-grid');
+  if (!grid) return;
+  var vals = loadPPH();
+  var html = '';
+  HC_DEPTS.forEach(function(typ) {
+    var v = vals[typ] != null ? vals[typ] : FIN_FCST_PPH[typ];
+    html += '<div class="hc-item">';
+    html += '<div class="hc-label">'+HC_LABELS[typ]+'</div>';
+    html += '<input class="pph-input" type="number" min="0.1" step="0.1" value="'+v+'" id="pph-input-'+typ+'"';
+    html += ' onchange="setPPHValue(\''+typ+'\',this.value)" onblur="setPPHValue(\''+typ+'\',this.value)">';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+var MIN_TX = { replen:10, putaway:5, picking:10, packing:4, shipping:7, sorting:5 };
+
+// 2nd shift anchored to 2:15 PM; buckets are 30-min wide
+var BUCKET_SHIFT_START = 14 + 15/60; // 14.25 fractional hours
+
+var HC_KEY = 'ecom_headcount_v1';
+var HC_DEPTS = ['replen','putaway','picking','packing','shipping','sorting'];
+var HC_LABELS = { replen:'Replenishment', putaway:'Putaway', picking:'Picking', packing:'Packing', shipping:'Shipping', sorting:'Sorting' };
+
+function loadHeadcount() {
+  try {
+    var s = localStorage.getItem(HC_KEY);
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return { date: '', counts: { replen:0, putaway:0, picking:0, packing:0, shipping:0, sorting:0 } };
+}
+
+function saveHeadcount(hc) {
+  try { localStorage.setItem(HC_KEY, JSON.stringify(hc)); } catch(e) {}
+}
+
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+}
+
+function detectHeadcounts() {
+  var TEAM = getTeamSet();
+  var counts = {};
+  HC_DEPTS.forEach(function(typ) {
+    var txList = FULL_TX[typ];
+    var threshold = MIN_TX[typ] || 0;
+    var empCount = {};
+    fullReportRows.forEach(function(r) {
+      if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return;
+      if (typ === 'sorting' && (r['Criteria']||'').trim() !== SORT_CRITERIA) return;
+      var e = (r['Employee']||'').trim();
+      if (!TEAM.has(e)) return;
+      empCount[e] = (empCount[e]||0) + 1;
+    });
+    counts[typ] = Object.keys(empCount).filter(function(e){ return empCount[e] >= threshold; }).length;
+  });
+  return counts;
+}
+
+function getHeadcounts() {
+  var hc = loadHeadcount();
+  var today = todayStr();
+  if (hc.date !== today && fullReportRows.length) {
+    hc = { date: today, counts: detectHeadcounts() };
+    saveHeadcount(hc);
+  }
+  return hc.counts;
+}
+
+function resetHeadcountToDetected() {
+  if (!fullReportRows.length) { alert('Upload a CSV first to detect headcounts.'); return; }
+  var hc = { date: todayStr(), counts: detectHeadcounts() };
+  saveHeadcount(hc);
+  renderHeadcountCard();
+}
+
+function adjustHeadcount(typ, delta) {
+  var hc = loadHeadcount();
+  var today = todayStr();
+  if (hc.date !== today) hc = { date: today, counts: detectHeadcounts() };
+  hc.counts[typ] = Math.max(0, (hc.counts[typ]||0) + delta);
+  saveHeadcount(hc);
+  renderHeadcountCard();
+}
+
+function setHeadcount(typ, val) {
+  var hc = loadHeadcount();
+  var today = todayStr();
+  if (hc.date !== today) hc = { date: today, counts: detectHeadcounts() };
+  hc.counts[typ] = Math.max(0, parseInt(val)||0);
+  saveHeadcount(hc);
+}
+
+function renderHeadcountCard() {
+  var grid = document.getElementById('hc-grid');
+  if (!grid) return;
+  var hc = loadHeadcount();
+  var today = todayStr();
+  if (hc.date !== today && fullReportRows.length) {
+    hc = { date: today, counts: detectHeadcounts() };
+    saveHeadcount(hc);
+  }
+  var html = '';
+  HC_DEPTS.forEach(function(typ) {
+    var val = hc.counts[typ] || 0;
+    html += '<div class="hc-item">';
+    html += '<div class="hc-label">'+HC_LABELS[typ]+'</div>';
+    html += '<div class="hc-stepper">';
+    html += '<button class="hc-btn" onclick="adjustHeadcount(\''+typ+'\',-1)">&#x2212;</button>';
+    html += '<input class="hc-input" type="number" min="0" value="'+val+'" id="hc-input-'+typ+'" onchange="setHeadcount(\''+typ+'\',this.value)" onblur="setHeadcount(\''+typ+'\',this.value)">';
+    html += '<button class="hc-btn" onclick="adjustHeadcount(\''+typ+'\',1)">+</button>';
+    html += '</div></div>';
+  });
+  grid.innerHTML = html;
+  var dateEl = document.getElementById('hc-detected-date');
+  if (dateEl) dateEl.textContent = hc.date ? 'Last detected: ' + hc.date : '';
+}
+
+// ── PPH PACE ───────────────────────────────────────────
 var PROD_SHIFT_START = 14 + 15/60;  // 2:15 PM
 var PROD_SHIFT_CAP   = 22 + 45/60;  // 10:45 PM
 var PROD_LUNCH_AFTER = 18 + 15/60;  // 6:15 PM
@@ -977,24 +781,32 @@ var PROD_TOTAL_HRS   = 8;
 function getElapsedProdHrs() {
   var now = new Date();
   var nowH = now.getHours() + now.getMinutes()/60;
-  if (nowH < 5) nowH += 24; // midnight crossover (e.g. 1:00 AM = 25)
+  if (nowH < 5) nowH += 24; // midnight crossover
   if (nowH <= PROD_SHIFT_START) return 0;
   var elapsed = Math.min(nowH, PROD_SHIFT_CAP) - PROD_SHIFT_START;
   if (nowH > PROD_LUNCH_AFTER) elapsed -= 0.5;
   return Math.max(0, Math.min(elapsed, PROD_TOTAL_HRS));
 }
 
-function getTilePace(typ, grand, rosterCount) {
+function getTilePace(typ, grand, filteredRows, TEAM) {
   if (getShift() !== '2nd') return null;
-  var pph = FIN_FCST_PPH[typ];
-  if (!pph || !rosterCount) return null;
+  var pph = getPPH(typ);
+  if (!pph) return null;
+  var hcCounts = getHeadcounts();
+  var headcount = hcCounts[typ];
+  if (!headcount) return null;
+
   var elapsed = getElapsedProdHrs();
   if (elapsed <= 0) return null;
-  var projNow  = rosterCount * elapsed * pph;
-  var projFull = rosterCount * PROD_TOTAL_HRS * pph;
-  var paceRatio = grand / projNow;
-  var pctOfFull = Math.round(grand / projFull * 100);
-  var barPct    = Math.min(100, Math.round(paceRatio * 100));
+
+  // Full-shift goal: headcount × 8 hrs × PPH
+  var projFull = headcount * PROD_TOTAL_HRS * pph;
+  // Where we should be right now: headcount × elapsed hrs × PPH
+  var projNow  = headcount * elapsed * pph;
+
+  var paceRatio = grand / projNow;          // on pace vs current expectation
+  var pctOfFull = Math.round(grand / projFull * 100); // % of full shift goal
+  var barPct    = Math.min(100, pctOfFull);
   var color  = paceRatio >= 1.0 ? '#0F6E56' : (paceRatio >= 0.8 ? '#C47B00' : '#C0392B');
   var label  = paceRatio >= 1.0 ? '✓ On pace' : '⚠ Behind';
   return { color: color, label: label, barPct: barPct, pctOfFull: pctOfFull, projFull: Math.round(projFull) };
@@ -1450,6 +1262,13 @@ function renderFullReport() {
   }
   var TEAM = getTeamSet();
   var types = ['replen','putaway','picking','packing','shipping','sorting'];
+  // Auto-detect headcounts on new date; refresh settings card if visible
+  var _hcToday = todayStr();
+  var _hcStored = loadHeadcount();
+  if (_hcStored.date !== _hcToday) {
+    saveHeadcount({ date: _hcToday, counts: detectHeadcounts() });
+    renderHeadcountCard();
+  }
   var html = '';
   html += '<div class="full-header"><div class="full-title">Full Report <span class="shift-badge shift-badge-2nd">' + getShift() + ' shift</span></div>';
   html += '<div style="display:flex;gap:8px;">';
@@ -1468,14 +1287,12 @@ function renderFullReport() {
       if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
       return true;
     });
-    var activeEmps = new Set();
     var grand = filtered.reduce(function(s,r){
       var e = (r['Employee']||'').trim();
       if (!TEAM.has(e)) return s;
-      activeEmps.add(e);
       return s + (metricKey ? (parseFloat(r[metricKey])||0) : 1);
     },0);
-    var pace = getTilePace(typ, grand, activeEmps.size);
+    var pace = getTilePace(typ, grand, filtered, TEAM);
     html += '<div class="full-tile" id="tile-'+typ+'" data-typ="'+typ+'" onclick="clickTile(this.dataset.typ)" style="color:'+color+';">';
     html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">'+FULL_LABELS[typ]+'</div>';
     html += '<div style="font-size:18px;font-weight:500;color:var(--text);">'+grand.toLocaleString()+'</div>';
@@ -1553,7 +1370,7 @@ function renderFullReport() {
       html += '<tr class="assoc-detail" id="assoc-detail-'+empKey+'" data-emp="'+emp+'" data-canvas="assoc-chart-'+empKey+'">';
       html += '<td colspan="3" style="padding:0 4px 8px;">';
       html += '<div class="assoc-detail-inner">';
-      html += '<div class="assoc-detail-name">'+short+' — performance<span style="font-size:10px;color:var(--text-hint);">5-min intervals &middot; click row to collapse</span></div>';
+      html += '<div class="assoc-detail-name">'+short+' — throughput<span style="font-size:10px;color:var(--text-hint);">5-min intervals &middot; click row to collapse</span></div>';
       html += '<div class="assoc-chart-wrap"><div class="assoc-chart-inner"><canvas id="assoc-chart-'+empKey+'"></canvas></div></div>';
       html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">';
       html += '<div class="assoc-stats"><div class="assoc-stat">Total: <span>'+val.toLocaleString()+'</span></div>';
@@ -1777,7 +1594,7 @@ async function sendToTeams(btn) {
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
 setShift(getShift());
 renderRoster();
-renderGoalsCard();
+renderHeadcountCard();
 </script>
 </body>
 </html>
