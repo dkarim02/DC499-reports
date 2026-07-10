@@ -197,7 +197,25 @@
   .pph-calc-result.success { color: #0F6E56; font-weight: 500; }
   [data-theme="dark"] .pph-calc-result.success { color: #9FE1CB; }
 
+  .tab.active-batch { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
   .tab.active-day { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
+  .batch-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1rem;}
+  .batch-overall-bar{height:8px;border-radius:4px;background:var(--bar-bg);overflow:hidden;margin-bottom:1.25rem;}
+  .batch-overall-fill{height:100%;border-radius:4px;background:#7F77DD;transition:width 0.4s;}
+  .batch-card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:8px;}
+  .batch-card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
+  .batch-id{font-size:13px;font-weight:500;color:var(--text);font-family:monospace;}
+  .batch-meta{font-size:11px;color:var(--text-hint);margin-top:2px;}
+  .batch-pct{font-size:20px;font-weight:600;color:#7F77DD;white-space:nowrap;margin-left:12px;}
+  .batch-bar-wrap{background:var(--bar-bg);border-radius:4px;height:6px;overflow:hidden;margin-bottom:8px;}
+  .batch-bar-fill{height:100%;border-radius:4px;transition:width 0.4s;}
+  .batch-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);}
+  .batch-stats span{color:var(--text);font-weight:500;}
+  .batch-type-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:500;margin-right:4px;margin-bottom:4px;}
+  .tag-pick{background:#E6F7F5;color:#0E9E8E;} .tag-singles{background:#FFF0E6;color:#C05800;} .tag-replen{background:#EEEDFE;color:#534AB7;}
+  [data-theme="dark"] .tag-pick{background:#053D38;color:#5BC4B8;} [data-theme="dark"] .tag-singles{background:#3D1E00;color:#FFA85C;} [data-theme="dark"] .tag-replen{background:#3C3489;color:#CECBF6;}
+  .batch-workers{font-size:11px;color:var(--text-hint);margin-top:6px;} .batch-workers span{color:var(--text-muted);}
+  .batch-section-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);margin:1rem 0 6px;}
   .day-drop-zone { border: 1.5px dashed #7F77DD; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: background 0.15s; background: var(--surface); margin-bottom: 1rem; }
   .day-drop-zone:hover, .day-drop-zone.dragover { background: var(--drop-hover); }
   .day-drop-zone .icon { font-size: 28px; margin-bottom: 8px; color: #7F77DD; }
@@ -308,6 +326,7 @@
   <div class="tabs">
     <div class="tabs-left">
       <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
+      <button class="tab" id="tab-batches" onclick="switchTab('batches')">&#x1F4E6; Batches</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -329,6 +348,27 @@
   </div>
 
   <!-- SETTINGS TAB -->
+  <!-- BATCHES TAB -->
+  <div class="tab-panel" id="panel-batches">
+    <div class="stale-banner" id="batch-stale-banner" style="display:none;background:#5C3A00;color:#FFD77A;font-size:12px;padding:8px 14px;border-radius:8px;margin-bottom:1rem;text-align:center;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div id="batch-run-time" style="font-size:12px;color:var(--text-hint);">Loading...</div>
+      <button class="btn-secondary" onclick="fetchBatchData()" style="font-size:13px;padding:6px 14px;border:0.5px solid #7F77DD;border-radius:6px;background:#EEEDFE;cursor:pointer;color:#534AB7;font-weight:500;font-family:inherit;">&#x21BA; Refresh Batches</button>
+    </div>
+    <div class="batch-metrics" id="batch-metrics" style="display:none;">
+      <div class="metric"><div class="metric-label">Overall</div><div class="metric-value" id="bm-pct">--</div><div class="metric-sub">completion</div></div>
+      <div class="metric"><div class="metric-label">Total Tasks</div><div class="metric-value" id="bm-total">--</div></div>
+      <div class="metric"><div class="metric-label">Active Batches</div><div class="metric-value" id="bm-active">--</div></div>
+      <div class="metric"><div class="metric-label">All Batches</div><div class="metric-value" id="bm-count">--</div></div>
+    </div>
+    <div class="batch-overall-bar" id="batch-overall-bar" style="display:none;"><div class="batch-overall-fill" id="batch-overall-fill" style="width:0%"></div></div>
+    <div id="batch-list"></div>
+    <div id="batch-empty" style="display:none;text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;">
+      <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
+      No batch data yet &mdash; agent runs from 2:00&ndash;midnight PDT.
+    </div>
+  </div>
+
   <div class="tab-panel" id="panel-settings">
 
     <!-- Shift selector -->
@@ -465,14 +505,117 @@ prefersDark.addEventListener('change', e => applyTheme(e.matches));
 function toggleDark() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
 
 // ── TABS ───────────────────────────────────────────────
+var lastBatchData = null;
+
 function switchTab(tab) {
-  document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
+  document.getElementById('tab-full').className     = 'tab'          + (tab === 'full'     ? ' active-full'     : '');
+  document.getElementById('tab-batches').className  = 'tab'          + (tab === 'batches'  ? ' active-batch'    : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['full','settings'].forEach(function(t) {
+  ['full','batches','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
   if (tab === 'settings') { renderRoster(); renderGoalsCard(); }
-  if (tab === 'full') { renderFullReport(); }
+  if (tab === 'full')     { renderFullReport(); }
+  if (tab === 'batches' && !lastBatchData) { fetchBatchData(); }
+}
+
+// ── BATCH TAB ──────────────────────────────────────────
+function fetchBatchData() {
+  var rtEl = document.getElementById('batch-run-time');
+  if (rtEl) rtEl.textContent = 'Loading...';
+  fetch('batch_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) { lastBatchData = data; renderBatches(data); })
+    .catch(function(err) {
+      if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
+      document.getElementById('batch-empty').style.display = 'block';
+    });
+}
+
+function renderBatches(data) {
+  var rtEl      = document.getElementById('batch-run-time');
+  var staleEl   = document.getElementById('batch-stale-banner');
+  var listEl    = document.getElementById('batch-list');
+  var emptyEl   = document.getElementById('batch-empty');
+  var metricsEl = document.getElementById('batch-metrics');
+  var barWrap   = document.getElementById('batch-overall-bar');
+  var barFill   = document.getElementById('batch-overall-fill');
+
+  var generated = data.generated;
+  var isStaleData = generated && ((Date.now() - new Date(generated).getTime()) / 60000 > 70);
+  if (isStaleData) {
+    var mins = Math.round((Date.now() - new Date(generated).getTime()) / 60000);
+    staleEl.textContent = '⚠ Data is ' + mins + ' min old — batch agent may not be running';
+    staleEl.style.display = 'block';
+  } else { staleEl.style.display = 'none'; }
+
+  try {
+    var d = new Date(generated);
+    rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+      + ' · Facility ' + (data.facility || '499') + ' · ' + (data.shift || '2nd') + ' Shift';
+  } catch(e) {}
+
+  var s = data.summary || {};
+  document.getElementById('bm-pct').textContent    = (s.completion_pct || 0) + '%';
+  document.getElementById('bm-total').textContent  = (s.total_tasks    || 0).toLocaleString();
+  document.getElementById('bm-active').textContent = (s.active_batches || 0);
+  document.getElementById('bm-count').textContent  = (s.total_batches  || 0);
+  metricsEl.style.display = 'grid';
+  barWrap.style.display   = 'block';
+  barFill.style.width     = (s.completion_pct || 0) + '%';
+
+  var batches = data.batches || [];
+  listEl.innerHTML = '';
+  if (!batches.length) { emptyEl.style.display = 'block'; return; }
+  emptyEl.style.display = 'none';
+
+  var active = batches.filter(function(b) { return b.in_progress > 0 || b.pending > 0; });
+  var done   = batches.filter(function(b) { return b.in_progress === 0 && b.pending === 0; });
+
+  function escH(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function batchCard(b) {
+    var pct = b.pct || 0;
+    var releasePdt = '';
+    try {
+      var pdt = new Date(new Date(b.released_utc).getTime() - 7 * 3600000);
+      releasePdt = pdt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    } catch(e) {}
+    var shortId   = b.batch_id ? b.batch_id.substring(9, 15) : b.batch_id;
+    var typeHtml  = (b.types || []).map(function(t) {
+      var cls   = t === 'PICK/PACK' ? 'tag-pick' : t === 'SINGLES_PICK' ? 'tag-singles' : 'tag-replen';
+      var label = t === 'PICK/PACK' ? 'Pick/Pack' : t === 'SINGLES_PICK' ? 'Singles' : 'Replen';
+      return '<span class="batch-type-tag ' + cls + '">' + label + '</span>';
+    }).join('');
+    var barColor = pct === 100 ? '#0E9E8E' : b.in_progress > 0 ? '#7F77DD' : 'var(--bar-bg)';
+    var workers  = (b.workers && b.workers.length)
+      ? '<div class="batch-workers">Workers: <span>' + escH(b.workers.join(', ')) + '</span></div>' : '';
+    return '<div class="batch-card">' +
+      '<div class="batch-card-head"><div>' +
+        '<div class="batch-id">' + escH(shortId) + ' &middot; ' + typeHtml + '</div>' +
+        '<div class="batch-meta">Released ' + releasePdt + ' PDT</div>' +
+      '</div><div class="batch-pct">' + pct + '%</div></div>' +
+      '<div class="batch-bar-wrap"><div class="batch-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>' +
+      '<div class="batch-stats"><div>Total: <span>' + b.total + '</span></div><div>Done: <span>' + b.completed + '</span></div>' +
+        '<div>Active: <span>' + b.in_progress + '</span></div><div>Pending: <span>' + b.pending + '</span></div></div>' +
+      workers + '</div>';
+  }
+
+  if (active.length) {
+    var lbl = document.createElement('div');
+    lbl.className = 'batch-section-label';
+    lbl.textContent = 'Active (' + active.length + ')';
+    listEl.appendChild(lbl);
+    active.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b)); });
+  }
+  if (done.length) {
+    var lbl2 = document.createElement('div');
+    lbl2.className = 'batch-section-label';
+    if (active.length) lbl2.style.marginTop = '1.25rem';
+    lbl2.textContent = 'Completed (' + done.length + ')';
+    listEl.appendChild(lbl2);
+    done.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b)); });
+  }
 }
 
 // ── SHIFT ──────────────────────────────────────────────
