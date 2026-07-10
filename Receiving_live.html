@@ -78,8 +78,15 @@
   .live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:5px;animation:livepulse 2s infinite;}
   @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.75);}}
 
-  /* Off-roster section */
-  .off-roster-header{font-size:13px;font-weight:500;color:var(--text-muted);margin:1rem 0 8px;padding-top:1rem;border-top:0.5px solid var(--border);}
+  /* Off-roster collapsible */
+  .off-roster-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 0 0;margin-top:1rem;border-top:0.5px solid var(--border);border-left:none;border-right:none;border-bottom:none;background:none;font-family:inherit;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;text-align:left;}
+  .off-roster-toggle:hover{color:var(--text);}
+  .off-roster-chevron{font-size:10px;transition:transform 0.2s;margin-left:6px;}
+  .off-roster-body{display:none;margin-top:8px;max-height:300px;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;}
+  .off-roster-body.open{display:block;}
+  .off-roster-body::-webkit-scrollbar{width:6px;}
+  .off-roster-body::-webkit-scrollbar-track{background:transparent;}
+  .off-roster-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 
   /* Clickable associate rows */
   .assoc-row{cursor:pointer;transition:background 0.15s;}
@@ -202,18 +209,23 @@
       </table>
 
       <div id="off-roster-wrap" style="display:none;">
-        <div class="off-roster-header">Not on roster</div>
-        <table>
-          <thead><tr>
-            <th>Associate</th>
-            <th class="r">LPNs</th>
-            <th class="r">First</th>
-            <th class="r">Last</th>
-            <th class="r">LPNs/hr</th>
-            <th></th>
-          </tr></thead>
-          <tbody id="tb-off-roster"></tbody>
-        </table>
+        <button class="off-roster-toggle" onclick="toggleOffRoster()">
+          <span>Not on roster &mdash; <span id="off-roster-count">0</span></span>
+          <span class="off-roster-chevron" id="off-roster-chevron">&#9654;</span>
+        </button>
+        <div class="off-roster-body" id="off-roster-body">
+          <table>
+            <thead><tr>
+              <th>Associate</th>
+              <th class="r">LPNs</th>
+              <th class="r">First</th>
+              <th class="r">Last</th>
+              <th class="r">LPNs/hr</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="tb-off-roster"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -357,6 +369,15 @@ function addMemberByName(name) {
 
 function removeMember(idx) { var r = loadRoster(); r.splice(idx, 1); saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
 function toggleMember(idx) { var r = loadRoster(); r[idx].enabled = !r[idx].enabled; saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
+
+// Off-roster collapse toggle
+function toggleOffRoster() {
+  var body    = document.getElementById('off-roster-body');
+  var chevron = document.getElementById('off-roster-chevron');
+  var isOpen  = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
 
 // Toggle enabled state from leaderboard Disable/Enable button
 function toggleMemberByName(name) {
@@ -663,10 +684,16 @@ function renderResults(data) {
   }
 
   // Off-roster table
-  var offWrap = document.getElementById('off-roster-wrap');
-  var tbOff   = document.getElementById('tb-off-roster');
+  var offWrap    = document.getElementById('off-roster-wrap');
+  var offBody    = document.getElementById('off-roster-body');
+  var offChevron = document.getElementById('off-roster-chevron');
+  var tbOff      = document.getElementById('tb-off-roster');
   tbOff.innerHTML = '';
   if (offRoster.length) {
+    document.getElementById('off-roster-count').textContent = offRoster.length;
+    // Reset to collapsed on each data refresh
+    offBody.classList.remove('open');
+    offChevron.style.transform = '';
     offRoster.forEach(function(a) {
       var pph = calcPPH(a.lpns, a.first_scan, a.last_scan);
       var tr = document.createElement('tr');
