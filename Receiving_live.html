@@ -115,6 +115,27 @@
   .batch-workers{font-size:11px;color:var(--text-hint);margin-top:6px;}
   .batch-workers span{color:var(--text-muted);}
   .batch-section-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);margin:1rem 0 6px;}
+  .batch-card{cursor:pointer;}
+  .batch-card:hover{border-color:var(--accent);}
+  .batch-expand-btn{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-hint);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border-light);}
+  .batch-expand-chevron{font-size:9px;transition:transform 0.2s;}
+  .batch-detail{display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border-mid);}
+  .batch-detail.open{display:block;}
+  .detail-section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-hint);margin:8px 0 5px;}
+  .detail-section-label:first-child{margin-top:0;}
+  .detail-worker-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--border-light);font-size:12px;}
+  .detail-worker-row:last-child{border-bottom:none;}
+  .detail-worker-name{min-width:140px;font-weight:500;color:var(--text);}
+  .detail-worker-locs{flex:1;color:var(--text-muted);line-height:1.6;}
+  .detail-loc-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;margin:1px 2px 1px 0;background:var(--surface2);color:var(--text-muted);font-family:monospace;}
+  .detail-loc-tag.putwall{background:#EEEDFE;color:#534AB7;}
+  .detail-loc-tag.workbench{background:#E6F7F5;color:#085C54;}
+  [data-theme="dark"] .detail-loc-tag.putwall{background:#3C3489;color:#CECBF6;}
+  [data-theme="dark"] .detail-loc-tag.workbench{background:#053D38;color:#5BC4B8;}
+  .detail-item-grid{display:flex;flex-wrap:wrap;gap:4px;max-height:120px;overflow-y:auto;}
+  .detail-item-grid::-webkit-scrollbar{height:4px;width:4px;}
+  .detail-item-grid::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .detail-item-chip{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--surface2);color:var(--text-muted);font-family:monospace;white-space:nowrap;}
 
   /* Disable/Enable button on on-roster rows */
   .disable-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);background:none;color:var(--text-hint);cursor:pointer;font-family:inherit;white-space:nowrap;}
@@ -687,7 +708,50 @@ function renderBatches(data) {
   var active = batches.filter(function(b) { return b.status !== 'Complete'; });
   var done   = batches.filter(function(b) { return b.status === 'Complete'; });
 
-  function batchCard(b) {
+  function buildDetailHtml(b) {
+    var d = b.detail || {};
+    var inProg  = d.in_progress || [];
+    var pending = d.pending     || [];
+    var html = '';
+
+    if (inProg.length) {
+      html += '<div class="detail-section-label">In Progress &mdash; Workers</div>';
+      inProg.forEach(function(w) {
+        var locHtml = '';
+        (w.workbenches || []).forEach(function(l) {
+          locHtml += '<span class="detail-loc-tag workbench">' + escHtml(l) + '</span>';
+        });
+        if ((w.putwalls || []).length) {
+          locHtml += '<span class="detail-loc-tag putwall">putwall &times;' + w.putwalls.length + '</span>';
+        }
+        if (!locHtml) locHtml = '<span style="color:var(--text-hint);font-size:11px;">no location</span>';
+        html += '<div class="detail-worker-row">' +
+          '<div class="detail-worker-name">' + escHtml(w.worker || 'unassigned') + '</div>' +
+          '<div class="detail-worker-locs">' +
+            '<span style="color:var(--text-hint);font-size:11px;margin-right:6px;">' + (w.task_count || 0) + ' tasks &middot; </span>' +
+            locHtml +
+          '</div>' +
+        '</div>';
+      });
+    }
+
+    if (pending.length) {
+      var pendingRow = pending[0];
+      var items = pendingRow.items || [];
+      html += '<div class="detail-section-label" style="margin-top:' + (inProg.length ? '10px' : '0') + ';">Pending &mdash; ' + (pendingRow.task_count || 0) + ' unassigned tasks</div>';
+      if (items.length) {
+        html += '<div class="detail-item-grid">';
+        items.forEach(function(item) {
+          html += '<span class="detail-item-chip">' + escHtml(item) + '</span>';
+        });
+        html += '</div>';
+      }
+    }
+
+    return html || '<div style="font-size:12px;color:var(--text-hint);padding:4px 0;">No active tasks</div>';
+  }
+
+  function batchCard(b, idx) {
     var pct      = b.pct || 0;
     var releasePdt = '';
     try {
@@ -696,19 +760,26 @@ function renderBatches(data) {
       releasePdt = pdt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
     } catch(e) {}
 
-    // Status badge color
     var statusColor = b.status === 'Complete' ? 'var(--accent)' : b.status === 'Work Started' ? '#7F77DD' : 'var(--text-hint)';
     var statusBadge = '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:var(--surface2);color:' + statusColor + ';font-weight:500;">' + escHtml(b.status || '') + '</span>';
+    var barColor = pct === 100 ? 'var(--accent)' : (b.in_progress_olpns || 0) > 0 ? '#7F77DD' : 'var(--bar-bg)';
+    var cardId   = 'bcard-' + idx;
+    var detailId = 'bdetail-' + idx;
+    var chevId   = 'bchev-' + idx;
 
-    // Bar color
-    var barColor = pct === 100 ? 'var(--accent)' : b.in_progress_olpns > 0 ? '#7F77DD' : 'var(--bar-bg)';
+    var hasDetail = b.detail && ((b.detail.in_progress && b.detail.in_progress.length) || (b.detail.pending && b.detail.pending.length));
+    var expandBtn = hasDetail
+      ? '<div class="batch-expand-btn" onclick="toggleBatchDetail(\'' + detailId + '\',\'' + chevId + '\',event)">' +
+          '<span class="batch-expand-chevron" id="' + chevId + '">&#9654;</span>' +
+          '<span>Show task detail</span>' +
+        '</div>'
+      : '';
 
-    var workersHtml = '';
-    if (b.workers && b.workers.length) {
-      workersHtml = '<div class="batch-workers">Workers: <span>' + b.workers.join(', ') + '</span></div>';
-    }
+    var detailHtml = hasDetail
+      ? '<div class="batch-detail" id="' + detailId + '">' + buildDetailHtml(b) + '</div>'
+      : '';
 
-    return '<div class="batch-card">' +
+    return '<div class="batch-card" id="' + cardId + '">' +
       '<div class="batch-card-head">' +
         '<div>' +
           '<div class="batch-id">' + escHtml(b.batch_id) + ' ' + statusBadge + '</div>' +
@@ -723,16 +794,18 @@ function renderBatches(data) {
         '<div>Active: <span>' + (b.in_progress_olpns || 0) + '</span></div>' +
         '<div>Pending: <span>' + (b.pending_olpns || 0) + '</span></div>' +
       '</div>' +
-      workersHtml +
+      expandBtn +
+      detailHtml +
     '</div>';
   }
 
+  var cardIdx = 0;
   if (active.length) {
     var lbl = document.createElement('div');
     lbl.className = 'batch-section-label';
     lbl.textContent = 'Active (' + active.length + ')';
     listEl.appendChild(lbl);
-    active.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b)); });
+    active.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b, cardIdx++)); });
   }
 
   if (done.length) {
@@ -741,7 +814,22 @@ function renderBatches(data) {
     lbl2.style.marginTop = active.length ? '1.25rem' : '0';
     lbl2.textContent = 'Completed (' + done.length + ')';
     listEl.appendChild(lbl2);
-    done.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b)); });
+    done.forEach(function(b) { listEl.insertAdjacentHTML('beforeend', batchCard(b, cardIdx++)); });
+  }
+}
+
+function toggleBatchDetail(detailId, chevId, event) {
+  if (event) event.stopPropagation();
+  var detail = document.getElementById(detailId);
+  var chev   = document.getElementById(chevId);
+  if (!detail) return;
+  var isOpen = detail.classList.contains('open');
+  detail.classList.toggle('open', !isOpen);
+  if (chev) chev.style.transform = isOpen ? '' : 'rotate(90deg)';
+  var btn = chev && chev.parentElement;
+  if (btn) {
+    var label = btn.querySelector('span:last-child');
+    if (label) label.textContent = isOpen ? 'Show task detail' : 'Hide task detail';
   }
 }
 
