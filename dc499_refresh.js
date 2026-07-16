@@ -114,25 +114,30 @@ function jsonPost(url, body, headers = {}) {
         if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
           try { resolved = true; resolve(JSON.parse(trimmed)); return; } catch {}
         }
-        // SSE: walk event blocks separated by \n\n
+        // SSE: server uses CRLF — normalize before splitting on \n\n
+        const norm = d.replace(/\r\n/g, '\n');
         let pos = 0;
         while (true) {
-          const evEnd = d.indexOf('\n\n', pos);
-          if (evEnd === -1) return; // incomplete event, wait for more data
-          const block = d.slice(pos, evEnd);
-          const json = block.split('\n')
-            .filter(l => /^data:/.test(l))
-            .map(l => l.replace(/^data:\s*/, ''))
-            .join('');
+          const evEnd = norm.indexOf('\n\n', pos);
+          if (evEnd === -1) return; // incomplete block, wait for more data
+          const block = norm.slice(pos, evEnd);
+          const dataLines = block.split('\n').filter(l => /^data:/.test(l));
+          pos = evEnd + 2;
+          if (!dataLines.length) continue; // ping / event: / id: lines — skip
+          const json = dataLines.map(l => l.replace(/^data:\s*/, '')).join('');
           if (json) {
             try { resolved = true; resolve(JSON.parse(json)); res.destroy(); return; }
             catch(e) { /* bad JSON in this block, try next */ }
           }
-          pos = evEnd + 2; // advance past this block
         }
       }
       res.on('data', c => { d += c; tryResolve(); });
-      res.on('end', () => { if (!resolved) reject(new Error(`Unexpected: ${d.slice(0,300)}`)); });
+      res.on('end', () => {
+        if (resolved) return;
+        const hasData = d.replace(/\r\n/g, '\n').split('\n').some(l => /^data:/.test(l));
+        if (hasData) reject(new Error(`Unexpected: ${d.slice(0, 300)}`));
+        else { resolved = true; resolve(null); }
+      });
     });
     req.on('error', reject);
     req.write(body);
@@ -149,6 +154,7 @@ async function mcpQuery(accessToken, sql) {
     'Accept': 'application/json, text/event-stream',
     'Authorization': `Bearer ${accessToken}`,
   });
+  if (!result) throw new Error('MCP returned no data (ping-only stream)');
   if (result.error) throw new Error(JSON.stringify(result.error));
   const text = result?.result?.content?.[0]?.text;
   if (!text) throw new Error('Empty MCP response');
@@ -359,17 +365,14 @@ function gitPush() {
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
   try {
-    execSync('git stash',                            { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync('git pull --rebase origin main',        { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync('git stash pop',                        { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync('git add receiving_live.json batch_live.json', { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync(`git commit -m "Live update -- ${stamp}"`,     { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync('git push origin main',                 { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json batch_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync(`git commit -m "Live update -- ${stamp}"`,      { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git pull --rebase --autostash origin main',    { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git push origin main',                         { cwd: REPORT_DIR, stdio: 'pipe' });
     console.log(`[${ts()}] ✓ Pushed to git`);
   } catch (e) {
-    const msg = e.stderr?.toString() || e.message;
-    // "nothing to commit" is fine — stash pop on empty stash also fine
-    if (msg.includes('nothing to commit') || msg.includes('No local changes')) {
+    const msg = e.stderr?.toString() || e.stdout?.toString() || e.message;
+    if (msg.includes('nothing to commit') || msg.includes('nothing added')) {
       console.log(`[${ts()}]   Git: nothing new to commit`);
     } else {
       console.warn(`[${ts()}]   Git push failed: ${msg.slice(0, 200)}`);
@@ -505,7 +508,7 @@ async function main() {
   const isAuth  = process.argv.includes('--auth');
   const isServe = process.argv.includes('--serve');
   const port    = parseInt(process.argv.find(a => a.startsWith('--port='))?.split('=')[1] || '3001');
-  const ivMin   = parseInt(process.argv.find(a => a.startsWith('--interval='))?.split('=')[1] || '60');
+  const ivMin   = parseInt(process.argv.find(a => a.startsWith('--interval='))?.split('=')[1] || '5');
   const openArg = process.argv.find(a => a.startsWith('--open='))?.split('=').slice(1).join('=') || null;
 
   console.log('DC499 Reporter Refresher');

@@ -402,7 +402,8 @@ function manualRefresh() { fetchData(true); }
 function fetchData(isManual) {
   var rtEl = document.getElementById('run-time');
   if (rtEl) rtEl.textContent = 'Loading...';
-  fetch('receiving_live.json?t=' + Date.now())
+  var base = window.location.protocol === 'file:' ? 'http://localhost:3001' : '';
+  fetch(base + '/receiving_live.json?t=' + Date.now())
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data) {
       lastData = data;

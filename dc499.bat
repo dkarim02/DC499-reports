@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 echo DC499 Reporter
 echo ──────────────────────────────
 echo  1  Refresh data only (one-shot)
