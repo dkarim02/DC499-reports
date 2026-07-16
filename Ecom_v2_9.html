@@ -1435,7 +1435,10 @@ function processFullFiles(files) {
 }
 
 // ── TEAMS WEBHOOK ──────────────────────────────────────
-const TEAMS_WEBHOOK = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/eacd8206a4274abb96f43be9d3d01256/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=8Hc0GkQ2Sobr73S7JX8Gu5gldDJaVE4IeiLuzeAsyxY';
+const TEAMS_WEBHOOKS = {
+  '1st': 'PASTE_1ST_SHIFT_WEBHOOK_URL_HERE',
+  '2nd': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/eacd8206a4274abb96f43be9d3d01256/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=8Hc0GkQ2Sobr73S7JX8Gu5gldDJaVE4IeiLuzeAsyxY',
+};
 
 function getDeptTotals() {
   var TEAM = getTeamSet(), totals = {};
@@ -1456,13 +1459,19 @@ function getDeptTotals() {
 
 async function sendToTeams(btn) {
   if (!fullReportRows.length) { alert('No Full Report data loaded — upload a CSV first.'); return; }
+  var currentShift = getShift();
+  var webhook = TEAMS_WEBHOOKS[currentShift];
+  if (!webhook || webhook.startsWith('PASTE_')) {
+    alert('No Teams webhook configured for ' + currentShift + ' shift. Add the URL to TEAMS_WEBHOOKS in the source.');
+    return;
+  }
   var orig = btn.textContent;
   btn.textContent = '⏳ Sending…';
   btn.disabled = true;
 
   var totals = getDeptTotals();
   var ts = new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-  var shift = getShift() + ' shift';
+  var shift = currentShift + ' shift';
 
   var card = {
     "type": "message",
@@ -1570,7 +1579,7 @@ async function sendToTeams(btn) {
   };
 
   try {
-    var res = await fetch(TEAMS_WEBHOOK, {
+    var res = await fetch(webhook, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(card)
