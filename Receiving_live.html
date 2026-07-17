@@ -133,6 +133,12 @@
 
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
+
+  /* Shift selector */
+  .shift-selector{display:flex;gap:6px;margin-bottom:1.25rem;}
+  .shift-btn{font-family:inherit;font-size:13px;padding:5px 16px;border:0.5px solid var(--border);border-radius:20px;background:var(--surface);cursor:pointer;color:var(--text-muted);font-weight:500;transition:all 0.15s;}
+  .shift-btn:hover{background:var(--surface2);color:var(--text);}
+  .shift-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 </style>
 </head>
 <body>
@@ -142,12 +148,18 @@
     <div>
       <p class="dept-label"><span class="live-dot"></span>Receiving Live v1.1</p>
       <h1>Receiving Live &mdash; 2nd Shift</h1>
-      <p class="subtitle">Live data &middot; Auto-refreshes every 60 min</p>
+      <p class="subtitle">Live data &middot; Auto-refreshes every 5 min</p>
     </div>
     <button class="dark-toggle" onclick="toggleDark()">
       <span id="toggle-label">Dark mode</span>
       <div class="toggle-track"><div class="toggle-thumb"></div></div>
     </button>
+  </div>
+
+  <div class="shift-selector">
+    <button class="shift-btn" id="shift-btn-1" onclick="selectShift(1)">1st Shift</button>
+    <button class="shift-btn" id="shift-btn-2" onclick="selectShift(2)">2nd Shift</button>
+    <button class="shift-btn" id="shift-btn-3" onclick="selectShift(3)">3rd Shift</button>
   </div>
 
   <div class="tabs">
@@ -229,7 +241,7 @@
   <div class="tab-panel" id="panel-settings">
     <div class="card">
       <div class="roster-header">
-        <div class="roster-title">Team members &mdash; 2nd Shift <span class="saved-badge" id="saved-badge">Saved &#x2713;</span></div>
+        <div class="roster-title">Team members &mdash; <span id="roster-shift-label">2nd Shift</span> <span class="saved-badge" id="saved-badge">Saved &#x2713;</span></div>
         <div class="roster-count" id="roster-count"></div>
       </div>
       <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Toggle off to exclude without removing.</p>
@@ -249,23 +261,72 @@
 
 <script>
 // -- Constants ----------------------------------------------------------------
-var STORAGE_KEY = 'recv_live_roster_v1';
-var THEME_KEY   = 'dc499_receiving_theme_v1';
-var INTERVAL_MS = 60 * 60 * 1000;
+var THEME_KEY    = 'dc499_receiving_theme_v1';
+var INTERVAL_MS  = 5 * 60 * 1000;
 
-var DEFAULT_ROSTER = [
-  'eva.soto','alicia.garcia','gloria.miranda','myintmyint.than',
-  'harley.fox','carmen.caldwell','fayeshawn.davis','marlen.carrerabernal',
-  'gabrielle.borja','jordan.hill1','ginnie.pondler','cynthia.gomez',
-  'marina.martinez','angelina.raudales','karen.revuelta',
-  'berena.quiterio','cecilia.aguilar'
-];
+// Shift definitions: start hour (PDT, 24h), end hour (exclusive, may wrap past midnight)
+var SHIFT_DEFS = {
+  1: { label: '1st Shift', start: 6,  end: 14 },
+  2: { label: '2nd Shift', start: 14, end: 22 },
+  3: { label: '3rd Shift', start: 22, end: 6  },
+};
 
-var lastData        = null;
+var DEFAULT_ROSTERS = {
+  1: [],
+  2: [
+    'eva.soto','alicia.garcia','gloria.miranda','myintmyint.than',
+    'harley.fox','carmen.caldwell','fayeshawn.davis','marlen.carrerabernal',
+    'gabrielle.borja','jordan.hill1','ginnie.pondler','cynthia.gomez',
+    'marina.martinez','angelina.raudales','karen.revuelta',
+    'berena.quiterio','cecilia.aguilar'
+  ],
+  3: [],
+};
+
+var lastData         = null;
 var autoRefreshTimer = null;
 var countdownTimer   = null;
 var nextRefreshAt    = null;
-var assocCharts      = {}; // retained for future chart expansion
+var activeShift      = detectCurrentShift();
+
+// -- Shift helpers ------------------------------------------------------------
+function detectCurrentShift() {
+  var h = new Date().getHours(); // local time
+  if (h >= 6  && h < 14) return 1;
+  if (h >= 14 && h < 22) return 2;
+  return 3;
+}
+
+function shiftHours(shift) {
+  // Returns [startH, endH] for filtering first_scan strings (HH:MM, PDT)
+  return SHIFT_DEFS[shift] ? [SHIFT_DEFS[shift].start, SHIFT_DEFS[shift].end] : [14, 22];
+}
+
+function inShift(firstScan, shift) {
+  // firstScan is "HH:MM" local time returned by the server
+  if (!firstScan) return false;
+  var parts = firstScan.split(':');
+  if (parts.length < 2) return false;
+  var h = parseInt(parts[0], 10);
+  var def = SHIFT_DEFS[shift];
+  if (!def) return false;
+  if (def.start < def.end) return h >= def.start && h < def.end;
+  // wrapping shift (3rd: 22–6)
+  return h >= def.start || h < def.end;
+}
+
+function selectShift(n) {
+  activeShift = n;
+  [1, 2, 3].forEach(function(s) {
+    document.getElementById('shift-btn-' + s).className =
+      'shift-btn' + (s === n ? ' active' : '');
+  });
+  var label = SHIFT_DEFS[n].label;
+  document.getElementById('roster-shift-label').textContent = label;
+  document.querySelector('h1').textContent = 'Receiving Live — ' + label;
+  if (lastData) renderResults(lastData);
+  renderRoster();
+}
 
 // -- Theme --------------------------------------------------------------------
 function applyTheme(dark) {
@@ -290,30 +351,50 @@ function switchTab(tab) {
   if (tab === 'settings') renderRoster();
 }
 
-// -- Roster -------------------------------------------------------------------
-function loadRoster() {
+// -- Roster (per-shift) -------------------------------------------------------
+function rosterKey(shift) { return 'recv_live_roster_v2_shift' + shift; }
+
+function loadRoster(shift) {
+  shift = shift || activeShift;
   try {
-    var s = localStorage.getItem(STORAGE_KEY);
+    var s = localStorage.getItem(rosterKey(shift));
     if (s) {
       var p = JSON.parse(s);
       return p.map(function(m) { return typeof m === 'string' ? {name: m, enabled: true} : m; });
     }
   } catch(e) {}
-  return DEFAULT_ROSTER.map(function(n) { return {name: n, enabled: true}; });
+  // First load: migrate old key for shift 2, use default otherwise
+  if (shift === 2) {
+    try {
+      var old = localStorage.getItem('recv_live_roster_v1');
+      if (old) {
+        var parsed = JSON.parse(old);
+        var migrated = parsed.map(function(m) { return typeof m === 'string' ? {name: m, enabled: true} : m; });
+        saveRoster(migrated, 2);
+        return migrated;
+      }
+    } catch(e) {}
+  }
+  return DEFAULT_ROSTERS[shift].map(function(n) { return {name: n, enabled: true}; });
 }
-function saveRoster(r) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {}
+
+function saveRoster(r, shift) {
+  shift = shift || activeShift;
+  try { localStorage.setItem(rosterKey(shift), JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {}
 }
-function getActiveSet() {
-  return new Set(loadRoster().filter(function(m) { return m.enabled; }).map(function(m) { return m.name; }));
+
+function getActiveSet(shift) {
+  return new Set(loadRoster(shift || activeShift).filter(function(m) { return m.enabled; }).map(function(m) { return m.name; }));
 }
+
 function flashBadge(id) {
   var b = document.getElementById(id);
   if (b) { b.style.opacity = '1'; setTimeout(function() { b.style.opacity = '0'; }, 1800); }
 }
 
 function renderRoster() {
-  var roster = loadRoster(), list = document.getElementById('roster-list');
+  var roster = loadRoster(activeShift);
+  var list = document.getElementById('roster-list');
   list.innerHTML = '';
   var active = roster.filter(function(m) { return m.enabled; }).length;
   document.getElementById('roster-count').textContent = active + ' active / ' + roster.length + ' total';
@@ -328,7 +409,7 @@ function renderRoster() {
     nameSpan.className = 'member-email' + (m.enabled ? '' : ' disabled');
     nameSpan.textContent = m.name;
     var removeBtn = document.createElement('button'); removeBtn.className = 'roster-remove';
-    removeBtn.title = 'Remove'; removeBtn.textContent = '×';
+    removeBtn.title = 'Remove'; removeBtn.textContent = '\xd7';
     removeBtn.addEventListener('click', (function(idx) { return function() { removeMember(idx); }; })(i));
     var controls = document.createElement('div'); controls.className = 'member-controls';
     controls.appendChild(label); controls.appendChild(nameSpan); controls.appendChild(removeBtn);
@@ -341,7 +422,7 @@ function addMember() {
   var raw = input.value.trim().toLowerCase();
   var name = raw.includes('@') ? raw.split('@')[0] : raw;
   if (!name) { input.style.borderColor = '#f09595'; setTimeout(function() { input.style.borderColor = ''; }, 1000); return; }
-  var roster = loadRoster();
+  var roster = loadRoster(activeShift);
   if (roster.find(function(m) { return m.name === name; })) {
     input.style.borderColor = '#FAC775'; setTimeout(function() { input.style.borderColor = ''; }, 1000); return;
   }
@@ -350,17 +431,16 @@ function addMember() {
 }
 
 function addMemberByName(name) {
-  var roster = loadRoster();
+  var roster = loadRoster(activeShift);
   if (roster.find(function(m) { return m.name === name; })) return;
   roster.push({name: name, enabled: true}); saveRoster(roster);
   renderRoster();
   if (lastData) renderResults(lastData);
 }
 
-function removeMember(idx) { var r = loadRoster(); r.splice(idx, 1); saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
-function toggleMember(idx) { var r = loadRoster(); r[idx].enabled = !r[idx].enabled; saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
+function removeMember(idx) { var r = loadRoster(activeShift); r.splice(idx, 1); saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
+function toggleMember(idx) { var r = loadRoster(activeShift); r[idx].enabled = !r[idx].enabled; saveRoster(r); renderRoster(); if (lastData) renderResults(lastData); }
 
-// Off-roster collapse toggle
 function toggleOffRoster() {
   var body    = document.getElementById('off-roster-body');
   var chevron = document.getElementById('off-roster-chevron');
@@ -369,9 +449,8 @@ function toggleOffRoster() {
   chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
 }
 
-// Toggle enabled state from leaderboard Disable/Enable button
 function toggleMemberByName(name) {
-  var roster = loadRoster();
+  var roster = loadRoster(activeShift);
   var idx = roster.findIndex(function(m) { return m.name === name; });
   if (idx === -1) return;
   roster[idx].enabled = !roster[idx].enabled;
@@ -402,7 +481,11 @@ function manualRefresh() { fetchData(true); }
 function fetchData(isManual) {
   var rtEl = document.getElementById('run-time');
   if (rtEl) rtEl.textContent = 'Loading...';
-  var base = window.location.protocol === 'file:' ? 'http://localhost:3001' : '';
+  var base = window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
   fetch(base + '/receiving_live.json?t=' + Date.now())
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data) {
@@ -424,6 +507,7 @@ function calcPPH(lpns, first, last) {
   if (fp.length < 2 || lp.length < 2) return null;
   var fMins = parseInt(fp[0], 10) * 60 + parseInt(fp[1], 10);
   var lMins = parseInt(lp[0], 10) * 60 + parseInt(lp[1], 10);
+  if (lMins < fMins) lMins += 24 * 60; // handle midnight wrap
   var diff = lMins - fMins;
   if (diff < 2) return null;
   return (lpns / (diff / 60)).toFixed(1);
@@ -431,15 +515,13 @@ function calcPPH(lpns, first, last) {
 
 function isStale(generated) {
   if (!generated) return false;
-  try { return (Date.now() - new Date(generated).getTime()) / 60000 > 70; } catch(e) { return false; }
+  try { return (Date.now() - new Date(generated).getTime()) / 60000 > 10; } catch(e) { return false; }
 }
 
 function escHtml(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-
-
 
 // -- Render -------------------------------------------------------------------
 function renderResults(data) {
@@ -459,15 +541,18 @@ function renderResults(data) {
   try {
     var d = new Date(data.generated);
     rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-      + ' · Facility ' + (data.facility || '499') + ' · ' + (data.shift || '2nd') + ' Shift';
+      + ' \xb7 Facility ' + (data.facility || '499');
   } catch(e) { rtEl.textContent = data.generated || ''; }
 
-  document.getElementById('m-shift').textContent    = (data.shift || '2nd') + ' Shift';
+  document.getElementById('m-shift').textContent    = SHIFT_DEFS[activeShift].label;
   document.getElementById('m-facility').textContent = data.facility || '499';
 
-  var associates = (data.associates || []).slice().sort(function(a, b) { return b.lpns - a.lpns; });
-  var activeSet  = getActiveSet();
-  var roster     = loadRoster();
+  // Filter associates by shift based on first_scan hour
+  var allAssociates = (data.associates || []).slice().sort(function(a, b) { return b.lpns - a.lpns; });
+  var associates = allAssociates.filter(function(a) { return inShift(a.first_scan, activeShift); });
+
+  var activeSet = getActiveSet(activeShift);
+  var roster    = loadRoster(activeShift);
 
   var onRoster  = associates.filter(function(a) { return activeSet.has(a.name); });
   var offRoster = associates.filter(function(a) { return !activeSet.has(a.name); });
@@ -484,15 +569,12 @@ function renderResults(data) {
 
   if (onRoster.length) {
     onRoster.forEach(function(a, i) {
-      var trophy = (i === 0 && onRoster.length > 1) ? ' &#x1F3C6;' : '';
-      var pph    = calcPPH(a.lpns, a.first_scan, a.last_scan);
-      var pct    = maxLpns > 0 ? Math.round((a.lpns / maxLpns) * 100) : 0;
+      var trophy  = (i === 0 && onRoster.length > 1) ? ' &#x1F3C6;' : '';
+      var pph     = calcPPH(a.lpns, a.first_scan, a.last_scan);
+      var pct     = maxLpns > 0 ? Math.round((a.lpns / maxLpns) * 100) : 0;
       var nameEsc = escHtml(a.name);
-
       var rosterEntry = roster.find(function(m) { return m.name === a.name; });
       var isEnabled   = rosterEntry ? rosterEntry.enabled : true;
-      var btnLabel    = isEnabled ? 'Disable' : 'Enable';
-
       var tr = document.createElement('tr');
       tr.className = 'assoc-row';
       tr.innerHTML =
@@ -503,17 +585,18 @@ function renderResults(data) {
         '<td class="r" style="color:var(--accent);font-size:13px;font-weight:500;">' + (pph !== null ? pph : '<span style="color:var(--text-hint);">--</span>') + '</td>' +
         '<td><div style="display:flex;align-items:center;gap:6px;">' +
           '<div class="bar-wrap"><div class="bar-fill-recv" style="width:' + pct + '%"></div></div>' +
-          '<button class="disable-btn" data-name="' + nameEsc + '" onclick="toggleMemberByName(this.dataset.name)">' + btnLabel + '</button>' +
+          '<button class="disable-btn" data-name="' + nameEsc + '" onclick="toggleMemberByName(this.dataset.name)">' + (isEnabled ? 'Disable' : 'Enable') + '</button>' +
         '</div></td>';
       tbOn.appendChild(tr);
     });
   } else {
+    var shiftStart = SHIFT_DEFS[activeShift].start;
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="6" style="text-align:center;color:var(--text-hint);padding:2rem;font-size:13px;">No roster members active yet &mdash; 2nd shift starts at 12:00</td>';
+    tr.innerHTML = '<td colspan="6" style="text-align:center;color:var(--text-hint);padding:2rem;font-size:13px;">No ' + SHIFT_DEFS[activeShift].label + ' roster members found &mdash; shift starts at ' + shiftStart + ':00</td>';
     tbOn.appendChild(tr);
   }
 
-  // Off-roster table
+  // Off-roster
   var offWrap    = document.getElementById('off-roster-wrap');
   var offBody    = document.getElementById('off-roster-body');
   var offChevron = document.getElementById('off-roster-chevron');
@@ -521,7 +604,6 @@ function renderResults(data) {
   tbOff.innerHTML = '';
   if (offRoster.length) {
     document.getElementById('off-roster-count').textContent = offRoster.length;
-    // Reset to collapsed on each data refresh
     offBody.classList.remove('open');
     offChevron.style.transform = '';
     offRoster.forEach(function(a) {
@@ -550,7 +632,7 @@ function renderResults(data) {
 function copyTable() {
   var rows = document.querySelectorAll('#tb-on-roster tr.assoc-row');
   var rtEl = document.getElementById('run-time');
-  var text = 'Receiving Live -- DC499\n' + (rtEl ? rtEl.textContent : '') + '\n\n';
+  var text = 'Receiving Live -- DC499 -- ' + SHIFT_DEFS[activeShift].label + '\n' + (rtEl ? rtEl.textContent : '') + '\n\n';
   text += 'Associate\tLPNs\tFirst\tLast\tLPNs/hr\n';
   rows.forEach(function(row) {
     text += Array.from(row.querySelectorAll('td')).slice(0, 5).map(function(c) {
@@ -576,9 +658,10 @@ function copyTable() {
 
 // -- Init ---------------------------------------------------------------------
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
+selectShift(activeShift);
 renderRoster();
-fetchData(false);       // auto-fetch on load
-scheduleAutoRefresh();  // start countdown timer
+fetchData(false);
+scheduleAutoRefresh();
 </script>
 </body>
 </html>
