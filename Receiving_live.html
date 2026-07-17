@@ -159,7 +159,6 @@
   <div class="shift-selector">
     <button class="shift-btn" id="shift-btn-1" onclick="selectShift(1)">1st Shift</button>
     <button class="shift-btn" id="shift-btn-2" onclick="selectShift(2)">2nd Shift</button>
-    <button class="shift-btn" id="shift-btn-3" onclick="selectShift(3)">3rd Shift</button>
   </div>
 
   <div class="tabs">
@@ -266,9 +265,8 @@ var INTERVAL_MS  = 5 * 60 * 1000;
 
 // Shift definitions: start hour (PDT, 24h), end hour (exclusive, may wrap past midnight)
 var SHIFT_DEFS = {
-  1: { label: '1st Shift', start: 6,  end: 14 },
-  2: { label: '2nd Shift', start: 14, end: 22 },
-  3: { label: '3rd Shift', start: 22, end: 6  },
+  1: { label: '1st Shift', start: 3,  end: 14 },
+  2: { label: '2nd Shift', start: 14, end: 1  },
 };
 
 var DEFAULT_ROSTERS = {
@@ -292,9 +290,9 @@ var activeShift      = detectCurrentShift();
 // -- Shift helpers ------------------------------------------------------------
 function detectCurrentShift() {
   var h = new Date().getHours(); // local time
-  if (h >= 6  && h < 14) return 1;
-  if (h >= 14 && h < 22) return 2;
-  return 3;
+  if (h >= 3  && h < 14) return 1;
+  if (h >= 14 || h < 1)  return 2;
+  return 1; // 1:00–3:00 AM gap — default to 1st shift
 }
 
 function shiftHours(shift) {
@@ -515,7 +513,7 @@ function calcPPH(lpns, first, last) {
 
 function isStale(generated) {
   if (!generated) return false;
-  try { return (Date.now() - new Date(generated).getTime()) / 60000 > 10; } catch(e) { return false; }
+  try { var ts = generated && !generated.endsWith('Z') ? generated+'Z' : generated; return (Date.now() - new Date(ts).getTime()) / 60000 > 10; } catch(e) { return false; }
 }
 
 function escHtml(s) {
@@ -539,7 +537,8 @@ function renderResults(data) {
   }
 
   try {
-    var d = new Date(data.generated);
+    var rawTs = data.generated || '';
+    var d = new Date(rawTs.endsWith('Z') ? rawTs : rawTs + 'Z');
     rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
       + ' \xb7 Facility ' + (data.facility || '499');
   } catch(e) { rtEl.textContent = data.generated || ''; }
