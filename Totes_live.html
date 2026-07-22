@@ -179,6 +179,9 @@
   .dz-status{font-size:9px;margin-top:2px;}
   .dz-block.idle .dz-status{color:var(--dz-idle-text);}
   .dz-block.active .dz-status{color:var(--dz-active-text);}
+  .dz-tote-count{font-size:13px;font-weight:800;line-height:1;margin-top:4px;}
+  .dz-block.idle .dz-tote-count{color:var(--text-hint);}
+  .dz-block.active .dz-tote-count{color:var(--dz-active-text);}
 
   /* Hospital PW (single DZ) */
   .pw-bubble-h1 .dz-pair{grid-template-columns:1fr;}
@@ -669,13 +672,14 @@ function makePwBubble(pw) {
   var dzPair = document.createElement('div');
   dzPair.className = 'dz-pair';
 
-  var zones = pw.dz2 ? [pw.dz1, pw.dz2] : [pw.dz1];
+  var zones     = pw.dz2 ? [pw.dz1, pw.dz2] : [pw.dz1];
+  var dzTotes   = [pw.dz1_totes || 0, pw.dz2_totes || 0];
   zones.forEach(function(dzId, idx) {
     if (!dzId) return;
-    // Format: DW01, DW02, ..., DW16
-    var dzNum  = dzId.replace(/^D1-PW-0*/, '').replace(/^D1-HP-0*/, '');
-    var dzLabel = 'DW' + String(parseInt(dzNum, 10)).padStart(2, '0');
+    var dzNum    = dzId.replace(/^D1-PW-0*/, '').replace(/^D1-HP-0*/, '');
+    var dzLabel  = 'DW' + String(parseInt(dzNum, 10)).padStart(2, '0');
     var isActive = pw.active_dz && dzId === pw.active_dz;
+    var totes    = dzTotes[idx] || 0;
 
     var block = document.createElement('div');
     block.className = 'dz-block ' + (isActive ? 'active' : 'idle');
@@ -690,6 +694,14 @@ function makePwBubble(pw) {
 
     block.appendChild(nameEl);
     block.appendChild(statusEl);
+
+    if (totes > 0) {
+      var toteEl = document.createElement('div');
+      toteEl.className = 'dz-tote-count';
+      toteEl.textContent = totes + (totes === 1 ? ' tote' : ' totes');
+      block.appendChild(toteEl);
+    }
+
     dzPair.appendChild(block);
   });
 

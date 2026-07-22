@@ -369,6 +369,13 @@
         <span class="pph-toggle-arrow" id="pph-arrow">&#x25BC;</span>
       </div>
       <div class="pph-body" id="pph-body">
+        <!-- Shift hours row -->
+        <div class="hc-item" style="margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--border);">
+          <div class="hc-label">Shift Hours</div>
+          <input class="pph-input" type="number" min="6" max="12" step="0.5"
+            id="shift-hours-input"
+            onchange="setShiftHours(this.value)" onblur="setShiftHours(this.value)">
+        </div>
         <div class="hc-grid" id="pph-grid">
           <!-- rendered by renderPPHSection() -->
         </div>
@@ -656,6 +663,8 @@ function togglePPHSection() {
 function renderPPHSection() {
   var grid = document.getElementById('pph-grid');
   if (!grid) return;
+  var hoursEl = document.getElementById('shift-hours-input');
+  if (hoursEl) hoursEl.value = getShiftHours();
   var vals = loadPPH();
   var html = '';
   HC_DEPTS.forEach(function(typ) {
@@ -774,19 +783,38 @@ function renderHeadcountCard() {
 }
 
 // ── PPH PACE ───────────────────────────────────────────
-var PROD_SHIFT_START = 14 + 15/60;  // 2:15 PM
-var PROD_SHIFT_CAP   = 22 + 45/60;  // 10:45 PM
-var PROD_LUNCH_AFTER = 18 + 15/60;  // 6:15 PM
-var PROD_TOTAL_HRS   = 8;
+var PROD_SHIFT_START  = 14 + 15/60;  // 2:15 PM
+var PROD_LUNCH_AFTER  = 18 + 15/60;  // 6:15 PM
+var SHIFT_HOURS_KEY   = 'ecom_shift_hours_v1';
+
+function getShiftHours() {
+  try { var v = parseFloat(localStorage.getItem(SHIFT_HOURS_KEY)); if (v >= 6 && v <= 12) return v; } catch(e) {}
+  return 8;
+}
+function setShiftHours(val) {
+  var v = parseFloat(val);
+  if (isNaN(v) || v < 6 || v > 12) return;
+  try { localStorage.setItem(SHIFT_HOURS_KEY, v); } catch(e) {}
+  var el = document.getElementById('shift-hours-input');
+  if (el) el.value = v;
+}
+
+// Derived from shift hours — cap = start + hours + 0.5 lunch
+function getProdShiftCap() {
+  var h = getShiftHours();
+  return PROD_SHIFT_START + h + 0.5; // lunch added back since getElapsedProdHrs deducts it
+}
 
 function getElapsedProdHrs() {
   var now = new Date();
   var nowH = now.getHours() + now.getMinutes()/60;
   if (nowH < 5) nowH += 24; // midnight crossover
   if (nowH <= PROD_SHIFT_START) return 0;
-  var elapsed = Math.min(nowH, PROD_SHIFT_CAP) - PROD_SHIFT_START;
+  var cap  = getProdShiftCap();
+  var hrs  = getShiftHours();
+  var elapsed = Math.min(nowH, cap) - PROD_SHIFT_START;
   if (nowH > PROD_LUNCH_AFTER) elapsed -= 0.5;
-  return Math.max(0, Math.min(elapsed, PROD_TOTAL_HRS));
+  return Math.max(0, Math.min(elapsed, hrs));
 }
 
 function getTilePace(typ, grand, filteredRows, TEAM) {
@@ -800,8 +828,8 @@ function getTilePace(typ, grand, filteredRows, TEAM) {
   var elapsed = getElapsedProdHrs();
   if (elapsed <= 0) return null;
 
-  // Full-shift goal: headcount × 8 hrs × PPH
-  var projFull = headcount * PROD_TOTAL_HRS * pph;
+  // Full-shift goal: headcount × shift hours × PPH
+  var projFull = headcount * getShiftHours() * pph;
   // Where we should be right now: headcount × elapsed hrs × PPH
   var projNow  = headcount * elapsed * pph;
 

@@ -509,16 +509,22 @@ async function fetchTotes(accessToken) {
 
   const sqlIlpn = `
 SELECT
-  ILPN_ID,
-  CURRENT_LOCATION_ID,
-  CURRENT_LOCATION_TYPE_ID,
-  CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt,
-  CONVERT_TZ(UPDATED_TIMESTAMP, '+00:00', '-07:00') AS updated_pdt
-FROM default_dcinventory.DCI_ILPN
-WHERE FACILITY_ID = '${FACILITY}'
-  AND ILPN_ID LIKE 'T0%'
-  AND STATUS = '5000'
-  AND IS_CLOSED = 0`.trim();
+  i.ILPN_ID,
+  i.CURRENT_LOCATION_ID,
+  i.CURRENT_LOCATION_TYPE_ID,
+  CONVERT_TZ(i.CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt,
+  CONVERT_TZ(i.UPDATED_TIMESTAMP, '+00:00', '-07:00') AS updated_pdt,
+  COALESCE(SUM(inv.ON_HAND), 0)                        AS on_hand_qty
+FROM default_dcinventory.DCI_ILPN i
+LEFT JOIN default_dcinventory.DCI_INVENTORY inv
+  ON  inv.ILPN_ID     = i.ILPN_ID
+ AND  inv.FACILITY_ID = '${FACILITY}'
+WHERE i.FACILITY_ID = '${FACILITY}'
+  AND i.ILPN_ID LIKE 'T0%'
+  AND i.STATUS = '5000'
+  AND i.IS_CLOSED = 0
+GROUP BY i.ILPN_ID, i.CURRENT_LOCATION_ID, i.CURRENT_LOCATION_TYPE_ID,
+         i.CREATED_TIMESTAMP, i.UPDATED_TIMESTAMP`.trim();
 
   // Subquery isolates the most recent TASK_ID per tote so COMPLETED_QUANTITY
   // is not inflated by historical reuse across the 15-day window.
@@ -528,7 +534,6 @@ SELECT
   MAX(td.PLANNED_TOTE_TYPE_ID)                                       AS tote_type,
   SUM(CASE WHEN td.STATUS != '9000' THEN 1 ELSE 0 END)              AS active_lines,
   SUM(CASE WHEN td.STATUS  = '9000' THEN 1 ELSE 0 END)              AS done_lines,
-  ROUND(SUM(COALESCE(td.COMPLETED_QUANTITY, 0)))                     AS units_picked,
   MAX(CONVERT_TZ(t.ACTUAL_END_TIME, '+00:00', '-07:00'))             AS task_ended_pdt
 FROM default_task.TSK_TASK_DETAIL td
 JOIN default_task.TSK_TASK t
@@ -607,7 +612,7 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
 
   for (const r of (respIlpn.rows || [])) {
     const task       = taskMap[r.ILPN_ID] || null;
-    const units      = task ? Math.round(Number(task.units_picked) || 0) : 0;
+    const units      = Math.round(Number(r.on_hand_qty) || 0);
     const toteType   = task ? (task.tote_type || '') : '';
     const isSingles  = /single/i.test(toteType);
     const updatedMs  = new Date(r.updated_pdt).getTime();
@@ -683,10 +688,13 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
     pwCountMap[r.pw_prefix] = Number(r.olpn_count) || 0;
   }
 
-  // Build a location lookup from the already-fetched DCI_ILPN rows
-  const ilpnLocMap = {};
+  // Build a location lookup and drop zone tote count from DCI_ILPN rows
+  const ilpnLocMap  = {};
+  const dzToteCount = {};
   for (const r of (respIlpn.rows || [])) {
-    if (r.CURRENT_LOCATION_ID) ilpnLocMap[r.ILPN_ID] = r.CURRENT_LOCATION_ID;
+    if (!r.CURRENT_LOCATION_ID) continue;
+    ilpnLocMap[r.ILPN_ID] = r.CURRENT_LOCATION_ID;
+    dzToteCount[r.CURRENT_LOCATION_ID] = (dzToteCount[r.CURRENT_LOCATION_ID] || 0) + 1;
   }
 
   // Active drop zone per putwall: highest dz_count row per prefix wins.
@@ -705,6 +713,8 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
     dz1:         m.dz1,
     dz2:         m.dz2,
     active_dz:   pwActiveDzMap[m.mawm_prefix] || null,
+    dz1_totes:   dzToteCount[m.dz1] || 0,
+    dz2_totes:   m.dz2 ? (dzToteCount[m.dz2] || 0) : 0,
   }));
 
   return {
