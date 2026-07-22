@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Receiving Live -- DC499</title>
+<title>Receiving Live v1.2 -- DC499</title>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -17,7 +17,7 @@
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
-  .container{max-width:720px;margin:0 auto;}
+  .container{max-width:1100px;margin:0 auto;}
   .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;}
   h1{font-size:20px;font-weight:500;margin-bottom:2px;}
   .dept-label{font-size:11px;color:var(--accent);font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;}
@@ -139,6 +139,57 @@
   .shift-btn{font-family:inherit;font-size:13px;padding:5px 16px;border:0.5px solid var(--border);border-radius:20px;background:var(--surface);cursor:pointer;color:var(--text-muted);font-weight:500;transition:all 0.15s;}
   .shift-btn:hover{background:var(--surface2);color:var(--text);}
   .shift-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  /* Hourly chart */
+  .chart-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+  .chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .chart-title{font-size:13px;font-weight:500;color:var(--text);}
+  .chart-toggle{display:flex;gap:4px;}
+  .chart-toggle-btn{font-family:inherit;font-size:11px;padding:3px 10px;border:0.5px solid var(--border);border-radius:12px;background:none;color:var(--text-hint);cursor:pointer;transition:all 0.15s;}
+  .chart-toggle-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .chart-area{position:relative;height:120px;display:flex;align-items:flex-end;gap:3px;padding-bottom:22px;}
+  .chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:100%;justify-content:flex-end;position:relative;}
+  .chart-bar{width:100%;border-radius:3px 3px 0 0;background:var(--accent);opacity:0.75;min-height:2px;transition:height 0.3s;}
+  .chart-bar.current{opacity:1;}
+  .chart-bar-wrap:hover .chart-bar{opacity:1;}
+  .chart-label{font-size:9px;color:var(--text-hint);position:absolute;bottom:0;white-space:nowrap;}
+  .chart-cumline{position:absolute;top:0;left:0;right:0;bottom:22px;pointer-events:none;}
+  .chart-tooltip{position:absolute;background:var(--surface);border:0.5px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);pointer-events:none;white-space:nowrap;z-index:10;display:none;box-shadow:0 2px 8px rgba(0,0,0,0.12);}
+
+  /* Dock board */
+  .dock-section-header{display:flex;align-items:center;justify-content:space-between;margin:1rem 0 6px;padding-bottom:4px;border-bottom:0.5px solid var(--border);cursor:pointer;user-select:none;}
+  .dock-section-header:hover .dock-section-label{color:var(--text);}
+  .dock-section-label{font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .dock-section-chevron{font-size:10px;color:var(--text-hint);transition:transform 0.2s;}
+  .dock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:0.5rem;}
+  .dock-grid.collapsed{display:none;}
+  .dock-door{background:var(--surface2);border-radius:8px;padding:8px 10px;border-left:3px solid var(--border);cursor:pointer;transition:box-shadow 0.15s;}
+  .dock-door:hover{box-shadow:0 0 0 1px var(--border-mid);}
+  .dock-door.docked{border-left-color:var(--accent);}
+  .dock-door.available{border-left-color:#ccc;opacity:0.55;}
+  [data-theme="dark"] .dock-door.available{opacity:0.35;}
+  .dock-door.undocked{border-left-color:#F5A623;}
+  .dock-door.pending{border-left-color:#7F77DD;}
+  .dock-door-id{font-size:11px;font-weight:500;color:var(--text-muted);}
+  .dock-trailer{font-size:13px;font-weight:500;color:var(--text);margin:2px 0;}
+  .dock-carrier{font-size:11px;color:var(--text-hint);}
+  .dock-status-badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;margin-top:3px;text-transform:uppercase;letter-spacing:0.04em;}
+  .dock-status-badge.docked{background:var(--accent-bg);color:var(--accent);}
+  .dock-status-badge.available{background:var(--surface2);color:var(--text-hint);}
+  .dock-status-badge.undocked{background:#FFF3E0;color:#E65100;}
+  [data-theme="dark"] .dock-status-badge.undocked{background:#3E2000;color:#FFB74D;}
+  .dock-status-badge.pending{background:#EEEDFE;color:#534AB7;}
+  [data-theme="dark"] .dock-status-badge.pending{background:#2D2A5A;color:#A09BEF;}
+  /* LPN mini progress bar on card */
+  .dock-lpn-bar-wrap{background:var(--bar-bg);border-radius:3px;height:4px;margin:5px 0 3px;overflow:hidden;}
+  .dock-lpn-bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width 0.3s;}
+  .dock-lpn-counts{display:flex;justify-content:space-between;font-size:10px;color:var(--text-hint);}
+  /* Dock expand drawer */
+  .dock-drawer{display:none;margin-top:8px;padding-top:8px;border-top:0.5px solid var(--border-mid);font-size:12px;color:var(--text-muted);line-height:1.7;}
+  .dock-door.expanded .dock-drawer{display:block;}
+  .dock-drawer-row{display:flex;justify-content:space-between;gap:8px;}
+  .dock-drawer-key{color:var(--text-hint);white-space:nowrap;}
+  .dock-drawer-val{color:var(--text);font-weight:500;text-align:right;word-break:break-all;}
 </style>
 </head>
 <body>
@@ -146,7 +197,7 @@
 
   <div class="top-bar">
     <div>
-      <p class="dept-label"><span class="live-dot"></span>Receiving Live v1.1</p>
+      <p class="dept-label"><span class="live-dot"></span>Receiving Live v1.2</p>
       <h1>Receiving Live &mdash; 2nd Shift</h1>
       <p class="subtitle">Live data &middot; Auto-refreshes every 5 min</p>
     </div>
@@ -164,6 +215,7 @@
   <div class="tabs">
     <div class="tabs-left">
       <button class="tab active-recv" id="tab-live" onclick="switchTab('live')">Live Leaderboard</button>
+      <button class="tab" id="tab-dock" onclick="switchTab('dock')">Dock Board</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -185,10 +237,25 @@
       </div>
     </div>
 
+    <!-- Hourly trend chart -->
+    <div class="chart-card" id="chart-card" style="display:none;">
+      <div class="chart-header">
+        <span class="chart-title">Hourly Receiving Trend &mdash; Today</span>
+        <div class="chart-toggle">
+          <button class="chart-toggle-btn active" id="chart-btn-lpns" onclick="setChartMode('lpns')">LPNs</button>
+          <button class="chart-toggle-btn" id="chart-btn-units" onclick="setChartMode('units')">Units</button>
+        </div>
+      </div>
+      <div style="position:relative;">
+        <div class="chart-area" id="chart-area"></div>
+        <div class="chart-tooltip" id="chart-tooltip"></div>
+      </div>
+    </div>
+
     <div class="metrics">
-      <div class="metric"><div class="metric-label">On-Roster Total</div><div class="metric-value" id="m-total">--</div></div>
-      <div class="metric"><div class="metric-label">Associates</div><div class="metric-value" id="m-assoc">--</div></div>
-      <div class="metric"><div class="metric-label">Facility</div><div class="metric-value" id="m-facility">499</div><div class="metric-sub" id="m-shift">2nd Shift</div></div>
+      <div class="metric"><div class="metric-label">On-Roster LPNs</div><div class="metric-value" id="m-total">--</div></div>
+      <div class="metric"><div class="metric-label">On-Roster Units</div><div class="metric-value" id="m-units">--</div></div>
+      <div class="metric"><div class="metric-label">Associates</div><div class="metric-value" id="m-assoc">--</div><div class="metric-sub" id="m-shift">2nd Shift</div></div>
     </div>
 
     <div class="card" id="results-card" style="display:none;">
@@ -196,15 +263,17 @@
         <thead><tr>
           <th>Associate</th>
           <th class="r">LPNs</th>
+          <th class="r">Units</th>
           <th class="r">First</th>
           <th class="r">Last</th>
           <th class="r">LPNs/hr</th>
-          <th style="width:25%;"></th>
+          <th style="width:22%;"></th>
         </tr></thead>
         <tbody id="tb-on-roster"></tbody>
         <tfoot><tr>
           <td>Team total</td>
           <td class="r" id="ft-total"></td>
+          <td class="r" id="ft-units"></td>
           <td colspan="4"></td>
         </tr></tfoot>
       </table>
@@ -219,6 +288,7 @@
             <thead><tr>
               <th>Associate</th>
               <th class="r">LPNs</th>
+              <th class="r">Units</th>
               <th class="r">First</th>
               <th class="r">Last</th>
               <th class="r">LPNs/hr</th>
@@ -233,6 +303,20 @@
     <div class="empty-state" id="empty-state" style="display:none;">
       <div style="font-size:32px;margin-bottom:10px;">&#x1F4E1;</div>
       No data yet. Click <strong>Refresh Live Data</strong> to reload.
+    </div>
+  </div>
+
+  <!-- DOCK TAB -->
+  <div class="tab-panel" id="panel-dock">
+    <div class="header-row" style="margin-bottom:0.75rem;">
+      <div id="dock-run-time" class="run-time">Loading...</div>
+      <button class="refresh-btn-recv" onclick="manualRefreshDock()">&#x21BA; Refresh Dock</button>
+    </div>
+    <div id="dock-content">
+      <div class="empty-state" id="dock-empty">
+        <div style="font-size:32px;margin-bottom:10px;">&#x1F6AA;</div>
+        No dock data. Click Refresh Dock to load.
+      </div>
     </div>
   </div>
 
@@ -251,11 +335,11 @@
       </div>
       <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
     </div>
-    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">Receiving Live v1.1</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">Receiving Live v1.2</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Receiving Live &middot; DC499 &middot; <span id="footer-date"></span></p>
-  <p class="nordstrom-tag" style="margin-top:4px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
+  <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
 </div>
 
 <script>
@@ -343,10 +427,13 @@ function toggleDark() {
 // -- Tabs ---------------------------------------------------------------------
 function switchTab(tab) {
   document.getElementById('tab-live').className     = 'tab'          + (tab === 'live'     ? ' active-recv'     : '');
+  document.getElementById('tab-dock').className     = 'tab'          + (tab === 'dock'     ? ' active-recv'     : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
   document.getElementById('panel-live').className     = 'tab-panel' + (tab === 'live'     ? ' active' : '');
+  document.getElementById('panel-dock').className     = 'tab-panel' + (tab === 'dock'     ? ' active' : '');
   document.getElementById('panel-settings').className = 'tab-panel' + (tab === 'settings' ? ' active' : '');
   if (tab === 'settings') renderRoster();
+  if (tab === 'dock' && !lastDockData) fetchDockData();
 }
 
 // -- Roster (per-shift) -------------------------------------------------------
@@ -543,8 +630,7 @@ function renderResults(data) {
       + ' \xb7 Facility ' + (data.facility || '499');
   } catch(e) { rtEl.textContent = data.generated || ''; }
 
-  document.getElementById('m-shift').textContent    = SHIFT_DEFS[activeShift].label;
-  document.getElementById('m-facility').textContent = data.facility || '499';
+  document.getElementById('m-shift').textContent = SHIFT_DEFS[activeShift].label;
 
   // Filter associates by shift based on first_scan hour
   var allAssociates = (data.associates || []).slice().sort(function(a, b) { return b.lpns - a.lpns; });
@@ -557,11 +643,14 @@ function renderResults(data) {
   var offRoster = associates.filter(function(a) { return !activeSet.has(a.name); });
 
   var grandTotal = onRoster.reduce(function(s, a) { return s + a.lpns; }, 0);
+  var grandUnits = onRoster.reduce(function(s, a) { return s + (a.units || 0); }, 0);
   var maxLpns    = onRoster.length ? onRoster[0].lpns : 0;
 
   document.getElementById('m-total').textContent = grandTotal.toLocaleString();
+  document.getElementById('m-units').textContent = grandUnits.toLocaleString();
   document.getElementById('m-assoc').textContent = onRoster.length;
   document.getElementById('ft-total').textContent = grandTotal.toLocaleString();
+  document.getElementById('ft-units').textContent = grandUnits.toLocaleString();
 
   var tbOn = document.getElementById('tb-on-roster');
   tbOn.innerHTML = '';
@@ -574,11 +663,13 @@ function renderResults(data) {
       var nameEsc = escHtml(a.name);
       var rosterEntry = roster.find(function(m) { return m.name === a.name; });
       var isEnabled   = rosterEntry ? rosterEntry.enabled : true;
+      var unitsDisp   = (a.units != null && a.units > 0) ? a.units.toLocaleString() : '<span style="color:var(--text-hint);">--</span>';
       var tr = document.createElement('tr');
       tr.className = 'assoc-row';
       tr.innerHTML =
         '<td>' + nameEsc + trophy + '</td>' +
         '<td class="r" style="font-weight:500;">' + a.lpns.toLocaleString() + '</td>' +
+        '<td class="r" style="color:var(--text-muted);">' + unitsDisp + '</td>' +
         '<td class="r" style="color:var(--text-muted);font-size:13px;">' + escHtml(a.first_scan || '--') + '</td>' +
         '<td class="r" style="color:var(--text-muted);font-size:13px;">' + escHtml(a.last_scan  || '--') + '</td>' +
         '<td class="r" style="color:var(--accent);font-size:13px;font-weight:500;">' + (pph !== null ? pph : '<span style="color:var(--text-hint);">--</span>') + '</td>' +
@@ -591,7 +682,7 @@ function renderResults(data) {
   } else {
     var shiftStart = SHIFT_DEFS[activeShift].start;
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="6" style="text-align:center;color:var(--text-hint);padding:2rem;font-size:13px;">No ' + SHIFT_DEFS[activeShift].label + ' roster members found &mdash; shift starts at ' + shiftStart + ':00</td>';
+    tr.innerHTML = '<td colspan="7" style="text-align:center;color:var(--text-hint);padding:2rem;font-size:13px;">No ' + SHIFT_DEFS[activeShift].label + ' roster members found &mdash; shift starts at ' + shiftStart + ':00</td>';
     tbOn.appendChild(tr);
   }
 
@@ -609,9 +700,11 @@ function renderResults(data) {
       var pph = calcPPH(a.lpns, a.first_scan, a.last_scan);
       var tr = document.createElement('tr');
       var nameEsc = escHtml(a.name);
+      var unitsDisp = (a.units != null && a.units > 0) ? a.units.toLocaleString() : '--';
       tr.innerHTML =
         '<td style="color:var(--text-muted);">' + nameEsc + '</td>' +
         '<td class="r" style="color:var(--text-muted);">' + a.lpns.toLocaleString() + '</td>' +
+        '<td class="r" style="color:var(--text-hint);">' + unitsDisp + '</td>' +
         '<td class="r" style="color:var(--text-hint);font-size:13px;">' + escHtml(a.first_scan || '--') + '</td>' +
         '<td class="r" style="color:var(--text-hint);font-size:13px;">' + escHtml(a.last_scan  || '--') + '</td>' +
         '<td class="r" style="color:var(--text-hint);font-size:13px;">' + (pph !== null ? pph : '--') + '</td>' +
@@ -623,6 +716,12 @@ function renderResults(data) {
     offWrap.style.display = 'none';
   }
 
+  // Chart
+  if (data.hourly && data.hourly.length) {
+    renderChart(data.hourly);
+    document.getElementById('chart-card').style.display = 'block';
+  }
+
   emptyEl.style.display = 'none';
   cardEl.style.display  = 'block';
 }
@@ -632,13 +731,14 @@ function copyTable() {
   var rows = document.querySelectorAll('#tb-on-roster tr.assoc-row');
   var rtEl = document.getElementById('run-time');
   var text = 'Receiving Live -- DC499 -- ' + SHIFT_DEFS[activeShift].label + '\n' + (rtEl ? rtEl.textContent : '') + '\n\n';
-  text += 'Associate\tLPNs\tFirst\tLast\tLPNs/hr\n';
+  text += 'Associate\tLPNs\tUnits\tFirst\tLast\tLPNs/hr\n';
   rows.forEach(function(row) {
-    text += Array.from(row.querySelectorAll('td')).slice(0, 5).map(function(c) {
+    text += Array.from(row.querySelectorAll('td')).slice(0, 6).map(function(c) {
       return c.textContent.replace(/\s+/g, ' ').trim();
     }).join('\t') + '\n';
   });
-  text += '\nTeam total: ' + document.getElementById('ft-total').textContent;
+  text += '\nTeam total: ' + document.getElementById('ft-total').textContent +
+          ' LPNs / ' + document.getElementById('ft-units').textContent + ' units';
   var btn = event.currentTarget, orig = btn.textContent;
   try {
     if (navigator.clipboard && window.isSecureContext) {
@@ -653,6 +753,260 @@ function copyTable() {
       btn.textContent = '✓ Copied!'; setTimeout(function() { btn.textContent = orig; }, 2000);
     }
   } catch(e) { alert('Copy failed -- try selecting the table manually.'); }
+}
+
+// -- Chart --------------------------------------------------------------------
+var chartMode    = 'lpns';
+var lastHourly   = null;
+
+function setChartMode(mode) {
+  chartMode = mode;
+  document.getElementById('chart-btn-lpns').className  = 'chart-toggle-btn' + (mode === 'lpns'  ? ' active' : '');
+  document.getElementById('chart-btn-units').className = 'chart-toggle-btn' + (mode === 'units' ? ' active' : '');
+  if (lastHourly) renderChart(lastHourly);
+}
+
+function renderChart(hourly) {
+  lastHourly = hourly;
+  var area    = document.getElementById('chart-area');
+  var tooltip = document.getElementById('chart-tooltip');
+  area.innerHTML = '';
+
+  var nowHour = new Date().getHours();
+  var vals    = hourly.map(function(h) { return mode === 'units' ? h.units : h.lpns; });
+  var mode    = chartMode;
+  vals        = hourly.map(function(h) { return mode === 'units' ? h.units : h.lpns; });
+  var maxVal  = Math.max.apply(null, vals.concat([1]));
+
+  // cumulative line points — computed after bars are measured
+  var cumPoints = [];
+  var cumTotal  = 0;
+  var cumMax    = vals.reduce(function(s, v) { return s + v; }, 0) || 1;
+
+  hourly.forEach(function(h, i) {
+    var val    = mode === 'units' ? h.units : h.lpns;
+    var barPct = maxVal > 0 ? Math.round((val / maxVal) * 96) : 0;
+    var isCur  = (h.hour === nowHour);
+    var labelH = (h.hour % 12) || 12;
+    var labelS = h.hour >= 12 ? 'p' : 'a';
+
+    var wrap = document.createElement('div');
+    wrap.className = 'chart-bar-wrap';
+
+    var bar = document.createElement('div');
+    bar.className = 'chart-bar' + (isCur ? ' current' : '');
+    bar.style.height = barPct + '%';
+
+    var lbl = document.createElement('div');
+    lbl.className = 'chart-label';
+    lbl.textContent = labelH + labelS;
+
+    wrap.appendChild(bar);
+    wrap.appendChild(lbl);
+
+    // tooltip
+    (function(hh, v) {
+      wrap.addEventListener('mouseenter', function(e) {
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = '<strong>' + ((hh.hour % 12) || 12) + (hh.hour >= 12 ? 'PM' : 'AM') + '</strong><br>' +
+          hh.lpns.toLocaleString() + ' LPNs' +
+          (hh.units ? ' &middot; ' + hh.units.toLocaleString() + ' units' : '');
+      });
+      wrap.addEventListener('mousemove', function(e) {
+        var rect = area.getBoundingClientRect();
+        tooltip.style.left = Math.min(e.clientX - rect.left - 10, rect.width - 120) + 'px';
+        tooltip.style.top  = '0px';
+      });
+      wrap.addEventListener('mouseleave', function() { tooltip.style.display = 'none'; });
+    })(h, val);
+
+    area.appendChild(wrap);
+    cumTotal += val;
+    cumPoints.push(cumTotal);
+  });
+
+  // draw cumulative SVG line overlay
+  if (hourly.length > 1) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'chart-cumline');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    var bars = area.querySelectorAll('.chart-bar-wrap');
+    var areaRect = { width: area.offsetWidth || 600, height: (area.offsetHeight || 142) - 22 };
+    var points = [];
+    bars.forEach(function(b, i) {
+      var cx = b.offsetLeft + b.offsetWidth / 2;
+      var cy = areaRect.height - (cumPoints[i] / cumMax) * areaRect.height;
+      points.push(cx + ',' + cy);
+    });
+    var polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    polyline.setAttribute('points', points.join(' '));
+    polyline.setAttribute('fill', 'none');
+    polyline.setAttribute('stroke', 'var(--accent)');
+    polyline.setAttribute('stroke-width', '1.5');
+    polyline.setAttribute('stroke-opacity', '0.5');
+    polyline.setAttribute('stroke-dasharray', '3,2');
+    svg.appendChild(polyline);
+
+    // dots at each point
+    points.forEach(function(pt) {
+      var parts = pt.split(',');
+      var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', parts[0]);
+      circle.setAttribute('cy', parts[1]);
+      circle.setAttribute('r', '2.5');
+      circle.setAttribute('fill', 'var(--accent)');
+      circle.setAttribute('opacity', '0.7');
+      svg.appendChild(circle);
+    });
+    area.appendChild(svg);
+  }
+}
+
+// -- Dock data ----------------------------------------------------------------
+var lastDockData = null;
+
+function manualRefreshDock() { fetchDockData(); }
+
+function fetchDockData() {
+  var rtEl = document.getElementById('dock-run-time');
+  if (rtEl) rtEl.textContent = 'Loading...';
+  var base = window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
+  fetch(base + '/dock_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      lastDockData = data;
+      renderDock(data);
+    })
+    .catch(function(err) {
+      if (rtEl) rtEl.textContent = 'Failed to load dock data: ' + err.message;
+    });
+}
+
+function renderDock(data) {
+  var rtEl    = document.getElementById('dock-run-time');
+  var content = document.getElementById('dock-content');
+  var emptyEl = document.getElementById('dock-empty');
+
+  if (!data || !data.doors || !data.doors.length) {
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  try {
+    var d = new Date(data.generated.endsWith('Z') ? data.generated : data.generated + 'Z');
+    rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  } catch(e) { rtEl.textContent = ''; }
+
+  var statusLabel = { DOCKED:'Docked', AVAILABLE:'Available', UNDOCKED:'Pending unload', PENDING_IN_USE:'In use' };
+  var statusClass = { DOCKED:'docked', AVAILABLE:'available', UNDOCKED:'undocked', PENDING_IN_USE:'pending' };
+  var apptStatusLabel = { '1000':'Requested', '2000':'Countered', '3000':'Checked In', '5000':'Scheduled', '8000':'Complete' };
+  var apptTypeLabel   = { 'DROP_UNLOAD':'Drop Unload', 'PICKUP_LOAD':'Pickup Load', 'LIVE_UNLOAD':'Live Unload' };
+
+  // Group by dock — receiving first, shipping second
+  var dockGroups = {};
+  data.doors.forEach(function(door) {
+    var dockName = door.dock || 'Unknown';
+    if (!dockGroups[dockName]) dockGroups[dockName] = [];
+    dockGroups[dockName].push(door);
+  });
+
+  var dockOrder = Object.keys(dockGroups).sort(function(a, b) {
+    var aRecv = /receiv/i.test(a) ? 0 : 1;
+    var bRecv = /receiv/i.test(b) ? 0 : 1;
+    return aRecv - bRecv || a.localeCompare(b);
+  });
+
+  content.innerHTML = '';
+  dockOrder.forEach(function(dockName) {
+    var doors      = dockGroups[dockName];
+    var isShipping = /ship/i.test(dockName);
+
+    // Section header (clickable to collapse)
+    var occupied = doors.filter(function(d) { return d.trailer; }).length;
+    var header = document.createElement('div');
+    header.className = 'dock-section-header';
+    var labelEl   = document.createElement('span');
+    labelEl.className = 'dock-section-label';
+    labelEl.textContent = dockName + '  (' + occupied + '/' + doors.length + ' occupied)';
+    var chevron = document.createElement('span');
+    chevron.className = 'dock-section-chevron';
+    chevron.textContent = isShipping ? '▶' : '▼';
+    header.appendChild(labelEl);
+    header.appendChild(chevron);
+    content.appendChild(header);
+
+    var grid = document.createElement('div');
+    grid.className = 'dock-grid' + (isShipping ? ' collapsed' : '');
+    if (isShipping) chevron.style.transform = 'rotate(-90deg)';
+
+    header.addEventListener('click', function() {
+      var isCollapsed = grid.classList.toggle('collapsed');
+      chevron.style.transform = isCollapsed ? 'rotate(-90deg)' : '';
+      chevron.textContent = isCollapsed ? '▶' : '▼';
+    });
+
+    doors.forEach(function(door) {
+      var sc  = statusClass[door.status] || 'available';
+      var sl  = statusLabel[door.status] || door.status;
+
+      // LPN progress
+      var hasLpns  = door.shipped_lpns != null && door.shipped_lpns > 0;
+      var rcvd     = door.received_lpns || 0;
+      var shipped  = door.shipped_lpns  || 0;
+      var lpnPct   = hasLpns ? Math.min(100, Math.round((rcvd / shipped) * 100)) : 0;
+
+      var lpnBar = hasLpns
+        ? '<div class="dock-lpn-bar-wrap"><div class="dock-lpn-bar-fill" style="width:' + lpnPct + '%"></div></div>' +
+          '<div class="dock-lpn-counts"><span>' + rcvd.toLocaleString() + ' / ' + shipped.toLocaleString() + ' LPNs</span><span>' + lpnPct + '%</span></div>'
+        : '';
+
+      // Drawer rows — appointment + ASN detail
+      var drawerRows = '';
+      if (door.asn_id) {
+        drawerRows +=
+          '<div class="dock-drawer-row"><span class="dock-drawer-key">ASN</span><span class="dock-drawer-val">' + escHtml(door.asn_id) + '</span></div>' +
+          (door.first_receipt ? '<div class="dock-drawer-row"><span class="dock-drawer-key">Started</span><span class="dock-drawer-val">' + escHtml(door.first_receipt) + '</span></div>' : '') +
+          (door.last_receipt  ? '<div class="dock-drawer-row"><span class="dock-drawer-key">Last scan</span><span class="dock-drawer-val">' + escHtml(door.last_receipt) + '</span></div>' : '');
+      }
+      if (door.appt_id) {
+        drawerRows +=
+          '<div class="dock-drawer-row"><span class="dock-drawer-key">Appt</span><span class="dock-drawer-val">' + escHtml(door.appt_id) + '</span></div>' +
+          (door.appt_type   ? '<div class="dock-drawer-row"><span class="dock-drawer-key">Type</span><span class="dock-drawer-val">' + escHtml(apptTypeLabel[door.appt_type] || door.appt_type) + '</span></div>' : '') +
+          (door.appt_status ? '<div class="dock-drawer-row"><span class="dock-drawer-key">Appt status</span><span class="dock-drawer-val">' + escHtml(apptStatusLabel[door.appt_status] || door.appt_status) + '</span></div>' : '') +
+          (door.appt_start  ? '<div class="dock-drawer-row"><span class="dock-drawer-key">Window</span><span class="dock-drawer-val">' + escHtml(door.appt_start) + '</span></div>' : '') +
+          (door.arrived     ? '<div class="dock-drawer-row"><span class="dock-drawer-key">Arrived</span><span class="dock-drawer-val">' + escHtml(door.arrived) + '</span></div>' : '');
+      }
+      if (!drawerRows && door.trailer) {
+        drawerRows = '<div style="color:var(--text-hint);font-size:11px;">No ASN or appointment on record</div>';
+      }
+
+      var div = document.createElement('div');
+      div.className = 'dock-door ' + sc;
+      div.innerHTML =
+        '<div class="dock-door-id">' + escHtml(door.door) + '</div>' +
+        (door.trailer
+          ? '<div class="dock-trailer">' + escHtml(door.trailer) + '</div>' +
+            '<div class="dock-carrier">' + escHtml(door.carrier || '') + '</div>'
+          : '<div class="dock-trailer" style="color:var(--text-hint);font-weight:400;font-size:12px;">Empty</div><div class="dock-carrier"></div>') +
+        lpnBar +
+        '<span class="dock-status-badge ' + sc + '">' + sl + '</span>' +
+        (door.trailer ? '<div class="dock-drawer">' + drawerRows + '</div>' : '');
+
+      if (door.trailer) {
+        div.addEventListener('click', function() {
+          div.classList.toggle('expanded');
+        });
+      }
+
+      grid.appendChild(div);
+    });
+    content.appendChild(grid);
+  });
 }
 
 // -- Init ---------------------------------------------------------------------

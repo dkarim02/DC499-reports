@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Totes v1.3 -- DC499</title>
+<style>
+  :root {
+    --bg:#111;--surface:#1a1a1a;--surface2:#222;--border:#2e2e2e;--border-mid:#333;
+    --text:#f0f0ee;--text-muted:#999;--text-hint:#666;
+    --accent:#0E9E8E;--accent-bg:#053D38;
+    --green:#22c55e;--green-bg:#052e16;--green-border:#166534;
+    --yellow:#facc15;--yellow-bg:#2d2500;--yellow-border:#713f12;
+    --red:#ef4444;--red-bg:#2d0a0a;--red-border:#7f1d1d;
+    --orphan:#c084fc;--orphan-bg:#2e1065;--orphan-border:#6b21a8;
+    --s-color:#a78bfa;--m-color:#fb923c;
+    --pw-active-glow:#0E9E8E;--pw-active-bg:#053D38;--pw-active-border:#0E9E8E;
+    --dz-active-bg:#0a3d38;--dz-active-border:#0E9E8E;--dz-active-text:#2dd4c0;
+    --dz-idle-bg:#1a1a1a;--dz-idle-border:#2e2e2e;--dz-idle-text:#555;
+  }
+  [data-theme="light"] {
+    --bg:#f0f0ee;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-mid:#e5e5e5;
+    --text:#1a1a1a;--text-muted:#555;--text-hint:#999;
+    --accent:#0E9E8E;--accent-bg:#E6F7F5;
+    --green:#16a34a;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+    --yellow:#ca8a04;--yellow-bg:#fefce8;--yellow-border:#fde68a;
+    --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;
+    --orphan:#9333ea;--orphan-bg:#faf5ff;--orphan-border:#d8b4fe;
+    --s-color:#7c3aed;--m-color:#c2410c;
+    --pw-active-glow:#0E9E8E;--pw-active-bg:#E6F7F5;--pw-active-border:#0E9E8E;
+    --dz-active-bg:#d1faf5;--dz-active-border:#0E9E8E;--dz-active-text:#0a6b62;
+    --dz-idle-bg:#f0f0ee;--dz-idle-border:#ddd;--dz-idle-text:#bbb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;}
+  .container{max-width:1700px;margin:0 auto;}
+
+  /* Top bar */
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;}
+  .top-left h1{font-size:26px;font-weight:700;letter-spacing:-0.5px;}
+  .dept-label{font-size:11px;color:var(--accent);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px;}
+  .subtitle{font-size:13px;color:var(--text-muted);margin-top:3px;}
+  .top-right{display:flex;align-items:center;gap:10px;}
+  .dark-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
+  .dark-toggle:hover{background:var(--surface2);}
+  .toggle-track{width:28px;height:16px;border-radius:8px;background:var(--border-mid);position:relative;transition:background 0.2s;flex-shrink:0;}
+  .toggle-thumb{width:12px;height:12px;border-radius:50%;background:var(--text-hint);position:absolute;top:2px;left:2px;transition:left 0.2s,background 0.2s;}
+  [data-theme="light"] .toggle-track{background:var(--accent);}
+  [data-theme="light"] .toggle-thumb{left:14px;background:#fff;}
+
+  /* Status bar */
+  .status-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px;}
+  .status-left{font-size:12px;color:var(--text-hint);}
+  .refresh-btn{font-family:inherit;font-size:13px;padding:6px 16px;border:0.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:600;}
+  .refresh-btn:hover{opacity:0.8;}
+
+  /* Summary pills */
+  .summary-row{display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;}
+  .summary-pill{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;border:1.5px solid;}
+  .pill-total{background:var(--surface2);border-color:var(--border);color:var(--text-muted);}
+  .pill-red{background:var(--red-bg);border-color:var(--red-border);color:var(--red);}
+  .pill-orphan{background:var(--orphan-bg);border-color:var(--orphan-border);color:var(--orphan);}
+  .pill-c1{background:var(--surface2);border-color:var(--border);color:var(--text-muted);}
+  .pill-c3{background:var(--surface2);border-color:var(--border);color:var(--text-muted);}
+
+  /* Stale banner */
+  .stale-banner{display:none;background:var(--yellow-bg);color:var(--yellow);font-size:13px;font-weight:600;padding:10px 16px;border-radius:8px;margin-bottom:1rem;text-align:center;border:1px solid var(--yellow-border);}
+
+  /* 3-column grid */
+  .columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
+  @media(max-width:900px){.columns{grid-template-columns:1fr;}}
+
+  /* Column card */
+  .col-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+  .col-header{padding:14px 18px 12px;border-bottom:1.5px solid var(--border);}
+  .col-title{font-size:18px;font-weight:800;letter-spacing:-0.3px;margin-bottom:2px;}
+  .col-subtitle{font-size:11px;color:var(--text-muted);font-weight:500;}
+  .col-count{float:right;font-size:28px;font-weight:900;line-height:1;}
+
+  /* Shared sub-box scroll height — col1 and col3 use the same value */
+  .sub-scroll{max-height:280px;overflow-y:hidden;position:relative;}
+  .sub-scroll .col-body,.sub-scroll .sub-box-body{min-height:unset;padding-bottom:6px;}
+
+  /* Col 1 + Col 3 stacked wrappers */
+  .col1-wrapper,.col3-wrapper{display:flex;flex-direction:column;gap:0;}
+
+  /* Sub-box shell */
+  .sub-box{border-bottom:1.5px solid var(--border);}
+  .sub-box:last-child{border-bottom:none;}
+  .sub-box-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px;border-bottom:1px solid var(--border);}
+  .sub-box-title{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.06em;}
+  .sub-box-title.pick{color:var(--accent);}
+  .sub-box-title.notdrop{color:var(--yellow);}
+  .sub-box-title.orphan{color:var(--orphan);}
+  .sub-box-title.aging{color:var(--text-muted);}
+  .sub-box-count{font-size:22px;font-weight:900;line-height:1;}
+  .sub-box-count.pick{color:var(--accent);}
+  .sub-box-count.notdrop{color:var(--yellow);}
+  .sub-box-count.orphan{color:var(--orphan);}
+  .sub-box-count.aging{color:var(--text-muted);}
+  .sub-box-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:unset;}
+
+  /* Tote row card */
+  .tote-card{border-radius:10px;padding:12px 14px;border:1.5px solid;display:flex;align-items:center;gap:12px;}
+  .tote-card.green{background:var(--green-bg);border-color:var(--green-border);}
+  .tote-card.yellow{background:var(--yellow-bg);border-color:var(--yellow-border);}
+  .tote-card.red{background:var(--red-bg);border-color:var(--red-border);}
+  .tote-card.orphan{background:var(--orphan-bg);border-color:var(--orphan-border);}
+
+  /* Severity dot */
+  .sev-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+  .sev-dot.green{background:var(--green);box-shadow:0 0 8px var(--green);}
+  .sev-dot.yellow{background:var(--yellow);box-shadow:0 0 8px var(--yellow);}
+  .sev-dot.red{background:var(--red);box-shadow:0 0 10px var(--red);animation:redpulse 1.4s infinite;}
+  .sev-dot.orphan{background:var(--orphan);box-shadow:0 0 10px var(--orphan);animation:orphanpulse 2s infinite;}
+  @keyframes redpulse{0%,100%{box-shadow:0 0 10px var(--red);}50%{box-shadow:0 0 22px var(--red);}}
+  @keyframes orphanpulse{0%,100%{box-shadow:0 0 10px var(--orphan);}50%{box-shadow:0 0 24px var(--orphan);}}
+
+  /* Tote info */
+  .tote-info{flex:1;min-width:0;}
+  .tote-id{font-size:17px;font-weight:800;font-family:'SF Mono','Fira Mono','Consolas',monospace;letter-spacing:-0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tote-id.green{color:var(--green);}
+  .tote-id.yellow{color:var(--yellow);}
+  .tote-id.red{color:var(--red);}
+  .tote-id.orphan{color:var(--orphan);}
+  .tote-meta{font-size:11px;color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .type-badge{font-size:11px;font-weight:700;padding:1px 7px;border-radius:6px;}
+  .type-badge.S{background:#2e1a5a;color:var(--s-color);}
+  .type-badge.M{background:#2d1200;color:var(--m-color);}
+  [data-theme="light"] .type-badge.S{background:#ede9fe;color:var(--s-color);}
+  [data-theme="light"] .type-badge.M{background:#fff7ed;color:var(--m-color);}
+  .case2-label{font-size:10px;font-weight:700;color:var(--yellow);background:var(--yellow-bg);padding:1px 6px;border-radius:6px;border:1px solid var(--yellow-border);}
+  .loc-chip{font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:11px;background:var(--surface2);color:var(--text-muted);padding:1px 6px;border-radius:4px;}
+  .units-chip{font-size:11px;color:var(--text-hint);}
+
+  /* Timer */
+  .tote-timer{text-align:right;flex-shrink:0;}
+  .timer-val{font-size:22px;font-weight:900;line-height:1;}
+  .timer-val.green{color:var(--green);}
+  .timer-val.yellow{color:var(--yellow);}
+  .timer-val.red{color:var(--red);}
+  .timer-val.orphan{color:var(--orphan);}
+  .timer-label{font-size:10px;color:var(--text-hint);margin-top:2px;}
+
+  /* Section divider inside col3 */
+  .section-divider{display:flex;align-items:center;gap:8px;margin:4px 0 2px;}
+  .section-divider-label{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;white-space:nowrap;padding:2px 8px;border-radius:10px;}
+  .divider-orphan{background:var(--orphan-bg);color:var(--orphan);border:1px solid var(--orphan-border);}
+  .divider-normal{background:var(--surface2);color:var(--text-hint);}
+  .section-divider-line{flex:1;height:1px;background:var(--border);}
+  .col-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:80px;}
+
+  /* ── Putwall Heat Map ── */
+  .heatmap-body{padding:14px 12px;}
+
+  /* 2-per-row grid */
+  .pw-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+
+  /* Putwall bubble */
+  .pw-bubble{background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;min-width:0;}
+  .pw-bubble.pw-active{border-color:var(--pw-active-border);box-shadow:0 0 10px rgba(14,158,142,0.25);}
+
+  .pw-bubble-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+  .pw-label{font-size:13px;font-weight:800;letter-spacing:0.04em;color:var(--text-muted);}
+  .pw-bubble.pw-active .pw-label{color:var(--pw-active-glow);}
+  .pw-olpn-count{font-size:26px;font-weight:900;line-height:1;color:var(--text-hint);}
+  .pw-bubble.pw-active .pw-olpn-count{color:var(--pw-active-glow);}
+  .pw-olpn-label{font-size:9px;color:var(--text-hint);margin-left:3px;}
+
+  /* Drop zone pair inside bubble */
+  .dz-pair{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .dz-block{border-radius:8px;padding:6px 8px;border:1.5px solid;text-align:center;transition:box-shadow 0.2s;}
+  .dz-block.idle{background:var(--dz-idle-bg);border-color:var(--dz-idle-border);}
+  .dz-block.active{background:var(--dz-active-bg);border-color:var(--dz-active-border);box-shadow:0 0 8px rgba(14,158,142,0.4);animation:dzglow 2s ease-in-out infinite;}
+  @keyframes dzglow{0%,100%{box-shadow:0 0 6px rgba(14,158,142,0.3);}50%{box-shadow:0 0 16px rgba(14,158,142,0.7);}}
+  .dz-name{font-size:11px;font-weight:700;font-family:'SF Mono','Fira Mono','Consolas',monospace;}
+  .dz-block.idle .dz-name{color:var(--dz-idle-text);}
+  .dz-block.active .dz-name{color:var(--dz-active-text);}
+  .dz-status{font-size:9px;margin-top:2px;}
+  .dz-block.idle .dz-status{color:var(--dz-idle-text);}
+  .dz-block.active .dz-status{color:var(--dz-active-text);}
+
+  /* Hospital PW (single DZ) */
+  .pw-bubble-h1 .dz-pair{grid-template-columns:1fr;}
+
+  /* Other locations row */
+  .heatmap-section-label{font-size:10px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-hint);margin:8px 0 6px;}
+  .loc-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .loc-block{flex:1;min-width:80px;border-radius:8px;padding:8px 10px;text-align:center;border:1.5px solid;}
+  .loc-block .lb-name{font-size:11px;font-weight:700;}
+  .loc-block .lb-count{font-size:22px;font-weight:900;line-height:1.1;margin-top:4px;}
+  .loc-block .lb-age{font-size:9px;margin-top:2px;}
+  .loc-block.empty{background:var(--surface2);border-color:var(--border);color:var(--text-hint);}
+  .loc-block.empty .lb-count,.loc-block.empty .lb-age{color:var(--text-hint);}
+  .loc-block.pw-green{background:var(--green-bg);border-color:var(--green-border);}
+  .loc-block.pw-green .lb-count,.loc-block.pw-green .lb-age{color:var(--green);}
+  .loc-block.pw-yellow{background:var(--yellow-bg);border-color:var(--yellow-border);}
+  .loc-block.pw-yellow .lb-count,.loc-block.pw-yellow .lb-age{color:var(--yellow);}
+  .loc-block.pw-red{background:var(--red-bg);border-color:var(--red-border);}
+  .loc-block.pw-red .lb-count,.loc-block.pw-red .lb-age{color:var(--red);}
+
+  /* HP special olpn chip */
+  .hp-olpn-chip{display:inline-block;font-size:10px;font-weight:700;background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:1px 7px;margin-top:3px;}
+
+  /* Empty */
+  .col-empty{padding:2rem 1rem;text-align:center;color:var(--text-hint);font-size:14px;}
+  .col-empty span{font-size:28px;display:block;margin-bottom:6px;}
+
+  /* Live dot */
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:livepulse 2s infinite;}
+  @keyframes livepulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+  .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div class="top-left">
+      <p class="dept-label"><span class="live-dot"></span>Open Totes v1.3 &mdash; Live</p>
+      <h1>Open Totes &mdash; Ecom</h1>
+      <p class="subtitle">Auto-refreshes every 2 min &middot; Only totes with issues shown</p>
+    </div>
+    <div class="top-right">
+      <button class="dark-toggle" onclick="toggleDark()">
+        <span id="toggle-label">Light mode</span>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </button>
+    </div>
+  </div>
+
+  <div class="stale-banner" id="stale-banner"></div>
+
+  <div class="status-bar">
+    <div class="status-left">
+      <div id="run-time">Loading...</div>
+      <div id="next-refresh" style="margin-top:2px;"></div>
+    </div>
+    <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
+  </div>
+
+  <div class="summary-row" id="summary-row" style="display:none;">
+    <span class="summary-pill pill-total"  id="p-total"></span>
+    <span class="summary-pill pill-orphan" id="p-orphan"></span>
+    <span class="summary-pill pill-red"    id="p-red"></span>
+    <span class="summary-pill pill-c1"     id="p-c1"></span>
+    <span class="summary-pill pill-c3"     id="p-c3"></span>
+  </div>
+
+  <div class="columns" id="columns" style="display:none;">
+
+    <!-- Col 1: In Pick + Not Dropped — two distinct sub-boxes -->
+    <div class="col-card">
+      <div class="col-header">
+        <div class="col-title">Column 1</div>
+        <div class="col-subtitle">In Pick &amp; Pick Done — Not Yet Dropped</div>
+      </div>
+      <div class="col1-wrapper" id="col-1-wrapper"></div>
+    </div>
+
+    <!-- Col 2: Putwall Heat Map -->
+    <div class="col-card">
+      <div class="col-header">
+        <div class="col-title">Putwall Load</div>
+        <div class="col-subtitle">oLPN counts &middot; glowing drop zone = active feed</div>
+      </div>
+      <div class="heatmap-body" id="col-heatmap"></div>
+    </div>
+
+    <!-- Col 3: Orphaned + Aging at Location — two sub-boxes -->
+    <div class="col-card">
+      <div class="col-header">
+        <span class="col-count" id="cnt-3">0</span>
+        <div class="col-title">Aging at Location</div>
+        <div class="col-subtitle">At drop zone &mdash; not yet consumed by pack</div>
+      </div>
+      <div class="col3-wrapper">
+        <div class="sub-box" id="col-3-orphan-box">
+          <div class="sub-box-header">
+            <div class="sub-box-title orphan">Orphaned (24h+)</div>
+            <div class="sub-box-count orphan" id="cnt-orphan">0</div>
+          </div>
+          <div class="sub-scroll" id="col-3-orphan-scroll">
+            <div class="col-body" id="col-3-orphan"></div>
+          </div>
+        </div>
+        <div class="sub-box" id="col-3-aging-box">
+          <div class="sub-box-header">
+            <div class="sub-box-title aging">Aging</div>
+            <div class="sub-box-count aging" id="cnt-aging">0</div>
+          </div>
+          <div class="sub-scroll" id="col-3-aging-scroll">
+            <div class="col-body" id="col-3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="nordstrom-tag">Nordstrom &middot; Open Totes &middot; DC499 &middot; <span id="footer-date"></span></p>
+  <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
+</div>
+
+<script>
+var THEME_KEY   = 'dc499_totes_theme_v1';
+var INTERVAL_MS = 2 * 60 * 1000;
+var lastData    = null;
+var autoTimer   = null;
+var cdownTimer  = null;
+var nextAt      = null;
+
+// Slow scroll — shared by all four sub-boxes
+var scrollTimers      = {};
+var SCROLL_PX_PER_SEC = 22;
+var SCROLL_PAUSE_TOP_MS = 2500; // pause at top before scrolling down
+var SCROLL_PAUSE_BOT_MS = 600;  // pause at bottom before jumping back up
+
+function startScrollEl(id) {
+  if (scrollTimers[id]) clearInterval(scrollTimers[id]);
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.scrollTop = 0;
+  var lastTick  = null;
+  var pausing   = true;
+  var pauseEnd  = Date.now() + SCROLL_PAUSE_TOP_MS;
+  var atBottom  = false;
+
+  scrollTimers[id] = setInterval(function() {
+    var now       = Date.now();
+    var maxScroll = el.scrollHeight - el.clientHeight;
+    if (maxScroll < 60) return; // not enough overflow to scroll meaningfully
+    if (pausing) {
+      if (now < pauseEnd) return;
+      if (atBottom) {
+        el.scrollTop = 0;
+        atBottom  = false;
+      }
+      pausing  = false;
+      lastTick = now;
+      return;
+    }
+    var delta = (now - lastTick) / 1000 * SCROLL_PX_PER_SEC;
+    lastTick  = now;
+    el.scrollTop += delta;
+    if (el.scrollTop >= maxScroll - 2) {
+      el.scrollTop = maxScroll;
+      atBottom  = true;
+      pausing   = true;
+      pauseEnd  = now + SCROLL_PAUSE_BOT_MS;
+    }
+  }, 50);
+}
+
+function startCol3Scroll() {
+  startScrollEl('col-3-orphan-scroll');
+  startScrollEl('col-3-aging-scroll');
+}
+
+// Threshold: Case 3 orphaned = >= 1440 min (24h)
+var ORPHAN_MIN = 1440;
+
+// Standalone locations shown in "Other" row (H1-HP-01 gets oLPN count from putwalls data)
+var STANDALONE_LOCS = ['D1-SN-01', 'D1-HP-01', 'C1-PM-01'];
+
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
+  try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
+}
+function toggleDark() {
+  applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
+}
+(function() {
+  var saved; try { saved = localStorage.getItem(THEME_KEY); } catch(e) {}
+  applyTheme(saved ? saved === 'dark' : true);
+})();
+
+function scheduleAutoRefresh() {
+  if (autoTimer)  clearTimeout(autoTimer);
+  if (cdownTimer) clearInterval(cdownTimer);
+  nextAt    = Date.now() + INTERVAL_MS;
+  autoTimer = setTimeout(function() { fetchData(false); }, INTERVAL_MS);
+  cdownTimer = setInterval(function() {
+    var rem = Math.max(0, Math.round((nextAt - Date.now()) / 1000));
+    var el  = document.getElementById('next-refresh');
+    if (el) el.textContent = 'Auto-refresh in ' + Math.floor(rem/60) + ':' + String(rem%60).padStart(2,'0');
+    if (rem === 0) clearInterval(cdownTimer);
+  }, 1000);
+}
+function manualRefresh() { fetchData(true); }
+
+function fetchData() {
+  document.getElementById('run-time').textContent = 'Loading...';
+  var base = window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
+  fetch(base + '/totes_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) { lastData = data; render(data); scheduleAutoRefresh(); })
+    .catch(function(err) {
+      document.getElementById('run-time').textContent = 'Failed to load: ' + err.message;
+      scheduleAutoRefresh();
+    });
+}
+
+function fmtTimer(min) {
+  if (min < 60) return min + 'm';
+  var h = Math.floor(min/60), m = min % 60;
+  return h + 'h' + (m > 0 ? ' ' + m + 'm' : '');
+}
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function isStale(generated) {
+  if (!generated) return false;
+  try {
+    var ts = generated.endsWith('Z') ? generated : generated + 'Z';
+    return (Date.now() - new Date(ts).getTime()) / 60000 > 10;
+  } catch(e) { return false; }
+}
+
+function render(data) {
+  var staleEl = document.getElementById('stale-banner');
+  var rtEl    = document.getElementById('run-time');
+
+  if (isStale(data.generated)) {
+    staleEl.style.display = 'block';
+    var mins = Math.round((Date.now() - new Date(
+      data.generated.endsWith('Z') ? data.generated : data.generated + 'Z'
+    ).getTime()) / 60000);
+    staleEl.textContent = '⚠ Data is ' + mins + ' min old — the live agent may not be running';
+  } else {
+    staleEl.style.display = 'none';
+  }
+
+  try {
+    var d = new Date(data.generated.endsWith('Z') ? data.generated : data.generated + 'Z');
+    rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ' \xb7 Facility ' + (data.facility || '499');
+  } catch(e) { rtEl.textContent = data.generated || ''; }
+
+  var c1    = data.case1    || [];
+  var c2    = data.case2    || [];
+  var c3    = data.case3    || [];
+  var pws   = data.putwalls || [];
+  var s     = data.summary  || {};
+
+  var orphans = c3.filter(function(t) { return t.timer_min >= ORPHAN_MIN; });
+  var normal3 = c3.filter(function(t) { return t.timer_min <  ORPHAN_MIN; });
+
+  document.getElementById('p-total').textContent  = (s.total  || 0) + ' total flagged';
+  document.getElementById('p-orphan').textContent = orphans.length + ' orphaned (24h+)';
+  document.getElementById('p-red').textContent    = (s.red    || 0) + ' urgent (red)';
+  document.getElementById('p-c1').textContent     = ((s.case1 || 0) + (s.case2 || 0)) + ' in pick / not dropped';
+  document.getElementById('p-c3').textContent     = (s.case3  || 0) + ' aging at location';
+
+  document.getElementById('summary-row').style.display = 'flex';
+  document.getElementById('columns').style.display     = 'grid';
+
+  renderCol1(c1, c2);
+  renderHeatmap(c3, pws);
+  renderCol3(orphans, normal3);
+  startCol3Scroll();
+}
+
+// ── Column 1: In Pick sub-box + Not Dropped sub-box ──────────────────────────
+function renderCol1(c1, c2) {
+  var wrapper = document.getElementById('col-1-wrapper');
+  wrapper.innerHTML = '';
+
+  var pickResult = makeSubBox('In Pick', 'pick', c1.length, 'col-1-pick-scroll');
+  if (c1.length) {
+    c1.forEach(function(t) { pickResult.body.appendChild(makeToteCard(t, false)); });
+  } else {
+    pickResult.body.innerHTML = '<div class="col-empty"><span>✅</span>All clear</div>';
+  }
+  wrapper.appendChild(pickResult.box);
+
+  var ndResult = makeSubBox('Pick Done — Not Dropped', 'notdrop', c2.length, 'col-1-nd-scroll');
+  if (c2.length) {
+    c2.forEach(function(t) { ndResult.body.appendChild(makeToteCard(t, true)); });
+  } else {
+    ndResult.body.innerHTML = '<div class="col-empty"><span>✅</span>All clear</div>';
+  }
+  wrapper.appendChild(ndResult.box);
+
+  startScrollEl('col-1-pick-scroll');
+  startScrollEl('col-1-nd-scroll');
+}
+
+function makeSubBox(title, cls, count, scrollId) {
+  var box = document.createElement('div');
+  box.className = 'sub-box';
+
+  var header = document.createElement('div');
+  header.className = 'sub-box-header';
+
+  var titleEl = document.createElement('div');
+  titleEl.className = 'sub-box-title ' + cls;
+  titleEl.textContent = title;
+
+  var countEl = document.createElement('div');
+  countEl.className = 'sub-box-count ' + cls;
+  countEl.textContent = count;
+
+  header.appendChild(titleEl);
+  header.appendChild(countEl);
+
+  var scroll = document.createElement('div');
+  scroll.className = 'sub-scroll';
+  if (scrollId) scroll.id = scrollId;
+
+  var body = document.createElement('div');
+  body.className = 'col-body';
+
+  scroll.appendChild(body);
+  box.appendChild(header);
+  box.appendChild(scroll);
+  return { box: box, body: body };
+}
+
+// ── Column 3: Orphaned sub-box + Aging sub-box ──────────────────────────────
+function renderCol3(orphans, normal) {
+  var orphanBody = document.getElementById('col-3-orphan');
+  var agingBody  = document.getElementById('col-3');
+  var cntAll     = document.getElementById('cnt-3');
+  var cntOrphan  = document.getElementById('cnt-orphan');
+  var cntAging   = document.getElementById('cnt-aging');
+
+  cntAll.textContent    = orphans.length + normal.length;
+  cntOrphan.textContent = orphans.length;
+  cntAging.textContent  = normal.length;
+
+  orphanBody.innerHTML = '';
+  agingBody.innerHTML  = '';
+
+  if (orphans.length) {
+    orphans.forEach(function(t) { orphanBody.appendChild(makeToteCard(t, false, true)); });
+  } else {
+    orphanBody.innerHTML = '<div class="col-empty"><span>✅</span>All clear</div>';
+  }
+
+  if (normal.length) {
+    normal.forEach(function(t) { agingBody.appendChild(makeToteCard(t, false, false)); });
+  } else {
+    agingBody.innerHTML = '<div class="col-empty"><span>✅</span>All clear</div>';
+  }
+}
+
+// ── Tote card builder ─────────────────────────────────────────────────────────
+function makeToteCard(t, isCase2, isOrphan) {
+  var sev  = isOrphan ? 'orphan' : (t.severity || 'green');
+  var card = document.createElement('div');
+  card.className = 'tote-card ' + sev;
+
+  var locHtml   = t.location ? '<span class="loc-chip">' + escHtml(t.location) + '</span>' : '';
+  var unitsHtml = t.units > 0 ? '<span class="units-chip">' + t.units + ' unit' + (t.units !== 1 ? 's' : '') + '</span>' : '';
+  var c2Html    = isCase2 ? '<span class="case2-label">not dropped</span>' : '';
+  var timerLbl  = isCase2 ? 'since pick' : (isOrphan ? 'orphaned' : 'idle');
+
+  card.innerHTML =
+    '<div class="sev-dot ' + sev + '"></div>' +
+    '<div class="tote-info">' +
+      '<div class="tote-id ' + sev + '">' + escHtml(t.olpn) + '</div>' +
+      '<div class="tote-meta">' +
+        '<span class="type-badge ' + escHtml(t.type) + '">' + escHtml(t.type) + '</span>' +
+        (unitsHtml || '') +
+        (locHtml   || '') +
+        (c2Html    || '') +
+      '</div>' +
+    '</div>' +
+    '<div class="tote-timer">' +
+      '<div class="timer-val ' + sev + '">' + escHtml(fmtTimer(t.timer_min)) + '</div>' +
+      '<div class="timer-label">' + timerLbl + '</div>' +
+    '</div>';
+  return card;
+}
+
+function makeDivider(label, cls) {
+  var wrap = document.createElement('div');
+  wrap.className = 'section-divider';
+  var span = document.createElement('span');
+  span.className = 'section-divider-label ' + cls;
+  span.textContent = label;
+  var line = document.createElement('div');
+  line.className = 'section-divider-line';
+  wrap.appendChild(span);
+  wrap.appendChild(line);
+  return wrap;
+}
+
+// ── Heat Map: putwall bubbles + aging totes in Other row ─────────────────────
+function renderHeatmap(c3, putwalls) {
+  var el = document.getElementById('col-heatmap');
+  el.innerHTML = '';
+
+  // Build aging tote location index for "Other" locations
+  var locMap = {};
+  c3.forEach(function(t) {
+    if (!t.location) return;
+    if (!locMap[t.location]) locMap[t.location] = [];
+    locMap[t.location].push(t);
+  });
+
+  // 8 main putwalls (PW1-PW8): 2 per row → 4 rows
+  // H1 hospital putwall is separate below
+  var mainPws = (putwalls || []).filter(function(p) { return p.pw !== 'H1'; });
+  var h1Pw    = (putwalls || []).filter(function(p) { return p.pw === 'H1'; })[0] || null;
+
+  // Render 2-per-row grid
+  for (var i = 0; i < mainPws.length; i += 2) {
+    var row = document.createElement('div');
+    row.className = 'pw-row';
+    row.appendChild(makePwBubble(mainPws[i]));
+    if (mainPws[i + 1]) row.appendChild(makePwBubble(mainPws[i + 1]));
+    el.appendChild(row);
+  }
+
+  // Other locations section
+  el.appendChild(makeHeatmapSectionLabel('Other Locations'));
+  var locRow = document.createElement('div');
+  locRow.className = 'loc-row';
+
+  STANDALONE_LOCS.forEach(function(loc) {
+    var totes = locMap[loc] || [];
+    // D1-HP-01 gets its tote aging count plus the hospital putwall oLPN count
+    var hpOlpn = (loc === 'D1-HP-01' && h1Pw) ? h1Pw.olpn_count : null;
+    locRow.appendChild(makeLocBlock(loc, totes, hpOlpn));
+  });
+  el.appendChild(locRow);
+}
+
+function makePwBubble(pw) {
+  if (!pw) return document.createElement('div');
+
+  var hasLoad  = pw.olpn_count > 0;
+  var bubble   = document.createElement('div');
+  bubble.className = 'pw-bubble' + (hasLoad ? ' pw-active' : '');
+
+  // Header row: PW label + oLPN count
+  var top = document.createElement('div');
+  top.className = 'pw-bubble-top';
+
+  var label = document.createElement('div');
+  label.className = 'pw-label';
+  label.textContent = pw.pw;
+  top.appendChild(label);
+
+  var countWrap = document.createElement('div');
+  countWrap.style.display = 'flex';
+  countWrap.style.alignItems = 'baseline';
+  var countEl = document.createElement('span');
+  countEl.className = 'pw-olpn-count';
+  countEl.textContent = pw.olpn_count || 0;
+  var countLbl = document.createElement('span');
+  countLbl.className = 'pw-olpn-label';
+  countLbl.textContent = ' oLPN';
+  countWrap.appendChild(countEl);
+  countWrap.appendChild(countLbl);
+  top.appendChild(countWrap);
+
+  bubble.appendChild(top);
+
+  // Drop zone pair
+  var dzPair = document.createElement('div');
+  dzPair.className = 'dz-pair';
+
+  var zones = pw.dz2 ? [pw.dz1, pw.dz2] : [pw.dz1];
+  zones.forEach(function(dzId, idx) {
+    if (!dzId) return;
+    // Format: DW01, DW02, ..., DW16
+    var dzNum  = dzId.replace(/^D1-PW-0*/, '').replace(/^D1-HP-0*/, '');
+    var dzLabel = 'DW' + String(parseInt(dzNum, 10)).padStart(2, '0');
+    var isActive = pw.active_dz && dzId === pw.active_dz;
+
+    var block = document.createElement('div');
+    block.className = 'dz-block ' + (isActive ? 'active' : 'idle');
+
+    var nameEl = document.createElement('div');
+    nameEl.className = 'dz-name';
+    nameEl.textContent = dzLabel;
+
+    var statusEl = document.createElement('div');
+    statusEl.className = 'dz-status';
+    statusEl.textContent = isActive ? 'active' : (hasLoad ? 'standby' : '—');
+
+    block.appendChild(nameEl);
+    block.appendChild(statusEl);
+    dzPair.appendChild(block);
+  });
+
+  bubble.appendChild(dzPair);
+  return bubble;
+}
+
+function makeHeatmapSectionLabel(text) {
+  var el = document.createElement('div');
+  el.className = 'heatmap-section-label';
+  el.textContent = text;
+  return el;
+}
+
+function makeLocBlock(loc, totes, hpOlpn) {
+  var count  = totes.length;
+  var oldest = count ? Math.max.apply(null, totes.map(function(t){ return t.timer_min; })) : 0;
+  var state  = count === 0 ? 'empty' : oldest < 15 ? 'pw-green' : oldest < 30 ? 'pw-yellow' : 'pw-red';
+
+  var block = document.createElement('div');
+  block.className = 'loc-block ' + state;
+
+  var nameEl = document.createElement('div');
+  nameEl.className = 'lb-name';
+  nameEl.textContent = loc;
+
+  var countEl = document.createElement('div');
+  countEl.className = 'lb-count';
+  countEl.textContent = count;
+
+  var ageEl = document.createElement('div');
+  ageEl.className = 'lb-age';
+  ageEl.textContent = count > 0 ? 'oldest ' + fmtTimer(oldest) : 'clear';
+
+  block.appendChild(nameEl);
+  block.appendChild(countEl);
+  block.appendChild(ageEl);
+
+  // Hospital: add oLPN chip below aging info
+  if (hpOlpn !== null && hpOlpn !== undefined) {
+    var chip = document.createElement('div');
+    chip.className = 'hp-olpn-chip';
+    chip.textContent = hpOlpn + ' oLPN';
+    block.appendChild(chip);
+  }
+
+  return block;
+}
+
+document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
+fetchData();
+scheduleAutoRefresh();
+</script>
+</body>
+</html>

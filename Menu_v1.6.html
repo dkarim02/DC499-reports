@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DC499 — Menu v1.6</title>
+<title>DC499 — Menu v1.7</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; overflow: hidden; }
@@ -17,14 +17,42 @@
   body.light { background: #f5f5f3; color: #1a1a1a; }
 
   /* Header */
-  .header { text-align: center; margin-bottom: 2rem; }
+  .header { text-align: center; margin-bottom: 1.5rem; }
   .header h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
   .header p { font-size: 13px; color: #888; }
   body.light .header p { color: #666; }
 
+  /* Tabs */
+  .tab-bar {
+    display: flex; gap: 6px; margin-bottom: 1.25rem;
+    background: #2a2a2a; border: 1.5px solid #3a3a3a;
+    border-radius: 12px; padding: 4px;
+  }
+  body.light .tab-bar { background: #f0f0ee; border-color: #ddd; }
+  .tab-btn {
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    padding: 5px 20px; border: none; border-radius: 8px;
+    cursor: pointer; color: #666; background: transparent;
+    transition: background 0.15s, color 0.15s; letter-spacing: 0.02em;
+  }
+  .tab-btn:hover { color: #ccc; }
+  body.light .tab-btn:hover { color: #333; }
+  .tab-btn.active { background: #3a3a3a; color: #f0f0ee; }
+  body.light .tab-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .tab-badge {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    background: #0E9E8E; color: #fff; border-radius: 8px;
+    padding: 1px 6px; margin-left: 5px; vertical-align: middle;
+  }
+
   /* Grid */
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; max-width: 420px; }
-  .grid .card:last-child:nth-child(odd) { grid-column: 1 / -1; max-width: 50%; margin: 0 auto; width: 100%; }
+  .grid-centered { display: flex; flex-wrap: wrap; gap: 14px; width: 100%; max-width: 420px; justify-content: center; }
+  .grid-centered .card { width: calc(50% - 7px); min-width: 160px; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
   .card {
     background: #2a2a2a; border: 1.5px solid #3a3a3a; border-radius: 20px;
     padding: 1.75rem 1rem 1.25rem;
@@ -47,12 +75,15 @@
   .card-ecom:hover      { background: #081a30; box-shadow: 0 0 0 3px rgba(24,95,165,0.2); }
   .card-reserve   { border-color: #9B4DCA; }
   .card-reserve:hover   { background: #1e0a30; box-shadow: 0 0 0 3px rgba(155,77,202,0.2); }
+  .card-totes     { border-color: #C87D2B; }
+  .card-totes:hover     { background: #2e1a08; box-shadow: 0 0 0 3px rgba(200,125,43,0.2); }
 
   body.light .card-receiving:hover { background: #E6F7F5; }
   body.light .card-recv-live:hover  { background: #E6F7F5; }
   body.light .card-itemprep:hover  { background: #FEF0E0; }
   body.light .card-ecom:hover      { background: #e8f0fb; }
   body.light .card-reserve:hover   { background: #F3E8FF; }
+  body.light .card-totes:hover     { background: #FDF3E7; }
 
   .card-version { position: absolute; top: 10px; right: 13px; font-size: 10px; color: #555; }
   body.light .card-version { color: #aaa; }
@@ -66,6 +97,7 @@
   .card-itemprep  .card-name { color: #E67E22; }
   .card-ecom      .card-name { color: #5B9BD5; }
   .card-reserve   .card-name { color: #B57FDD; }
+  .card-totes     .card-name { color: #C87D2B; }
 
   /* Footer */
   .footer { margin-top: 1.75rem; font-size: 11px; color: #555; text-align: center; }
@@ -103,41 +135,62 @@
   <p>Select a department to open its report processor</p>
 </div>
 
-<div class="grid">
-  <button class="card card-receiving" onclick="openApp('Receiving_v2.0.html')">
-    <span class="card-version">v2.0</span>
-    <div class="card-icon">&#x1F69B;</div>
-    <div class="card-name">Receiving</div>
-    <div class="card-sub">Inbound</div>
-  </button>
+<!-- Tab bar -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-reports" onclick="switchTab('reports')">Reports</button>
+  <button class="tab-btn" id="tab-live" onclick="switchTab('live')">Live <span class="tab-badge">2</span></button>
+</div>
 
-  <button class="card card-recv-live" onclick="openApp('Receiving_live.html')">
-    <span class="card-version">Live</span>
-    <div class="card-icon">&#x1F4E1;</div>
-    <div class="card-name">Receiving Live (WIP DNU)</div>
-    <div class="card-sub">Live &middot; 2nd Shift</div>
-  </button>
+<!-- Reports tab -->
+<div class="tab-panel active" id="panel-reports">
+  <div class="grid">
+    <button class="card card-receiving" onclick="openApp('Receiving_v2.0.html')">
+      <span class="card-version">v2.0</span>
+      <div class="card-icon">&#x1F69B;</div>
+      <div class="card-name">Receiving</div>
+      <div class="card-sub">Inbound</div>
+    </button>
 
-  <button class="card card-itemprep" onclick="openApp('ItemPrep_v2.0.html')">
-    <span class="card-version">v2.0</span>
-    <div class="card-icon">&#x1F9E5;</div>
-    <div class="card-name">Item Prep</div>
-    <div class="card-sub">Crossdock Pack</div>
-  </button>
+    <button class="card card-itemprep" onclick="openApp('ItemPrep_v2.0.html')">
+      <span class="card-version">v2.0</span>
+      <div class="card-icon">&#x1F9E5;</div>
+      <div class="card-name">Item Prep</div>
+      <div class="card-sub">Crossdock Pack</div>
+    </button>
 
-  <button class="card card-ecom" onclick="openApp('Ecom_v3.html')">
-    <span class="card-version">v3.0</span>
-    <div class="card-icon">&#x1F4E6;</div>
-    <div class="card-name">Ecom</div>
-    <div class="card-sub">Replen &middot; Putaway</div>
-  </button>
+    <button class="card card-ecom" onclick="openApp('Ecom_v3.html')">
+      <span class="card-version">v3.0</span>
+      <div class="card-icon">&#x1F4E6;</div>
+      <div class="card-name">Ecom</div>
+      <div class="card-sub">Replen &middot; Putaway</div>
+    </button>
 
-  <button class="card card-reserve" onclick="openApp('Reserve_v1_7.html')">
-    <span class="card-version">v1.7</span>
-    <div class="card-icon">&#x1F3EA;</div>
-    <div class="card-name">Reserve Stock</div>
-    <div class="card-sub">Pick F1 &middot; Pick F2 &middot; Replen &middot; Putaway</div>
-  </button>
+    <button class="card card-reserve" onclick="openApp('Reserve_v1_7.html')">
+      <span class="card-version">v1.7</span>
+      <div class="card-icon">&#x1F3EA;</div>
+      <div class="card-name">Reserve Stock</div>
+      <div class="card-sub">Pick F1 &middot; Pick F2 &middot; Replen &middot; Putaway</div>
+    </button>
+  </div>
+</div>
+
+<!-- Live tab -->
+<div class="tab-panel" id="panel-live">
+  <div class="grid-centered">
+    <button class="card card-recv-live" onclick="openApp('Receiving_live.html')">
+      <span class="card-version">Live</span>
+      <div class="card-icon">&#x1F4E1;</div>
+      <div class="card-name">Receiving Live</div>
+      <div class="card-sub">Live &middot; 2nd Shift</div>
+    </button>
+
+    <button class="card card-totes" onclick="openApp('Totes_live.html')">
+      <span class="card-version">v1.0</span>
+      <div class="card-icon">&#x1F9FA;</div>
+      <div class="card-name">Open Totes</div>
+      <div class="card-sub">Live &middot; Ecom</div>
+    </button>
+  </div>
 </div>
 
 <div class="warning" id="warning">
@@ -145,7 +198,7 @@
 </div>
 
 <div class="footer">
-  Nordstrom &middot; Menu v1.6 &middot; dean.karim &middot; <span id="date"></span>
+  Nordstrom &middot; Menu v1.7 &middot; dean.karim &middot; <span id="date"></span>
   <br><button onclick="toggleWhatsNew()" style="background:none;border:none;color:#555;font-size:11px;cursor:pointer;margin-top:4px;font-family:inherit;text-decoration:underline;">What's new?</button>
 </div>
 
@@ -165,18 +218,26 @@
 </button>
 
 <script>
+var TAB_KEY   = 'dc499_menu_tab_v1';
+var THEME_KEY = 'dc499_theme_v1';
+var isDark    = true;
+
+// ── TABS ───────────────────────────────────────────────
+function switchTab(name) {
+  ['reports','live'].forEach(function(t) {
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    document.getElementById('panel-' + t).classList.toggle('active', t === name);
+  });
+  try { localStorage.setItem(TAB_KEY, name); } catch(e) {}
+}
+
 // ── OPEN APP ───────────────────────────────────────────
 function openApp(filename) {
-  // Navigate to the file in the same directory
-  const base = window.location.href.replace(/\/[^\/]*$/, '/');
-  const url = base + filename;
-  window.location.href = url;
+  var base = window.location.href.replace(/\/[^\/]*$/, '/');
+  window.location.href = base + filename;
 }
 
 // ── THEME ──────────────────────────────────────────────
-const THEME_KEY = 'dc499_theme_v1';
-let isDark = true;
-
 function applyTheme(dark) {
   isDark = dark;
   document.body.className = dark ? '' : 'light';
@@ -189,10 +250,9 @@ function applyTheme(dark) {
 
 function toggleTheme() { applyTheme(!isDark); }
 
-// Load saved preference, fall back to system
 function initTheme() {
   try {
-    const saved = localStorage.getItem(THEME_KEY);
+    var saved = localStorage.getItem(THEME_KEY);
     if (saved) { applyTheme(saved === 'dark'); return; }
   } catch(e) {}
   applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -205,6 +265,10 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', fun
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('date').textContent = new Date().toLocaleDateString();
 initTheme();
+try {
+  var savedTab = localStorage.getItem(TAB_KEY);
+  if (savedTab === 'live') switchTab('live');
+} catch(e) {}
 
 function toggleWhatsNew() {
   var panel = document.getElementById('whats-new-panel');
