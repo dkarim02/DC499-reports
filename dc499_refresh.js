@@ -191,6 +191,9 @@ function nowPdt() {
 async function fetchReceiving(accessToken) {
   const today = nowPdt().toLocaleDateString('en-CA'); // YYYY-MM-DD in PDT
 
+  // 06:00 PDT = 13:00 UTC — avoid wrapping CREATED_TIMESTAMP in functions so the index fires
+  const shiftStartUtc = `${today} 13:00:00`;
+
   const sqlAssociates = `
 SELECT
     CREATED_BY,
@@ -200,9 +203,8 @@ SELECT
     MAX(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS last_scan
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
-  AND DATE(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) = '${today}'
+  AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
   AND CREATED_BY != 'system-msg-user@${FACILITY}'
-  AND TIME(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) >= '06:00:00'
 GROUP BY CREATED_BY
 ORDER BY lpns DESC`.trim();
 
@@ -213,9 +215,8 @@ SELECT
     SUM(CASE WHEN PROCESS = '/lpn/receive' THEN QUANTITY ELSE 0 END) AS units
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
-  AND DATE(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) = '${today}'
+  AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
   AND CREATED_BY != 'system-msg-user@${FACILITY}'
-  AND TIME(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) >= '06:00:00'
 GROUP BY hr
 ORDER BY hr ASC`.trim();
 
@@ -257,29 +258,35 @@ async function fetchBatch(accessToken) {
   if (nowUtc.getUTCHours() < shiftHourUtc) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
   const startStr = shiftStart.toISOString().replace('T',' ').slice(0, 19);
 
-  const sql1 = `
+  // Single query: summary + per-(batch, status, worker) detail in one pass.
+  // Eliminates the serial sql1 → sql2 waterfall.
+  const sql = `
 SELECT
     RESOURCE_BATCH_ID,
+    STATUS,
+    CURRENT_USER_ID,
     COUNT(DISTINCT ORDER_ID)   AS total_orders,
     COUNT(DISTINCT OLPN_ID)    AS total_olpns,
-    COUNT(*)                   AS total_task_details,
+    COUNT(*)                   AS task_count,
     COUNT(DISTINCT CASE WHEN STATUS = '9000' THEN OLPN_ID END) AS completed_olpns,
     COUNT(DISTINCT CASE WHEN STATUS = '8000' THEN OLPN_ID END) AS in_progress_olpns,
     COUNT(DISTINCT CASE WHEN STATUS = '1000' THEN OLPN_ID END) AS pending_olpns,
+    MIN(CREATED_TIMESTAMP)     AS batch_created_utc,
     GROUP_CONCAT(DISTINCT CURRENT_USER_ID ORDER BY CURRENT_USER_ID SEPARATOR ',') AS workers,
-    MIN(CREATED_TIMESTAMP) AS batch_created_utc
+    GROUP_CONCAT(DISTINCT NULLIF(WORKING_LOCATION_ID,'') ORDER BY WORKING_LOCATION_ID SEPARATOR ',') AS locations,
+    GROUP_CONCAT(DISTINCT ITEM_ID ORDER BY ITEM_ID SEPARATOR ',') AS items
 FROM default_pickpack.TSK_TASK_DETAIL
 WHERE FACILITY_ID = '${FACILITY}'
   AND RESOURCE_BATCH_ID IS NOT NULL
   AND RESOURCE_BATCH_ID NOT LIKE 'B_00000000000%'
   AND CREATED_TIMESTAMP >= '${startStr}'
-GROUP BY RESOURCE_BATCH_ID
-ORDER BY batch_created_utc DESC`.trim();
+GROUP BY RESOURCE_BATCH_ID, STATUS, CURRENT_USER_ID
+ORDER BY batch_created_utc DESC, RESOURCE_BATCH_ID, STATUS DESC`.trim();
 
-  const resp1 = await mcpQuery(accessToken, sql1);
-  const summaryRows = resp1.rows || [];
+  const resp = await mcpQuery(accessToken, sql);
+  const rows = resp.rows || [];
 
-  if (!summaryRows.length) {
+  if (!rows.length) {
     return {
       generated: new Date().toISOString().slice(0, 19),
       facility: FACILITY, shift: shiftLabel(), shift_start_utc: startStr,
@@ -288,59 +295,61 @@ ORDER BY batch_created_utc DESC`.trim();
     };
   }
 
-  // query 2: detail for all batches found
-  const batchIds = summaryRows.map(r => `'${r.RESOURCE_BATCH_ID}'`).join(',');
-  const sql2 = `
-SELECT
-    RESOURCE_BATCH_ID,
-    STATUS,
-    CURRENT_USER_ID,
-    COUNT(*)  AS task_count,
-    GROUP_CONCAT(DISTINCT NULLIF(WORKING_LOCATION_ID,'') ORDER BY WORKING_LOCATION_ID SEPARATOR ',') AS locations,
-    GROUP_CONCAT(DISTINCT ITEM_ID ORDER BY ITEM_ID SEPARATOR ',') AS items
-FROM default_pickpack.TSK_TASK_DETAIL
-WHERE FACILITY_ID = '${FACILITY}'
-  AND RESOURCE_BATCH_ID IN (${batchIds})
-  AND STATUS IN ('1000','8000')
-  AND CREATED_TIMESTAMP >= '${startStr}'
-GROUP BY RESOURCE_BATCH_ID, STATUS, CURRENT_USER_ID
-ORDER BY RESOURCE_BATCH_ID, STATUS DESC, task_count DESC`.trim();
-
-  const resp2 = await mcpQuery(accessToken, sql2);
-  const detailRows = resp2.rows || [];
-
-  // index detail by batch_id
-  const detailByBatch = {};
-  for (const r of detailRows) {
+  // Roll up rows into per-batch summaries and detail in a single pass
+  const batchMap = {};
+  for (const r of rows) {
     const bid = r.RESOURCE_BATCH_ID;
-    if (!detailByBatch[bid]) detailByBatch[bid] = { in_progress: [], pending: [] };
+    if (!batchMap[bid]) {
+      batchMap[bid] = {
+        RESOURCE_BATCH_ID: bid,
+        total_orders:      0,
+        total_olpns:       0,
+        total_task_details:0,
+        completed_olpns:   0,
+        in_progress_olpns: 0,
+        pending_olpns:     0,
+        batch_created_utc: r.batch_created_utc,
+        workers:           new Set(),
+        detail:            { in_progress: [], pending: [] },
+      };
+    }
+    const b = batchMap[bid];
+    b.total_orders       += Number(r.total_orders);
+    b.total_olpns        += Number(r.total_olpns);
+    b.total_task_details += Number(r.task_count);
+    b.completed_olpns    += Number(r.completed_olpns);
+    b.in_progress_olpns  += Number(r.in_progress_olpns);
+    b.pending_olpns      += Number(r.pending_olpns);
+    if (r.batch_created_utc < b.batch_created_utc) b.batch_created_utc = r.batch_created_utc;
+    if (r.CURRENT_USER_ID) r.CURRENT_USER_ID.split(',').forEach(w => b.workers.add(w.trim()));
+
     const locs = r.locations ? r.locations.split(',').filter(Boolean) : [];
     if (r.STATUS === '8000') {
-      detailByBatch[bid].in_progress.push({
+      b.detail.in_progress.push({
         worker:      r.CURRENT_USER_ID ? r.CURRENT_USER_ID.toLowerCase().split('@')[0] : 'unassigned',
         task_count:  Number(r.task_count),
         putwalls:    locs.filter(l => /^S\d+-PW-/.test(l)),
         workbenches: locs.filter(l => !/^S\d+-PW-/.test(l)),
       });
     } else if (r.STATUS === '1000') {
-      detailByBatch[bid].pending.push({
+      b.detail.pending.push({
         task_count: Number(r.task_count),
         items:      r.items ? r.items.split(',').filter(Boolean) : [],
       });
     }
   }
 
+  const summaryRows = Object.values(batchMap);
+
   // build batch objects
   const batches = summaryRows.map(r => {
     const bid  = r.RESOURCE_BATCH_ID;
-    const tot  = Number(r.total_olpns);
-    const comp = Number(r.completed_olpns);
-    const inp  = Number(r.in_progress_olpns);
-    const pend = Number(r.pending_olpns);
+    const tot  = r.total_olpns;
+    const comp = r.completed_olpns;
+    const inp  = r.in_progress_olpns;
+    const pend = r.pending_olpns;
     const pct  = tot > 0 ? Math.round((comp / tot) * 100) : 0;
-    const workers = r.workers
-      ? r.workers.split(',').map(w => w.trim().toLowerCase().split('@')[0]).filter(Boolean)
-      : [];
+    const workers = [...r.workers].map(w => w.toLowerCase().split('@')[0]).filter(Boolean);
     const statusLabel = comp === tot && tot > 0 ? 'Complete'
                       : inp > 0                  ? 'Work Started'
                       : pend === tot             ? 'Released'
@@ -348,16 +357,16 @@ ORDER BY RESOURCE_BATCH_ID, STATUS DESC, task_count DESC`.trim();
     return {
       batch_id:          bid,
       status:            statusLabel,
-      total_orders:      Number(r.total_orders),
+      total_orders:      r.total_orders,
       total_olpns:       tot,
-      task_details:      Number(r.total_task_details),
+      task_details:      r.total_task_details,
       completed_olpns:   comp,
       in_progress_olpns: inp,
       pending_olpns:     pend,
       pct,
       created_utc:       r.batch_created_utc,
       workers,
-      detail:            detailByBatch[bid] || { in_progress: [], pending: [] },
+      detail:            r.detail,
     };
   });
 
@@ -526,8 +535,8 @@ WHERE i.FACILITY_ID = '${FACILITY}'
 GROUP BY i.ILPN_ID, i.CURRENT_LOCATION_ID, i.CURRENT_LOCATION_TYPE_ID,
          i.CREATED_TIMESTAMP, i.UPDATED_TIMESTAMP`.trim();
 
-  // Subquery isolates the most recent TASK_ID per tote so COMPLETED_QUANTITY
-  // is not inflated by historical reuse across the 15-day window.
+  // 2-day window is sufficient for open totes (status=5000, is_closed=0 are live now).
+  // Shorter window = far fewer rows scanned in TSK_TASK_DETAIL.
   const sqlTasks = `
 SELECT
   td.TARGET_CONTAINER_ID                                              AS tote_id,
@@ -545,44 +554,28 @@ JOIN (
   FROM   default_task.TSK_TASK_DETAIL
   WHERE  FACILITY_ID             = '${FACILITY}'
     AND  TARGET_CONTAINER_ID LIKE 'T0%'
-    AND  CREATED_TIMESTAMP    >= NOW() - INTERVAL 15 DAY
+    AND  CREATED_TIMESTAMP    >= NOW() - INTERVAL 2 DAY
   GROUP BY TARGET_CONTAINER_ID
 ) latest
   ON  latest.TARGET_CONTAINER_ID = td.TARGET_CONTAINER_ID
  AND  latest.latest_task_id      = td.TASK_ID
 WHERE td.FACILITY_ID            = '${FACILITY}'
   AND td.TARGET_CONTAINER_ID LIKE 'T0%'
-  AND td.CREATED_TIMESTAMP   >= NOW() - INTERVAL 15 DAY
+  AND td.CREATED_TIMESTAMP   >= NOW() - INTERVAL 2 DAY
 GROUP BY td.TARGET_CONTAINER_ID`.trim();
 
-  // Live oLPN count per putwall — filter SLA by UPDATED_TIMESTAMP within the
-  // last 12 hours so stale phantom rows from prior shifts are excluded.
-  // No join needed for the count — SLA is the authoritative "in cubby" table.
-  const sqlPwCount = `
-SELECT
-  CASE
-    WHEN LOCATION_ID LIKE 'S1-PW-%' THEN SUBSTRING(LOCATION_ID, 1, 9)
-    ELSE SUBSTRING(LOCATION_ID, 1, 8)
-  END                        AS pw_prefix,
-  COUNT(DISTINCT LPN_ID)     AS olpn_count
-FROM default_pickpack.SLA_LPN_LOCATION_ASSIGNMENT
-WHERE FACILITY_ID = '${FACILITY}'
-  AND (LOCATION_ID LIKE 'S1-PW-%' OR LOCATION_ID LIKE 'H1-PW-%')
-  AND UPDATED_TIMESTAMP >= NOW() - INTERVAL 12 HOUR
-GROUP BY pw_prefix`.trim();
-
-  // Active drop zone per putwall: same 12-hour SLA filter, join TSK_TASK_DETAIL
-  // to get SOURCE_CONTAINER_ID (tote → drop zone lookup in JS via ilpnLocMap).
-  const sqlPwDzSrc = `
+  // Combined putwall query: oLPN count + active drop-zone tote in one pass.
+  const sqlPutwall = `
 SELECT
   CASE
     WHEN sla.LOCATION_ID LIKE 'S1-PW-%' THEN SUBSTRING(sla.LOCATION_ID, 1, 9)
     ELSE SUBSTRING(sla.LOCATION_ID, 1, 8)
   END                        AS pw_prefix,
+  COUNT(DISTINCT sla.LPN_ID) AS olpn_count,
   td.SOURCE_CONTAINER_ID     AS tote_id,
-  COUNT(DISTINCT sla.LPN_ID) AS dz_count
+  COUNT(DISTINCT CASE WHEN td.SOURCE_CONTAINER_ID IS NOT NULL THEN sla.LPN_ID END) AS dz_count
 FROM default_pickpack.SLA_LPN_LOCATION_ASSIGNMENT sla
-JOIN default_pickpack.TSK_TASK_DETAIL td
+LEFT JOIN default_pickpack.TSK_TASK_DETAIL td
   ON  td.OLPN_ID             = sla.LPN_ID
  AND  td.FACILITY_ID         = '${FACILITY}'
  AND  td.SOURCE_CONTAINER_ID LIKE 'T0%'
@@ -593,11 +586,10 @@ WHERE sla.FACILITY_ID = '${FACILITY}'
 GROUP BY pw_prefix, td.SOURCE_CONTAINER_ID
 ORDER BY pw_prefix, dz_count DESC`.trim();
 
-  const [respIlpn, respTasks, respPwCount, respPwDzSrc] = await Promise.all([
+  const [respIlpn, respTasks, respPutwall] = await Promise.all([
     mcpQuery(accessToken, sqlIlpn),
     mcpQuery(accessToken, sqlTasks),
-    mcpQuery(accessToken, sqlPwCount),
-    mcpQuery(accessToken, sqlPwDzSrc),
+    mcpQuery(accessToken, sqlPutwall),
   ]);
 
   // Build task lookup keyed by tote_id
@@ -639,7 +631,7 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
 
     let severity;
     if (caseNum === 3) {
-      severity = timerMin < 15 ? 'green' : timerMin < 30 ? 'yellow' : 'red';
+      severity = timerMin < 30 ? 'green' : timerMin < 60 ? 'yellow' : 'red';
     } else if (caseNum === 2) {
       severity = timerMin < 10 ? 'green' : timerMin < 20 ? 'yellow' : 'red';
     } else {
@@ -682,13 +674,12 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
     { pw:'H1',  mawm_prefix:'H1-PW-01',  dz1:'D1-HP-01', dz2:null        },
   ];
 
-  // Build olpn count map: pw_prefix -> olpn_count
-  const pwCountMap = {};
-  for (const r of (respPwCount.rows || [])) {
-    pwCountMap[r.pw_prefix] = Number(r.olpn_count) || 0;
-  }
+  // Build putwall maps from the combined query result.
+  // Rows are ordered by pw_prefix, dz_count DESC — first row per prefix wins for active_dz.
+  const pwCountMap  = {};
+  const pwActiveDzMap = {};
 
-  // Build a location lookup and drop zone tote count from DCI_ILPN rows
+  // Build ilpnLocMap for drop zone tote counts (still needed from DCI_ILPN rows)
   const ilpnLocMap  = {};
   const dzToteCount = {};
   for (const r of (respIlpn.rows || [])) {
@@ -697,13 +688,15 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
     dzToteCount[r.CURRENT_LOCATION_ID] = (dzToteCount[r.CURRENT_LOCATION_ID] || 0) + 1;
   }
 
-  // Active drop zone per putwall: highest dz_count row per prefix wins.
-  // Resolve tote_id → CURRENT_LOCATION_ID using ilpnLocMap (no extra query).
-  const pwActiveDzMap = {};
-  for (const r of (respPwDzSrc.rows || [])) {
-    if (pwActiveDzMap[r.pw_prefix]) continue; // already have highest-count row
-    const loc = ilpnLocMap[r.tote_id];
-    if (loc && loc.startsWith('D1-')) pwActiveDzMap[r.pw_prefix] = loc;
+  for (const r of (respPutwall.rows || [])) {
+    const prefix = r.pw_prefix;
+    // Accumulate olpn_count across all rows for this prefix (each tote_id is a separate row)
+    pwCountMap[prefix] = (pwCountMap[prefix] || 0) + Number(r.olpn_count || 0);
+    // First row per prefix with a resolved D1- location = active drop zone
+    if (!pwActiveDzMap[prefix] && r.tote_id) {
+      const loc = ilpnLocMap[r.tote_id];
+      if (loc && loc.startsWith('D1-')) pwActiveDzMap[prefix] = loc;
+    }
   }
 
   const putwalls = PW_META.map(m => ({

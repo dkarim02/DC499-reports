@@ -223,7 +223,7 @@
     <div class="top-left">
       <p class="dept-label"><span class="live-dot"></span>Open Totes v1.3 &mdash; Live</p>
       <h1>Open Totes &mdash; Ecom</h1>
-      <p class="subtitle">Auto-refreshes every 2 min &middot; Only totes with issues shown</p>
+      <p class="subtitle">Auto-refreshes every 1 min &middot; Only totes with issues shown</p>
     </div>
     <div class="top-right">
       <button class="dark-toggle" onclick="toggleDark()">
@@ -256,7 +256,7 @@
     <!-- Col 1: In Pick + Not Dropped — two distinct sub-boxes -->
     <div class="col-card">
       <div class="col-header">
-        <div class="col-title">Column 1</div>
+        <div class="col-title">Picking</div>
         <div class="col-subtitle">In Pick &amp; Pick Done — Not Yet Dropped</div>
       </div>
       <div class="col1-wrapper" id="col-1-wrapper"></div>
@@ -265,7 +265,7 @@
     <!-- Col 2: Putwall Heat Map -->
     <div class="col-card">
       <div class="col-header">
-        <div class="col-title">Putwall Load</div>
+        <div class="col-title">Putwalls</div>
         <div class="col-subtitle">oLPN counts &middot; glowing drop zone = active feed</div>
       </div>
       <div class="heatmap-body" id="col-heatmap"></div>
@@ -308,7 +308,7 @@
 
 <script>
 var THEME_KEY   = 'dc499_totes_theme_v1';
-var INTERVAL_MS = 2 * 60 * 1000;
+var INTERVAL_MS = 1 * 60 * 1000;
 var lastData    = null;
 var autoTimer   = null;
 var cdownTimer  = null;
@@ -719,7 +719,7 @@ function makeHeatmapSectionLabel(text) {
 function makeLocBlock(loc, totes, hpOlpn) {
   var count  = totes.length;
   var oldest = count ? Math.max.apply(null, totes.map(function(t){ return t.timer_min; })) : 0;
-  var state  = count === 0 ? 'empty' : oldest < 15 ? 'pw-green' : oldest < 30 ? 'pw-yellow' : 'pw-red';
+  var state  = count === 0 ? 'empty' : oldest < 30 ? 'pw-green' : oldest < 60 ? 'pw-yellow' : 'pw-red';
 
   var block = document.createElement('div');
   block.className = 'loc-block ' + state;
