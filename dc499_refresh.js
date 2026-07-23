@@ -615,8 +615,8 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
       // Case 3 — at a drop location, timer = time since last update at that location
       caseNum  = 3;
       timerMin = idleMin;
-    } else if (task && Number(task.active_lines) === 0 && Number(task.done_lines) > 0) {
-      // Case 2 — all pick lines done (td.STATUS=9000), tote never dropped
+    } else if (task && task.task_ended_pdt && !isNaN(new Date(task.task_ended_pdt))) {
+      // Case 2 — pick task has an end time but tote never dropped (detail rows stay 8000 in MAWM)
       caseNum  = 2;
       timerMin = (task.task_ended_pdt && !isNaN(new Date(task.task_ended_pdt)))
         ? Math.round((nowMs - new Date(task.task_ended_pdt).getTime()) / 60000)
