@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Open Totes v1.4 -- DC499</title>
+<title>Open Totes v1.5 -- DC499</title>
 <style>
   :root {
     --bg:#111;--surface:#1a1a1a;--surface2:#222;--border:#2e2e2e;--border-mid:#333;
@@ -206,6 +206,16 @@
   .dz-block.idle .dz-tote-count{color:var(--text-hint);}
   .dz-block.active .dz-tote-count{color:var(--dz-active-text);}
 
+  /* Mixed drop zone alert */
+  .pw-bubble.pw-mixed{border-color:#ea580c;box-shadow:0 0 10px rgba(234,88,12,0.3);}
+  .pw-mixed-alert{font-size:15px;cursor:default;color:#f97316;line-height:1;}
+  .dz-block.dz-mixed{border-color:#f97316;background:rgba(249,115,22,0.12);}
+  .dz-block.dz-mixed .dz-name,.dz-block.dz-mixed .dz-status,.dz-block.dz-mixed .dz-tote-count{color:#f97316;}
+  [data-theme="light"] .pw-bubble.pw-mixed{border-color:#ea580c;box-shadow:0 0 8px rgba(234,88,12,0.35);}
+  [data-theme="light"] .pw-mixed-alert{color:#c2410c;}
+  [data-theme="light"] .dz-block.dz-mixed{border-color:#ea580c;background:rgba(234,88,12,0.08);}
+  [data-theme="light"] .dz-block.dz-mixed .dz-name,.dz-block.dz-mixed .dz-status,[data-theme="light"] .dz-block.dz-mixed .dz-tote-count{color:#c2410c;}
+
   /* Hospital PW (single DZ) */
   .pw-bubble-h1 .dz-pair{grid-template-columns:1fr;}
 
@@ -244,7 +254,7 @@
 
   <div class="top-bar">
     <div class="top-left">
-      <p class="dept-label"><span class="live-dot"></span>Open Totes v1.4 &mdash; Live</p>
+      <p class="dept-label"><span class="live-dot"></span>Open Totes v1.5 &mdash; Live</p>
       <h1>Open Totes &mdash; Ecom</h1>
       <p class="subtitle">Auto-refreshes every 1 min &middot; Only totes with issues shown</p>
     </div>
@@ -650,17 +660,41 @@ function makePwBubble(pw) {
   if (!pw) return document.createElement('div');
 
   var hasLoad  = pw.olpn_count > 0;
-  var bubble   = document.createElement('div');
-  bubble.className = 'pw-bubble' + (hasLoad ? ' pw-active' : '');
+  var dz1Tot   = pw.dz1_totes || 0;
+  var dz2Tot   = pw.dz2_totes || 0;
+  // Mixed DZ: both drop zones have totes at the same time on the same putwall
+  var isMixed  = pw.dz2 && dz1Tot > 0 && dz2Tot > 0;
 
-  // Header row: PW label + oLPN count
+  var bubble   = document.createElement('div');
+  bubble.className = 'pw-bubble' + (hasLoad ? ' pw-active' : '') + (isMixed ? ' pw-mixed' : '');
+
+  // Header row: PW label + optional mixed alert + oLPN count
   var top = document.createElement('div');
   top.className = 'pw-bubble-top';
+
+  var labelWrap = document.createElement('div');
+  labelWrap.style.display = 'flex';
+  labelWrap.style.alignItems = 'center';
+  labelWrap.style.gap = '6px';
 
   var label = document.createElement('div');
   label.className = 'pw-label';
   label.textContent = pw.pw;
-  top.appendChild(label);
+  labelWrap.appendChild(label);
+
+  if (isMixed) {
+    var alert = document.createElement('span');
+    alert.className = 'pw-mixed-alert';
+    alert.textContent = '⚠';
+    alert.title = 'Mixed drop zones — totes from both DW' +
+      String(parseInt(pw.dz1.replace(/^D1-PW-0*/,''), 10)).padStart(2,'0') +
+      ' (' + dz1Tot + ' tote' + (dz1Tot !== 1 ? 's' : '') + ') and DW' +
+      String(parseInt(pw.dz2.replace(/^D1-PW-0*/,''), 10)).padStart(2,'0') +
+      ' (' + dz2Tot + ' tote' + (dz2Tot !== 1 ? 's' : '') + ') are feeding this putwall at the same time.';
+    labelWrap.appendChild(alert);
+  }
+
+  top.appendChild(labelWrap);
 
   var countWrap = document.createElement('div');
   countWrap.style.display = 'flex';
@@ -681,17 +715,25 @@ function makePwBubble(pw) {
   var dzPair = document.createElement('div');
   dzPair.className = 'dz-pair';
 
-  var zones     = pw.dz2 ? [pw.dz1, pw.dz2] : [pw.dz1];
-  var dzTotes   = [pw.dz1_totes || 0, pw.dz2_totes || 0];
+  var zones   = pw.dz2 ? [pw.dz1, pw.dz2] : [pw.dz1];
+  var dzTotes = [dz1Tot, dz2Tot];
   zones.forEach(function(dzId, idx) {
     if (!dzId) return;
     var dzNum    = dzId.replace(/^D1-PW-0*/, '').replace(/^D1-HP-0*/, '');
     var dzLabel  = 'DW' + String(parseInt(dzNum, 10)).padStart(2, '0');
     var isActive = pw.active_dz && dzId === pw.active_dz;
     var totes    = dzTotes[idx] || 0;
+    var dzMixed  = isMixed && !isActive && totes > 0;
 
     var block = document.createElement('div');
-    block.className = 'dz-block ' + (isActive ? 'active' : 'idle');
+    block.className = 'dz-block ' + (isActive ? 'active' : 'idle') + (dzMixed ? ' dz-mixed' : '');
+
+    if (isMixed) {
+      var dzTip = isActive
+        ? 'Active feed — ' + totes + ' tote' + (totes !== 1 ? 's' : '') + ' present. Mixed drop zone alert: both drop zones feeding simultaneously.'
+        : 'Standby — ' + totes + ' tote' + (totes !== 1 ? 's' : '') + ' present. Should be empty while other drop zone is active.';
+      block.title = dzTip;
+    }
 
     var nameEl = document.createElement('div');
     nameEl.className = 'dz-name';
@@ -704,6 +746,7 @@ function makePwBubble(pw) {
     block.appendChild(nameEl);
     block.appendChild(statusEl);
 
+    // Always show tote count on standby if present; active always shows count
     if (totes > 0) {
       var toteEl = document.createElement('div');
       toteEl.className = 'dz-tote-count';
