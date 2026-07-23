@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Open Totes v1.3 -- DC499</title>
+<title>Open Totes v1.4 -- DC499</title>
 <style>
   :root {
     --bg:#111;--surface:#1a1a1a;--surface2:#222;--border:#2e2e2e;--border-mid:#333;
@@ -221,7 +221,7 @@
 
   <div class="top-bar">
     <div class="top-left">
-      <p class="dept-label"><span class="live-dot"></span>Open Totes v1.3 &mdash; Live</p>
+      <p class="dept-label"><span class="live-dot"></span>Open Totes v1.4 &mdash; Live</p>
       <h1>Open Totes &mdash; Ecom</h1>
       <p class="subtitle">Auto-refreshes every 1 min &middot; Only totes with issues shown</p>
     </div>
@@ -309,7 +309,6 @@
 <script>
 var THEME_KEY   = 'dc499_totes_theme_v1';
 var INTERVAL_MS = 1 * 60 * 1000;
-var lastData    = null;
 var autoTimer   = null;
 var cdownTimer  = null;
 var nextAt      = null;
@@ -384,7 +383,7 @@ function scheduleAutoRefresh() {
   if (autoTimer)  clearTimeout(autoTimer);
   if (cdownTimer) clearInterval(cdownTimer);
   nextAt    = Date.now() + INTERVAL_MS;
-  autoTimer = setTimeout(function() { fetchData(false); }, INTERVAL_MS);
+  autoTimer = setTimeout(function() { fetchData(); }, INTERVAL_MS);
   cdownTimer = setInterval(function() {
     var rem = Math.max(0, Math.round((nextAt - Date.now()) / 1000));
     var el  = document.getElementById('next-refresh');
@@ -392,7 +391,7 @@ function scheduleAutoRefresh() {
     if (rem === 0) clearInterval(cdownTimer);
   }, 1000);
 }
-function manualRefresh() { fetchData(true); }
+function manualRefresh() { fetchData(); }
 
 function fetchData() {
   document.getElementById('run-time').textContent = 'Loading...';
@@ -403,7 +402,7 @@ function fetchData() {
         : '');
   fetch(base + '/totes_live.json?t=' + Date.now())
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(data) { lastData = data; render(data); scheduleAutoRefresh(); })
+    .then(function(data) { render(data); scheduleAutoRefresh(); })
     .catch(function(err) {
       document.getElementById('run-time').textContent = 'Failed to load: ' + err.message;
       scheduleAutoRefresh();
@@ -581,19 +580,6 @@ function makeToteCard(t, isCase2, isOrphan) {
       '<div class="timer-label">' + timerLbl + '</div>' +
     '</div>';
   return card;
-}
-
-function makeDivider(label, cls) {
-  var wrap = document.createElement('div');
-  wrap.className = 'section-divider';
-  var span = document.createElement('span');
-  span.className = 'section-divider-label ' + cls;
-  span.textContent = label;
-  var line = document.createElement('div');
-  line.className = 'section-divider-line';
-  wrap.appendChild(span);
-  wrap.appendChild(line);
-  return wrap;
 }
 
 // ── Heat Map: putwall bubbles + aging totes in Other row ─────────────────────
