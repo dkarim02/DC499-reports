@@ -633,7 +633,7 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
     if (caseNum === 3) {
       severity = timerMin < 30 ? 'green' : timerMin < 60 ? 'yellow' : 'red';
     } else if (caseNum === 2) {
-      severity = timerMin < 10 ? 'green' : timerMin < 20 ? 'yellow' : 'red';
+      severity = timerMin < 15 ? 'green' : timerMin < 30 ? 'yellow' : 'red';
     } else {
       severity = timerMin < 10 ? 'green' : timerMin < 20 ? 'yellow' : 'red';
     }
