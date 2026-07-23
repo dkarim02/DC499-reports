@@ -308,7 +308,7 @@
 
 <script>
 var THEME_KEY   = 'dc499_totes_theme_v1';
-var INTERVAL_MS = 1 * 60 * 1000;
+var INTERVAL_MS = 60 * 1000;
 var autoTimer   = null;
 var cdownTimer  = null;
 var nextAt      = null;
@@ -422,7 +422,7 @@ function isStale(generated) {
   if (!generated) return false;
   try {
     var ts = generated.endsWith('Z') ? generated : generated + 'Z';
-    return (Date.now() - new Date(ts).getTime()) / 60000 > 10;
+    return (Date.now() - new Date(ts).getTime()) / 60000 > 5;
   } catch(e) { return false; }
 }
 
