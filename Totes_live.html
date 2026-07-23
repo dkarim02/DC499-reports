@@ -71,8 +71,8 @@
   .columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
   @media(max-width:900px){.columns{grid-template-columns:1fr;}}
 
-  /* Column card */
-  .col-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+  /* Column card — min-height matches col 2's natural height so all three cards align */
+  .col-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;min-height:640px;}
   [data-theme="light"] .col-card{box-shadow:0 2px 12px rgba(0,0,0,0.10);border-color:#bbb;}
   [data-theme="light"] h1{color:#111;}
   [data-theme="light"] .subtitle{color:#444;font-weight:600;}
