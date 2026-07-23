@@ -690,8 +690,8 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
 
   for (const r of (respPutwall.rows || [])) {
     const prefix = r.pw_prefix;
-    // Accumulate olpn_count across all rows for this prefix (each tote_id is a separate row)
-    pwCountMap[prefix] = (pwCountMap[prefix] || 0) + Number(r.olpn_count || 0);
+    // olpn_count is the same on every row for this prefix — only set it once
+    if (pwCountMap[prefix] === undefined) pwCountMap[prefix] = Number(r.olpn_count || 0);
     // First row per prefix with a resolved D1- location = active drop zone
     if (!pwActiveDzMap[prefix] && r.tote_id) {
       const loc = ilpnLocMap[r.tote_id];
