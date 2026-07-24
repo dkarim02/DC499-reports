@@ -31,6 +31,34 @@
     --dz-active-bg:#0E9E8E;--dz-active-border:#0a7a6e;--dz-active-text:#fff;
     --dz-idle-bg:#dcdcda;--dz-idle-border:#aaa;--dz-idle-text:#666;
   }
+  [data-theme="solid"] {
+    /* Navy-blue slate — vivid colors pop against deep blue base */
+    --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-mid:#3a4360;
+    --text:#e4e8f4;--text-muted:#8090b0;--text-hint:#4a5570;
+    --accent:#0E9E8E;--accent-bg:#053D38;
+    --green:#22c55e;--green-bg:#052e16;--green-border:#166534;
+    --yellow:#facc15;--yellow-bg:#2a1f00;--yellow-border:#7a5500;
+    --red:#ef4444;--red-bg:#2d0a0a;--red-border:#7f1d1d;
+    --orphan:#c084fc;--orphan-bg:#2e1065;--orphan-border:#6b21a8;
+    --s-color:#a78bfa;--m-color:#fb923c;
+    --pw-active-glow:#0E9E8E;--pw-active-bg:#0d2e2a;--pw-active-border:#0E9E8E;
+    --dz-active-bg:#0f3d38;--dz-active-border:#0E9E8E;--dz-active-text:#2dd4c0;
+    --dz-idle-bg:#1b2035;--dz-idle-border:#2e3650;--dz-idle-text:#3a4a65;
+  }
+  [data-theme="mixed"] {
+    /* Cool neutral gray — pastel colors sit softly on a calm base */
+    --bg:#191c22;--surface:#21252e;--surface2:#292e38;--border:#363c48;--border-mid:#424a58;
+    --text:#ccd2de;--text-muted:#7a8496;--text-hint:#4e5668;
+    --accent:#5ecfbf;--accent-bg:#0d3a35;
+    --green:#86efac;--green-bg:#0e2b1a;--green-border:#1a5c32;
+    --yellow:#fde68a;--yellow-bg:#271e00;--yellow-border:#6b4a00;
+    --red:#fca5a5;--red-bg:#280e0e;--red-border:#6b2020;
+    --orphan:#d8b4fe;--orphan-bg:#1c0e38;--orphan-border:#5a2a8a;
+    --s-color:#c4b5fd;--m-color:#fdba74;
+    --pw-active-glow:#5ecfbf;--pw-active-bg:#162e2a;--pw-active-border:#5ecfbf;
+    --dz-active-bg:#183e38;--dz-active-border:#5ecfbf;--dz-active-text:#99e8e0;
+    --dz-idle-bg:#21252e;--dz-idle-border:#363c48;--dz-idle-text:#464e5e;
+  }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;}
   .container{max-width:1700px;margin:0 auto;}
@@ -41,19 +69,26 @@
   .dept-label{font-size:11px;color:var(--accent);font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:3px;}
   .subtitle{font-size:13px;color:var(--text-muted);margin-top:3px;}
   .top-right{display:flex;align-items:center;gap:10px;}
-  .dark-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
-  .dark-toggle:hover{background:var(--surface2);}
-  .toggle-track{width:28px;height:16px;border-radius:8px;background:var(--border-mid);position:relative;transition:background 0.2s;flex-shrink:0;}
-  .toggle-thumb{width:12px;height:12px;border-radius:50%;background:var(--text-hint);position:absolute;top:2px;left:2px;transition:left 0.2s,background 0.2s;}
-  [data-theme="light"] .toggle-track{background:var(--accent);}
-  [data-theme="light"] .toggle-thumb{left:14px;background:#fff;}
+  .theme-picker{position:relative;}
+  .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;user-select:none;}
+  .theme-btn:hover{background:var(--surface2);}
+  .theme-btn-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
+  .theme-picker.open .theme-btn-chevron{transform:rotate(180deg);}
+  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;min-width:130px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:100;}
+  .theme-picker.open .theme-menu{display:block;}
+  .theme-option{padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
+  .theme-option:hover{background:var(--surface2);color:var(--text);}
+  .theme-option.active{color:var(--accent);background:var(--surface2);}
+  [data-theme="light"] .theme-menu{box-shadow:0 4px 16px rgba(0,0,0,0.15);}
 
   /* Status bar */
   .status-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px;}
   .status-left{font-size:12px;color:var(--text-hint);}
   .refresh-btn{font-family:inherit;font-size:13px;padding:6px 16px;border:1.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:600;}
   .refresh-btn:hover{opacity:0.8;}
-  [data-theme="light"] .refresh-btn{background:#0E9E8E;color:#fff;border-color:#0a7a6e;}
+  [data-theme="solid"]  .refresh-btn{background:#0E9E8E;color:#fff;border-color:#0a7a6e;}
+  [data-theme="mixed"]  .refresh-btn{background:#0E9E8E;color:#fff;border-color:#0a7a6e;}
+  [data-theme="light"]  .refresh-btn{background:#0E9E8E;color:#fff;border-color:#0a7a6e;}
 
   /* Summary pills */
   .summary-row{display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;}
@@ -74,7 +109,40 @@
 
   /* Column card */
   .col-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
-  [data-theme="light"] .col-card{box-shadow:0 2px 12px rgba(0,0,0,0.10);border-color:#bbb;}
+  [data-theme="solid"]  .col-card{box-shadow:0 2px 16px rgba(0,0,0,0.35);}
+  [data-theme="mixed"]  .col-card{box-shadow:0 2px 16px rgba(0,0,0,0.35);}
+  [data-theme="light"]  .col-card{box-shadow:0 2px 12px rgba(0,0,0,0.10);border-color:#bbb;}
+
+  /* Solid: same structural overrides as mixed — slate background, no glow, left stripe */
+  [data-theme="solid"] .pw-bubble{background:#2c3540;border-color:#404d5e;}
+  [data-theme="solid"] .pw-bubble.pw-active{background:#1e3a36;border-top:3px solid var(--pw-active-border);box-shadow:none;}
+  [data-theme="solid"] .pw-bubble.pw-mixed{border-color:#f97316;box-shadow:none;}
+  [data-theme="solid"] .dz-block.active{background:var(--dz-active-bg);border-color:var(--dz-active-border);box-shadow:none;animation:none;}
+  [data-theme="solid"] .dz-block.idle{background:#232830;border-color:#363d4a;}
+  [data-theme="solid"] .sev-dot.green{box-shadow:none;}
+  [data-theme="solid"] .sev-dot.yellow{box-shadow:none;}
+  [data-theme="solid"] .sev-dot.red{box-shadow:none;animation:none;}
+  [data-theme="solid"] .sev-dot.orphan{box-shadow:none;animation:none;}
+  [data-theme="solid"] .tote-card{border-width:2px;border-left-width:5px;}
+  [data-theme="solid"] .tote-card.green{border-left-color:var(--green);}
+  [data-theme="solid"] .tote-card.yellow{border-left-color:var(--yellow);}
+  [data-theme="solid"] .tote-card.red{border-left-color:var(--red);}
+  [data-theme="solid"] .tote-card.orphan{border-left-color:var(--orphan);}
+  /* Mixed: type badges use pastel palette */
+  [data-theme="mixed"] .type-badge.S{background:#2a2350;color:var(--s-color);}
+  [data-theme="mixed"] .type-badge.M{background:#2a1a0a;color:var(--m-color);}
+  /* Mixed: putwall bubbles lift off card surface with slate background */
+  [data-theme="mixed"] .pw-bubble{background:#2c3540;border-color:#404d5e;}
+  [data-theme="mixed"] .pw-bubble.pw-active{background:#1e3a36;border-top:3px solid var(--pw-active-border);box-shadow:none;}
+  [data-theme="mixed"] .pw-bubble.pw-mixed{border-color:#f97316;box-shadow:none;}
+  /* Active drop zone: solid opaque slate-teal, no pulse animation */
+  [data-theme="mixed"] .dz-block.active{background:var(--dz-active-bg);border-color:var(--dz-active-border);box-shadow:none;animation:none;}
+  [data-theme="mixed"] .dz-block.idle{background:#232830;border-color:#363d4a;}
+  /* Severity dots: no glow, clean fill */
+  [data-theme="mixed"] .sev-dot.green{box-shadow:none;}
+  [data-theme="mixed"] .sev-dot.yellow{box-shadow:none;}
+  [data-theme="mixed"] .sev-dot.red{box-shadow:none;animation:none;}
+  [data-theme="mixed"] .sev-dot.orphan{box-shadow:none;animation:none;}
   [data-theme="light"] h1{color:#111;}
   [data-theme="light"] .subtitle{color:#444;font-weight:600;}
   [data-theme="light"] .status-left{color:#444;font-weight:600;}
@@ -117,12 +185,12 @@
   .tote-card.yellow{background:var(--yellow-bg);border-color:var(--yellow-border);}
   .tote-card.red{background:var(--red-bg);border-color:var(--red-border);}
   .tote-card.orphan{background:var(--orphan-bg);border-color:var(--orphan-border);}
-  /* Light mode: thicker border + left accent stripe for readability at distance */
-  [data-theme="light"] .tote-card{border-width:2px;border-left-width:5px;}
-  [data-theme="light"] .tote-card.green{border-left-color:var(--green);}
-  [data-theme="light"] .tote-card.yellow{border-left-color:var(--yellow);}
-  [data-theme="light"] .tote-card.red{border-left-color:var(--red);}
-  [data-theme="light"] .tote-card.orphan{border-left-color:var(--orphan);}
+  /* Mixed + light: thicker border + left accent stripe for readability at distance */
+  [data-theme="mixed"] .tote-card,[data-theme="light"] .tote-card{border-width:2px;border-left-width:5px;}
+  [data-theme="mixed"] .tote-card.green,[data-theme="light"] .tote-card.green{border-left-color:var(--green);}
+  [data-theme="mixed"] .tote-card.yellow,[data-theme="light"] .tote-card.yellow{border-left-color:var(--yellow);}
+  [data-theme="mixed"] .tote-card.red,[data-theme="light"] .tote-card.red{border-left-color:var(--red);}
+  [data-theme="mixed"] .tote-card.orphan,[data-theme="light"] .tote-card.orphan{border-left-color:var(--orphan);}
 
   /* Severity dot */
   .sev-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
@@ -211,6 +279,9 @@
   .pw-mixed-alert{font-size:15px;cursor:default;color:#f97316;line-height:1;}
   .dz-block.dz-mixed{border-color:#f97316;background:rgba(249,115,22,0.12);}
   .dz-block.dz-mixed .dz-name,.dz-block.dz-mixed .dz-status,.dz-block.dz-mixed .dz-tote-count{color:#f97316;}
+  [data-theme="mixed"] .pw-mixed-alert{color:#fdba74;}
+  [data-theme="mixed"] .dz-block.dz-mixed{border-color:#fdba74;background:rgba(253,186,116,0.10);}
+  [data-theme="mixed"] .dz-block.dz-mixed .dz-name,[data-theme="mixed"] .dz-block.dz-mixed .dz-status,[data-theme="mixed"] .dz-block.dz-mixed .dz-tote-count{color:#fdba74;}
   [data-theme="light"] .pw-bubble.pw-mixed{border-color:#ea580c;box-shadow:0 0 8px rgba(234,88,12,0.35);}
   [data-theme="light"] .pw-mixed-alert{color:#c2410c;}
   [data-theme="light"] .dz-block.dz-mixed{border-color:#ea580c;background:rgba(234,88,12,0.08);}
@@ -259,10 +330,18 @@
       <p class="subtitle">Auto-refreshes every 1 min &middot; Only totes with issues shown</p>
     </div>
     <div class="top-right">
-      <button class="dark-toggle" onclick="toggleDark()">
-        <span id="toggle-label">Light mode</span>
-        <div class="toggle-track"><div class="toggle-thumb"></div></div>
-      </button>
+      <div class="theme-picker" id="theme-picker">
+        <div class="theme-btn" onclick="toggleThemeMenu()">
+          <span id="toggle-label">Mixed</span>
+          <span class="theme-btn-chevron">&#9660;</span>
+        </div>
+        <div class="theme-menu" id="theme-menu">
+          <div class="theme-option" data-theme-val="dark"  onclick="pickTheme('dark')">Dark</div>
+          <div class="theme-option" data-theme-val="solid" onclick="pickTheme('solid')">Solid</div>
+          <div class="theme-option" data-theme-val="mixed" onclick="pickTheme('mixed')">Pastel</div>
+          <div class="theme-option" data-theme-val="light" onclick="pickTheme('light')">Light</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -340,11 +419,13 @@
 </div>
 
 <script>
-var THEME_KEY   = 'dc499_totes_theme_v1';
-var INTERVAL_MS = 60 * 1000;
-var autoTimer   = null;
-var cdownTimer  = null;
-var nextAt      = null;
+var THEME_KEY     = 'dc499_totes_theme_v1';
+var INTERVAL_MS   = 60 * 1000;
+var autoTimer     = null;
+var cdownTimer    = null;
+var nextAt        = null;
+var generatedMs   = null; // UTC ms of last JSON payload — used by client ticker
+var clientTicker  = null; // increments displayed timers between agent refreshes
 
 // Slow scroll — shared by all four sub-boxes
 var scrollTimers      = {};
@@ -399,17 +480,30 @@ var ORPHAN_MIN = 1440;
 // Standalone locations shown in "Other" row (H1-HP-01 gets oLPN count from putwalls data)
 var STANDALONE_LOCS = ['D1-SN-01', 'D1-HP-01', 'C1-PM-01'];
 
-function applyTheme(dark) {
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
-  try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
+var THEME_NAMES = {dark:'Dark', solid:'Solid', mixed:'Pastel', light:'Light'};
+var THEME_VALS  = ['dark','solid','mixed','light'];
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('toggle-label').textContent = THEME_NAMES[t] || t;
+  document.querySelectorAll('.theme-option').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-theme-val') === t);
+  });
+  try { localStorage.setItem(THEME_KEY, t); } catch(e) {}
 }
-function toggleDark() {
-  applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
+function toggleThemeMenu() {
+  document.getElementById('theme-picker').classList.toggle('open');
 }
+function pickTheme(t) {
+  applyTheme(t);
+  document.getElementById('theme-picker').classList.remove('open');
+}
+document.addEventListener('click', function(e) {
+  var picker = document.getElementById('theme-picker');
+  if (picker && !picker.contains(e.target)) picker.classList.remove('open');
+});
 (function() {
   var saved; try { saved = localStorage.getItem(THEME_KEY); } catch(e) {}
-  applyTheme(saved ? saved === 'dark' : true);
+  applyTheme(saved && THEME_VALS.indexOf(saved) !== -1 ? saved : 'mixed');
 })();
 
 function scheduleAutoRefresh() {
@@ -455,8 +549,39 @@ function isStale(generated) {
   if (!generated) return false;
   try {
     var ts = generated.endsWith('Z') ? generated : generated + 'Z';
-    return (Date.now() - new Date(ts).getTime()) / 60000 > 5;
+    return (Date.now() - new Date(ts).getTime()) / 60000 > 4;
   } catch(e) { return false; }
+}
+
+function sevForCase(caseNum, min) {
+  if (caseNum === 3) return min < 30 ? 'green' : min < 60 ? 'yellow' : 'red';
+  if (caseNum === 2) return min < 15 ? 'green' : min < 30 ? 'yellow' : 'red';
+  return min < 10 ? 'green' : min < 20 ? 'yellow' : 'red';
+}
+
+function startClientTicker() {
+  if (clientTicker) clearInterval(clientTicker);
+  clientTicker = setInterval(function() {
+    if (!generatedMs) return;
+    // Minutes elapsed since the JSON was generated — this is authoritative drift
+    var driftMin = Math.floor((Date.now() - generatedMs) / 60000);
+    document.querySelectorAll('.tote-card[data-base-timer]').forEach(function(card) {
+      var base     = parseInt(card.getAttribute('data-base-timer'), 10);
+      var caseNum  = parseInt(card.getAttribute('data-case'), 10);
+      var isOrphan = card.getAttribute('data-orphan') === '1';
+      var min      = base + driftMin;
+      var sev      = isOrphan ? 'orphan' : sevForCase(caseNum, min);
+      var valEl    = card.querySelector('.timer-val');
+      var dotEl    = card.querySelector('.sev-dot');
+      if (valEl) valEl.textContent = fmtTimer(min);
+      // Only update severity classes — agent data takes precedence on next render()
+      if (dotEl && !isOrphan) {
+        dotEl.className = 'sev-dot ' + sev;
+        valEl.className = 'timer-val ' + sev;
+        card.className  = card.className.replace(/\b(green|yellow|red)\b/, sev);
+      }
+    });
+  }, 60000);
 }
 
 function render(data) {
@@ -475,6 +600,7 @@ function render(data) {
 
   try {
     var d = new Date(data.generated.endsWith('Z') ? data.generated : data.generated + 'Z');
+    generatedMs = d.getTime();
     rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ' \xb7 Facility ' + (data.facility || '499');
   } catch(e) { rtEl.textContent = data.generated || ''; }
 
@@ -500,6 +626,7 @@ function render(data) {
   renderHeatmap(c3, pws);
   renderCol3(orphans, normal3);
   startCol3Scroll();
+  startClientTicker();
 }
 
 // ── Column 1: In Pick sub-box + Not Dropped sub-box ──────────────────────────
@@ -591,6 +718,10 @@ function makeToteCard(t, isCase2, isOrphan) {
   var sev  = isOrphan ? 'orphan' : (t.severity || 'green');
   var card = document.createElement('div');
   card.className = 'tote-card ' + sev;
+  // Ticker attributes — base-timer and case are the agent's authoritative values
+  card.setAttribute('data-base-timer', t.timer_min);
+  card.setAttribute('data-case', isCase2 ? 2 : (isOrphan ? 3 : (t.case || 1)));
+  card.setAttribute('data-orphan', isOrphan ? '1' : '0');
 
   var locHtml   = t.location ? '<span class="loc-chip">' + escHtml(t.location) + '</span>' : '';
   var unitsHtml = t.units > 0 ? '<span class="units-chip">' + t.units + ' unit' + (t.units !== 1 ? 's' : '') + '</span>' : '';
