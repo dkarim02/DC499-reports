@@ -46,18 +46,18 @@
     --dz-idle-bg:#1b2035;--dz-idle-border:#2e3650;--dz-idle-text:#3a4a65;
   }
   [data-theme="mixed"] {
-    /* Cool neutral gray — pastel colors sit softly on a calm base */
-    --bg:#191c22;--surface:#21252e;--surface2:#292e38;--border:#363c48;--border-mid:#424a58;
-    --text:#ccd2de;--text-muted:#7a8496;--text-hint:#4e5668;
-    --accent:#5ecfbf;--accent-bg:#0d3a35;
-    --green:#86efac;--green-bg:#0e2b1a;--green-border:#1a5c32;
-    --yellow:#fde68a;--yellow-bg:#271e00;--yellow-border:#6b4a00;
-    --red:#fca5a5;--red-bg:#280e0e;--red-border:#6b2020;
-    --orphan:#d8b4fe;--orphan-bg:#1c0e38;--orphan-border:#5a2a8a;
+    /* Dusty lavender-gray — warm, soft, pastel throughout */
+    --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-mid:#484c60;
+    --text:#d4d0e8;--text-muted:#8b8aaa;--text-hint:#565670;
+    --accent:#7ecec4;--accent-bg:#152e2c;
+    --green:#86efac;--green-bg:#162b22;--green-border:#2a6644;
+    --yellow:#fde68a;--yellow-bg:#2e2410;--yellow-border:#7a5c1a;
+    --red:#fca5a5;--red-bg:#2e1a1a;--red-border:#7a3030;
+    --orphan:#d8b4fe;--orphan-bg:#241640;--orphan-border:#6a3a9a;
     --s-color:#c4b5fd;--m-color:#fdba74;
-    --pw-active-glow:#5ecfbf;--pw-active-bg:#162e2a;--pw-active-border:#5ecfbf;
-    --dz-active-bg:#183e38;--dz-active-border:#5ecfbf;--dz-active-text:#99e8e0;
-    --dz-idle-bg:#21252e;--dz-idle-border:#363c48;--dz-idle-text:#464e5e;
+    --pw-active-glow:#7ecec4;--pw-active-bg:#1e2445;--pw-active-border:#7ecec4;
+    --dz-active-bg:#1c3c38;--dz-active-border:#7ecec4;--dz-active-text:#7ecec4;
+    --dz-idle-bg:#1e2034;--dz-idle-border:#383b52;--dz-idle-text:#484864;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;}
@@ -114,11 +114,14 @@
   [data-theme="light"]  .col-card{box-shadow:0 2px 12px rgba(0,0,0,0.10);border-color:#bbb;}
 
   /* Solid: same structural overrides as mixed — slate background, no glow, left stripe */
-  [data-theme="solid"] .pw-bubble{background:#2c3540;border-color:#404d5e;}
-  [data-theme="solid"] .pw-bubble.pw-active{background:#1e3a36;border-top:3px solid var(--pw-active-border);box-shadow:none;}
-  [data-theme="solid"] .pw-bubble.pw-mixed{border-color:#f97316;box-shadow:none;}
-  [data-theme="solid"] .dz-block.active{background:var(--dz-active-bg);border-color:var(--dz-active-border);box-shadow:none;animation:none;}
-  [data-theme="solid"] .dz-block.idle{background:#232830;border-color:#363d4a;}
+  [data-theme="solid"] .pw-bubble{background:#1e2640;border:2px solid #3a4a6a;}
+  [data-theme="solid"] .pw-bubble.pw-active{background:#112e2a;border:2px solid var(--pw-active-border);border-top:4px solid var(--pw-active-border);box-shadow:none;}
+  [data-theme="solid"] .pw-bubble.pw-active .pw-label{color:#0E9E8E;}
+  [data-theme="solid"] .pw-bubble.pw-active .pw-olpn-count{color:#0E9E8E;}
+  [data-theme="solid"] .pw-bubble.pw-mixed{border:2px solid #f97316;box-shadow:none;}
+  [data-theme="solid"] .dz-block.active{background:#0E9E8E;border-color:#0a7a6e;box-shadow:none;animation:none;}
+  [data-theme="solid"] .dz-block.active .dz-name,[data-theme="solid"] .dz-block.active .dz-status,[data-theme="solid"] .dz-block.active .dz-tote-count{color:#fff;}
+  [data-theme="solid"] .dz-block.idle{background:#161d30;border:1.5px solid #2a3350;}
   [data-theme="solid"] .sev-dot.green{box-shadow:none;}
   [data-theme="solid"] .sev-dot.yellow{box-shadow:none;}
   [data-theme="solid"] .sev-dot.red{box-shadow:none;animation:none;}
@@ -129,15 +132,17 @@
   [data-theme="solid"] .tote-card.red{border-left-color:var(--red);}
   [data-theme="solid"] .tote-card.orphan{border-left-color:var(--orphan);}
   /* Mixed: type badges use pastel palette */
-  [data-theme="mixed"] .type-badge.S{background:#2a2350;color:var(--s-color);}
-  [data-theme="mixed"] .type-badge.M{background:#2a1a0a;color:var(--m-color);}
+  [data-theme="mixed"] .type-badge.S{background:#2e2a4a;color:var(--s-color);}
+  [data-theme="mixed"] .type-badge.M{background:#332510;color:var(--m-color);}
   /* Mixed: putwall bubbles lift off card surface with slate background */
-  [data-theme="mixed"] .pw-bubble{background:#2c3540;border-color:#404d5e;}
-  [data-theme="mixed"] .pw-bubble.pw-active{background:#1e3a36;border-top:3px solid var(--pw-active-border);box-shadow:none;}
-  [data-theme="mixed"] .pw-bubble.pw-mixed{border-color:#f97316;box-shadow:none;}
-  /* Active drop zone: solid opaque slate-teal, no pulse animation */
+  [data-theme="mixed"] .pw-bubble{background:#262838;border:1.5px solid #3a3d55;}
+  [data-theme="mixed"] .pw-bubble.pw-active{background:var(--pw-active-bg);border:1.5px solid var(--pw-active-border);border-top:3px solid var(--pw-active-border);box-shadow:none;}
+  [data-theme="mixed"] .pw-bubble.pw-active .pw-label{color:var(--pw-active-glow);}
+  [data-theme="mixed"] .pw-bubble.pw-active .pw-olpn-count{color:var(--pw-active-glow);}
+  [data-theme="mixed"] .pw-bubble.pw-mixed{border-color:#fdba74;box-shadow:none;}
   [data-theme="mixed"] .dz-block.active{background:var(--dz-active-bg);border-color:var(--dz-active-border);box-shadow:none;animation:none;}
-  [data-theme="mixed"] .dz-block.idle{background:#232830;border-color:#363d4a;}
+  [data-theme="mixed"] .dz-block.active .dz-name,[data-theme="mixed"] .dz-block.active .dz-status,[data-theme="mixed"] .dz-block.active .dz-tote-count{color:var(--dz-active-text);}
+  [data-theme="mixed"] .dz-block.idle{background:var(--dz-idle-bg);border:1.5px solid var(--dz-idle-border);}
   /* Severity dots: no glow, clean fill */
   [data-theme="mixed"] .sev-dot.green{box-shadow:none;}
   [data-theme="mixed"] .sev-dot.yellow{box-shadow:none;}
