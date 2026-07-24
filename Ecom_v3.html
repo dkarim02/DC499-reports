@@ -592,6 +592,12 @@ var FULL_TX = {
   shipping: ['OB Putaway By Ship Via'],
   sorting: ['OB Sort To Putwall Cubby']
 };
+var FULL_TX_1ST_OVERRIDES = { shipping: ['NRDR Load Parcel Packages'] };
+function getTX() {
+  if (getShift() !== '1st') return FULL_TX;
+  var tx = {}; Object.keys(FULL_TX).forEach(function(k){ tx[k] = FULL_TX_1ST_OVERRIDES[k] || FULL_TX[k]; });
+  return tx;
+}
 
 var FULL_COLORS = {
   replen: '#185FA5', putaway: '#0F6E56', picking: '#9B4DCA',
@@ -708,7 +714,7 @@ function detectHeadcounts() {
   var TEAM = getTeamSet();
   var counts = {};
   HC_DEPTS.forEach(function(typ) {
-    var txList = FULL_TX[typ];
+    var txList = getTX()[typ];
     var threshold = MIN_TX[typ] || 0;
     var empCount = {};
     fullReportRows.forEach(function(r) {
@@ -900,7 +906,7 @@ function drawAssocChart(canvasId, emp, isDark) {
     var matchedTyp = undefined;
     var found = false;
     Object.keys(FULL_TX).forEach(function(typ) {
-      var txList = FULL_TX[typ];
+      var txList = getTX()[typ];
       if (!txList) return;
       if (txList.indexOf(txId) === -1) return;
       if (typ === 'sorting' && (r['Criteria']||'').trim() !== SORT_CRITERIA) return;
@@ -1126,7 +1132,7 @@ function renderSidePanel(typ) {
   var roster = loadRoster();
 
   // Find all employees in this dept from current data
-  var txList = FULL_TX[typ];
+  var txList = getTX()[typ];
   var metricKey = FULL_METRIC[typ];
   var empTotals = {};
   fullReportRows.forEach(function(r) {
@@ -1229,7 +1235,7 @@ function drawFullChart(filterTyp) {
 
   var TEAM = getTeamSet();
   types.forEach(function(typ) {
-    var txList = FULL_TX[typ];
+    var txList = getTX()[typ];
     var metricKey = FULL_METRIC[typ];
     var map = {};
     fullReportRows.forEach(function(r) {
@@ -1312,7 +1318,7 @@ function renderFullReport() {
   html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary</div>';
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
   types.forEach(function(typ) {
-    var txList = FULL_TX[typ], metricKey = FULL_METRIC[typ], color = FULL_COLORS[typ];
+    var txList = getTX()[typ], metricKey = FULL_METRIC[typ], color = FULL_COLORS[typ];
     var filtered = fullReportRows.filter(function(r){
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
       if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
@@ -1357,7 +1363,7 @@ function renderFullReport() {
   html += '<div id="full-side-panel" class="full-side-panel"></div>';
   html += '<div class="full-layout-with-panel"><div id="full-dept-grid"><div class="full-grid">';
   types.forEach(function(typ) {
-    var txList = FULL_TX[typ], metricKey = FULL_METRIC[typ], color = FULL_COLORS[typ];
+    var txList = getTX()[typ], metricKey = FULL_METRIC[typ], color = FULL_COLORS[typ];
     var label = FULL_LABELS[typ], barClass = 'full-bar-'+typ;
     var filtered = fullReportRows.filter(function(r){
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
@@ -1474,7 +1480,7 @@ const TEAMS_WEBHOOKS = {
 function getDeptTotals() {
   var TEAM = getTeamSet(), totals = {};
   ['replen','putaway','picking','packing','shipping','sorting'].forEach(function(typ) {
-    var txList = FULL_TX[typ], metricKey = FULL_METRIC[typ];
+    var txList = getTX()[typ], metricKey = FULL_METRIC[typ];
     totals[typ] = fullReportRows.filter(function(r) {
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
       if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
