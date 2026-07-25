@@ -211,7 +211,7 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_DATE_TIME >= '${shiftStart}'
 GROUP BY TYPE_ID, STATUS`.trim();
 
-  // Q5: DCO_ORDER_PLAN_RUN_STRATEGY — batches summary + wave type counts in one pass
+  // Q5a: DCO_ORDER_PLAN_RUN_STRATEGY — batches summary + wave type counts in one pass
   const sqlWaves = `
 SELECT
   PLANNING_STRATEGY_ID,
@@ -225,13 +225,27 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY PLANNING_STRATEGY_ID, ORDER_PLANNING_MODE, CHASE_MODE, STATUS
 ORDER BY wave_runs DESC`.trim();
 
-  console.log(`[${ts()}] Running 5 queries in parallel...`);
-  const [rOrders, rUnits, rOlpn, rTasks, rWaves] = await Promise.all([
+  // Q5b: avg release interval — LAG over CREATED_TIMESTAMP, no extra table hit
+  const sqlInterval = `
+SELECT ROUND(AVG(diff_min), 1) AS avg_interval_min
+FROM (
+  SELECT TIMESTAMPDIFF(MINUTE,
+    LAG(CREATED_TIMESTAMP) OVER (ORDER BY CREATED_TIMESTAMP),
+    CREATED_TIMESTAMP) AS diff_min
+  FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
+  WHERE FACILITY_ID = '${FACILITY}'
+    AND CREATED_TIMESTAMP >= '${shiftStart}'
+) t
+WHERE diff_min IS NOT NULL`.trim();
+
+  console.log(`[${ts()}] Running 6 queries in parallel...`);
+  const [rOrders, rUnits, rOlpn, rTasks, rWaves, rInterval] = await Promise.all([
     mcpQuery(token, sqlOrders),
     mcpQuery(token, sqlUnits),
     mcpQuery(token, sqlOlpn),
     mcpQuery(token, sqlTasks),
     mcpQuery(token, sqlWaves),
+    mcpQuery(token, sqlInterval),
   ]);
 
   // Task rollup — one loop covers all three TYPE_IDs
@@ -290,6 +304,9 @@ ORDER BY wave_runs DESC`.trim();
     putaway_done:         tasks['PUTAWAY'].done,
     batches_in_queue:     batches_total - batches_cleared,
     batches_cleared:      batches_cleared,
+    avg_release_interval: rInterval.rows?.[0]?.avg_interval_min != null
+                            ? Number(rInterval.rows[0].avg_interval_min)
+                            : null,
     orders_not_released:  num(ordRow.not_released),
     packed_not_shipped:   num(olpnRow.packed_not_shipped),
     packed_units:         num(olpnRow.packed_units),
@@ -349,8 +366,7 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStart}'
   AND CREATED_TIMESTAMP <  '${sosTime}'`.trim();
 
-  // Q4: Orders not released at sosTime — created before sosTime, still at status 1000 now
-  // Caveat: if order moved past 1000 after sosTime we can't detect it — marked as approximate
+  // Q4: Orders not released at sosTime
   const sqlNotReleased = `
 SELECT COUNT(DISTINCT ORDER_ID) AS not_released
 FROM default_dcorder.DCO_ORDER
@@ -359,12 +375,27 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND MAXIMUM_STATUS = '1000'
   AND CREATED_TIMESTAMP < '${sosTime}'`.trim();
 
-  console.log(`[${ts()}] Running 4 reconstruction queries...`);
-  const [rTasks, rWaves, rBatches, rNotRel] = await Promise.all([
+  // Q5: Avg release interval up to sosTime
+  const sqlInterval = `
+SELECT ROUND(AVG(diff_min), 1) AS avg_interval_min
+FROM (
+  SELECT TIMESTAMPDIFF(MINUTE,
+    LAG(CREATED_TIMESTAMP) OVER (ORDER BY CREATED_TIMESTAMP),
+    CREATED_TIMESTAMP) AS diff_min
+  FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
+  WHERE FACILITY_ID = '${FACILITY}'
+    AND CREATED_TIMESTAMP >= '${shiftStart}'
+    AND CREATED_TIMESTAMP <  '${sosTime}'
+) t
+WHERE diff_min IS NOT NULL`.trim();
+
+  console.log(`[${ts()}] Running 5 reconstruction queries...`);
+  const [rTasks, rWaves, rBatches, rNotRel, rInterval] = await Promise.all([
     mcpQuery(token, sqlTasks),
     mcpQuery(token, sqlWaves),
     mcpQuery(token, sqlBatches),
     mcpQuery(token, sqlNotReleased),
+    mcpQuery(token, sqlInterval),
   ]);
 
   // Task rollup
@@ -424,6 +455,9 @@ WHERE FACILITY_ID = '${FACILITY}'
     putaway_done:         tasks['PUTAWAY'].done,
     batches_in_queue:     total_waves - completed_sos,
     batches_cleared:      completed_sos,
+    avg_release_interval: rInterval.rows?.[0]?.avg_interval_min != null
+                            ? Number(rInterval.rows[0].avg_interval_min)
+                            : null,
     orders_not_released:  num(rNotRel.rows?.[0]?.not_released),
     waves,
   };

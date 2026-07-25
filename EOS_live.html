@@ -169,6 +169,10 @@ function fmt(v) {
   if (v === null || v === undefined) return '—';
   return Number(v).toLocaleString();
 }
+function fmtInterval(v) {
+  if (v === null || v === undefined) return '—';
+  return Number(v).toFixed(1) + ' min';
+}
 function chgText(s, e) {
   if (s == null || e == null) return '—';
   const d = e - s;
@@ -191,6 +195,19 @@ function tRow(label, sv, ev, evClass, svUnavailable) {
     <td class="val-sos ${sosCls}">${sosDisp}</td>
     <td class="val-eos ${evClass||''}">${fmt(ev)}</td>
     <td class="val-chg ${chgClass(sv,ev)}">${svUnavailable ? '—' : chgText(sv,ev)}</td>
+  </tr>`;
+}
+
+function tInterval(label, sv, ev) {
+  const sosTxt = sv != null ? sv.toFixed(1) + ' min' : null;
+  const eosTxt = ev != null ? ev.toFixed(1) + ' min' : '—';
+  const sosCls = sv == null ? 'missing' : '';
+  return `
+  <tr>
+    <td class="field-name">${label}</td>
+    <td class="val-sos ${sosCls}">${sosTxt || 'no SOS'}</td>
+    <td class="val-eos">${eosTxt}</td>
+    <td class="val-chg">—</td>
   </tr>`;
 }
 
@@ -290,7 +307,7 @@ function render() {
     tRow('Batches in Queue',     s?.batches_in_queue    ?? null, e?.batches_in_queue    ?? null, (e?.batches_in_queue ?? 0)>0 ? 'is-warn' : 'is-good') +
     tRow('Orders Not Released',  s?.orders_not_released ?? null, e?.orders_not_released ?? null) +
     tRow('Batches Cleared',      s?.batches_cleared     ?? null, e?.batches_cleared     ?? null) +
-    tManual('Avg Release Interval', 'avg-release', 'e.g. 45 min') +
+    tInterval('Avg Release Interval', s?.avg_release_interval ?? null, e?.avg_release_interval ?? null) +
     tNotes('Sorting')
   );
 
