@@ -85,10 +85,6 @@
 
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
-  .teams-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid #6264A7;border-radius:6px;background:#f0f0fa;cursor:pointer;color:#6264A7;font-weight:500;}
-  .teams-btn:hover{background:#6264A7;color:#fff;}
-  [data-theme="dark"] .teams-btn{background:#1e1e38;color:#9b9de0;}
-  [data-theme="dark"] .teams-btn:hover{background:#6264A7;color:#fff;}
 </style>
 </head>
 <body>
@@ -115,7 +111,6 @@
     </div>
     <div class="header-btns">
       <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
-      <button class="teams-btn" id="send-teams-btn" onclick="sendToTeams(this)">&#x1F4E8; Send to Teams</button>
     </div>
   </div>
 
@@ -338,123 +333,6 @@ function fmtMins(m) {
   if (m == null) return '—';
   var h = Math.floor(m / 60), min = m % 60;
   return h > 0 ? h + 'h ' + min + 'm' : min + 'm';
-}
-
-// -- Teams --------------------------------------------------------------------
-var TEAMS_WEBHOOKS = {
-  '1st': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/3889f116d5b24ef3bce7d9e7b335bc2a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Sjq4jKaIMbSclrAgupvxReJ-9TSBFDsYA_UO2tkmZhc',
-  '2nd': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/eacd8206a4274abb96f43be9d3d01256/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=8Hc0GkQ2Sobr73S7JX8Gu5gldDJaVE4IeiLuzeAsyxY',
-};
-
-function getShift() {
-  var h = new Date().getHours();
-  if (h >= 6  && h < 14) return '1st';
-  if (h >= 14 && h < 22) return '2nd';
-  return '3rd';
-}
-
-async function sendToTeams(btn) {
-  if (!lastData || !lastData.batches || !lastData.batches.length) {
-    alert('No data loaded yet — wait for data to load first.');
-    return;
-  }
-  var shift   = getShift();
-  var webhook = TEAMS_WEBHOOKS[shift];
-  if (!webhook) { alert('No Teams webhook configured for ' + shift + ' shift.'); return; }
-
-  var orig = btn.textContent;
-  btn.textContent = '⏳ Sending…';
-  btn.disabled = true;
-
-  var s   = lastData.summary || {};
-  var ts  = new Date().toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
-
-  var avgClear    = s.avg_mins_to_clear != null    ? fmtMins(s.avg_mins_to_clear)             : '—';
-  var avgInterval = s.avg_release_interval_mins != null ? fmtMins(s.avg_release_interval_mins) : '—';
-
-  // Build one fact per batch (up to 10 most recent to keep card manageable)
-  var batchFacts = lastData.batches.slice(-10).map(function(b) {
-    var val = b.released_pdt || '—';
-    if (b.is_cleared && b.cleared_pdt) val += '  →  ' + b.cleared_pdt + '  (' + fmtMins(b.mins_to_clear) + ')';
-    else val += '  ·  ' + (b.is_cleared ? 'Cleared' : 'Active');
-    return {"title": 'Batch ' + b.batch_num, "value": val};
-  });
-
-  var card = {
-    "type": "message",
-    "attachments": [{
-      "contentType": "application/vnd.microsoft.card.adaptive",
-      "content": {
-        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-        "type": "AdaptiveCard",
-        "version": "1.4",
-        "body": [
-          {
-            "type": "ColumnSet",
-            "columns": [{
-              "type": "Column", "width": "stretch",
-              "items": [
-                {"type":"TextBlock","text":"Work Release Batches","weight":"Bolder","size":"Large"},
-                {"type":"TextBlock","text":"DC499 · " + shift + " shift · " + ts,"isSubtle":true,"size":"Small","spacing":"None"}
-              ]
-            }]
-          },
-          {"type":"Separator","spacing":"Medium"},
-          {
-            "type": "FactSet",
-            "spacing": "Medium",
-            "facts": [
-              {"title":"Total Batches",        "value": String(s.total_batches    || 0)},
-              {"title":"Cleared",              "value": String(s.cleared_batches  || 0)},
-              {"title":"Active / Queued",      "value": String(s.active_batches   || 0)},
-              {"title":"Avg Time to Clear",    "value": avgClear},
-              {"title":"Avg Release Interval", "value": avgInterval}
-            ]
-          },
-          {"type":"Separator","spacing":"Small"},
-          {
-            "type": "TextBlock",
-            "text": "BATCH DETAIL",
-            "size": "Small",
-            "weight": "Bolder",
-            "color": "Accent",
-            "spacing": "Small"
-          },
-          {
-            "type": "FactSet",
-            "facts": batchFacts
-          },
-          {
-            "type": "TextBlock",
-            "text": "Throughput only · not for performance evaluation · DC499 Reporter",
-            "size": "Small",
-            "isSubtle": true,
-            "wrap": true,
-            "spacing": "Medium"
-          }
-        ]
-      }
-    }]
-  };
-
-  try {
-    var res = await fetch(webhook, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(card)
-    });
-    if (res.ok || res.status === 202) {
-      btn.textContent = '✓ Sent!';
-      setTimeout(function() { btn.textContent = orig; btn.disabled = false; }, 3000);
-    } else {
-      throw new Error('HTTP ' + res.status);
-    }
-  } catch(e) {
-    console.error('Teams send failed:', e);
-    btn.textContent = '⚠ Failed';
-    btn.style.borderColor = '#C0392B'; btn.style.color = '#C0392B';
-    setTimeout(function() { btn.textContent = orig; btn.disabled = false; btn.style.borderColor = ''; btn.style.color = ''; }, 4000);
-  }
 }
 
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
