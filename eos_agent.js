@@ -298,6 +298,137 @@ ORDER BY wave_runs DESC`.trim();
   };
 }
 
+// ── SOS reconstruction (point-in-time as of shift start) ─────────────────────
+// Uses timestamp logic instead of current state — works any time after shift start.
+// Fields that cannot be reconstructed (order/unit status, hospital location) are
+// marked null so the HTML shows "cannot reconstruct" rather than wrong data.
+async function captureReconstructedSOS(token, sosTime) {
+  // sosTime: 'YYYY-MM-DD HH:MM:SS' in PDT — default to 2:10 PM shift start
+  const dateStr  = sosTime.slice(0, 10);
+  const shiftStart = `${dateStr} 14:15:00`;
+
+  console.log(`[${ts()}] Reconstructing SOS as of: ${sosTime}`);
+
+  // Q1: TSK_TASK — open at sosTime means:
+  //   created before sosTime AND (no end time OR end time after sosTime)
+  const sqlTasks = `
+SELECT
+  TYPE_ID,
+  SUM(CASE WHEN ACTUAL_END_TIME IS NULL OR ACTUAL_END_TIME > '${sosTime}' THEN 1 ELSE 0 END) AS open_at_sos,
+  SUM(CASE WHEN ACTUAL_END_TIME IS NOT NULL AND ACTUAL_END_TIME <= '${sosTime}' THEN 1 ELSE 0 END) AS done_at_sos
+FROM default_task.TSK_TASK
+WHERE FACILITY_ID = '${FACILITY}'
+  AND TYPE_ID IN ('PICK/PACK','REPLENISHMENT','PUTAWAY')
+  AND CREATED_DATE_TIME >= '${shiftStart}'
+  AND CREATED_DATE_TIME <  '${sosTime}'
+GROUP BY TYPE_ID`.trim();
+
+  // Q2: Waves run before sosTime — cumulative count as of that moment
+  const sqlWaves = `
+SELECT
+  PLANNING_STRATEGY_ID,
+  ORDER_PLANNING_MODE,
+  CHASE_MODE,
+  STATUS,
+  COUNT(*) AS wave_runs
+FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
+WHERE FACILITY_ID = '${FACILITY}'
+  AND CREATED_TIMESTAMP >= '${shiftStart}'
+  AND CREATED_TIMESTAMP <  '${sosTime}'
+GROUP BY PLANNING_STRATEGY_ID, ORDER_PLANNING_MODE, CHASE_MODE, STATUS
+ORDER BY wave_runs DESC`.trim();
+
+  // Q3: Batches in queue at sosTime — waves started but not yet completed
+  const sqlBatches = `
+SELECT
+  COUNT(*) AS total_waves,
+  SUM(CASE WHEN RUN_COMPLETION_DATE_TIME IS NOT NULL
+            AND RUN_COMPLETION_DATE_TIME <= '${sosTime}' THEN 1 ELSE 0 END) AS completed_at_sos
+FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
+WHERE FACILITY_ID = '${FACILITY}'
+  AND CREATED_TIMESTAMP >= '${shiftStart}'
+  AND CREATED_TIMESTAMP <  '${sosTime}'`.trim();
+
+  // Q4: Orders not released at sosTime — created before sosTime, still at status 1000 now
+  // Caveat: if order moved past 1000 after sosTime we can't detect it — marked as approximate
+  const sqlNotReleased = `
+SELECT COUNT(DISTINCT ORDER_ID) AS not_released
+FROM default_dcorder.DCO_ORDER
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_TYPE = 'ECOM'
+  AND MAXIMUM_STATUS = '1000'
+  AND CREATED_TIMESTAMP < '${sosTime}'`.trim();
+
+  console.log(`[${ts()}] Running 4 reconstruction queries...`);
+  const [rTasks, rWaves, rBatches, rNotRel] = await Promise.all([
+    mcpQuery(token, sqlTasks),
+    mcpQuery(token, sqlWaves),
+    mcpQuery(token, sqlBatches),
+    mcpQuery(token, sqlNotReleased),
+  ]);
+
+  // Task rollup
+  const tasks = { 'PICK/PACK':{open:0,done:0}, 'REPLENISHMENT':{open:0,done:0}, 'PUTAWAY':{open:0,done:0} };
+  for (const r of (rTasks.rows||[])) {
+    const t = tasks[r.TYPE_ID];
+    if (!t) continue;
+    t.open += num(r.open_at_sos);
+    t.done += num(r.done_at_sos);
+  }
+
+  // Wave label mapping (same as captureSnapshot)
+  function waveLabel(sid, mode, chase) {
+    const s = (sid||'').toUpperCase();
+    if (s.includes('REPLEN'))                                                         return 'Replen';
+    if (s.includes('FILL_KILL') || s.includes('FILLKILL'))                           return 'Fill/Kill';
+    if (s.includes('RTV') || s.includes('RTI'))                                      return 'RTV/RTI';
+    if (s.includes('MULTI_CHASE') || (s.includes('MULTI') && s.includes('CHASE')))  return 'Multi Chase';
+    if (s.includes('SINGLE_CHASE') || (s.includes('SINGLE') && s.includes('CHASE'))) return 'Single Chase';
+    if (s.includes('CHASE')) return chase === 'CHASE_ONLY' ? 'Single Chase' : 'Multi Chase';
+    if (s.includes('MULTI'))                                                          return 'Multi';
+    return 'Ecom';
+  }
+
+  const waveCounts = {};
+  for (const r of (rWaves.rows||[])) {
+    const label = waveLabel(r.PLANNING_STRATEGY_ID, r.ORDER_PLANNING_MODE, r.CHASE_MODE);
+    waveCounts[label] = (waveCounts[label]||0) + num(r.wave_runs);
+  }
+  const waveOrder = ['Ecom','Replen','Single Chase','Multi Chase','Fill/Kill','Multi','RTV/RTI'];
+  const waves = waveOrder.map(t => ({ type:t, count: waveCounts[t]||0 }));
+  waves.push({ type:'Total', count: Object.values(waveCounts).reduce((a,b)=>a+b,0) });
+
+  const bRow = rBatches.rows?.[0] || {};
+  const total_waves    = num(bRow.total_waves);
+  const completed_sos  = num(bRow.completed_at_sos);
+
+  return {
+    captured_at:          sosTime.slice(11,16),
+    date:                 dateStr,
+    reconstructed:        true,
+    reconstructed_as_of:  sosTime,
+    // These cannot be reconstructed from available history — show null
+    open_orders:          null,
+    open_units:           null,
+    hospital_orders:      null,
+    hospital_olpns:       null,
+    packed_not_shipped:   null,
+    packed_units:         null,
+    loaded_virtually:     null,
+    // These are reconstructed from timestamps
+    pick_open:            tasks['PICK/PACK'].open,
+    pick_done:            tasks['PICK/PACK'].done,
+    replen_open:          tasks['REPLENISHMENT'].open,
+    replen_done:          tasks['REPLENISHMENT'].done,
+    putaway_open:         tasks['PUTAWAY'].open,
+    putaway_done:         tasks['PUTAWAY'].done,
+    batches_in_queue:     total_waves - completed_sos,
+    batches_cleared:      completed_sos,
+    orders_not_released:  num(rNotRel.rows?.[0]?.not_released),
+    waves,
+  };
+}
+
 // ── git push ──────────────────────────────────────────────────────────────────
 function gitPush(files, message) {
   try {
@@ -315,12 +446,15 @@ function gitPush(files, message) {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 async function main() {
-  const isSOS  = process.argv.includes('--sos');
-  const isEOS  = process.argv.includes('--eos');
-  const isAuth = process.argv.includes('--auth');
+  const isSOS         = process.argv.includes('--sos');
+  const isEOS         = process.argv.includes('--eos');
+  const isAuth        = process.argv.includes('--auth');
+  const isReconstruct = process.argv.includes('--sos-reconstruct');
+  // Optional: --time="2026-07-24 14:10:00" overrides the default 2:10 PM anchor
+  const timeArg = process.argv.find(a => a.startsWith('--time='))?.split('=').slice(1).join('=') || null;
 
   console.log('DC499 EOS Report Agent');
-  console.log('──────────────────────');
+  console.log('----------------------');
 
   let token;
   if (isAuth) { await doAuthFlow(); return; }
@@ -334,6 +468,21 @@ async function main() {
     fs.writeFileSync(SOS_FILE, JSON.stringify(out, null, 2));
     console.log(`[${ts()}] ✓ eos_sos_snapshot.json written`);
     gitPush(['eos_sos_snapshot.json'], `EOS SOS snapshot -- ${snap.date} ${snap.captured_at}`);
+    return;
+  }
+
+  if (isReconstruct) {
+    // Default anchor: today 2:10 PM PDT
+    const pdt = nowPdt();
+    const dateStr = pdt.toLocaleDateString('en-CA');
+    const sosTime = timeArg || `${dateStr} 14:10:00`;
+    console.log(`[${ts()}] Reconstructing SOS snapshot as of ${sosTime}...`);
+    const snap = await captureReconstructedSOS(token, sosTime);
+    const out = { generated: new Date().toISOString().slice(0,19), mode: 'sos-reconstructed', ...snap };
+    fs.writeFileSync(SOS_FILE, JSON.stringify(out, null, 2));
+    console.log(`[${ts()}] ✓ eos_sos_snapshot.json written (reconstructed)`);
+    console.log(`[${ts()}]   Note: open_orders, open_units, hospital, packed fields are null (current-state only)`);
+    gitPush(['eos_sos_snapshot.json'], `EOS SOS reconstructed -- ${snap.date} ${snap.captured_at}`);
     return;
   }
 
@@ -363,9 +512,11 @@ async function main() {
   }
 
   console.log('Usage:');
-  console.log('  node eos_agent.js --sos    Capture SOS snapshot (run at 2:10 PM)');
-  console.log('  node eos_agent.js --eos    Capture EOS + write final report (run at shift end)');
-  console.log('  node eos_agent.js --auth   First-time authentication');
+  console.log('  node eos_agent.js --sos                      Capture live SOS snapshot (run at 2:10 PM)');
+  console.log('  node eos_agent.js --sos-reconstruct          Reconstruct SOS from history (missed start)');
+  console.log('  node eos_agent.js --sos-reconstruct --time="2026-07-24 14:10:00"   Custom anchor time');
+  console.log('  node eos_agent.js --eos                      Capture EOS + write final report');
+  console.log('  node eos_agent.js --auth                     First-time authentication');
 }
 
 main().catch(e => { console.error('Error:', e.message); process.exit(1); });

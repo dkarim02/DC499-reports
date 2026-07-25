@@ -43,6 +43,7 @@
   .snap-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-hint);}
   .snap-time{font-size:17px;font-family:var(--mono);font-weight:500;color:var(--text);}
   .snap-time.missing{font-size:12px;color:var(--text-hint);font-style:italic;font-family:'Segoe UI',system-ui,sans-serif;}
+  .recon-badge{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;background:rgba(251,191,36,0.12);color:var(--yellow);border:1px solid rgba(251,191,36,0.3);border-radius:3px;padding:2px 7px;margin-left:8px;vertical-align:middle;}
 
   /* section block — uniform card for every dept */
   .section-block{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;}
@@ -180,16 +181,16 @@ function chgClass(s, e) {
 }
 
 // ── table row builders ────────────────────────────────────────────────────────
-function tRow(label, sv, ev, evClass) {
+function tRow(label, sv, ev, evClass, svUnavailable) {
   const sosTxt  = sv != null ? fmt(sv) : null;
   const sosCls  = sv == null ? 'missing' : '';
-  const sosDisp = sosTxt || 'no SOS';
+  const sosDisp = svUnavailable ? 'n/a' : (sosTxt || 'no SOS');
   return `
   <tr>
     <td class="field-name">${label}</td>
     <td class="val-sos ${sosCls}">${sosDisp}</td>
     <td class="val-eos ${evClass||''}">${fmt(ev)}</td>
-    <td class="val-chg ${chgClass(sv,ev)}">${chgText(sv,ev)}</td>
+    <td class="val-chg ${chgClass(sv,ev)}">${svUnavailable ? '—' : chgText(sv,ev)}</td>
   </tr>`;
 }
 
@@ -235,9 +236,12 @@ function sectionBlock(title, rows) {
 function render() {
   const container = document.getElementById('main-container');
   const s = sos, e = eos;
-  const sosTime  = s ? s.captured_at : null;
-  const eosTime  = e ? e.captured_at : null;
-  const dateDisp = fmtDate((e||s)?.date);
+  const sosTime    = s ? s.captured_at : null;
+  const eosTime    = e ? e.captured_at : null;
+  const isRecon    = s?.reconstructed === true;
+  const dateDisp   = fmtDate((e||s)?.date);
+  // Fields that cannot be reconstructed from history
+  const sosUnavail = isRecon;
 
   let html = `
   <div class="masthead">
@@ -245,10 +249,11 @@ function render() {
       <div class="masthead-eyebrow">End of Shift Report &nbsp;·&nbsp; DC499 Nordstrom</div>
       <div class="masthead-date">${dateDisp || '—'}</div>
       <span class="masthead-shift">B Shift</span>
+      ${isRecon ? `<span class="recon-badge">SOS Reconstructed</span>` : ''}
     </div>
     <div class="masthead-snaps">
       <div class="snap">
-        <div class="snap-label">SOS</div>
+        <div class="snap-label">SOS${isRecon?' (est.)':''}</div>
         <div class="snap-time ${sosTime?'':'missing'}">${sosTime||'Not captured'}</div>
       </div>
       <div class="snap">
@@ -263,12 +268,13 @@ function render() {
   }
 
   const hospCls = (e?.hospital_orders ?? s?.hospital_orders ?? 0) > 0 ? 'is-warn' : '';
+  const u = sosUnavail; // shorthand — true when SOS was reconstructed and field is current-state only
 
   // ORDERS & UNITS
   html += sectionBlock('Orders &amp; Units',
-    tRow('Total Orders',       s?.open_orders     ?? null, e?.open_orders     ?? null, 'is-accent') +
-    tRow('Total Units',        s?.open_units      ?? null, e?.open_units      ?? null) +
-    tRow('Hospital Orders',    s?.hospital_orders ?? null, e?.hospital_orders ?? null, hospCls) +
+    tRow('Total Orders',       s?.open_orders     ?? null, e?.open_orders     ?? null, 'is-accent', u) +
+    tRow('Total Units',        s?.open_units      ?? null, e?.open_units      ?? null, '',          u) +
+    tRow('Hospital Orders',    s?.hospital_orders ?? null, e?.hospital_orders ?? null, hospCls,     u) +
     tManual('68-Criteria Orders', 'batch-criteria', 'e.g. 68')
   );
 
@@ -292,14 +298,14 @@ function render() {
   html += sectionBlock('Packing',
     tManual('Line Capacity',   'line-capacity',  'e.g. 6/8 stations') +
     tManual('Cross-Training',  'cross-training', 'e.g. 2 associates') +
-    tRow('Packed Not Shipped', s?.packed_not_shipped ?? null, e?.packed_not_shipped ?? null) +
+    tRow('Packed Not Shipped', s?.packed_not_shipped ?? null, e?.packed_not_shipped ?? null, '', u) +
     tNotes('Packing')
   );
 
   // SHIPPING
   html += sectionBlock('Shipping',
-    tManual('Pallet IDs',       'pallet-ids',   'e.g. PLT001, PLT002') +
-    tRow('Loaded Virtually',    s?.loaded_virtually ?? null, e?.loaded_virtually ?? null, 'is-good') +
+    tManual('Pallet IDs',    'pallet-ids', 'e.g. PLT001, PLT002') +
+    tRow('Loaded Virtually', s?.loaded_virtually ?? null, e?.loaded_virtually ?? null, 'is-good', u) +
     tNotes('Shipping')
   );
 
