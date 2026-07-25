@@ -360,15 +360,6 @@ function renderData(data) {
     return;
   }
 
-  var today = data.dates[0];
-  var todayOpen = (today.ready || 0) + (today.allocated || 0) + (today.packed || 0);
-
-  document.getElementById('m-ready').textContent  = fmt(today.ready);
-  document.getElementById('m-alloc').textContent  = fmt(today.allocated);
-  document.getElementById('m-packed').textContent = fmt(today.packed);
-  document.getElementById('m-total').textContent  = fmt(todayOpen);
-  document.getElementById('m-date').textContent   = fmtDate(today.date);
-
   var tb = document.getElementById('tb-dates');
   tb.innerHTML = '';
   var totR = 0, totA = 0, totP = 0, totO = 0, totS = 0;
@@ -441,6 +432,13 @@ function renderData(data) {
   document.getElementById('ft-packed').textContent  = fmt(totP);
   document.getElementById('ft-total').textContent   = fmt(totO);
   document.getElementById('ft-shipped').textContent = fmt(totS);
+
+  // Metric tiles use the same cross-date totals so they always match the footer
+  document.getElementById('m-ready').textContent  = fmt(totR);
+  document.getElementById('m-alloc').textContent  = fmt(totA);
+  document.getElementById('m-packed').textContent = fmt(totP);
+  document.getElementById('m-total').textContent  = fmt(totO);
+  document.getElementById('m-date').textContent   = 'All dates';
 
   emptyEl.style.display = 'none';
   metrEl.style.display  = 'grid';
