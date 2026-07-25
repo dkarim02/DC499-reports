@@ -697,10 +697,8 @@ async function sendToTeams(btn) {
 
 // -- Back-button closes tab when opened from Ecom ----------------------------
 if (window.opener) {
-  history.pushState({ backClose: true }, '');
-  window.addEventListener('popstate', function(e) {
-    if (e.state && e.state.backClose) window.close();
-  });
+  history.pushState({}, '');
+  window.addEventListener('popstate', function() { window.close(); });
 }
 
 // -- Init ---------------------------------------------------------------------
