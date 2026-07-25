@@ -744,9 +744,12 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
   const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
 
-  const toPdt = d => d
-    ? new Date(d).toLocaleString('en-US', { timeZone:'America/Los_Angeles', hour:'2-digit', minute:'2-digit', hour12:false })
-    : null;
+  // MySQL timestamps have no timezone marker — append Z so JS parses as UTC
+  const toPdt = d => {
+    if (!d) return null;
+    const iso = String(d).replace(' ', 'T') + (String(d).includes('T') ? '' : 'Z');
+    return new Date(iso).toLocaleString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true });
+  };
 
   // Build release events — group by WORK_RELEASE_BATCH_ID to get interval timestamps
   const releaseGroups = {};

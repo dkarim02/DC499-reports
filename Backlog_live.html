@@ -354,8 +354,8 @@
       </div>
     </div>
 
-    <div class="card" id="bt-batch-card" style="display:none;">
-      <div class="card-title">Batches This Shift</div>
+    <div class="card" id="bt-batch-card-active" style="display:none;">
+      <div class="card-title">Active &amp; Queued</div>
       <table>
         <thead><tr>
           <th class="r">#</th>
@@ -364,11 +364,26 @@
           <th class="r">Orders</th>
           <th class="r">oLPNs</th>
           <th>Status</th>
+          <th class="r">Interval Since Prev</th>
+        </tr></thead>
+        <tbody id="bt-batch-tbody-active"></tbody>
+      </table>
+    </div>
+
+    <div class="card" id="bt-batch-card-cleared" style="display:none;">
+      <div class="card-title">Cleared</div>
+      <table>
+        <thead><tr>
+          <th class="r">#</th>
+          <th>Batch</th>
+          <th>Released</th>
+          <th class="r">Orders</th>
+          <th class="r">oLPNs</th>
           <th>Cleared</th>
           <th class="r">Time to Clear</th>
           <th class="r">Interval Since Prev</th>
         </tr></thead>
-        <tbody id="bt-batch-tbody"></tbody>
+        <tbody id="bt-batch-tbody-cleared"></tbody>
       </table>
     </div>
 
@@ -712,7 +727,6 @@ function renderBatchData(data) {
   var staleEl = document.getElementById('stale-banner');
   var emptyEl = document.getElementById('bt-empty-state');
   var tilesEl = document.getElementById('bt-summary-tiles');
-  var cardEl  = document.getElementById('bt-batch-card');
   var s       = data.summary || {};
 
   if (activeTab === 'batches') {
@@ -731,48 +745,67 @@ function renderBatchData(data) {
     } catch(e) {}
   }
 
+  var activeCardEl  = document.getElementById('bt-batch-card-active');
+  var clearedCardEl = document.getElementById('bt-batch-card-cleared');
+
   if (!data.batches || !data.batches.length) {
     emptyEl.style.display = 'block';
     tilesEl.style.display = 'none';
-    cardEl.style.display  = 'none';
+    activeCardEl.style.display  = 'none';
+    clearedCardEl.style.display = 'none';
     return;
   }
 
   document.getElementById('bt-t-total').textContent    = fmtN(s.total_batches);
   document.getElementById('bt-t-cleared').textContent  = fmtN(s.cleared_batches);
   document.getElementById('bt-t-active').textContent   = fmtN(s.active_batches);
-  document.getElementById('bt-t-avg-clear').textContent    = s.avg_mins_to_clear != null            ? fmtMins(s.avg_mins_to_clear) : '—';
-  document.getElementById('bt-t-avg-interval').textContent = s.avg_release_interval_mins != null    ? fmtMins(s.avg_release_interval_mins) : '—';
+  document.getElementById('bt-t-avg-clear').textContent    = s.avg_mins_to_clear != null         ? fmtMins(s.avg_mins_to_clear) : '—';
+  document.getElementById('bt-t-avg-interval').textContent = s.avg_release_interval_mins != null ? fmtMins(s.avg_release_interval_mins) : '—';
 
   tilesEl.style.display = 'grid';
   emptyEl.style.display = 'none';
 
-  var tbody = document.getElementById('bt-batch-tbody');
-  var html  = '';
-  var seenWr = {};
-  data.batches.forEach(function(b) {
-    var wrId = b.work_release_batch_id;
-    var firstOfGroup = !seenWr[wrId];
-    seenWr[wrId] = true;
-    var intervalCell = !firstOfGroup
-      ? '<span style="color:var(--text-hint)">—</span>'
-      : b.mins_since_prev_release != null
-        ? '<span class="interval-cell">'+fmtMins(b.mins_since_prev_release)+'</span>'
-        : '<span class="interval-first">first release</span>';
-    html += '<tr>';
-    html += '<td class="r batch-num">'+b.batch_num+'</td>';
-    html += '<td style="font-family:monospace;font-size:12px;">'+(b.batch_id||'—')+'</td>';
-    html += '<td>'+(b.released_pdt||'—')+'</td>';
-    html += '<td class="r">'+fmtN(b.total_orders)+'</td>';
-    html += '<td class="r">'+fmtN(b.total_olpns)+'</td>';
-    html += '<td>'+batchBadge(b)+'</td>';
-    html += '<td>'+(b.cleared_pdt||'<span style="color:var(--text-hint)">—</span>')+'</td>';
-    html += '<td class="r">'+fmtDur(b.mins_to_clear)+'</td>';
-    html += '<td class="r">'+intervalCell+'</td>';
-    html += '</tr>';
-  });
-  tbody.innerHTML = html;
-  cardEl.style.display = 'block';
+  var active  = data.batches.filter(function(b) { return !b.is_cleared; });
+  var cleared = data.batches.filter(function(b) { return  b.is_cleared; });
+
+  function buildRows(list, withStatus, withClear) {
+    var seen = {}, html = '';
+    list.forEach(function(b) {
+      var wrId = b.work_release_batch_id;
+      var first = !seen[wrId]; seen[wrId] = true;
+      var intCell = !first
+        ? '<span style="color:var(--text-hint)">—</span>'
+        : b.mins_since_prev_release != null
+          ? '<span class="interval-cell">'+fmtMins(b.mins_since_prev_release)+'</span>'
+          : '<span class="interval-first">first release</span>';
+      html += '<tr>';
+      html += '<td class="r batch-num">'+b.batch_num+'</td>';
+      html += '<td style="font-family:monospace;font-size:12px;">'+(b.batch_id||'—')+'</td>';
+      html += '<td>'+(b.released_pdt||'—')+'</td>';
+      html += '<td class="r">'+fmtN(b.total_orders)+'</td>';
+      html += '<td class="r">'+fmtN(b.total_olpns)+'</td>';
+      if (withStatus) html += '<td>'+batchBadge(b)+'</td>';
+      if (withClear)  html += '<td>'+(b.cleared_pdt||'—')+'</td>';
+      if (withClear)  html += '<td class="r">'+fmtDur(b.mins_to_clear)+'</td>';
+      html += '<td class="r">'+intCell+'</td>';
+      html += '</tr>';
+    });
+    return html;
+  }
+
+  if (active.length) {
+    document.getElementById('bt-batch-tbody-active').innerHTML = buildRows(active, true, false);
+    activeCardEl.style.display = 'block';
+  } else {
+    activeCardEl.style.display = 'none';
+  }
+
+  if (cleared.length) {
+    document.getElementById('bt-batch-tbody-cleared').innerHTML = buildRows(cleared, false, true);
+    clearedCardEl.style.display = 'block';
+  } else {
+    clearedCardEl.style.display = 'none';
+  }
 }
 
 // ── TEAMS (Backlog tab) ───────────────────────────────────────────────────────

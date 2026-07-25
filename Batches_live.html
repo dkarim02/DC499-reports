@@ -167,8 +167,8 @@
     </div>
   </div>
 
-  <div class="card" id="batch-card" style="display:none;">
-    <div class="card-title">Batches This Shift</div>
+  <div class="card" id="batch-card-active" style="display:none;">
+    <div class="card-title">Active &amp; Queued</div>
     <table>
       <thead><tr>
         <th class="r">#</th>
@@ -177,11 +177,26 @@
         <th class="r">Orders</th>
         <th class="r">oLPNs</th>
         <th>Status</th>
+        <th class="r">Interval Since Prev</th>
+      </tr></thead>
+      <tbody id="batch-tbody-active"></tbody>
+    </table>
+  </div>
+
+  <div class="card" id="batch-card-cleared" style="display:none;">
+    <div class="card-title">Cleared</div>
+    <table>
+      <thead><tr>
+        <th class="r">#</th>
+        <th>Batch</th>
+        <th>Released</th>
+        <th class="r">Orders</th>
+        <th class="r">oLPNs</th>
         <th>Cleared</th>
         <th class="r">Time to Clear</th>
         <th class="r">Interval Since Prev</th>
       </tr></thead>
-      <tbody id="batch-tbody"></tbody>
+      <tbody id="batch-tbody-cleared"></tbody>
     </table>
   </div>
 
@@ -338,39 +353,69 @@ function renderData(data) {
   tilesEl.style.display = 'grid';
   emptyEl.style.display = 'none';
 
-  // Batch table — track seen WORK_RELEASE_BATCH_IDs so interval only shows on
-  // the first batch of each release group
-  var tbody = document.getElementById('batch-tbody');
-  var html  = '';
-  var seenReleaseIds = {};
-  data.batches.forEach(function(b) {
-    var wrId = b.work_release_batch_id;
-    var isFirstOfGroup = !seenReleaseIds[wrId];
-    seenReleaseIds[wrId] = true;
+  var active  = data.batches.filter(function(b) { return !b.is_cleared; });
+  var cleared = data.batches.filter(function(b) { return  b.is_cleared; });
 
-    var intervalCell;
-    if (!isFirstOfGroup) {
-      intervalCell = '<span style="color:var(--text-hint)">—</span>';
-    } else if (b.mins_since_prev_release != null) {
-      intervalCell = '<span class="interval-cell">' + fmtMins(b.mins_since_prev_release) + '</span>';
-    } else {
-      intervalCell = '<span class="interval-first">first release</span>';
-    }
+  var activeCardEl  = document.getElementById('batch-card-active');
+  var clearedCardEl = document.getElementById('batch-card-cleared');
 
-    html += '<tr>';
-    html += '<td class="r batch-num">' + b.batch_num + '</td>';
-    html += '<td style="font-family:monospace;font-size:12px;">' + (b.batch_id || '—') + '</td>';
-    html += '<td>' + (b.released_pdt || '—') + '</td>';
-    html += '<td class="r">' + fmt(b.total_orders) + '</td>';
-    html += '<td class="r">' + fmt(b.total_olpns) + '</td>';
-    html += '<td>' + badgeHtml(b) + '</td>';
-    html += '<td>' + (b.cleared_pdt || '<span style="color:var(--text-hint)">—</span>') + '</td>';
-    html += '<td class="r">' + fmtDur(b.mins_to_clear) + '</td>';
-    html += '<td class="r">' + intervalCell + '</td>';
-    html += '</tr>';
-  });
-  tbody.innerHTML = html;
-  cardEl.style.display = 'block';
+  // ── Active / Queued table ──────────────────────────────────────────────────
+  if (active.length) {
+    var seenA = {};
+    var htmlA = '';
+    active.forEach(function(b) {
+      var wrId = b.work_release_batch_id;
+      var firstGroup = !seenA[wrId]; seenA[wrId] = true;
+      var intervalCell = !firstGroup
+        ? '<span style="color:var(--text-hint)">—</span>'
+        : b.mins_since_prev_release != null
+          ? '<span class="interval-cell">' + fmtMins(b.mins_since_prev_release) + '</span>'
+          : '<span class="interval-first">first release</span>';
+      htmlA += '<tr>';
+      htmlA += '<td class="r batch-num">' + b.batch_num + '</td>';
+      htmlA += '<td style="font-family:monospace;font-size:12px;">' + (b.batch_id || '—') + '</td>';
+      htmlA += '<td>' + (b.released_pdt || '—') + '</td>';
+      htmlA += '<td class="r">' + fmt(b.total_orders) + '</td>';
+      htmlA += '<td class="r">' + fmt(b.total_olpns) + '</td>';
+      htmlA += '<td>' + badgeHtml(b) + '</td>';
+      htmlA += '<td class="r">' + intervalCell + '</td>';
+      htmlA += '</tr>';
+    });
+    document.getElementById('batch-tbody-active').innerHTML = htmlA;
+    activeCardEl.style.display = 'block';
+  } else {
+    activeCardEl.style.display = 'none';
+  }
+
+  // ── Cleared table ──────────────────────────────────────────────────────────
+  if (cleared.length) {
+    var seenC = {};
+    var htmlC = '';
+    cleared.forEach(function(b) {
+      var wrId = b.work_release_batch_id;
+      var firstGroup = !seenC[wrId]; seenC[wrId] = true;
+      var intervalCell = !firstGroup
+        ? '<span style="color:var(--text-hint)">—</span>'
+        : b.mins_since_prev_release != null
+          ? '<span class="interval-cell">' + fmtMins(b.mins_since_prev_release) + '</span>'
+          : '<span class="interval-first">first release</span>';
+      htmlC += '<tr>';
+      htmlC += '<td class="r batch-num">' + b.batch_num + '</td>';
+      htmlC += '<td style="font-family:monospace;font-size:12px;">' + (b.batch_id || '—') + '</td>';
+      htmlC += '<td>' + (b.released_pdt || '—') + '</td>';
+      htmlC += '<td class="r">' + fmt(b.total_orders) + '</td>';
+      htmlC += '<td class="r">' + fmt(b.total_olpns) + '</td>';
+      htmlC += '<td>' + (b.cleared_pdt || '—') + '</td>';
+      htmlC += '<td class="r">' + fmtDur(b.mins_to_clear) + '</td>';
+      htmlC += '<td class="r">' + intervalCell + '</td>';
+      htmlC += '</tr>';
+    });
+    document.getElementById('batch-tbody-cleared').innerHTML = htmlC;
+    clearedCardEl.style.display = 'block';
+  } else {
+    clearedCardEl.style.display = 'none';
+  }
+
 }
 
 function fmtMins(m) {
