@@ -237,6 +237,9 @@
   .full-reset-btn { font-family: inherit; font-size: 12px; padding: 5px 12px; border: 0.5px solid #185FA5; border-radius: 6px; background: #e8f0fb; cursor: pointer; color: #185FA5; }
   .full-reset-btn:hover { background: #B5D4F4; }
   [data-theme="dark"] .full-reset-btn { background: #0C447C; color: #B5D4F4; }
+  .nail-btn { border-color: #1a6b2f !important; background: #e6f4eb !important; color: #1a6b2f !important; font-weight: 600; }
+  .nail-btn:hover { background: #c2e0cc !important; }
+  [data-theme="dark"] .nail-btn { background: #0d2e17 !important; color: #6fcf97 !important; border-color: #1a6b2f !important; }
 
 
   .assoc-row { cursor: pointer; transition: background 0.15s; }
@@ -1341,6 +1344,7 @@ function renderFullReport() {
   html += '<div class="full-header"><div class="full-title">Full Report <span class="shift-badge shift-badge-2nd">' + getShift() + ' shift</span></div>';
   html += '<div style="display:flex;gap:8px;">';
   html += '<button class="full-reset-btn" style="border-color:#6264A7;background:#f0f0fa;color:#6264A7;" onclick="sendToTeams(this)" id="send-teams-btn">&#x1F4E8; Send to Teams</button>';
+  html += '<button class="full-reset-btn nail-btn" onclick="nailThePlan(this)">&#x1F4CC; NAIL</button>';
   html += '<button class="full-reset-btn" onclick="clearFullReport()">&#x21BA; Clear</button>';
   html += '</div></div>';
   html += '<div class="full-meta">' + fullReportRows.length + ' total rows loaded</div>';
@@ -1667,6 +1671,92 @@ async function sendToTeams(btn) {
     setTimeout(function(){ btn.textContent = orig; btn.disabled = false; btn.style.borderColor = ''; btn.style.color = ''; }, 4000);
   }
 }
+// ── NAIL THE PLAN ──────────────────────────────────────
+var NTP_KEY = 'ntp_dc499_v1';
+var NTP_FILE = 'dc499-nail-the-plan 24.html';
+
+// Mirror of Nail the Plan's currentBlock() — same BLOCKS, same timezone logic
+var NTP_BLOCKS = [
+  { shift:'1st', cp:'Midday', startH:3,  startM:0,  endH:10, endM:30 },
+  { shift:'1st', cp:'EOD',    startH:10, startM:31, endH:14, endM:10 },
+  { shift:'2nd', cp:'Midday', startH:15, startM:0,  endH:20, endM:0  },
+  { shift:'2nd', cp:'EOD',    startH:20, startM:1,  endH:25, endM:30 },
+];
+
+function ntpCurrentBlock() {
+  var pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  var cur = pst.getHours() * 60 + pst.getMinutes();
+  var curAdj = pst.getHours() < 2 ? cur + 24 * 60 : cur;
+  for (var i = 0; i < NTP_BLOCKS.length; i++) {
+    var b = NTP_BLOCKS[i];
+    var s = b.startH * 60 + b.startM, e = b.endH * 60 + b.endM;
+    if (curAdj >= s && curAdj <= e) return b;
+  }
+  return null;
+}
+
+// Ecom key → Nail the Plan process name
+var NTP_PROC = {
+  replen:   'Replen',
+  putaway:  'Putaway',
+  picking:  'Picking',
+  packing:  'Packing',
+  shipping: 'FC Shipping',
+  sorting:  'Sorting',
+};
+
+function nailThePlan(btn) {
+  if (!fullReportRows.length) {
+    alert('No CSV loaded — upload a report first.');
+    return;
+  }
+
+  var block = ntpCurrentBlock();
+  if (!block) {
+    alert('Outside shift hours — no active Nail the Plan checkpoint right now.');
+    return;
+  }
+
+  var totals   = getDeptTotals();
+  var hc       = loadHeadcount().counts;
+  var pph      = loadPPH();
+  var shiftHrs = getShiftHours();
+  var cpKey    = block.shift + '|' + block.cp;
+
+  // Load or create NTP state
+  var state;
+  try { state = JSON.parse(localStorage.getItem(NTP_KEY) || 'null'); } catch(e) { state = null; }
+  if (!state) state = {};
+  if (!state.data) state.data = {};
+  if (!state.meta) state.meta = { date: new Date().toLocaleDateString('en-CA'), updatedAt: null };
+  if (!state.data['Ecom']) state.data['Ecom'] = {};
+
+  var depts = ['replen', 'putaway', 'picking', 'packing', 'shipping', 'sorting'];
+  depts.forEach(function(dept) {
+    var proc = NTP_PROC[dept];
+    if (!state.data['Ecom'][proc]) state.data['Ecom'][proc] = {};
+    var rec = state.data['Ecom'][proc][cpKey] || {};
+    rec.act_u      = totals[dept] || 0;
+    rec.act_f      = totals[dept] || 0;
+    rec.act_hc     = hc[dept]     || 0;
+    rec.shiftHours = shiftHrs;
+    state.data['Ecom'][proc][cpKey] = rec;
+  });
+
+  state.meta.updatedAt = new Date().toISOString();
+
+  try { localStorage.setItem(NTP_KEY, JSON.stringify(state)); } catch(e) {
+    alert('Could not write to localStorage — storage may be full.');
+    return;
+  }
+
+  // Confirm and open
+  var label = block.shift + ' Shift ' + block.cp;
+  if (btn) { btn.textContent = '✓ Nailed'; btn.disabled = true; setTimeout(function() { btn.textContent = '📌 NAIL'; btn.disabled = false; }, 3000); }
+  var base = window.location.href.replace(/\/[^\/]*$/, '/');
+  window.open(base + NTP_FILE, '_blank');
+}
+
 // ── BACKLOG STRIP ───────────────────────────────────────
 function openBacklog() {
   var base = window.location.href.replace(/\/[^\/]*$/, '/');

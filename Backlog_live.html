@@ -102,6 +102,23 @@
 
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
+
+  /* Hourly side card layout */
+  .report-layout{display:flex;gap:1rem;align-items:flex-start;}
+  .report-layout #table-card{flex:1;min-width:0;}
+  #hourly-card{width:220px;flex-shrink:0;background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;}
+  #hourly-card .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.04em;}
+  #hourly-card .card-sub{font-size:11px;color:var(--text-hint);margin-bottom:1rem;}
+  .hourly-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+  .hourly-label{font-size:12px;color:var(--text-muted);width:38px;flex-shrink:0;text-align:right;}
+  .hourly-bar-wrap{flex:1;background:var(--bar-bg);border-radius:3px;height:14px;overflow:hidden;}
+  .hourly-bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width 0.4s ease;}
+  .hourly-count{font-size:12px;color:var(--text);width:36px;text-align:right;flex-shrink:0;}
+  .hourly-empty{font-size:12px;color:var(--text-hint);text-align:center;padding:1.5rem 0;}
+  @media(max-width:700px){
+    .report-layout{flex-direction:column;}
+    #hourly-card{width:100%;}
+  }
 </style>
 </head>
 <body>
@@ -154,28 +171,36 @@
     </div>
   </div>
 
-  <div class="card" id="table-card" style="display:none;">
-    <div class="card-title">Order Lines by Date &mdash; tap a status to see orders</div>
-    <table>
-      <thead><tr>
-        <th>Date</th>
-        <th class="r">Ready</th>
-        <th class="r">Allocated</th>
-        <th class="r">Packed</th>
-        <th class="r">Total Open</th>
-        <th class="r">Shipped</th>
-      </tr></thead>
-      <tbody id="tb-dates"></tbody>
-      <tfoot><tr>
-        <td>Total</td>
-        <td class="r" id="ft-ready"></td>
-        <td class="r" id="ft-alloc"></td>
-        <td class="r" id="ft-packed"></td>
-        <td class="r" id="ft-total"></td>
-        <td class="r" id="ft-shipped"></td>
-      </tr></tfoot>
-    </table>
-  </div>
+  <div class="report-layout">
+    <div class="card" id="table-card" style="display:none;">
+      <div class="card-title">Order Lines by Date &mdash; tap a status to see orders</div>
+      <table>
+        <thead><tr>
+          <th>Date</th>
+          <th class="r">Ready</th>
+          <th class="r">Allocated</th>
+          <th class="r">Packed</th>
+          <th class="r">Total Open</th>
+          <th class="r">Shipped</th>
+        </tr></thead>
+        <tbody id="tb-dates"></tbody>
+        <tfoot><tr>
+          <td>Total</td>
+          <td class="r" id="ft-ready"></td>
+          <td class="r" id="ft-alloc"></td>
+          <td class="r" id="ft-packed"></td>
+          <td class="r" id="ft-total"></td>
+          <td class="r" id="ft-shipped"></td>
+        </tr></tfoot>
+      </table>
+    </div>
+
+    <div id="hourly-card" style="display:none;">
+      <div class="card-title">Hourly Shipped</div>
+      <div class="card-sub">today &middot; 2nd shift</div>
+      <div id="hourly-bars"></div>
+    </div>
+  </div><!-- /.report-layout -->
 
   <!-- Order detail panel — renders below table when a status pill is clicked -->
   <div class="order-detail-card" id="order-detail-card">
@@ -333,6 +358,38 @@ function closeDetailPanel() {
   });
 }
 
+// -- Hourly side card ---------------------------------------------------------
+function fmtHour(h) {
+  // 14 → "2 PM", 9 → "9 AM"
+  if (h === 0)  return '12 AM';
+  if (h === 12) return '12 PM';
+  return h < 12 ? (h + ' AM') : ((h - 12) + ' PM');
+}
+
+function renderHourly(hourly) {
+  var card = document.getElementById('hourly-card');
+  var barsEl = document.getElementById('hourly-bars');
+  // Filter to 2nd shift hours (14–22) that have data
+  var rows = (hourly || []).filter(function(r) { return r.hour >= 14 && r.hour <= 22 && r.shipped > 0; });
+  if (!rows.length) {
+    barsEl.innerHTML = '<div class="hourly-empty">No data yet</div>';
+    card.style.display = 'block';
+    return;
+  }
+  var max = Math.max.apply(null, rows.map(function(r) { return r.shipped; }));
+  var html = '';
+  rows.forEach(function(r) {
+    var pct = max > 0 ? Math.round((r.shipped / max) * 100) : 0;
+    html += '<div class="hourly-row">';
+    html += '<span class="hourly-label">' + fmtHour(r.hour) + '</span>';
+    html += '<div class="hourly-bar-wrap"><div class="hourly-bar-fill" style="width:' + pct + '%"></div></div>';
+    html += '<span class="hourly-count">' + r.shipped.toLocaleString() + '</span>';
+    html += '</div>';
+  });
+  barsEl.innerHTML = html;
+  card.style.display = 'block';
+}
+
 // -- Render -------------------------------------------------------------------
 function renderData(data) {
   var rtEl    = document.getElementById('run-time');
@@ -443,6 +500,8 @@ function renderData(data) {
   emptyEl.style.display = 'none';
   metrEl.style.display  = 'grid';
   cardEl.style.display  = 'block';
+
+  renderHourly(data.hourly || []);
 }
 
 // -- Init ---------------------------------------------------------------------
