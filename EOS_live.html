@@ -14,6 +14,37 @@
     --red:#f87171; --yellow:#fbbf24; --yellow-dim:rgba(251,191,36,0.09);
     --mono:'Consolas','Courier New',monospace;
   }
+  [data-theme="solid"]{
+    --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;
+    --text:#e4e8f4;--text-muted:#8090b0;--text-hint:#4a5570;
+    --amber:#f59e0b;--amber-dim:rgba(245,158,11,0.08);
+    --green:#10b981;--green-dim:rgba(16,185,129,0.09);
+    --red:#f87171;--yellow:#fbbf24;--yellow-dim:rgba(251,191,36,0.09);
+  }
+  [data-theme="pastel"]{
+    --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;
+    --text:#d4d0e8;--text-muted:#8b8aaa;--text-hint:#565670;
+    --amber:#fde68a;--amber-dim:rgba(253,230,138,0.08);
+    --green:#86efac;--green-dim:rgba(134,239,172,0.09);
+    --red:#fca5a5;--yellow:#fde68a;--yellow-dim:rgba(253,230,138,0.09);
+  }
+  [data-theme="light"]{
+    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;
+    --text:#1a1a1a;--text-muted:#444;--text-hint:#777;
+    --amber:#b45309;--amber-dim:rgba(180,83,9,0.06);
+    --green:#065f46;--green-dim:rgba(6,95,70,0.06);
+    --red:#b91c1c;--yellow:#92400e;--yellow-dim:rgba(146,64,14,0.06);
+  }
+  .eos-theme-picker{position:relative;}
+  .eos-theme-btn{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-muted);cursor:pointer;background:transparent;border:1px solid var(--border);border-radius:5px;padding:5px 10px;font-family:inherit;white-space:nowrap;letter-spacing:.4px;font-weight:600;text-transform:uppercase;}
+  .eos-theme-btn:hover{border-color:var(--amber);color:var(--amber);}
+  .eos-theme-chevron{font-size:9px;opacity:0.6;transition:transform 0.15s;}
+  .eos-theme-picker.open .eos-theme-chevron{transform:rotate(180deg);}
+  .eos-theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;min-width:110px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:200;}
+  .eos-theme-picker.open .eos-theme-menu{display:block;}
+  .eos-theme-option{padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text-muted);transition:background 0.1s;letter-spacing:.4px;text-transform:uppercase;}
+  .eos-theme-option:hover{background:var(--surface2);color:var(--text);}
+  .eos-theme-option.active{color:var(--amber);background:var(--surface2);}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;padding:0 0 56px;}
 
@@ -156,6 +187,18 @@
   </div>
   <button class="btn" onclick="exportEmail()">Export for Email</button>
   <button class="btn" onclick="window.print()">Print / PDF</button>
+  <div class="eos-theme-picker" id="eos-theme-picker">
+    <button class="eos-theme-btn" onclick="eosToggleMenu()">
+      <span id="eos-theme-label">Dark</span>
+      <span class="eos-theme-chevron">&#9660;</span>
+    </button>
+    <div class="eos-theme-menu" id="eos-theme-menu">
+      <div class="eos-theme-option" data-tv="dark"   onclick="eosPickTheme('dark')">Dark</div>
+      <div class="eos-theme-option" data-tv="solid"  onclick="eosPickTheme('solid')">Solid</div>
+      <div class="eos-theme-option" data-tv="pastel" onclick="eosPickTheme('pastel')">Pastel</div>
+      <div class="eos-theme-option" data-tv="light"  onclick="eosPickTheme('light')">Light</div>
+    </div>
+  </div>
 </div>
 
 <div class="container" id="main-container">
@@ -180,6 +223,25 @@
 </div>
 
 <script>
+// ── THEME ───────────────────────────────────────────────────────────────────
+var EOS_THEME_KEY  = 'dc499_eos_theme_v1';
+var EOS_THEME_VALS = ['dark','solid','pastel','light'];
+var EOS_THEME_NAMES= {dark:'Dark',solid:'Solid',pastel:'Pastel',light:'Light'};
+function eosApplyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  var lbl = document.getElementById('eos-theme-label');
+  if (lbl) lbl.textContent = EOS_THEME_NAMES[t] || t;
+  document.querySelectorAll('.eos-theme-option').forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-tv') === t); });
+  try { localStorage.setItem(EOS_THEME_KEY, t); } catch(e) {}
+}
+function eosToggleMenu() { document.getElementById('eos-theme-picker').classList.toggle('open'); }
+function eosPickTheme(t) { eosApplyTheme(t); document.getElementById('eos-theme-picker').classList.remove('open'); }
+document.addEventListener('click', function(e){ var p=document.getElementById('eos-theme-picker'); if(p&&!p.contains(e.target)) p.classList.remove('open'); });
+(function(){
+  var saved; try { saved = localStorage.getItem(EOS_THEME_KEY); } catch(e) {}
+  eosApplyTheme(saved && EOS_THEME_VALS.indexOf(saved) !== -1 ? saved : 'dark');
+})();
+
 var DATA_URL    = 'eos_report.json';
 var SOS_URL     = 'eos_sos_snapshot.json';
 var BACKLOG_URL = 'backlog_live.json';

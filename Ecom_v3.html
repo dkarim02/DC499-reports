@@ -23,6 +23,16 @@
     --text: #f0f0ee; --text-muted: #999; --text-hint: #777;
     --bar-bg: #3a3a3a; --drop-hover: #2e2e2e;
   }
+  [data-theme="solid"] {
+    --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;
+    --text:#e4e8f4;--text-muted:#8090b0;--text-hint:#4a5570;
+    --bar-bg:#2e3650;--drop-hover:#232840;
+  }
+  [data-theme="pastel"] {
+    --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
+    --text:#d4d0e8;--text-muted:#8b8aaa;--text-hint:#565670;
+    --bar-bg:#3c3f52;--drop-hover:#2c2f3e;
+  }
 
   /* ── BASE ── */
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; transition: background 0.2s, color 0.2s; }
@@ -32,12 +42,16 @@
   .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; }
   h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
   .subtitle { font-size: 14px; color: var(--text-muted); }
-  .dark-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; background: none; border: 0.5px solid var(--border); border-radius: 8px; padding: 6px 12px; font-family: inherit; white-space: nowrap; }
-  .dark-toggle:hover { background: var(--surface2); }
-  .toggle-track { width: 28px; height: 16px; border-radius: 8px; background: var(--bar-bg); position: relative; transition: background 0.2s; flex-shrink: 0; }
-  .toggle-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text-hint); position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
-  [data-theme="dark"] .toggle-track { background: #534AB7; }
-  [data-theme="dark"] .toggle-thumb { left: 14px; background: #fff; }
+  .theme-picker{position:relative;}
+  .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
+  .theme-btn:hover{background:var(--surface2);}
+  .theme-btn-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
+  .theme-picker.open .theme-btn-chevron{transform:rotate(180deg);}
+  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;min-width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:200;}
+  .theme-picker.open .theme-menu{display:block;}
+  .theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
+  .theme-option:hover{background:var(--surface2);color:var(--text);}
+  .theme-option.active{color:#185FA5;background:var(--surface2);}
 
   /* ── BACKLOG PILL ── */
   .backlog-pill { display: none; align-items: center; gap: 0; margin-top: 8px; border-radius: 20px; overflow: hidden; border: 1.5px solid #185FA5; font-size: 13px; font-weight: 700; flex-shrink: 0; cursor: pointer; transition: opacity 0.15s, box-shadow 0.15s; }
@@ -180,7 +194,7 @@
   .roster-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-hint); }
 
   .stale-banner { display:none; background:#5C3A00; color:#FFD77A; font-size:12px; padding:6px 14px; border-radius:8px; margin-bottom:1rem; text-align:center; }
-  [data-theme="light"] .stale-banner, body:not([data-theme="dark"]) .stale-banner { background:#FFF3CD; color:#7A4F00; }
+  [data-theme="light"] .stale-banner { background:#FFF3CD; color:#7A4F00; }
 
 
   .tab.active-day { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
@@ -312,10 +326,18 @@
       <p class="subtitle" id="main-subtitle">Upload a CSV to populate the Full Report</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0;">
-      <button class="dark-toggle" onclick="toggleDark()">
-        <span id="toggle-label">Dark mode</span>
-        <div class="toggle-track"><div class="toggle-thumb"></div></div>
-      </button>
+      <div class="theme-picker" id="theme-picker">
+        <button class="theme-btn" onclick="toggleThemeMenu()">
+          <span id="toggle-label">Dark</span>
+          <span class="theme-btn-chevron">&#9660;</span>
+        </button>
+        <div class="theme-menu" id="theme-menu">
+          <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
+          <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
+          <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
+          <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
+        </div>
+      </div>
       <button class="eos-btn" onclick="openEOS()" title="Open EOS Report">&#x1F4CB; EOS Report</button>
       <div class="backlog-pill" id="backlog-pill" onclick="openBacklog()" title="Open Ecom Backlog">
         <div class="bp-total">
@@ -442,19 +464,22 @@ const SHIFT_BOUNDS = { '1st': {start:3, end:13}, '2nd': {start:14, end:25} };
 
 
 // ── THEME ──────────────────────────────────────────────
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-function applyTheme(dark) {
-  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
-  try { localStorage.setItem('dc499_ecom_theme_v1', dark ? 'dark' : 'light'); } catch(e) {}
+var THEME_KEY_ECOM = 'dc499_ecom_theme_v1';
+var THEME_NAMES_ECOM = {dark:'Dark',solid:'Solid',pastel:'Pastel',light:'Light'};
+var THEME_VALS_ECOM  = ['dark','solid','pastel','light'];
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('toggle-label').textContent = THEME_NAMES_ECOM[t] || t;
+  document.querySelectorAll('.theme-option').forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-tv') === t); });
+  try { localStorage.setItem(THEME_KEY_ECOM, t); } catch(e) {}
 }
-(function() {
-  var saved;
-  try { saved = localStorage.getItem('dc499_ecom_theme_v1'); } catch(e) {}
-  applyTheme(saved ? saved === 'dark' : prefersDark.matches);
+function toggleThemeMenu() { document.getElementById('theme-picker').classList.toggle('open'); }
+function pickTheme(t) { applyTheme(t); document.getElementById('theme-picker').classList.remove('open'); }
+document.addEventListener('click', function(e){ var p=document.getElementById('theme-picker'); if(p&&!p.contains(e.target)) p.classList.remove('open'); });
+(function(){
+  var saved; try { saved = localStorage.getItem(THEME_KEY_ECOM); } catch(e) {}
+  applyTheme(saved && THEME_VALS_ECOM.indexOf(saved) !== -1 ? saved : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 })();
-prefersDark.addEventListener('change', e => applyTheme(e.matches));
-function toggleDark() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
 
 // ── TABS ───────────────────────────────────────────────
 function switchTab(tab) {
@@ -1134,7 +1159,7 @@ function toggleAssocDetail(empKey) {
   });
   if (!isOpen) {
     detailRow.classList.add('open');
-    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
     var canvasId = 'assoc-chart-' + empKey;
     setTimeout(function() { drawAssocChart(canvasId, detailRow.getAttribute('data-emp'), isDark); }, 50);
   }
@@ -1261,7 +1286,7 @@ function drawFullChart(filterTyp) {
   if (window._fullChart) { window._fullChart.destroy(); window._fullChart = null; }
   var mode = window._fullChartMode || 'smooth';
 
-  var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
   var grid = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
   var tick = isDark ? '#777' : '#888';
   var shift = getShift();

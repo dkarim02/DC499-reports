@@ -14,13 +14,17 @@
     align-items: center; justify-content: center; padding: 1.5rem;
     transition: background 0.2s, color 0.2s;
   }
-  body.light { background: #f5f5f3; color: #1a1a1a; }
+  body.light   { background: #f5f5f3; color: #1a1a1a; }
+  body.solid   { background: #13172b; color: #e4e8f4; }
+  body.pastel  { background: #1a1c24; color: #d4d0e8; }
 
   /* Header */
   .header { text-align: center; margin-bottom: 1.5rem; }
   .header h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
   .header p { font-size: 13px; color: #888; }
   body.light .header p { color: #666; }
+  body.solid  .header p { color: #8090b0; }
+  body.pastel .header p { color: #8b8aaa; }
 
   /* Tabs */
   .tab-bar {
@@ -28,7 +32,9 @@
     background: #2a2a2a; border: 1.5px solid #3a3a3a;
     border-radius: 12px; padding: 4px;
   }
-  body.light .tab-bar { background: #f0f0ee; border-color: #ddd; }
+  body.light  .tab-bar { background: #f0f0ee; border-color: #ddd; }
+  body.solid  .tab-bar { background: #1b2035; border-color: #2e3650; }
+  body.pastel .tab-bar { background: #232631; border-color: #3c3f52; }
   .tab-btn {
     font-family: inherit; font-size: 12px; font-weight: 500;
     padding: 5px 20px; border: none; border-radius: 8px;
@@ -38,7 +44,9 @@
   .tab-btn:hover { color: #ccc; }
   body.light .tab-btn:hover { color: #333; }
   .tab-btn.active { background: #3a3a3a; color: #f0f0ee; }
-  body.light .tab-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  body.light  .tab-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  body.solid  .tab-btn.active { background: #232840; color: #e4e8f4; }
+  body.pastel .tab-btn.active { background: #2c2f3e; color: #d4d0e8; }
   .tab-badge {
     display: inline-block; font-size: 10px; font-weight: 600;
     background: #0E9E8E; color: #fff; border-radius: 8px;
@@ -61,7 +69,9 @@
     min-height: 150px; position: relative; font-family: inherit; color: #f0f0ee;
     text-decoration: none;
   }
-  body.light .card { background: #fff; border-color: #ddd; color: #1a1a1a; }
+  body.light  .card { background: #fff; border-color: #ddd; color: #1a1a1a; }
+  body.solid  .card { background: #1b2035; border-color: #2e3650; color: #e4e8f4; }
+  body.pastel .card { background: #232631; border-color: #3c3f52; color: #d4d0e8; }
   .card:hover { transform: scale(1.04); }
   .card:active { transform: scale(0.97); }
 
@@ -107,21 +117,26 @@
   .footer { margin-top: 1.75rem; font-size: 11px; color: #555; text-align: center; }
   body.light .footer { color: #aaa; }
 
-  /* Theme toggle — top right */
-  .theme-toggle {
-    position: fixed; top: 16px; right: 16px; z-index: 200;
-    display: flex; align-items: center; gap: 8px;
-    font-size: 12px; color: #666; cursor: pointer;
-    background: #2a2a2a; border: 1.5px solid #3a3a3a;
-    border-radius: 10px; padding: 6px 12px; font-family: inherit;
-    transition: background 0.15s;
-  }
-  .theme-toggle:hover { background: #333; }
-  body.light .theme-toggle { background: #fff; border-color: #ddd; color: #888; }
-  body.light .theme-toggle:hover { background: #f0f0ee; }
-  .toggle-track { width: 26px; height: 15px; border-radius: 8px; background: #444; position: relative; transition: background 0.2s; flex-shrink: 0; }
-  .toggle-thumb { width: 11px; height: 11px; border-radius: 50%; background: #888; position: absolute; top: 2px; left: 2px; transition: left 0.2s, background 0.2s; }
-  body.light .toggle-track { background: #ddd; }
+  /* Theme picker — bottom right */
+  .menu-theme-picker{position:fixed;bottom:20px;right:20px;z-index:100;}
+  .menu-theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;background:#2a2a2a;border:1.5px solid #3a3a3a;border-radius:22px;padding:8px 16px;font-family:inherit;white-space:nowrap;color:#888;}
+  .menu-theme-btn:hover{background:#333;color:#ccc;}
+  body.light  .menu-theme-btn{background:#f0f0ee;border-color:#ccc;color:#555;}
+  body.solid  .menu-theme-btn{background:#1b2035;border-color:#2e3650;color:#8090b0;}
+  body.pastel .menu-theme-btn{background:#232631;border-color:#3c3f52;color:#8b8aaa;}
+  .menu-theme-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
+  .menu-theme-picker.open .menu-theme-chevron{transform:rotate(180deg);}
+  .menu-theme-menu{display:none;position:absolute;bottom:calc(100% + 8px);right:0;background:#2a2a2a;border:1.5px solid #3a3a3a;border-radius:10px;overflow:hidden;min-width:110px;box-shadow:0 -4px 24px rgba(0,0,0,0.4);z-index:200;}
+  .menu-theme-picker.open .menu-theme-menu{display:block;}
+  body.light  .menu-theme-menu{background:#fff;border-color:#ddd;box-shadow:0 -4px 16px rgba(0,0,0,0.12);}
+  body.solid  .menu-theme-menu{background:#1b2035;border-color:#2e3650;}
+  body.pastel .menu-theme-menu{background:#232631;border-color:#3c3f52;}
+  .menu-theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:#888;transition:background 0.1s;}
+  .menu-theme-option:hover{background:#333;color:#f0f0ee;}
+  body.light  .menu-theme-option:hover{background:#f0f0ee;color:#1a1a1a;}
+  body.solid  .menu-theme-option:hover{background:#232840;color:#e4e8f4;}
+  body.pastel .menu-theme-option:hover{background:#2c2f3e;color:#d4d0e8;}
+  .menu-theme-option.active{color:#0E9E8E;}
 
   /* Missing files warning */
   .warning {
@@ -221,12 +236,18 @@
   <div id="whats-new-content" style="font-size:12px;color:#999;line-height:1.7;">Loading...</div>
 </div>
 
-<button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">
-  <span id="theme-label">Light mode</span>
-  <div class="toggle-track" id="toggle-track">
-    <div class="toggle-thumb" id="toggle-thumb"></div>
+<div class="menu-theme-picker" id="menu-theme-picker">
+  <button class="menu-theme-btn" onclick="menuToggleThemeMenu()">
+    <span id="menu-theme-label">Dark</span>
+    <span class="menu-theme-chevron">&#9660;</span>
+  </button>
+  <div class="menu-theme-menu" id="menu-theme-menu">
+    <div class="menu-theme-option" data-tv="dark"   onclick="menuPickTheme('dark')">Dark</div>
+    <div class="menu-theme-option" data-tv="solid"  onclick="menuPickTheme('solid')">Solid</div>
+    <div class="menu-theme-option" data-tv="pastel" onclick="menuPickTheme('pastel')">Pastel</div>
+    <div class="menu-theme-option" data-tv="light"  onclick="menuPickTheme('light')">Light</div>
   </div>
-</button>
+</div>
 
 <script>
 var TAB_KEY   = 'dc499_menu_tab_v1';
@@ -249,29 +270,28 @@ function openApp(filename) {
 }
 
 // ── THEME ──────────────────────────────────────────────
-function applyTheme(dark) {
-  isDark = dark;
-  document.body.className = dark ? '' : 'light';
-  document.getElementById('theme-label').textContent = dark ? 'Light mode' : 'Dark mode';
-  document.getElementById('toggle-track').style.background = dark ? '#444' : '#ddd';
-  document.getElementById('toggle-thumb').style.left = dark ? '2px' : '13px';
-  document.getElementById('toggle-thumb').style.background = dark ? '#888' : '#fff';
-  try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
+var MENU_THEME_VALS  = ['dark','solid','pastel','light'];
+var MENU_THEME_NAMES = {dark:'Dark',solid:'Solid',pastel:'Pastel',light:'Light'};
+function applyTheme(t) {
+  isDark = (t !== 'light');
+  document.body.className = (t === 'dark') ? '' : t;
+  var lbl = document.getElementById('menu-theme-label');
+  if (lbl) lbl.textContent = MENU_THEME_NAMES[t] || t;
+  document.querySelectorAll('.menu-theme-option').forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-tv') === t); });
+  try { localStorage.setItem(THEME_KEY, t); } catch(e) {}
 }
-
-function toggleTheme() { applyTheme(!isDark); }
+function menuToggleThemeMenu() { document.getElementById('menu-theme-picker').classList.toggle('open'); }
+function menuPickTheme(t) { applyTheme(t); document.getElementById('menu-theme-picker').classList.remove('open'); }
+document.addEventListener('click', function(e){ var p=document.getElementById('menu-theme-picker'); if(p&&!p.contains(e.target)) p.classList.remove('open'); });
 
 function initTheme() {
   try {
     var saved = localStorage.getItem(THEME_KEY);
-    if (saved) { applyTheme(saved === 'dark'); return; }
+    if (saved && MENU_THEME_VALS.indexOf(saved) !== -1) { applyTheme(saved); return; }
+    if (saved === 'dark' || saved === 'light') { applyTheme(saved); return; }
   } catch(e) {}
-  applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
+  applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 }
-
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-  try { if (!localStorage.getItem(THEME_KEY)) applyTheme(e.matches); } catch(e) {}
-});
 
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('date').textContent = new Date().toLocaleDateString();
