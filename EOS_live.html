@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EOS Report — DC499</title>
+<style>
+  :root {
+    --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a;
+    --border:#2e3347; --border-light:#252840;
+    --text:#e8eaf6; --text-muted:#8b8fa8; --text-hint:#555a72;
+    --accent:#5c6bc0; --accent-light:#7986cb;
+    --green:#4caf50; --yellow:#ffc107; --red:#ef5350;
+    --nord:#0061d5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;padding:0 0 48px;}
+
+  /* top bar */
+  .top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;}
+  .top-bar h1{font-size:15px;font-weight:600;letter-spacing:.3px;}
+  .top-bar .sub{font-size:12px;color:var(--text-muted);margin-left:4px;}
+  .top-bar .spacer{flex:1;}
+  .btn{padding:5px 13px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;transition:background .15s;}
+  .btn:hover{background:var(--accent);border-color:var(--accent);}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn.primary:hover{background:var(--accent-light);}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-hint);display:inline-block;margin-right:6px;}
+  .status-dot.sos{background:var(--yellow);}
+  .status-dot.eos{background:var(--green);}
+
+  /* layout */
+  .container{max-width:960px;margin:0 auto;padding:20px 16px;}
+  .report-header{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .report-header .date-label{font-size:20px;font-weight:700;letter-spacing:.5px;}
+  .report-header .shift-badge{background:var(--accent);color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:600;}
+  .report-header .snap-times{display:flex;gap:16px;margin-left:auto;}
+  .snap-time{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .snap-time .label{font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:.5px;}
+  .snap-time .value{font-size:14px;font-weight:600;color:var(--text);}
+  .snap-time .value.missing{color:var(--text-hint);font-style:italic;}
+
+  /* section */
+  .section{margin-bottom:14px;}
+  .section-title{font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .section-title::before{content:'';display:inline-block;width:3px;height:13px;background:var(--accent);border-radius:2px;}
+
+  /* pill grid — matches CSV section layout */
+  .pill-grid{display:grid;gap:10px;}
+  .pill-grid.cols-3{grid-template-columns:repeat(3,1fr);}
+  .pill-grid.cols-4{grid-template-columns:repeat(4,1fr);}
+  .pill-grid.cols-2{grid-template-columns:repeat(2,1fr);}
+  .pill-grid.cols-5{grid-template-columns:repeat(5,1fr);}
+
+  .pill{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;}
+  .pill .pill-label{font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:.6px;font-weight:600;}
+  .pill .pill-row{display:flex;align-items:baseline;gap:12px;}
+  .pill .sos-val{font-size:18px;font-weight:700;color:var(--text-muted);}
+  .pill .eos-val{font-size:22px;font-weight:700;color:var(--text);}
+  .pill .sos-val.missing{color:var(--text-hint);font-size:14px;font-style:italic;}
+  .pill .pill-sub{font-size:10px;color:var(--text-hint);}
+  .pill .pill-sub .sos-sub{color:var(--text-muted);margin-right:10px;}
+  .pill .pill-sub .eos-sub{color:var(--text);}
+  .pill.accent{border-color:var(--accent);background:rgba(92,107,192,.07);}
+  .pill.warn{border-color:var(--yellow);background:rgba(255,193,7,.05);}
+  .pill.good{border-color:var(--green);background:rgba(76,175,80,.05);}
+  .pill.note-pill{padding:10px 14px;flex-direction:row;align-items:flex-start;gap:10px;}
+  .pill.note-pill textarea{flex:1;background:transparent;border:none;color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:40px;outline:none;}
+  .pill.note-pill textarea::placeholder{color:var(--text-hint);}
+  .pill.note-pill .note-icon{font-size:14px;color:var(--text-hint);margin-top:2px;flex-shrink:0;}
+
+  /* SOS/EOS column headers */
+  .col-headers{display:flex;gap:12px;padding:0 14px;margin-bottom:4px;}
+  .col-headers span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-hint);}
+  .col-headers .sos-h{min-width:40px;}
+  .col-headers .eos-h{color:var(--text-muted);}
+
+  /* wave table */
+  .wave-table{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .wave-row{display:flex;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border-light);gap:12px;}
+  .wave-row:last-child{border-bottom:none;}
+  .wave-row.header{background:var(--surface2);padding:7px 16px;}
+  .wave-row.total{background:rgba(92,107,192,.08);border-top:1px solid var(--border);}
+  .wave-type{flex:1;font-size:13px;color:var(--text);}
+  .wave-count{font-size:18px;font-weight:700;color:var(--text);min-width:48px;text-align:right;}
+  .wave-row.header .wave-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-hint);}
+  .wave-row.header .wave-count{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-hint);}
+
+  /* notes section */
+  .notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+  /* disclaimer */
+  .disclaimer{font-size:10px;color:var(--text-hint);text-align:center;margin-top:24px;padding:0 20px;line-height:1.5;}
+
+  /* loading / error */
+  .loading{text-align:center;padding:60px;color:var(--text-muted);font-size:14px;}
+  .error-msg{background:rgba(239,83,80,.1);border:1px solid var(--red);border-radius:8px;padding:12px 16px;color:var(--red);font-size:13px;margin-bottom:16px;}
+
+  @media(max-width:600px){
+    .pill-grid.cols-3,.pill-grid.cols-4,.pill-grid.cols-5{grid-template-columns:repeat(2,1fr);}
+    .notes-grid{grid-template-columns:1fr;}
+    .report-header .snap-times{margin-left:0;width:100%;}
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div>
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-label" style="font-size:12px;color:var(--text-muted);">Loading...</span>
+  </div>
+  <h1>EOS Report <span class="sub">DC499</span></h1>
+  <div class="spacer"></div>
+  <button class="btn" onclick="window.print()">Print / Save PDF</button>
+</div>
+
+<div class="container" id="main-container">
+  <div class="loading" id="loading-msg">Loading report data...</div>
+</div>
+
+<script>
+// ── data loading ───────────────────────────────────────────────────────────────
+var DATA_URL = 'eos_report.json';
+var SOS_URL  = 'eos_sos_snapshot.json';
+var report   = null;
+var sos      = null;
+var eos      = null;
+
+function fmt(v, fallback) {
+  if (v === null || v === undefined) return fallback !== undefined ? fallback : '—';
+  return Number(v).toLocaleString();
+}
+
+function fmtDiff(sosVal, eosVal) {
+  if (sosVal === null || eosVal === null) return '';
+  const d = eosVal - sosVal;
+  if (d === 0) return '';
+  const sign = d > 0 ? '+' : '';
+  return `<span style="font-size:11px;color:${d>0?'var(--green)':'var(--red)'};margin-left:4px;">${sign}${d.toLocaleString()}</span>`;
+}
+
+function pill(label, sosVal, eosVal, opts) {
+  opts = opts || {};
+  const cls = opts.cls || '';
+  const sosTxt = sosVal !== null && sosVal !== undefined ? fmt(sosVal) : '<span class="missing">no SOS</span>';
+  const eosTxt = fmt(eosVal);
+  const diff = fmtDiff(sosVal, eosVal);
+  return `
+  <div class="pill ${cls}">
+    <div class="pill-label">${label}</div>
+    <div class="pill-row">
+      <span class="sos-val ${sosVal===null?'missing':''}">${sosTxt}</span>
+      <span class="eos-val">${eosTxt}${diff}</span>
+    </div>
+    <div class="pill-sub">
+      <span class="sos-sub">SOS</span><span class="eos-sub">EOS</span>
+    </div>
+  </div>`;
+}
+
+function pillEosOnly(label, eosVal, opts) {
+  opts = opts || {};
+  const cls = opts.cls || '';
+  return `
+  <div class="pill ${cls}">
+    <div class="pill-label">${label}</div>
+    <div class="eos-val" style="margin-top:4px;">${fmt(eosVal)}</div>
+  </div>`;
+}
+
+function noteField(section) {
+  return `
+  <div class="pill note-pill">
+    <span class="note-icon">✏️</span>
+    <textarea placeholder="Notes — ${section}" rows="2" id="note-${section.replace(/\s/g,'-').toLowerCase()}"></textarea>
+  </div>`;
+}
+
+function render() {
+  const container = document.getElementById('main-container');
+  const s = sos;
+  const e = eos;
+
+  const sosTime = s ? s.captured_at : null;
+  const eosTime = e ? e.captured_at : null;
+
+  // Date display
+  const dateDisp = e ? formatDate(e.date) : (s ? formatDate(s.date) : 'Unknown Date');
+
+  let html = `
+  <div class="report-header">
+    <div class="date-label">${dateDisp}</div>
+    <div class="shift-badge">B Shift</div>
+    <div class="snap-times">
+      <div class="snap-time">
+        <div class="label">SOS</div>
+        <div class="value ${sosTime?'':'missing'}">${sosTime || 'Not captured'}</div>
+      </div>
+      <div class="snap-time">
+        <div class="label">EOS</div>
+        <div class="value ${eosTime?'':'missing'}">${eosTime || 'Not captured'}</div>
+      </div>
+    </div>
+  </div>`;
+
+  if (!e && !s) {
+    container.innerHTML = html + `<div class="error-msg">No report data found. Run the EOS agent to capture data.</div>`;
+    return;
+  }
+
+  // ── ORDERS & UNITS ─────────────────────────────────────────────────────────
+  html += `
+  <div class="section">
+    <div class="section-title">Orders &amp; Units</div>
+    <div class="pill-grid cols-4">
+      ${pill('Total Orders', s?.open_orders ?? null, e?.open_orders ?? null, {cls:'accent'})}
+      ${pill('Total Units',  s?.open_units  ?? null, e?.open_units  ?? null)}
+      ${pill('Hospital Orders', s?.hospital_orders ?? null, e?.hospital_orders ?? null, {cls: e?.hospital_orders > 0 ? 'warn' : ''})}
+      ${pillEosOnly('68-Criteria Orders', null)}
+    </div>
+  </div>`;
+
+  // ── PICKING ────────────────────────────────────────────────────────────────
+  html += `
+  <div class="section">
+    <div class="section-title">Picking</div>
+    <div class="pill-grid cols-3">
+      ${pill('Pick Tasks Open',      s?.pick_open ?? null, e?.pick_open ?? null, {cls: e?.pick_open > 0 ? 'warn' : 'good'})}
+      ${pill('Pick Tasks Completed', s?.pick_done ?? null, e?.pick_done ?? null)}
+      ${noteField('Picking')}
+    </div>
+  </div>`;
+
+  // ── SORTING ────────────────────────────────────────────────────────────────
+  html += `
+  <div class="section">
+    <div class="section-title">Sorting</div>
+    <div class="pill-grid cols-5">
+      ${pill('Batches in Queue',    s?.batches_in_queue    ?? null, e?.batches_in_queue    ?? null, {cls: e?.batches_in_queue > 0 ? 'warn' : 'good'})}
+      ${pill('Orders Not Released', s?.orders_not_released ?? null, e?.orders_not_released ?? null)}
+      ${pillEosOnly('Avg Release Interval', null)}
+      ${pill('Batches Cleared',     s?.batches_cleared ?? null, e?.batches_cleared ?? null)}
+      ${noteField('Sorting')}
+    </div>
+  </div>`;
+
+  // ── PACKING ────────────────────────────────────────────────────────────────
+  html += `
+  <div class="section">
+    <div class="section-title">Packing</div>
+    <div class="pill-grid cols-4">
+      ${pillEosOnly('Line Capacity', null)}
+      ${pillEosOnly('Cross-Training', null)}
+      ${pill('Packed Not Shipped', s?.packed_not_shipped ?? null, e?.packed_not_shipped ?? null)}
+      ${noteField('Packing')}
+    </div>
+  </div>`;
+
+  // ── SHIPPING ───────────────────────────────────────────────────────────────
+  html += `
+  <div class="section">
+    <div class="section-title">Shipping</div>
+    <div class="pill-grid cols-3">
+      ${pillEosOnly('Pallet IDs', null)}
+      ${pill('Loaded Virtually', s?.loaded_virtually ?? null, e?.loaded_virtually ?? null, {cls:'good'})}
+      ${noteField('Shipping')}
+    </div>
+  </div>`;
+
+  // ── STOCK CONTROL ──────────────────────────────────────────────────────────
+  html += `
+  <div class="section">
+    <div class="section-title">Stock Control</div>
+    <div class="pill-grid cols-4">
+      ${pill('Replen Tasks Open',      s?.replen_open  ?? null, e?.replen_open  ?? null, {cls: e?.replen_open > 0 ? 'warn' : 'good'})}
+      ${pill('Replen Tasks Done',      s?.replen_done  ?? null, e?.replen_done  ?? null)}
+      ${pill('Putaway (FC Prep) Open', s?.putaway_open ?? null, e?.putaway_open ?? null, {cls: e?.putaway_open > 0 ? 'warn' : 'good'})}
+      ${pill('Putaway Done',           s?.putaway_done ?? null, e?.putaway_done ?? null)}
+    </div>
+    <div class="pill-grid cols-2" style="margin-top:10px;">
+      ${noteField('Stock Control')}
+      <div></div>
+    </div>
+  </div>`;
+
+  // ── WAVES RUN ──────────────────────────────────────────────────────────────
+  const waves = (e || s)?.waves || [];
+  let waveRows = waves.map(w => {
+    const isTotal = w.type === 'Total';
+    return `
+    <div class="wave-row ${isTotal ? 'total' : ''}">
+      <span class="wave-type">${w.type}</span>
+      <span class="wave-count">${w.count || 0}</span>
+    </div>`;
+  }).join('');
+
+  html += `
+  <div class="section">
+    <div class="section-title">Waves Run</div>
+    <div class="wave-table">
+      <div class="wave-row header">
+        <span class="wave-type">Wave Type</span>
+        <span class="wave-count">Count</span>
+      </div>
+      ${waveRows || '<div class="wave-row"><span class="wave-type" style="color:var(--text-hint)">No wave data</span></div>'}
+    </div>
+  </div>`;
+
+  html += `<div class="disclaimer">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>`;
+
+  container.innerHTML = html;
+}
+
+function formatDate(str) {
+  if (!str) return '';
+  try {
+    const [y,m,d] = str.split('-');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${months[parseInt(m,10)-1]} ${parseInt(d,10)}, ${y}`;
+  } catch { return str; }
+}
+
+async function loadData() {
+  const dot   = document.getElementById('status-dot');
+  const label = document.getElementById('status-label');
+
+  // Try eos_report.json first (has both SOS + EOS merged)
+  try {
+    const r = await fetch(DATA_URL + '?v=' + Date.now());
+    if (r.ok) {
+      const data = await r.json();
+      sos = data.sos;
+      eos = data.eos;
+      dot.className = 'status-dot eos';
+      label.textContent = `Updated ${data.generated?.slice(11,16) || ''}`;
+      render();
+      return;
+    }
+  } catch {}
+
+  // Fall back to SOS-only snapshot
+  try {
+    const r = await fetch(SOS_URL + '?v=' + Date.now());
+    if (r.ok) {
+      const data = await r.json();
+      sos = data;
+      eos = null;
+      dot.className = 'status-dot sos';
+      label.textContent = `SOS only — EOS not yet captured`;
+      render();
+      return;
+    }
+  } catch {}
+
+  // Nothing found
+  document.getElementById('loading-msg').textContent = '';
+  document.getElementById('main-container').innerHTML =
+    '<div class="error-msg">No data found. Run <strong>eos.bat → Option 1</strong> at 2:10 PM to capture SOS, then <strong>Option 2</strong> at shift end for the full report.</div>';
+  label.textContent = 'No data';
+}
+
+loadData();
+</script>
+</body>
+</html>
