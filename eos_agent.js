@@ -482,7 +482,20 @@ async function main() {
     fs.writeFileSync(SOS_FILE, JSON.stringify(out, null, 2));
     console.log(`[${ts()}] ✓ eos_sos_snapshot.json written (reconstructed)`);
     console.log(`[${ts()}]   Note: open_orders, open_units, hospital, packed fields are null (current-state only)`);
-    gitPush(['eos_sos_snapshot.json'], `EOS SOS reconstructed -- ${snap.date} ${snap.captured_at}`);
+    // If eos_report.json exists, patch its SOS so the HTML doesn't load stale data
+    const filesToPush = ['eos_sos_snapshot.json'];
+    if (fs.existsSync(REPORT_FILE)) {
+      try {
+        const report = JSON.parse(fs.readFileSync(REPORT_FILE, 'utf8'));
+        report.sos = out;
+        fs.writeFileSync(REPORT_FILE, JSON.stringify(report, null, 2));
+        filesToPush.push('eos_report.json');
+        console.log(`[${ts()}] ✓ eos_report.json SOS patched`);
+      } catch (e) {
+        console.warn(`[${ts()}]   Could not patch eos_report.json: ${e.message}`);
+      }
+    }
+    gitPush(filesToPush, `EOS SOS reconstructed -- ${snap.date} ${snap.captured_at}`);
     return;
   }
 
