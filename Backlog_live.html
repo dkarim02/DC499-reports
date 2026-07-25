@@ -103,16 +103,20 @@
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
 
-  /* Hourly card — full width below order detail */
-  #hourly-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+  /* Page layout — main column + hourly sidebar */
+  .page-layout{display:flex;gap:1.25rem;align-items:flex-start;}
+  .page-main{flex:1;min-width:0;}
+  .page-sidebar{width:210px;flex-shrink:0;}
+  @media(max-width:800px){.page-layout{flex-direction:column;}.page-sidebar{width:100%;}}
+
+  /* Hourly card */
+  #hourly-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;}
   #hourly-card .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.04em;}
   #hourly-card .card-sub{font-size:11px;color:var(--text-hint);margin-bottom:1rem;}
-  .hourly-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px 16px;}
-  .hourly-row{display:flex;align-items:center;gap:8px;}
-  .hourly-label{font-size:12px;color:var(--text-muted);width:42px;flex-shrink:0;text-align:right;}
-  .hourly-bar-wrap{flex:1;background:var(--bar-bg);border-radius:3px;height:14px;overflow:hidden;}
-  .hourly-bar-fill{height:100%;background:var(--accent);border-radius:3px;transition:width 0.4s ease;}
-  .hourly-count{font-size:12px;color:var(--text);width:44px;text-align:right;flex-shrink:0;font-weight:500;}
+  .hourly-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--border-light);}
+  .hourly-row:last-child{border-bottom:none;}
+  .hourly-range{font-size:12px;color:var(--text-muted);}
+  .hourly-count{font-size:12px;font-weight:500;color:var(--text);}
   .hourly-empty{font-size:12px;color:var(--text-hint);text-align:center;padding:1.5rem 0;}
 </style>
 </head>
@@ -143,67 +147,78 @@
     </div>
   </div>
 
-  <div class="metrics" id="metrics" style="display:none;">
-    <div class="metric ready">
-      <div class="metric-label">Ready</div>
-      <div class="metric-value" id="m-ready">--</div>
-      <div class="metric-sub">Not yet in wave</div>
-    </div>
-    <div class="metric alloc">
-      <div class="metric-label">Allocated</div>
-      <div class="metric-value" id="m-alloc">--</div>
-      <div class="metric-sub">In wave, unpicked</div>
-    </div>
-    <div class="metric packed">
-      <div class="metric-label">Packed</div>
-      <div class="metric-value" id="m-packed">--</div>
-      <div class="metric-sub">Awaiting ship</div>
-    </div>
-    <div class="metric total">
-      <div class="metric-label">Total Open</div>
-      <div class="metric-value" id="m-total">--</div>
-      <div class="metric-sub" id="m-date">Today</div>
-    </div>
-  </div>
+  <div class="page-layout">
 
-  <div class="card" id="table-card" style="display:none;">
-    <div class="card-title">Order Lines by Date &mdash; tap a status to see orders</div>
-    <table>
-      <thead><tr>
-        <th>Date</th>
-        <th class="r">Ready</th>
-        <th class="r">Allocated</th>
-        <th class="r">Packed</th>
-        <th class="r">Total Open</th>
-        <th class="r">Shipped</th>
-      </tr></thead>
-      <tbody id="tb-dates"></tbody>
-      <tfoot><tr>
-        <td>Total</td>
-        <td class="r" id="ft-ready"></td>
-        <td class="r" id="ft-alloc"></td>
-        <td class="r" id="ft-packed"></td>
-        <td class="r" id="ft-total"></td>
-        <td class="r" id="ft-shipped"></td>
-      </tr></tfoot>
-    </table>
-  </div>
+    <!-- Main column -->
+    <div class="page-main">
 
-  <!-- Order detail panel — renders below table when a status pill is clicked -->
-  <div class="order-detail-card" id="order-detail-card">
-    <div class="detail-header">
-      <div class="detail-title" id="detail-title"></div>
-      <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close">&times;</button>
-    </div>
-    <div class="order-list-inner" id="detail-order-list"></div>
-  </div>
+      <div class="metrics" id="metrics" style="display:none;">
+        <div class="metric ready">
+          <div class="metric-label">Ready</div>
+          <div class="metric-value" id="m-ready">--</div>
+          <div class="metric-sub">Not yet in wave</div>
+        </div>
+        <div class="metric alloc">
+          <div class="metric-label">Allocated</div>
+          <div class="metric-value" id="m-alloc">--</div>
+          <div class="metric-sub">In wave, unpicked</div>
+        </div>
+        <div class="metric packed">
+          <div class="metric-label">Packed</div>
+          <div class="metric-value" id="m-packed">--</div>
+          <div class="metric-sub">Awaiting ship</div>
+        </div>
+        <div class="metric total">
+          <div class="metric-label">Total Open</div>
+          <div class="metric-value" id="m-total">--</div>
+          <div class="metric-sub" id="m-date">Today</div>
+        </div>
+      </div>
 
-  <!-- Hourly order lines received — full width, below order detail panel -->
-  <div id="hourly-card" style="display:none;">
-    <div class="card-title">Hourly Order Lines Received</div>
-    <div class="card-sub">today &middot; new lines entering the system each hour</div>
-    <div class="hourly-grid" id="hourly-bars"></div>
-  </div>
+      <div class="card" id="table-card" style="display:none;">
+        <div class="card-title">Order Lines by Date &mdash; tap a status to see orders</div>
+        <table>
+          <thead><tr>
+            <th>Date</th>
+            <th class="r">Ready</th>
+            <th class="r">Allocated</th>
+            <th class="r">Packed</th>
+            <th class="r">Total Open</th>
+            <th class="r">Shipped</th>
+          </tr></thead>
+          <tbody id="tb-dates"></tbody>
+          <tfoot><tr>
+            <td>Total</td>
+            <td class="r" id="ft-ready"></td>
+            <td class="r" id="ft-alloc"></td>
+            <td class="r" id="ft-packed"></td>
+            <td class="r" id="ft-total"></td>
+            <td class="r" id="ft-shipped"></td>
+          </tr></tfoot>
+        </table>
+      </div>
+
+      <!-- Order detail panel — renders below table when a status pill is clicked -->
+      <div class="order-detail-card" id="order-detail-card">
+        <div class="detail-header">
+          <div class="detail-title" id="detail-title"></div>
+          <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close">&times;</button>
+        </div>
+        <div class="order-list-inner" id="detail-order-list"></div>
+      </div>
+
+    </div><!-- /.page-main -->
+
+    <!-- Sidebar — hourly lines received -->
+    <div class="page-sidebar">
+      <div id="hourly-card" style="display:none;">
+        <div class="card-title">Lines / Hour</div>
+        <div class="card-sub">today &middot; order lines received</div>
+        <div id="hourly-bars"></div>
+      </div>
+    </div><!-- /.page-sidebar -->
+
+  </div><!-- /.page-layout -->
 
   <div class="empty-state" id="empty-state" style="display:none;">
     <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
@@ -353,11 +368,14 @@ function closeDetailPanel() {
 }
 
 // -- Hourly side card ---------------------------------------------------------
-function fmtHour(h) {
-  // 14 → "2 PM", 9 → "9 AM"
-  if (h === 0)  return '12 AM';
-  if (h === 12) return '12 PM';
-  return h < 12 ? (h + ' AM') : ((h - 12) + ' PM');
+function fmtHourRange(h) {
+  function label(n) {
+    if (n === 0)  return '12 AM';
+    if (n === 12) return '12 PM';
+    if (n === 24) return '12 AM';
+    return n < 12 ? (n + ' AM') : ((n - 12) + ' PM');
+  }
+  return label(h) + '–' + label(h + 1);
 }
 
 function renderHourly(hourly) {
@@ -369,13 +387,10 @@ function renderHourly(hourly) {
     card.style.display = 'block';
     return;
   }
-  var max = Math.max.apply(null, rows.map(function(r) { return r.lines; }));
   var html = '';
   rows.forEach(function(r) {
-    var pct = max > 0 ? Math.round((r.lines / max) * 100) : 0;
     html += '<div class="hourly-row">';
-    html += '<span class="hourly-label">' + fmtHour(r.hour) + '</span>';
-    html += '<div class="hourly-bar-wrap"><div class="hourly-bar-fill" style="width:' + pct + '%"></div></div>';
+    html += '<span class="hourly-range">' + fmtHourRange(r.hour) + '</span>';
     html += '<span class="hourly-count">' + r.lines.toLocaleString() + '</span>';
     html += '</div>';
   });
