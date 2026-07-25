@@ -707,6 +707,16 @@ ORDER BY hour_pdt`.trim();
 }
 
 // ── batch status query ─────────────────────────────────────────────────────────
+// Status codes: 5000=Released, 5200=Released(picking assigned),
+//               5400=Picking Completed, 5600=Work Started, 5800=Cleared
+const BATCH_STATUS_LABELS = {
+  '5000': 'Released',
+  '5200': 'Released',
+  '5400': 'Picking Completed',
+  '5600': 'Work Started',
+  '5800': 'Cleared',
+};
+
 async function fetchBatchStatus(accessToken) {
   const nowUtc = new Date();
   const shiftHourUtc = 21; // 2 PM PDT
@@ -715,67 +725,79 @@ async function fetchBatchStatus(accessToken) {
   if (nowUtc.getUTCHours() < shiftHourUtc) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
   const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
 
-  // One row per batch per status — aggregate to one row per batch
+  // One row per BATCH_ID — that is the friendly batch name (B_000...)
+  // WORK_RELEASE_BATCH_ID groups batches released together (used for interval calc)
   const sql = `
 SELECT
-  WORK_RELEASE_BATCH_ID                                   AS batch_id,
-  MAX(TOTAL_ORDERS)                                       AS total_orders,
-  MAX(TOTAL_OLPNS)                                        AS total_olpns,
-  MIN(CREATED_TIMESTAMP)                                  AS released_utc,
-  MAX(CASE WHEN STATUS_ID LIKE '5800%' THEN UPDATED_TIMESTAMP END) AS cleared_utc,
-  MAX(CASE WHEN STATUS_ID LIKE '5800%' THEN 1 ELSE 0 END) AS is_cleared,
-  MAX(STATUS_ID)                                          AS latest_status
+  BATCH_ID,
+  WORK_RELEASE_BATCH_ID,
+  STATUS_ID,
+  TOTAL_ORDERS,
+  TOTAL_OLPNS,
+  CREATED_TIMESTAMP,
+  UPDATED_TIMESTAMP
 FROM default_workrelease.WR_BATCH
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${startStr}'
-GROUP BY WORK_RELEASE_BATCH_ID
-ORDER BY MIN(CREATED_TIMESTAMP) ASC`.trim();
+ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
 
   const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
 
-  const batches = rows.map((r, i) => {
-    const releasedUtc = r.released_utc ? new Date(r.released_utc) : null;
-    const clearedUtc  = r.cleared_utc  ? new Date(r.cleared_utc)  : null;
-    const minsToClear = (releasedUtc && clearedUtc)
-      ? Math.round((clearedUtc - releasedUtc) / 60000)
-      : null;
+  const toPdt = d => d
+    ? new Date(d).toLocaleString('en-US', { timeZone:'America/Los_Angeles', hour:'2-digit', minute:'2-digit', hour12:false })
+    : null;
 
-    // PDT display times
-    const toPdt = d => d
-      ? new Date(d).toLocaleString('en-US', { timeZone:'America/Los_Angeles', hour:'2-digit', minute:'2-digit', hour12:false })
+  // Build release events — group by WORK_RELEASE_BATCH_ID to get interval timestamps
+  const releaseGroups = {};
+  for (const r of rows) {
+    const wrId = r.WORK_RELEASE_BATCH_ID;
+    if (!releaseGroups[wrId]) releaseGroups[wrId] = r.CREATED_TIMESTAMP;
+    else if (r.CREATED_TIMESTAMP < releaseGroups[wrId]) releaseGroups[wrId] = r.CREATED_TIMESTAMP;
+  }
+  const releaseOrder = Object.entries(releaseGroups)
+    .sort((a, b) => a[1] < b[1] ? -1 : 1);
+
+  // Map each WORK_RELEASE_BATCH_ID to its interval since the prior release
+  const intervalMap = {};
+  for (let i = 1; i < releaseOrder.length; i++) {
+    const prev = new Date(releaseOrder[i-1][1]);
+    const curr = new Date(releaseOrder[i][1]);
+    intervalMap[releaseOrder[i][0]] = Math.round((curr - prev) / 60000);
+  }
+
+  const batches = rows.map((r, i) => {
+    const statusCode  = String(r.STATUS_ID || '').split('.')[0];
+    const isCleared   = statusCode === '5800';
+    const releasedUtc = r.CREATED_TIMESTAMP;
+    const clearedUtc  = isCleared ? r.UPDATED_TIMESTAMP : null;
+    const minsToClear = (releasedUtc && clearedUtc)
+      ? Math.round((new Date(clearedUtc) - new Date(releasedUtc)) / 60000)
       : null;
 
     return {
-      batch_num:     i + 1,
-      batch_id:      r.batch_id,
-      total_orders:  Number(r.total_orders),
-      total_olpns:   Number(r.total_olpns),
-      released_pdt:  toPdt(r.released_utc),
-      cleared_pdt:   toPdt(r.cleared_utc),
-      released_utc:  r.released_utc,
-      cleared_utc:   r.cleared_utc,
-      mins_to_clear: minsToClear,
-      is_cleared:    Number(r.is_cleared) === 1,
-      status:        r.latest_status,
+      batch_num:              i + 1,
+      batch_id:               r.BATCH_ID,
+      work_release_batch_id:  r.WORK_RELEASE_BATCH_ID,
+      total_orders:           Number(r.TOTAL_ORDERS),
+      total_olpns:            Number(r.TOTAL_OLPNS),
+      status_code:            statusCode,
+      status_label:           BATCH_STATUS_LABELS[statusCode] || statusCode,
+      released_pdt:           toPdt(releasedUtc),
+      cleared_pdt:            toPdt(clearedUtc),
+      released_utc:           releasedUtc,
+      cleared_utc:            clearedUtc,
+      mins_to_clear:          minsToClear,
+      is_cleared:             isCleared,
+      mins_since_prev_release: intervalMap[r.WORK_RELEASE_BATCH_ID] ?? null,
     };
   });
 
-  // Release intervals — time between consecutive releases
-  for (let i = 1; i < batches.length; i++) {
-    const prev = batches[i-1].released_utc ? new Date(batches[i-1].released_utc) : null;
-    const curr = batches[i].released_utc   ? new Date(batches[i].released_utc)   : null;
-    batches[i].mins_since_prev_release = (prev && curr)
-      ? Math.round((curr - prev) / 60000)
-      : null;
-  }
-  if (batches.length) batches[0].mins_since_prev_release = null;
-
-  const cleared    = batches.filter(b => b.is_cleared);
-  const avgClear   = cleared.length
+  const cleared     = batches.filter(b => b.is_cleared);
+  const avgClear    = cleared.length
     ? Math.round(cleared.reduce((s,b) => s + b.mins_to_clear, 0) / cleared.length)
     : null;
-  const intervals  = batches.slice(1).map(b => b.mins_since_prev_release).filter(v => v != null);
+  const intervals   = Object.values(intervalMap);
   const avgInterval = intervals.length
     ? Math.round(intervals.reduce((s,v) => s+v, 0) / intervals.length)
     : null;
@@ -785,10 +807,10 @@ ORDER BY MIN(CREATED_TIMESTAMP) ASC`.trim();
     facility:         FACILITY,
     shift_start_utc:  startStr,
     summary: {
-      total_batches:    batches.length,
-      cleared_batches:  cleared.length,
-      active_batches:   batches.length - cleared.length,
-      avg_mins_to_clear: avgClear,
+      total_batches:             batches.length,
+      cleared_batches:           cleared.length,
+      active_batches:            batches.length - cleared.length,
+      avg_mins_to_clear:         avgClear,
       avg_release_interval_mins: avgInterval,
     },
     batches,

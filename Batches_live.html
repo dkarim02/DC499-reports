@@ -144,6 +144,7 @@
     <table>
       <thead><tr>
         <th class="r">#</th>
+        <th>Batch</th>
         <th>Released</th>
         <th class="r">Orders</th>
         <th class="r">oLPNs</th>
@@ -256,11 +257,11 @@ function fmtDur(mins) {
 }
 
 function badgeHtml(b) {
-  if (b.is_cleared) return '<span class="status-badge badge-cleared">Cleared</span>';
-  var s = String(b.status || '');
-  if (s.startsWith('5600')) return '<span class="status-badge badge-active">In Queue</span>';
-  if (s.startsWith('5400')) return '<span class="status-badge badge-active">Active</span>';
-  return '<span class="status-badge badge-queued">' + s + '</span>';
+  var label = b.status_label || b.status_code || '—';
+  if (b.is_cleared)           return '<span class="status-badge badge-cleared">'  + label + '</span>';
+  if (b.status_code === '5600' || b.status_code === '5400')
+                              return '<span class="status-badge badge-active">'   + label + '</span>';
+  return                             '<span class="status-badge badge-queued">'   + label + '</span>';
 }
 
 function renderData(data) {
@@ -306,16 +307,28 @@ function renderData(data) {
   tilesEl.style.display = 'grid';
   emptyEl.style.display = 'none';
 
-  // Batch table
+  // Batch table — track seen WORK_RELEASE_BATCH_IDs so interval only shows on
+  // the first batch of each release group
   var tbody = document.getElementById('batch-tbody');
   var html  = '';
+  var seenReleaseIds = {};
   data.batches.forEach(function(b) {
-    var intervalCell = b.mins_since_prev_release != null
-      ? '<span class="interval-cell">' + fmtMins(b.mins_since_prev_release) + '</span>'
-      : '<span class="interval-first">first batch</span>';
+    var wrId = b.work_release_batch_id;
+    var isFirstOfGroup = !seenReleaseIds[wrId];
+    seenReleaseIds[wrId] = true;
+
+    var intervalCell;
+    if (!isFirstOfGroup) {
+      intervalCell = '<span style="color:var(--text-hint)">—</span>';
+    } else if (b.mins_since_prev_release != null) {
+      intervalCell = '<span class="interval-cell">' + fmtMins(b.mins_since_prev_release) + '</span>';
+    } else {
+      intervalCell = '<span class="interval-first">first release</span>';
+    }
 
     html += '<tr>';
     html += '<td class="r batch-num">' + b.batch_num + '</td>';
+    html += '<td style="font-family:monospace;font-size:12px;">' + (b.batch_id || '—') + '</td>';
     html += '<td>' + (b.released_pdt || '—') + '</td>';
     html += '<td class="r">' + fmt(b.total_orders) + '</td>';
     html += '<td class="r">' + fmt(b.total_olpns) + '</td>';
