@@ -78,38 +78,27 @@
   .pill-alloc  {background:var(--alloc-bg);color:var(--alloc);}
   .pill-packed {background:var(--packed-bg);color:var(--packed);}
 
-  /* Summary row — clickable */
-  .date-row{cursor:pointer;user-select:none;transition:background 0.12s;}
-  .date-row:hover td{background:var(--surface2);}
-  .date-row td:first-child{display:flex;align-items:center;gap:6px;}
-  .chevron{font-size:10px;color:var(--text-hint);transition:transform 0.2s;flex-shrink:0;}
-  .date-row.open .chevron{transform:rotate(90deg);}
+  /* Status pills in table — clickable */
+  .status-pill{cursor:pointer;transition:opacity 0.15s,box-shadow 0.15s;}
+  .status-pill:hover{opacity:0.8;}
+  .status-pill.active{box-shadow:0 0 0 2px currentColor;}
 
-  /* Expanded detail panel */
-  .detail-row{display:none;background:var(--surface2);}
-  .detail-row.open{display:table-row;}
-  .detail-panel{padding:0 12px 12px;}
-
-  /* Status section header inside detail */
-  .status-section{margin-top:12px;}
-  .status-section-header{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;padding:6px 0;border-bottom:0.5px solid var(--border-mid);}
-  .status-section-header:hover .section-label{color:var(--text);}
-  .section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);}
-  .section-count{font-size:11px;color:var(--text-hint);}
-  .section-chevron{font-size:9px;color:var(--text-hint);transition:transform 0.2s;margin-left:auto;}
-  .status-section-header.open .section-chevron{transform:rotate(90deg);}
-
-  /* Order list inside each status section */
-  .order-list{display:none;margin-top:4px;}
-  .order-list.open{display:block;}
-  .order-list-inner{max-height:260px;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;font-size:13px;}
+  /* Order detail panel — below the table card */
+  .order-detail-card{display:none;background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+  .order-detail-card.open{display:block;}
+  .detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .detail-title{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:var(--text);}
+  .detail-close{background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-hint);line-height:1;font-family:inherit;padding:0 4px;}
+  .detail-close:hover{color:var(--text);}
+  .order-list-inner{max-height:320px;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;font-size:13px;}
   .order-list-inner::-webkit-scrollbar{width:5px;}
   .order-list-inner::-webkit-scrollbar-track{background:transparent;}
   .order-list-inner::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
-  .order-item{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:0.5px solid var(--border-light);}
+  .order-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid var(--border-light);}
   .order-item:last-child{border-bottom:none;}
   .order-id{font-family:monospace;font-size:12px;color:var(--text);}
   .order-lines{font-size:11px;color:var(--text-hint);}
+  .detail-empty{padding:2rem;text-align:center;color:var(--text-hint);font-size:13px;}
 
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
@@ -166,7 +155,7 @@
   </div>
 
   <div class="card" id="table-card" style="display:none;">
-    <div class="card-title">Order Lines by Date &mdash; click a row to expand</div>
+    <div class="card-title">Order Lines by Date &mdash; tap a status to see orders</div>
     <table>
       <thead><tr>
         <th>Date</th>
@@ -188,6 +177,15 @@
     </table>
   </div>
 
+  <!-- Order detail panel — renders below table when a status pill is clicked -->
+  <div class="order-detail-card" id="order-detail-card">
+    <div class="detail-header">
+      <div class="detail-title" id="detail-title"></div>
+      <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close">&times;</button>
+    </div>
+    <div class="order-list-inner" id="detail-order-list"></div>
+  </div>
+
   <div class="empty-state" id="empty-state" style="display:none;">
     <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
     No data yet. Click <strong>Refresh</strong> to reload.
@@ -204,6 +202,8 @@ var lastData    = null;
 var autoRefreshTimer = null;
 var countdownTimer   = null;
 var nextRefreshAt    = null;
+// Active pill selection: {date, status} or null
+var activeSelection  = null;
 
 // -- Theme --------------------------------------------------------------------
 function applyTheme(dark) {
@@ -277,59 +277,60 @@ function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// -- Detail panel builder -----------------------------------------------------
-function buildDetailPanel(row) {
-  var orders = row.orders || [];
-  if (!orders.length) {
-    return '<div class="detail-panel" style="padding:12px;font-size:13px;color:var(--text-hint);">No open order detail available.</div>';
-  }
+// -- Order detail panel -------------------------------------------------------
+var PILL_LABEL = { READY: 'Ready', ALLOCATED: 'Allocated', PACKED: 'Packed' };
+var PILL_CLASS = { READY: 'pill-ready', ALLOCATED: 'pill-alloc', PACKED: 'pill-packed' };
 
-  // Group orders by status
-  var groups = {};
-  var STATUS_ORDER = ['READY', 'ALLOCATED', 'PACKED'];
-  STATUS_ORDER.forEach(function(s) { groups[s] = []; });
-  orders.forEach(function(o) {
-    var s = o.status.toUpperCase();
-    if (!groups[s]) groups[s] = [];
-    groups[s].push(o);
+function openDetailPanel(date, status, row) {
+  var key = date + '|' + status;
+  // Toggle off if same pill clicked again
+  if (activeSelection && activeSelection.key === key) {
+    closeDetailPanel();
+    return;
+  }
+  activeSelection = { key: key };
+
+  // De-highlight all pills, highlight the active one
+  document.querySelectorAll('.status-pill').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  var activePill = document.querySelector('[data-pill="' + key + '"]');
+  if (activePill) activePill.classList.add('active');
+
+  var orders = (row.orders || []).filter(function(o) {
+    return o.status.toUpperCase() === status;
   });
 
-  var pillClass = { READY: 'pill-ready', ALLOCATED: 'pill-alloc', PACKED: 'pill-packed' };
-  var html = '<div class="detail-panel">';
+  var titleEl = document.getElementById('detail-title');
+  var listEl  = document.getElementById('detail-order-list');
+  var card    = document.getElementById('order-detail-card');
 
-  STATUS_ORDER.forEach(function(status) {
-    var list = groups[status] || [];
-    if (!list.length) return;
+  var pillBadge = '<span class="status-pill ' + (PILL_CLASS[status] || '') + '" style="font-size:11px;">' + (PILL_LABEL[status] || status) + '</span>';
+  titleEl.innerHTML = fmtDate(date) + ' &nbsp;' + pillBadge + '&nbsp; <span style="color:var(--text-muted);font-weight:400;">' + orders.length + ' orders</span>';
 
-    var sectionId = 'sec-' + row.date + '-' + status;
-    var listId    = 'list-' + row.date + '-' + status;
-
-    html += '<div class="status-section">';
-    html += '<div class="status-section-header" onclick="toggleSection(\'' + listId + '\',this)" id="' + sectionId + '">';
-    html += '<span class="status-pill ' + (pillClass[status] || '') + '">' + status + '</span>';
-    html += '<span class="section-count">' + list.length + ' orders</span>';
-    html += '<span class="section-chevron">&#9654;</span>';
-    html += '</div>';
-    html += '<div class="order-list" id="' + listId + '">';
-    html += '<div class="order-list-inner">';
-    list.forEach(function(o) {
+  if (!orders.length) {
+    listEl.innerHTML = '<div class="detail-empty">No orders found for this status.</div>';
+  } else {
+    var html = '';
+    orders.forEach(function(o) {
       html += '<div class="order-item">';
       html += '<span class="order-id">' + escHtml(o.order_id) + '</span>';
       html += '<span class="order-lines">' + o.line_count + (o.line_count === 1 ? ' line' : ' lines') + '</span>';
       html += '</div>';
     });
-    html += '</div></div></div>';
-  });
+    listEl.innerHTML = html;
+  }
 
-  html += '</div>';
-  return html;
+  card.classList.add('open');
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function toggleSection(listId, headerEl) {
-  var list = document.getElementById(listId);
-  if (!list) return;
-  var isOpen = list.classList.toggle('open');
-  headerEl.classList.toggle('open', isOpen);
+function closeDetailPanel() {
+  activeSelection = null;
+  document.getElementById('order-detail-card').classList.remove('open');
+  document.querySelectorAll('.status-pill').forEach(function(el) {
+    el.classList.remove('active');
+  });
 }
 
 // -- Render -------------------------------------------------------------------
@@ -372,6 +373,9 @@ function renderData(data) {
   tb.innerHTML = '';
   var totR = 0, totA = 0, totP = 0, totO = 0, totS = 0;
 
+  // Reset active selection when data refreshes
+  closeDetailPanel();
+
   data.dates.forEach(function(row) {
     var open = (row.ready || 0) + (row.allocated || 0) + (row.packed || 0);
     totR += row.ready     || 0;
@@ -380,53 +384,56 @@ function renderData(data) {
     totO += open;
     totS += row.shipped   || 0;
 
-    var summaryRowId = 'drow-' + row.date;
-    var detailRowId  = 'ddetail-' + row.date;
-    var detailCellId = 'dcell-' + row.date;
-
-    // Summary row
     var tr = document.createElement('tr');
-    tr.className = 'date-row';
-    tr.id = summaryRowId;
-    tr.innerHTML =
-      '<td style="font-weight:500;"><span class="chevron">&#9654;</span>' +
-        fmtDate(row.date) + (row.date === data.today ? ' <span style="font-size:10px;color:var(--text-hint);">today</span>' : '') +
-      '</td>' +
-      '<td class="r"><span class="status-pill pill-ready">'  + fmt(row.ready)     + '</span></td>' +
-      '<td class="r"><span class="status-pill pill-alloc">'  + fmt(row.allocated) + '</span></td>' +
-      '<td class="r"><span class="status-pill pill-packed">' + fmt(row.packed)    + '</span></td>' +
-      '<td class="r" style="font-weight:500;">' + fmt(open) + '</td>' +
-      '<td class="r" style="color:var(--text-hint);">' + fmt(row.shipped) + '</td>';
 
-    // Capture for closure
-    (function(r) {
-      tr.addEventListener('click', function() {
-        var summaryRow = document.getElementById('drow-' + r.date);
-        var detailRow  = document.getElementById('ddetail-' + r.date);
-        var isOpen = summaryRow.classList.toggle('open');
-        detailRow.classList.toggle('open', isOpen);
-        // Lazy-build detail panel on first open
-        if (isOpen) {
-          var cell = document.getElementById('dcell-' + r.date);
-          if (!cell.hasChildNodes()) {
-            cell.innerHTML = buildDetailPanel(r);
-          }
-        }
-      });
-    })(row);
+    // Build clickable pill cells inline — use data-pill for targeting
+    function pillCell(status, count, pillCls) {
+      var key = row.date + '|' + status;
+      var td = document.createElement('td');
+      td.className = 'r';
+      if (count > 0) {
+        var span = document.createElement('span');
+        span.className = 'status-pill ' + pillCls;
+        span.setAttribute('data-pill', key);
+        span.textContent = fmt(count);
+        span.title = 'Show ' + status.toLowerCase() + ' orders';
+        (function(d, s, r) {
+          span.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openDetailPanel(d, s, r);
+          });
+        })(row.date, status, row);
+        td.appendChild(span);
+      } else {
+        td.style.color = 'var(--text-hint)';
+        td.textContent = '0';
+      }
+      return td;
+    }
+
+    var dateTd = document.createElement('td');
+    dateTd.style.fontWeight = '500';
+    dateTd.innerHTML = fmtDate(row.date) +
+      (row.date === data.today ? ' <span style="font-size:10px;color:var(--text-hint);">today</span>' : '');
+
+    var openTd = document.createElement('td');
+    openTd.className = 'r';
+    openTd.style.fontWeight = '500';
+    openTd.textContent = fmt(open);
+
+    var shipTd = document.createElement('td');
+    shipTd.className = 'r';
+    shipTd.style.color = 'var(--text-hint)';
+    shipTd.textContent = fmt(row.shipped);
+
+    tr.appendChild(dateTd);
+    tr.appendChild(pillCell('READY',     row.ready     || 0, 'pill-ready'));
+    tr.appendChild(pillCell('ALLOCATED', row.allocated || 0, 'pill-alloc'));
+    tr.appendChild(pillCell('PACKED',    row.packed    || 0, 'pill-packed'));
+    tr.appendChild(openTd);
+    tr.appendChild(shipTd);
 
     tb.appendChild(tr);
-
-    // Detail row (hidden until toggled)
-    var trDetail = document.createElement('tr');
-    trDetail.className = 'detail-row';
-    trDetail.id = detailRowId;
-    var tdDetail = document.createElement('td');
-    tdDetail.id = detailCellId;
-    tdDetail.colSpan = 6;
-    tdDetail.style.padding = '0';
-    trDetail.appendChild(tdDetail);
-    tb.appendChild(trDetail);
   });
 
   document.getElementById('ft-ready').textContent   = fmt(totR);
