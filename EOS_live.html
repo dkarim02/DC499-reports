@@ -6,154 +6,147 @@
 <title>EOS Report — DC499</title>
 <style>
   :root {
-    --bg:#0c0f1a; --surface:#111827; --surface2:#1a2235;
-    --border:#1e293b; --border-light:#162032;
-    --text:#e2e8f0; --text-muted:#94a3b8; --text-hint:#475569;
-    --amber:#f59e0b; --amber-dim:rgba(245,158,11,0.09);
-    --green:#10b981; --green-dim:rgba(16,185,129,0.08);
-    --red:#f87171; --yellow:#fbbf24; --yellow-dim:rgba(251,191,36,0.08);
+    --bg:#0d1117; --surface:#161b22; --surface2:#1c2231;
+    --border:#253352; --border-light:#1e2d47;
+    --text:#f0f4f8; --text-muted:#a0aec0; --text-hint:#6b80a0;
+    --amber:#f59e0b; --amber-dim:rgba(245,158,11,0.08);
+    --green:#10b981; --green-dim:rgba(16,185,129,0.09);
+    --red:#f87171; --yellow:#fbbf24; --yellow-dim:rgba(251,191,36,0.09);
     --mono:'Consolas','Courier New',monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;padding:0 0 56px;}
 
-  /* ── top bar ── */
-  .top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;}
-  .top-bar-title{font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--amber);}
-  .top-bar-sub{font-size:11px;color:var(--text-hint);margin-left:2px;font-weight:400;text-transform:none;letter-spacing:0;}
+  /* top bar */
+  .top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;}
+  .top-bar-title{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--amber);}
+  .top-bar-sub{font-size:11px;color:var(--text-hint);margin-left:3px;font-weight:400;text-transform:none;letter-spacing:0;}
   .spacer{flex:1;}
   .btn{padding:5px 14px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;transition:all .15s;}
   .btn:hover{border-color:var(--amber);color:var(--amber);}
-  .status-chip{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-hint);padding:4px 10px;border:1px solid var(--border);border-radius:20px;}
-  .status-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--text-hint);flex-shrink:0;}
+  .status-chip{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-hint);padding:3px 10px;border:1px solid var(--border);border-radius:20px;}
+  .status-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--text-hint);flex-shrink:0;transition:background .2s;}
   .status-chip .dot.sos{background:var(--yellow);}
   .status-chip .dot.eos{background:var(--green);}
 
-  /* ── layout ── */
-  .container{max-width:940px;margin:0 auto;padding:24px 16px;}
+  /* layout */
+  .container{max-width:900px;margin:0 auto;padding:20px 16px;}
 
-  /* ── report masthead ── */
-  .masthead{margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border);}
-  .masthead-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
-  .masthead-left{}
-  .masthead-eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-hint);margin-bottom:4px;}
-  .masthead-date{font-size:28px;font-weight:300;color:var(--text);letter-spacing:-.5px;font-family:var(--mono);}
-  .masthead-shift{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--amber);border:1px solid var(--amber);border-radius:3px;padding:2px 8px;margin-top:6px;}
-  .masthead-snapshots{display:flex;gap:24px;align-items:flex-start;}
-  .snapshot{display:flex;flex-direction:column;gap:3px;align-items:flex-end;}
-  .snapshot-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-hint);}
-  .snapshot-time{font-size:18px;font-weight:400;font-family:var(--mono);color:var(--text);}
-  .snapshot-time.missing{font-size:13px;color:var(--text-hint);font-style:italic;font-family:'Segoe UI',system-ui,sans-serif;}
-  .snapshot-divider{width:1px;background:var(--border);align-self:stretch;margin:0 4px;}
+  /* masthead */
+  .masthead{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  .masthead-eyebrow{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-hint);margin-bottom:5px;}
+  .masthead-date{font-size:26px;font-weight:300;color:var(--text);letter-spacing:-.3px;font-family:var(--mono);}
+  .masthead-shift{display:inline-block;margin-top:7px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--amber);border:1px solid var(--amber);border-radius:3px;padding:2px 8px;}
+  .masthead-snaps{display:flex;gap:0;align-items:stretch;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .snap{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 20px;}
+  .snap:first-child{border-right:1px solid var(--border);}
+  .snap-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-hint);}
+  .snap-time{font-size:17px;font-family:var(--mono);font-weight:500;color:var(--text);}
+  .snap-time.missing{font-size:12px;color:var(--text-hint);font-style:italic;font-family:'Segoe UI',system-ui,sans-serif;}
 
-  /* ── section ── */
-  .section{margin-bottom:22px;}
-  .section-title{display:flex;align-items:center;gap:0;margin-bottom:12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-hint);}
-  .section-title::before,.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
-  .section-title::before{margin-right:10px;}
-  .section-title::after{margin-left:10px;}
+  /* section block — uniform card for every dept */
+  .section-block{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;}
+  .section-head{background:var(--surface2);border-left:3px solid var(--amber);border-bottom:1px solid var(--border);padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text);}
 
-  /* ── pill grid ── */
-  .pill-grid{display:grid;gap:8px;}
-  .pill-grid.cols-2{grid-template-columns:repeat(2,1fr);}
-  .pill-grid.cols-3{grid-template-columns:repeat(3,1fr);}
-  .pill-grid.cols-4{grid-template-columns:repeat(4,1fr);}
-  .pill-grid.cols-5{grid-template-columns:repeat(5,1fr);}
+  /* dept table — consistent 4-col structure */
+  .dept-table{width:100%;border-collapse:collapse;}
+  .dept-table thead th{padding:6px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-hint);background:var(--surface2);border-bottom:1px solid var(--border);text-align:right;}
+  .dept-table thead th.col-field{text-align:left;width:42%;}
+  .dept-table thead th.col-sos{width:16%;}
+  .dept-table thead th.col-eos{width:20%;}
+  .dept-table thead th.col-chg{width:14%;}
+  .dept-table tbody tr{border-bottom:1px solid var(--border-light);}
+  .dept-table tbody tr:last-child:not(.notes-row){border-bottom:none;}
+  .dept-table tbody tr.notes-row{border-bottom:none;}
+  .dept-table tbody tr:hover:not(.notes-row){background:rgba(255,255,255,0.02);}
 
-  /* ── pill ── */
-  .pill{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 13px;display:flex;flex-direction:column;gap:5px;position:relative;}
-  .pill-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-hint);}
-  .pill-values{display:flex;align-items:baseline;gap:10px;}
-  .sos-val{font-size:16px;font-weight:400;font-family:var(--mono);color:var(--text-hint);}
-  .sos-val.missing{font-size:11px;font-style:italic;font-family:'Segoe UI',system-ui,sans-serif;color:var(--text-hint);}
-  .eos-val{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1;}
-  .pill-footer{display:flex;align-items:center;justify-content:space-between;}
-  .pill-tags{display:flex;gap:8px;}
-  .pill-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
-  .pill-tag.sos{color:var(--text-hint);}
-  .pill-tag.eos{color:var(--text-muted);}
-  .diff-badge{font-size:10px;font-family:var(--mono);font-weight:700;padding:1px 5px;border-radius:3px;}
-  .diff-badge.up{color:var(--green);background:var(--green-dim);}
-  .diff-badge.dn{color:var(--red);background:rgba(248,113,113,0.1);}
+  /* table cells */
+  .dept-table td{padding:10px 14px;vertical-align:middle;}
+  td.field-name{font-size:13px;font-weight:500;color:var(--text);}
+  td.val-sos{text-align:right;font-family:var(--mono);font-size:15px;font-weight:400;color:var(--text-muted);}
+  td.val-sos.missing{font-size:11px;color:var(--text-hint);font-family:'Segoe UI',system-ui,sans-serif;font-style:italic;}
+  td.val-eos{text-align:right;font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text);}
+  td.val-chg{text-align:right;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text-hint);}
+  td.val-chg.up{color:var(--green);}
+  td.val-chg.dn{color:var(--red);}
 
-  /* pill accent variants */
-  .pill.accent{border-color:rgba(245,158,11,0.35);background:var(--amber-dim);}
-  .pill.accent .eos-val{color:var(--amber);}
-  .pill.warn{border-color:rgba(251,191,36,0.3);background:var(--yellow-dim);}
-  .pill.warn .eos-val{color:var(--yellow);}
-  .pill.good{border-color:rgba(16,185,129,0.25);background:var(--green-dim);}
-  .pill.good .eos-val{color:var(--green);}
+  /* EOS value accent states */
+  td.val-eos.is-accent{color:var(--amber);}
+  td.val-eos.is-warn{color:var(--yellow);}
+  td.val-eos.is-good{color:var(--green);}
 
-  /* note pill */
-  .pill.note-pill{flex-direction:column;padding:10px 13px;}
-  .pill.note-pill textarea{background:transparent;border:none;color:var(--text-muted);font-size:12px;font-family:'Segoe UI',system-ui,sans-serif;resize:vertical;min-height:44px;outline:none;width:100%;line-height:1.5;}
-  .pill.note-pill textarea::placeholder{color:var(--text-hint);}
+  /* manual entry cell */
+  td.manual-cell{vertical-align:middle;}
+  .manual-cell input{width:100%;background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--text);font-size:17px;font-weight:700;font-family:var(--mono);padding:2px 0 3px;outline:none;}
+  .manual-cell input:focus{border-bottom-color:var(--amber);border-bottom-style:solid;}
+  .manual-cell input::placeholder{color:var(--text-hint);font-size:12px;font-weight:400;font-family:'Segoe UI',system-ui,sans-serif;}
 
-  /* manual input */
-  .manual-input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-size:18px;font-weight:700;font-family:var(--mono);padding:2px 0 4px;outline:none;margin-top:2px;}
-  .manual-input:focus{border-bottom-color:var(--amber);}
-  .manual-input::placeholder{color:var(--text-hint);font-size:12px;font-weight:400;font-family:'Segoe UI',system-ui,sans-serif;}
-  .manual-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-hint);margin-top:4px;}
+  /* notes row */
+  tr.notes-row td{padding:8px 14px;border-top:1px solid var(--border-light);}
+  .notes-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-hint);margin-bottom:4px;}
+  tr.notes-row textarea{width:100%;background:transparent;border:none;color:var(--text-muted);font-size:12px;font-family:'Segoe UI',system-ui,sans-serif;resize:vertical;min-height:34px;outline:none;line-height:1.5;}
+  tr.notes-row textarea::placeholder{color:var(--text-hint);}
 
-  /* ── wave table ── */
-  .wave-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .wave-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-  .wave-card-header{background:var(--surface2);padding:7px 14px;display:flex;justify-content:space-between;align-items:center;}
-  .wave-card-header span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-hint);}
-  .wave-row{display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border-light);gap:10px;}
-  .wave-row:last-child{border-bottom:none;}
-  .wave-row.total-row{background:var(--amber-dim);border-top:1px solid rgba(245,158,11,0.2);}
-  .wave-type{flex:1;font-size:12px;color:var(--text-muted);}
-  .wave-row.total-row .wave-type{font-weight:700;color:var(--amber);}
-  .wave-bar-wrap{flex:2;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
-  .wave-bar{height:100%;background:var(--amber);border-radius:2px;opacity:.6;transition:width .4s ease;}
-  .wave-row.total-row .wave-bar{opacity:0;}
-  .wave-count{font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text);min-width:32px;text-align:right;}
-  .wave-row.total-row .wave-count{color:var(--amber);}
+  /* waves table variant */
+  .wave-table{width:100%;border-collapse:collapse;}
+  .wave-table thead th{padding:6px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-hint);background:var(--surface2);border-bottom:1px solid var(--border);text-align:left;}
+  .wave-table thead th.wt-count{text-align:right;width:80px;}
+  .wave-table tbody tr{border-bottom:1px solid var(--border-light);}
+  .wave-table tbody tr:last-child{border-bottom:none;}
+  .wave-table tbody tr.wave-total{background:var(--amber-dim);border-top:1px solid rgba(245,158,11,0.2);}
+  .wave-table td{padding:9px 14px;vertical-align:middle;}
+  td.wt-name{font-size:13px;font-weight:500;color:var(--text-muted);width:28%;}
+  .wave-table tr.wave-total td.wt-name{font-weight:700;color:var(--amber);}
+  td.wt-bar{padding-right:8px;}
+  .bar-wrap{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--amber);border-radius:3px;opacity:.7;}
+  td.wt-count{text-align:right;font-family:var(--mono);font-size:17px;font-weight:700;color:var(--text);width:80px;}
+  .wave-table tr.wave-total td.wt-count{color:var(--amber);}
 
-  /* ── error / info banner ── */
-  .info-banner{background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:20px;line-height:1.5;}
+  /* info banner */
+  .info-banner{background:var(--amber-dim);border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.5;}
 
-  /* ── disclaimer ── */
-  .disclaimer{font-size:9px;color:var(--text-hint);text-align:center;margin-top:32px;padding:0 20px;line-height:1.6;letter-spacing:.2px;}
+  /* disclaimer */
+  .disclaimer{font-size:10px;color:var(--text-hint);text-align:center;margin-top:28px;line-height:1.6;}
 
-  /* ── print ── */
+  /* print */
   @media print {
     body{background:#fff;color:#111;padding:0;}
-    .top-bar,.btn{display:none;}
+    .top-bar{display:none;}
+    .section-block{border-color:#ccc;background:#fff;}
+    .section-head{background:#f5f5f5;border-left-color:#f59e0b;color:#111;}
+    .dept-table thead{background:#f5f5f5;}
+    .dept-table thead th{color:#666;background:#f5f5f5;}
+    td.field-name{color:#111;}
+    td.val-sos{color:#999;}
+    td.val-eos{color:#111;}
+    td.val-eos.is-accent{color:#b45309;}
+    td.val-eos.is-warn{color:#b45309;}
+    td.val-eos.is-good{color:#065f46;}
+    .manual-cell input{color:#111;border-bottom-color:#aaa;}
+    tr.notes-row td{border-top-color:#ddd;}
+    tr.notes-row textarea{color:#444;}
     .masthead{border-color:#ddd;}
     .masthead-date{color:#111;}
-    .masthead-eyebrow,.snapshot-label{color:#666;}
-    .snapshot-time{color:#111;}
-    .section-title{color:#999;}
-    .section-title::before,.section-title::after{background:#ddd;}
-    .pill{background:#fff;border-color:#ddd;}
-    .pill-label{color:#888;}
-    .sos-val{color:#aaa;}
-    .eos-val{color:#111;}
-    .pill.accent{background:#fffbeb;border-color:#f59e0b;}
-    .pill.warn{background:#fffbeb;border-color:#f59e0b;}
-    .pill.good{background:#f0fdf4;border-color:#10b981;}
-    .manual-input{color:#111;border-bottom-color:#aaa;}
-    .wave-card{background:#fff;border-color:#ddd;}
-    .wave-card-header{background:#f8f8f8;}
-    .wave-type{color:#444;}
-    .wave-count{color:#111;}
+    .masthead-snaps{border-color:#ddd;}
+    .snap:first-child{border-right-color:#ddd;}
+    .snap-time{color:#111;}
+    .wave-table thead th{color:#666;background:#f5f5f5;}
+    td.wt-name{color:#444;}
+    td.wt-count{color:#111;}
     .disclaimer{color:#aaa;}
   }
 
-  @media(max-width:640px){
-    .pill-grid.cols-3,.pill-grid.cols-4,.pill-grid.cols-5{grid-template-columns:repeat(2,1fr);}
-    .wave-grid{grid-template-columns:1fr;}
-    .masthead-top{flex-direction:column;}
-    .masthead-snapshots{flex-direction:row;}
+  @media(max-width:600px){
+    .dept-table thead th.col-sos,.dept-table td.val-sos{display:none;}
+    .dept-table thead th.col-field{width:52%;}
   }
 </style>
 </head>
 <body>
 
 <div class="top-bar">
-  <span class="top-bar-title">EOS Report <span class="top-bar-sub">DC499</span></span>
+  <span class="top-bar-title">EOS Report<span class="top-bar-sub"> · DC499</span></span>
   <div class="spacer"></div>
   <div class="status-chip">
     <span class="dot" id="status-dot"></span>
@@ -163,7 +156,7 @@
 </div>
 
 <div class="container" id="main-container">
-  <div style="text-align:center;padding:60px;color:var(--text-hint);font-size:13px;">Loading report data...</div>
+  <div style="text-align:center;padding:60px;color:var(--text-hint);font-size:13px;">Loading...</div>
 </div>
 
 <script>
@@ -175,86 +168,92 @@ function fmt(v) {
   if (v === null || v === undefined) return '—';
   return Number(v).toLocaleString();
 }
-
-function diff(s, e) {
-  if (s === null || s === undefined || e === null || e === undefined) return '';
+function chgText(s, e) {
+  if (s == null || e == null) return '—';
   const d = e - s;
-  if (d === 0) return '';
-  const sign = d > 0 ? '+' : '';
-  const cls  = d > 0 ? 'up' : 'dn';
-  return `<span class="diff-badge ${cls}">${sign}${d.toLocaleString()}</span>`;
+  if (d === 0) return '±0';
+  return (d > 0 ? '+' : '') + d.toLocaleString();
+}
+function chgClass(s, e) {
+  if (s == null || e == null) return '';
+  return (e - s) > 0 ? 'up' : (e - s) < 0 ? 'dn' : '';
 }
 
-function pill(label, sosVal, eosVal, opts) {
-  opts = opts || {};
-  const cls    = opts.cls || '';
-  const sosTxt = (sosVal !== null && sosVal !== undefined)
-    ? `<span class="sos-val">${fmt(sosVal)}</span>`
-    : `<span class="sos-val missing">no SOS</span>`;
-  const hasSos = sosVal !== null && sosVal !== undefined;
+// ── table row builders ────────────────────────────────────────────────────────
+function tRow(label, sv, ev, evClass) {
+  const sosTxt  = sv != null ? fmt(sv) : null;
+  const sosCls  = sv == null ? 'missing' : '';
+  const sosDisp = sosTxt || 'no SOS';
   return `
-  <div class="pill ${cls}">
-    <div class="pill-label">${label}</div>
-    <div class="pill-values">
-      ${sosTxt}
-      <span class="eos-val">${fmt(eosVal)}</span>
-      ${diff(sosVal, eosVal)}
-    </div>
-    <div class="pill-footer">
-      <div class="pill-tags">
-        <span class="pill-tag sos">SOS</span>
-        <span class="pill-tag eos">EOS</span>
-      </div>
-    </div>
-  </div>`;
+  <tr>
+    <td class="field-name">${label}</td>
+    <td class="val-sos ${sosCls}">${sosDisp}</td>
+    <td class="val-eos ${evClass||''}">${fmt(ev)}</td>
+    <td class="val-chg ${chgClass(sv,ev)}">${chgText(sv,ev)}</td>
+  </tr>`;
 }
 
-function pillManual(label, id, opts) {
-  opts = opts || {};
-  const cls = opts.cls || '';
-  const ph  = opts.placeholder || 'Enter value';
+function tManual(label, id, placeholder) {
   return `
-  <div class="pill ${cls}">
-    <div class="pill-label">${label}</div>
-    <input class="manual-input" id="manual-${id}" type="text" placeholder="${ph}" autocomplete="off">
-    <div class="manual-tag">Manual entry</div>
-  </div>`;
+  <tr>
+    <td class="field-name">${label}</td>
+    <td class="val-sos missing">—</td>
+    <td class="manual-cell" colspan="2">
+      <input id="manual-${id}" type="text" placeholder="${placeholder||'Enter value'}" autocomplete="off">
+    </td>
+  </tr>`;
 }
 
-function noteField(section) {
+function tNotes(section) {
   const id = section.replace(/\s/g,'-').toLowerCase();
   return `
-  <div class="pill note-pill">
-    <div class="pill-label">Notes — ${section}</div>
-    <textarea id="note-${id}" placeholder="Add notes..."></textarea>
+  <tr class="notes-row">
+    <td colspan="4">
+      <div class="notes-label">Notes</div>
+      <textarea id="note-${id}" placeholder="Add notes for ${section}..."></textarea>
+    </td>
+  </tr>`;
+}
+
+function sectionBlock(title, rows) {
+  return `
+  <div class="section-block">
+    <div class="section-head">${title}</div>
+    <table class="dept-table">
+      <thead><tr>
+        <th class="col-field"></th>
+        <th class="col-sos">SOS</th>
+        <th class="col-eos">EOS</th>
+        <th class="col-chg">Change</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
   </div>`;
 }
 
+// ── render ────────────────────────────────────────────────────────────────────
 function render() {
   const container = document.getElementById('main-container');
   const s = sos, e = eos;
-  const sosTime  = s ? s.captured_at  : null;
-  const eosTime  = e ? e.captured_at  : null;
-  const dateDisp = e ? fmtDate(e.date) : (s ? fmtDate(s.date) : null);
+  const sosTime  = s ? s.captured_at : null;
+  const eosTime  = e ? e.captured_at : null;
+  const dateDisp = fmtDate((e||s)?.date);
 
   let html = `
   <div class="masthead">
-    <div class="masthead-top">
-      <div class="masthead-left">
-        <div class="masthead-eyebrow">End of Shift Report &nbsp;·&nbsp; DC499 Nordstrom</div>
-        <div class="masthead-date">${dateDisp || '—'}</div>
-        <span class="masthead-shift">B Shift</span>
+    <div>
+      <div class="masthead-eyebrow">End of Shift Report &nbsp;·&nbsp; DC499 Nordstrom</div>
+      <div class="masthead-date">${dateDisp || '—'}</div>
+      <span class="masthead-shift">B Shift</span>
+    </div>
+    <div class="masthead-snaps">
+      <div class="snap">
+        <div class="snap-label">SOS</div>
+        <div class="snap-time ${sosTime?'':'missing'}">${sosTime||'Not captured'}</div>
       </div>
-      <div class="masthead-snapshots">
-        <div class="snapshot">
-          <div class="snapshot-label">SOS</div>
-          <div class="snapshot-time ${sosTime?'':'missing'}">${sosTime || 'Not captured'}</div>
-        </div>
-        <div class="snapshot-divider"></div>
-        <div class="snapshot">
-          <div class="snapshot-label">EOS</div>
-          <div class="snapshot-time ${eosTime?'':'missing'}">${eosTime || 'Not captured'}</div>
-        </div>
+      <div class="snap">
+        <div class="snap-label">EOS</div>
+        <div class="snap-time ${eosTime?'':'missing'}">${eosTime||'Not captured'}</div>
       </div>
     </div>
   </div>`;
@@ -263,121 +262,90 @@ function render() {
     html += `<div class="info-banner">No data loaded — run <strong>eos.bat → Option 1</strong> at 2:10 PM to capture SOS, then <strong>Option 2</strong> at shift end. Fill in manual fields below.</div>`;
   }
 
+  const hospCls = (e?.hospital_orders ?? s?.hospital_orders ?? 0) > 0 ? 'is-warn' : '';
+
   // ORDERS & UNITS
-  html += `
-  <div class="section">
-    <div class="section-title">Orders &amp; Units</div>
-    <div class="pill-grid cols-4">
-      ${pill('Total Orders',       s?.open_orders      ?? null, e?.open_orders      ?? null, {cls:'accent'})}
-      ${pill('Total Units',        s?.open_units       ?? null, e?.open_units       ?? null)}
-      ${pill('Hospital Orders',    s?.hospital_orders  ?? null, e?.hospital_orders  ?? null, {cls: (e?.hospital_orders ?? s?.hospital_orders ?? 0) > 0 ? 'warn' : ''})}
-      ${pillManual('68-Criteria Orders', 'batch-criteria', {placeholder:'e.g. 68'})}
-    </div>
-  </div>`;
+  html += sectionBlock('Orders &amp; Units',
+    tRow('Total Orders',       s?.open_orders     ?? null, e?.open_orders     ?? null, 'is-accent') +
+    tRow('Total Units',        s?.open_units      ?? null, e?.open_units      ?? null) +
+    tRow('Hospital Orders',    s?.hospital_orders ?? null, e?.hospital_orders ?? null, hospCls) +
+    tManual('68-Criteria Orders', 'batch-criteria', 'e.g. 68')
+  );
 
   // PICKING
-  html += `
-  <div class="section">
-    <div class="section-title">Picking</div>
-    <div class="pill-grid cols-3">
-      ${pill('Pick Tasks Open',      s?.pick_open ?? null, e?.pick_open ?? null, {cls:(e?.pick_open ?? 0)>0?'warn':'good'})}
-      ${pill('Pick Tasks Completed', s?.pick_done ?? null, e?.pick_done ?? null)}
-      ${noteField('Picking')}
-    </div>
-  </div>`;
+  html += sectionBlock('Picking',
+    tRow('Pick Tasks Open',      s?.pick_open ?? null, e?.pick_open ?? null, (e?.pick_open ?? 0)>0 ? 'is-warn' : 'is-good') +
+    tRow('Pick Tasks Completed', s?.pick_done ?? null, e?.pick_done ?? null) +
+    tNotes('Picking')
+  );
 
   // SORTING
-  html += `
-  <div class="section">
-    <div class="section-title">Sorting</div>
-    <div class="pill-grid cols-5">
-      ${pill('Batches in Queue',    s?.batches_in_queue    ?? null, e?.batches_in_queue    ?? null, {cls:(e?.batches_in_queue ?? 0)>0?'warn':'good'})}
-      ${pill('Orders Not Released', s?.orders_not_released ?? null, e?.orders_not_released ?? null)}
-      ${pillManual('Avg Release Interval', 'avg-release', {placeholder:'e.g. 45 min'})}
-      ${pill('Batches Cleared',     s?.batches_cleared     ?? null, e?.batches_cleared     ?? null)}
-      ${noteField('Sorting')}
-    </div>
-  </div>`;
+  html += sectionBlock('Sorting',
+    tRow('Batches in Queue',     s?.batches_in_queue    ?? null, e?.batches_in_queue    ?? null, (e?.batches_in_queue ?? 0)>0 ? 'is-warn' : 'is-good') +
+    tRow('Orders Not Released',  s?.orders_not_released ?? null, e?.orders_not_released ?? null) +
+    tRow('Batches Cleared',      s?.batches_cleared     ?? null, e?.batches_cleared     ?? null) +
+    tManual('Avg Release Interval', 'avg-release', 'e.g. 45 min') +
+    tNotes('Sorting')
+  );
 
   // PACKING
-  html += `
-  <div class="section">
-    <div class="section-title">Packing</div>
-    <div class="pill-grid cols-4">
-      ${pillManual('Line Capacity',  'line-capacity',  {placeholder:'e.g. 6/8 stations'})}
-      ${pillManual('Cross-Training', 'cross-training', {placeholder:'e.g. 2 associates'})}
-      ${pill('Packed Not Shipped',   s?.packed_not_shipped ?? null, e?.packed_not_shipped ?? null)}
-      ${noteField('Packing')}
-    </div>
-  </div>`;
+  html += sectionBlock('Packing',
+    tManual('Line Capacity',   'line-capacity',  'e.g. 6/8 stations') +
+    tManual('Cross-Training',  'cross-training', 'e.g. 2 associates') +
+    tRow('Packed Not Shipped', s?.packed_not_shipped ?? null, e?.packed_not_shipped ?? null) +
+    tNotes('Packing')
+  );
 
   // SHIPPING
-  html += `
-  <div class="section">
-    <div class="section-title">Shipping</div>
-    <div class="pill-grid cols-3">
-      ${pillManual('Pallet IDs',      'pallet-ids',    {placeholder:'e.g. PLT001, PLT002'})}
-      ${pill('Loaded Virtually',      s?.loaded_virtually ?? null, e?.loaded_virtually ?? null, {cls:'good'})}
-      ${noteField('Shipping')}
-    </div>
-  </div>`;
+  html += sectionBlock('Shipping',
+    tManual('Pallet IDs',       'pallet-ids',   'e.g. PLT001, PLT002') +
+    tRow('Loaded Virtually',    s?.loaded_virtually ?? null, e?.loaded_virtually ?? null, 'is-good') +
+    tNotes('Shipping')
+  );
 
   // STOCK CONTROL
-  html += `
-  <div class="section">
-    <div class="section-title">Stock Control</div>
-    <div class="pill-grid cols-4">
-      ${pill('Replen Tasks Open',      s?.replen_open  ?? null, e?.replen_open  ?? null, {cls:(e?.replen_open  ?? 0)>0?'warn':'good'})}
-      ${pill('Replen Tasks Done',      s?.replen_done  ?? null, e?.replen_done  ?? null)}
-      ${pill('Putaway (FC Prep) Open', s?.putaway_open ?? null, e?.putaway_open ?? null, {cls:(e?.putaway_open ?? 0)>0?'warn':'good'})}
-      ${pill('Putaway Done',           s?.putaway_done ?? null, e?.putaway_done ?? null)}
-    </div>
-    <div class="pill-grid cols-2" style="margin-top:8px;">
-      ${noteField('Stock Control')}
-      <div></div>
-    </div>
-  </div>`;
+  html += sectionBlock('Stock Control',
+    tRow('Replen Tasks Open',      s?.replen_open  ?? null, e?.replen_open  ?? null, (e?.replen_open  ?? 0)>0 ? 'is-warn' : 'is-good') +
+    tRow('Replen Tasks Done',      s?.replen_done  ?? null, e?.replen_done  ?? null) +
+    tRow('Putaway (FC Prep) Open', s?.putaway_open ?? null, e?.putaway_open ?? null, (e?.putaway_open ?? 0)>0 ? 'is-warn' : 'is-good') +
+    tRow('Putaway Done',           s?.putaway_done ?? null, e?.putaway_done ?? null) +
+    tNotes('Stock Control')
+  );
 
   // WAVES RUN
-  const waves     = (e || s)?.waves || [];
-  const nonTotal  = waves.filter(w => w.type !== 'Total');
-  const totalRow  = waves.find(w => w.type === 'Total');
-  const maxCount  = Math.max(...nonTotal.map(w => w.count || 0), 1);
+  const waves    = (e||s)?.waves || [];
+  const nonTotal = waves.filter(w => w.type !== 'Total');
+  const totalRow = waves.find(w => w.type === 'Total');
+  const maxCount = Math.max(...nonTotal.map(w => w.count||0), 1);
 
-  const leftWaves  = nonTotal.slice(0, Math.ceil(nonTotal.length / 2));
-  const rightWaves = nonTotal.slice(Math.ceil(nonTotal.length / 2));
+  let waveRows = nonTotal.map(w => {
+    const pct = Math.round(((w.count||0)/maxCount)*100);
+    return `<tr>
+      <td class="wt-name">${w.type}</td>
+      <td class="wt-bar"><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div></td>
+      <td class="wt-count">${w.count||0}</td>
+    </tr>`;
+  }).join('');
 
-  function waveRows(list) {
-    return list.map(w => {
-      const pct = Math.round(((w.count || 0) / maxCount) * 100);
-      return `
-      <div class="wave-row">
-        <span class="wave-type">${w.type}</span>
-        <div class="wave-bar-wrap"><div class="wave-bar" style="width:${pct}%"></div></div>
-        <span class="wave-count">${w.count || 0}</span>
-      </div>`;
-    }).join('');
+  if (totalRow) {
+    waveRows += `<tr class="wave-total">
+      <td class="wt-name">Total</td>
+      <td class="wt-bar"></td>
+      <td class="wt-count">${totalRow.count||0}</td>
+    </tr>`;
   }
 
   html += `
-  <div class="section">
-    <div class="section-title">Waves Run</div>
-    <div class="wave-grid">
-      <div class="wave-card">
-        <div class="wave-card-header"><span>Wave Type</span><span>Count</span></div>
-        ${leftWaves.length ? waveRows(leftWaves) : '<div class="wave-row"><span class="wave-type" style="color:var(--text-hint)">No data</span></div>'}
-      </div>
-      <div class="wave-card">
-        <div class="wave-card-header"><span>Wave Type</span><span>Count</span></div>
-        ${waveRows(rightWaves)}
-        ${totalRow ? `
-        <div class="wave-row total-row">
-          <span class="wave-type">Total</span>
-          <div class="wave-bar-wrap"></div>
-          <span class="wave-count">${totalRow.count || 0}</span>
-        </div>` : ''}
-      </div>
-    </div>
+  <div class="section-block">
+    <div class="section-head">Waves Run</div>
+    <table class="wave-table">
+      <thead><tr>
+        <th>Wave Type</th>
+        <th></th>
+        <th class="wt-count">Count</th>
+      </tr></thead>
+      <tbody>${waveRows||'<tr><td colspan="3" style="color:var(--text-hint);padding:14px;text-align:center;font-size:12px;">No wave data</td></tr>'}</tbody>
+    </table>
   </div>`;
 
   html += `<div class="disclaimer">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>`;
@@ -389,8 +357,8 @@ function fmtDate(str) {
   if (!str) return null;
   try {
     const [y,m,d] = str.split('-');
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return `${months[parseInt(m,10)-1]} ${parseInt(d,10)}, ${y}`;
+    const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${mo[parseInt(m,10)-1]} ${parseInt(d,10)}, ${y}`;
   } catch { return str; }
 }
 
@@ -403,7 +371,7 @@ async function loadData() {
       const data = await r.json();
       sos = data.sos; eos = data.eos;
       dot.className = 'dot eos';
-      label.textContent = `EOS captured ${data.generated?.slice(11,16) || ''}`;
+      label.textContent = `EOS captured ${(data.generated||'').slice(11,16)}`;
       render(); return;
     }
   } catch {}
@@ -413,7 +381,7 @@ async function loadData() {
       const data = await r.json();
       sos = data; eos = null;
       dot.className = 'dot sos';
-      label.textContent = `SOS only — ${data.captured_at || ''}`;
+      label.textContent = `SOS only — ${data.captured_at||''}`;
       render(); return;
     }
   } catch {}
