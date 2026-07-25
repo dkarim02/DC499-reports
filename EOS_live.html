@@ -88,21 +88,10 @@
   tr.notes-row textarea{width:100%;background:transparent;border:none;color:var(--text-muted);font-size:12px;font-family:'Segoe UI',system-ui,sans-serif;resize:vertical;min-height:34px;outline:none;line-height:1.5;}
   tr.notes-row textarea::placeholder{color:var(--text-hint);}
 
-  /* waves table variant */
-  .wave-table{width:100%;border-collapse:collapse;}
-  .wave-table thead th{padding:6px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-hint);background:var(--surface2);border-bottom:1px solid var(--border);text-align:left;}
-  .wave-table thead th.wt-count{text-align:right;width:80px;}
-  .wave-table tbody tr{border-bottom:1px solid var(--border-light);}
-  .wave-table tbody tr:last-child{border-bottom:none;}
-  .wave-table tbody tr.wave-total{background:var(--amber-dim);border-top:1px solid rgba(245,158,11,0.2);}
-  .wave-table td{padding:9px 14px;vertical-align:middle;}
-  td.wt-name{font-size:13px;font-weight:500;color:var(--text-muted);width:28%;}
-  .wave-table tr.wave-total td.wt-name{font-weight:700;color:var(--amber);}
-  td.wt-bar{padding-right:8px;}
-  .bar-wrap{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
-  .bar-fill{height:100%;background:var(--amber);border-radius:3px;opacity:.7;}
-  td.wt-count{text-align:right;font-family:var(--mono);font-size:17px;font-weight:700;color:var(--text);width:80px;}
-  .wave-table tr.wave-total td.wt-count{color:var(--amber);}
+  /* waves total row */
+  .dept-table tbody tr.wave-total{background:var(--amber-dim);border-top:1px solid rgba(245,158,11,0.2);}
+  .dept-table tbody tr.wave-total td.field-name{font-weight:700;color:var(--amber);}
+  .dept-table tbody tr.wave-total td.val-eos{color:var(--amber);}
 
   /* info banner */
   .info-banner{background:var(--amber-dim);border:1px solid rgba(245,158,11,0.25);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.5;}
@@ -132,9 +121,8 @@
     .masthead-snaps{border-color:#ddd;}
     .snap:first-child{border-right-color:#ddd;}
     .snap-time{color:#111;}
-    .wave-table thead th{color:#666;background:#f5f5f5;}
-    td.wt-name{color:#444;}
-    td.wt-count{color:#111;}
+    .dept-table tbody tr.wave-total td.field-name{color:#b45309;}
+    .dept-table tbody tr.wave-total td.val-eos{color:#b45309;}
     .disclaimer{color:#aaa;}
   }
 
@@ -337,37 +325,40 @@ function render() {
 
   // WAVES RUN
   const waves    = (e||s)?.waves || [];
-  const nonTotal = waves.filter(w => w.type !== 'Total');
+  const nonTotal = waves.filter(w => w.type !== 'Total' && (w.count||0) > 0);
   const totalRow = waves.find(w => w.type === 'Total');
-  const maxCount = Math.max(...nonTotal.map(w => w.count||0), 1);
 
-  let waveRows = nonTotal.map(w => {
-    const pct = Math.round(((w.count||0)/maxCount)*100);
-    return `<tr>
-      <td class="wt-name">${w.type}</td>
-      <td class="wt-bar"><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div></td>
-      <td class="wt-count">${w.count||0}</td>
-    </tr>`;
-  }).join('');
+  let waveRows = nonTotal.map(w =>
+    `<tr>
+      <td class="field-name">${w.type}</td>
+      <td class="val-sos missing">—</td>
+      <td class="val-eos is-accent">${w.count}</td>
+      <td class="val-chg">—</td>
+    </tr>`
+  ).join('');
 
   if (totalRow) {
     waveRows += `<tr class="wave-total">
-      <td class="wt-name">Total</td>
-      <td class="wt-bar"></td>
-      <td class="wt-count">${totalRow.count||0}</td>
+      <td class="field-name">Total</td>
+      <td class="val-sos missing">—</td>
+      <td class="val-eos">${totalRow.count||0}</td>
+      <td class="val-chg">—</td>
     </tr>`;
   }
+
+  const noWaveMsg = '<tr><td colspan="4" style="color:var(--text-hint);padding:14px;text-align:center;font-size:12px;">No wave data</td></tr>';
 
   html += `
   <div class="section-block">
     <div class="section-head">Waves Run</div>
-    <table class="wave-table">
+    <table class="dept-table">
       <thead><tr>
-        <th>Wave Type</th>
-        <th></th>
-        <th class="wt-count">Count</th>
+        <th class="col-field"></th>
+        <th class="col-sos">SOS</th>
+        <th class="col-eos">EOS</th>
+        <th class="col-chg"></th>
       </tr></thead>
-      <tbody>${waveRows||'<tr><td colspan="3" style="color:var(--text-hint);padding:14px;text-align:center;font-size:12px;">No wave data</td></tr>'}</tbody>
+      <tbody>${waveRows||noWaveMsg}</tbody>
     </table>
   </div>`;
 

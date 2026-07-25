@@ -155,14 +155,19 @@ function fmtTime(dt) {
   const d = nowPdt();
   return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
+function pdtToUtc(pdtStr) {
+  // PDT = UTC-7; converts '2026-07-24 14:10:00' → '2026-07-24 21:10:00'
+  return new Date(pdtStr.replace(' ', 'T') + '-07:00').toISOString().slice(0, 19).replace('T', ' ');
+}
 function num(v) { return Math.round(Number(v) || 0); }
 
 // ── queries ───────────────────────────────────────────────────────────────────
 async function captureSnapshot(token) {
   const pdt     = nowPdt();
   const dateStr = pdt.toLocaleDateString('en-CA'); // YYYY-MM-DD
-  const shiftStart = `${dateStr} 14:15:00`; // 2:15 PM PDT (stored as local time in MAWM)
-  const lookback60 = `${dateStr} 00:00:00`; // open units: today only keeps scan fast
+  // MAWM stores timestamps in UTC. 2:15 PM PDT = 21:15 UTC.
+  const shiftStart = pdtToUtc(`${dateStr} 14:15:00`);  // 2:15 PM PDT → UTC
+  const lookback60 = `${dateStr} 07:00:00`; // UTC midnight PDT = 07:00 UTC
 
   // Q1: DCO_ORDER — open orders + orders not released in one pass
   const sqlOrders = `
@@ -182,7 +187,7 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE  = 'ECOM'
   AND CANCELLED   = 0
   AND STATUS     != 'SHIPPED'
-  AND CREATED_TIMESTAMP >= '${lookback60} 07:00:00'`.trim();
+  AND CREATED_TIMESTAMP >= '${lookback60}'`.trim();
 
   // Q3: PPK_OLPN — hospital orders + packed not shipped + loaded, all in one pass
   const sqlOlpn = `
@@ -211,40 +216,49 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_DATE_TIME >= '${shiftStart}'
 GROUP BY TYPE_ID, STATUS`.trim();
 
-  // Q5a: DCO_ORDER_PLAN_RUN_STRATEGY — batches summary + wave type counts in one pass
+  // Q5: DCO_ORDER_PLAN_RUN_STRATEGY — wave type counts only
   const sqlWaves = `
 SELECT
   PLANNING_STRATEGY_ID,
-  ORDER_PLANNING_MODE,
   CHASE_MODE,
-  STATUS,
   COUNT(*) AS wave_runs
 FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStart}'
-GROUP BY PLANNING_STRATEGY_ID, ORDER_PLANNING_MODE, CHASE_MODE, STATUS
+GROUP BY PLANNING_STRATEGY_ID, CHASE_MODE
 ORDER BY wave_runs DESC`.trim();
 
-  // Q5b: avg release interval — LAG over CREATED_TIMESTAMP, no extra table hit
+  // Q6: WR_BATCH — actual work-release batches (up to 120 orders each, one per putwall)
+  const sqlBatches = `
+SELECT
+  STATUS_ID,
+  COUNT(*) AS cnt
+FROM default_workrelease.WR_BATCH
+WHERE FACILITY_ID = '${FACILITY}'
+  AND CREATED_TIMESTAMP >= '${shiftStart}'
+GROUP BY STATUS_ID`.trim();
+
+  // Q7: avg batch release interval — LAG over WR_BATCH.CREATED_TIMESTAMP
   const sqlInterval = `
 SELECT ROUND(AVG(diff_min), 1) AS avg_interval_min
 FROM (
   SELECT TIMESTAMPDIFF(MINUTE,
     LAG(CREATED_TIMESTAMP) OVER (ORDER BY CREATED_TIMESTAMP),
     CREATED_TIMESTAMP) AS diff_min
-  FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
+  FROM default_workrelease.WR_BATCH
   WHERE FACILITY_ID = '${FACILITY}'
     AND CREATED_TIMESTAMP >= '${shiftStart}'
 ) t
 WHERE diff_min IS NOT NULL`.trim();
 
-  console.log(`[${ts()}] Running 6 queries in parallel...`);
-  const [rOrders, rUnits, rOlpn, rTasks, rWaves, rInterval] = await Promise.all([
+  console.log(`[${ts()}] Running 7 queries in parallel...`);
+  const [rOrders, rUnits, rOlpn, rTasks, rWaves, rBatches, rInterval] = await Promise.all([
     mcpQuery(token, sqlOrders),
     mcpQuery(token, sqlUnits),
     mcpQuery(token, sqlOlpn),
     mcpQuery(token, sqlTasks),
     mcpQuery(token, sqlWaves),
+    mcpQuery(token, sqlBatches),
     mcpQuery(token, sqlInterval),
   ]);
 
@@ -259,27 +273,31 @@ WHERE diff_min IS NOT NULL`.trim();
     else if (s === '8000') t.done += c;
   }
 
-  // Wave type mapping + batch counts from same rows
-  function waveLabel(sid, mode, chase) {
+  // Wave type mapping — waves only, no batch logic here
+  function waveLabel(sid, chase) {
     const s = (sid || '').toUpperCase();
-    if (s.includes('REPLEN'))                                               return 'Replen';
-    if (s.includes('FILL_KILL') || s.includes('FILLKILL'))                 return 'Fill/Kill';
-    if (s.includes('RTV') || s.includes('RTI'))                            return 'RTV/RTI';
-    if (s.includes('MULTI_CHASE') || (s.includes('MULTI') && s.includes('CHASE'))) return 'Multi Chase';
+    if (s.includes('REPLEN'))                                                         return 'Replen';
+    if (s.includes('FILL_KILL') || s.includes('FILLKILL'))                           return 'Fill/Kill';
+    if (s.includes('RTV') || s.includes('RTI'))                                      return 'RTV/RTI';
+    if (s.includes('MULTI_CHASE') || (s.includes('MULTI') && s.includes('CHASE')))  return 'Multi Chase';
     if (s.includes('SINGLE_CHASE') || (s.includes('SINGLE') && s.includes('CHASE'))) return 'Single Chase';
     if (s.includes('CHASE')) return chase === 'CHASE_ONLY' ? 'Single Chase' : 'Multi Chase';
-    if (s.includes('MULTI'))                                                return 'Multi';
+    if (s.includes('MULTI'))                                                          return 'Multi';
     return 'Ecom';
   }
 
   const waveCounts = {};
-  let batches_total = 0, batches_cleared = 0;
   for (const r of (rWaves.rows || [])) {
-    const label = waveLabel(r.PLANNING_STRATEGY_ID, r.ORDER_PLANNING_MODE, r.CHASE_MODE);
-    const c = num(r.wave_runs);
-    waveCounts[label] = (waveCounts[label] || 0) + c;
-    batches_total   += c;
-    if (['500','900'].includes(String(r.STATUS))) batches_cleared += c;
+    const label = waveLabel(r.PLANNING_STRATEGY_ID, r.CHASE_MODE);
+    waveCounts[label] = (waveCounts[label] || 0) + num(r.wave_runs);
+  }
+
+  // Batch rollup from WR_BATCH — 5800 = cleared, 5600 = still active (in queue)
+  let batches_total = 0, batches_cleared = 0;
+  for (const r of (rBatches.rows || [])) {
+    const c = num(r.cnt);
+    batches_total += c;
+    if (String(r.STATUS_ID).startsWith('5800')) batches_cleared += c;
   }
 
   const waveOrder = ['Ecom','Replen','Single Chase','Multi Chase','Fill/Kill','Multi','RTV/RTI'];
@@ -322,49 +340,48 @@ WHERE diff_min IS NOT NULL`.trim();
 async function captureReconstructedSOS(token, sosTime) {
   // sosTime: 'YYYY-MM-DD HH:MM:SS' in PDT — default to 2:10 PM shift start
   const dateStr  = sosTime.slice(0, 10);
-  const shiftStart = `${dateStr} 14:15:00`;
+  const shiftStart = pdtToUtc(`${dateStr} 14:15:00`); // 2:15 PM PDT → UTC
+  const sosTimeUtc = pdtToUtc(sosTime);               // anchor time → UTC
 
-  console.log(`[${ts()}] Reconstructing SOS as of: ${sosTime}`);
+  console.log(`[${ts()}] Reconstructing SOS as of: ${sosTime} (UTC: ${sosTimeUtc})`);
 
   // Q1: TSK_TASK — open at sosTime means:
   //   created before sosTime AND (no end time OR end time after sosTime)
   const sqlTasks = `
 SELECT
   TYPE_ID,
-  SUM(CASE WHEN ACTUAL_END_TIME IS NULL OR ACTUAL_END_TIME > '${sosTime}' THEN 1 ELSE 0 END) AS open_at_sos,
-  SUM(CASE WHEN ACTUAL_END_TIME IS NOT NULL AND ACTUAL_END_TIME <= '${sosTime}' THEN 1 ELSE 0 END) AS done_at_sos
+  SUM(CASE WHEN ACTUAL_END_TIME IS NULL OR ACTUAL_END_TIME > '${sosTimeUtc}' THEN 1 ELSE 0 END) AS open_at_sos,
+  SUM(CASE WHEN ACTUAL_END_TIME IS NOT NULL AND ACTUAL_END_TIME <= '${sosTimeUtc}' THEN 1 ELSE 0 END) AS done_at_sos
 FROM default_task.TSK_TASK
 WHERE FACILITY_ID = '${FACILITY}'
   AND TYPE_ID IN ('PICK/PACK','REPLENISHMENT','PUTAWAY')
   AND CREATED_DATE_TIME >= '${shiftStart}'
-  AND CREATED_DATE_TIME <  '${sosTime}'
+  AND CREATED_DATE_TIME <  '${sosTimeUtc}'
 GROUP BY TYPE_ID`.trim();
 
-  // Q2: Waves run before sosTime — cumulative count as of that moment
+  // Q2: Waves run before sosTime — type counts only
   const sqlWaves = `
 SELECT
   PLANNING_STRATEGY_ID,
-  ORDER_PLANNING_MODE,
   CHASE_MODE,
-  STATUS,
   COUNT(*) AS wave_runs
 FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStart}'
-  AND CREATED_TIMESTAMP <  '${sosTime}'
-GROUP BY PLANNING_STRATEGY_ID, ORDER_PLANNING_MODE, CHASE_MODE, STATUS
+  AND CREATED_TIMESTAMP <  '${sosTimeUtc}'
+GROUP BY PLANNING_STRATEGY_ID, CHASE_MODE
 ORDER BY wave_runs DESC`.trim();
 
-  // Q3: Batches in queue at sosTime — waves started but not yet completed
+  // Q3: WR_BATCH — actual work-release batches at sosTime
   const sqlBatches = `
 SELECT
-  COUNT(*) AS total_waves,
-  SUM(CASE WHEN RUN_COMPLETION_DATE_TIME IS NOT NULL
-            AND RUN_COMPLETION_DATE_TIME <= '${sosTime}' THEN 1 ELSE 0 END) AS completed_at_sos
-FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
+  STATUS_ID,
+  COUNT(*) AS cnt
+FROM default_workrelease.WR_BATCH
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStart}'
-  AND CREATED_TIMESTAMP <  '${sosTime}'`.trim();
+  AND CREATED_TIMESTAMP <  '${sosTimeUtc}'
+GROUP BY STATUS_ID`.trim();
 
   // Q4: Orders not released at sosTime
   const sqlNotReleased = `
@@ -373,19 +390,19 @@ FROM default_dcorder.DCO_ORDER
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE = 'ECOM'
   AND MAXIMUM_STATUS = '1000'
-  AND CREATED_TIMESTAMP < '${sosTime}'`.trim();
+  AND CREATED_TIMESTAMP < '${sosTimeUtc}'`.trim();
 
-  // Q5: Avg release interval up to sosTime
+  // Q5: Avg batch release interval up to sosTime — LAG on WR_BATCH
   const sqlInterval = `
 SELECT ROUND(AVG(diff_min), 1) AS avg_interval_min
 FROM (
   SELECT TIMESTAMPDIFF(MINUTE,
     LAG(CREATED_TIMESTAMP) OVER (ORDER BY CREATED_TIMESTAMP),
     CREATED_TIMESTAMP) AS diff_min
-  FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
+  FROM default_workrelease.WR_BATCH
   WHERE FACILITY_ID = '${FACILITY}'
     AND CREATED_TIMESTAMP >= '${shiftStart}'
-    AND CREATED_TIMESTAMP <  '${sosTime}'
+    AND CREATED_TIMESTAMP <  '${sosTimeUtc}'
 ) t
 WHERE diff_min IS NOT NULL`.trim();
 
@@ -408,7 +425,7 @@ WHERE diff_min IS NOT NULL`.trim();
   }
 
   // Wave label mapping (same as captureSnapshot)
-  function waveLabel(sid, mode, chase) {
+  function waveLabel(sid, chase) {
     const s = (sid||'').toUpperCase();
     if (s.includes('REPLEN'))                                                         return 'Replen';
     if (s.includes('FILL_KILL') || s.includes('FILLKILL'))                           return 'Fill/Kill';
@@ -422,16 +439,19 @@ WHERE diff_min IS NOT NULL`.trim();
 
   const waveCounts = {};
   for (const r of (rWaves.rows||[])) {
-    const label = waveLabel(r.PLANNING_STRATEGY_ID, r.ORDER_PLANNING_MODE, r.CHASE_MODE);
+    const label = waveLabel(r.PLANNING_STRATEGY_ID, r.CHASE_MODE);
     waveCounts[label] = (waveCounts[label]||0) + num(r.wave_runs);
   }
   const waveOrder = ['Ecom','Replen','Single Chase','Multi Chase','Fill/Kill','Multi','RTV/RTI'];
   const waves = waveOrder.map(t => ({ type:t, count: waveCounts[t]||0 }));
   waves.push({ type:'Total', count: Object.values(waveCounts).reduce((a,b)=>a+b,0) });
 
-  const bRow = rBatches.rows?.[0] || {};
-  const total_waves    = num(bRow.total_waves);
-  const completed_sos  = num(bRow.completed_at_sos);
+  let batches_total = 0, batches_cleared = 0;
+  for (const r of (rBatches.rows||[])) {
+    const c = num(r.cnt);
+    batches_total += c;
+    if (String(r.STATUS_ID).startsWith('5800')) batches_cleared += c;
+  }
 
   return {
     captured_at:          sosTime.slice(11,16),
@@ -453,8 +473,8 @@ WHERE diff_min IS NOT NULL`.trim();
     replen_done:          tasks['REPLENISHMENT'].done,
     putaway_open:         tasks['PUTAWAY'].open,
     putaway_done:         tasks['PUTAWAY'].done,
-    batches_in_queue:     total_waves - completed_sos,
-    batches_cleared:      completed_sos,
+    batches_in_queue:     batches_total - batches_cleared,
+    batches_cleared:      batches_cleared,
     avg_release_interval: rInterval.rows?.[0]?.avg_interval_min != null
                             ? Number(rInterval.rows[0].avg_interval_min)
                             : null,
