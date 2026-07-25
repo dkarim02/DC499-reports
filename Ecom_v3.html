@@ -39,6 +39,19 @@
   [data-theme="dark"] .toggle-track { background: #534AB7; }
   [data-theme="dark"] .toggle-thumb { left: 14px; background: #fff; }
 
+  /* ── BACKLOG PILL ── */
+  .backlog-pill { display: none; align-items: center; gap: 0; margin-top: 8px; border-radius: 20px; overflow: hidden; border: 1.5px solid #185FA5; font-size: 13px; font-weight: 700; flex-shrink: 0; cursor: pointer; transition: opacity 0.15s, box-shadow 0.15s; }
+  .backlog-pill:hover { opacity: 0.85; box-shadow: 0 0 0 3px rgba(24,95,165,0.25); }
+  .bp-total { background: #185FA5; color: #fff; padding: 5px 12px; white-space: nowrap; }
+  .bp-total-lbl { font-size: 9px; font-weight: 600; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.05em; display: block; line-height: 1.1; }
+  .bp-total-val { font-size: 14px; line-height: 1.2; }
+  .bp-divider { width: 1px; background: #185FA5; align-self: stretch; }
+  .bp-stat { padding: 5px 10px; background: var(--surface2); display: flex; flex-direction: column; align-items: center; gap: 0; white-space: nowrap; }
+  .bp-stat-val { font-size: 13px; line-height: 1.2; }
+  .bp-stat-lbl { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-hint); line-height: 1.1; }
+  .bp-ready { color: #4CAF50; }
+  .bp-alloc { color: #FFB74D; }
+
   /* ── TABS ── */
   .tabs { display: flex; align-items: center; border-bottom: 1.5px solid var(--border); margin-bottom: 1.5rem; }
   .tabs-left { display: flex; align-items: center; }
@@ -292,10 +305,28 @@
       <p style="font-size:11px;color:#185FA5;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">Ecom</p>
       <p class="subtitle" id="main-subtitle">Upload a CSV to populate the Full Report</p>
     </div>
-    <button class="dark-toggle" onclick="toggleDark()">
-      <span id="toggle-label">Dark mode</span>
-      <div class="toggle-track"><div class="toggle-thumb"></div></div>
-    </button>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0;">
+      <button class="dark-toggle" onclick="toggleDark()">
+        <span id="toggle-label">Dark mode</span>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </button>
+      <div class="backlog-pill" id="backlog-pill" onclick="openBacklog()" title="Open Ecom Backlog">
+        <div class="bp-total">
+          <span class="bp-total-lbl">Backlog</span>
+          <span class="bp-total-val" id="bs-total">--</span>
+        </div>
+        <div class="bp-divider"></div>
+        <div class="bp-stat">
+          <span class="bp-stat-val bp-ready" id="bs-ready">--</span>
+          <span class="bp-stat-lbl">Ready</span>
+        </div>
+        <div class="bp-divider"></div>
+        <div class="bp-stat">
+          <span class="bp-stat-val bp-alloc" id="bs-alloc">--</span>
+          <span class="bp-stat-lbl">Alloc</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- TABS -->
@@ -1636,11 +1667,38 @@ async function sendToTeams(btn) {
     setTimeout(function(){ btn.textContent = orig; btn.disabled = false; btn.style.borderColor = ''; btn.style.color = ''; }, 4000);
   }
 }
+// ── BACKLOG STRIP ───────────────────────────────────────
+function openBacklog() {
+  var base = window.location.href.replace(/\/[^\/]*$/, '/');
+  window.location.href = base + 'Backlog_live.html';
+}
+
+function fetchBacklogStrip() {
+  var base = window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
+  fetch(base + '/backlog_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function(data) {
+      var totR = 0, totA = 0;
+      (data.dates || []).forEach(function(d) { totR += d.ready || 0; totA += d.allocated || 0; });
+      var total = totR + totA;
+      document.getElementById('bs-total').textContent = total.toLocaleString();
+      document.getElementById('bs-ready').textContent = totR.toLocaleString();
+      document.getElementById('bs-alloc').textContent = totA.toLocaleString();
+      document.getElementById('backlog-pill').style.display = 'flex';
+    })
+    .catch(function() {}); // fail silently
+}
+
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
 setShift(getShift());
 renderRoster();
 renderHeadcountCard();
+fetchBacklogStrip();
 </script>
 </body>
 </html>
