@@ -104,7 +104,8 @@
   .stale-banner{display:none;background:var(--yellow-bg);color:var(--yellow);font-size:13px;font-weight:600;padding:10px 16px;border-radius:8px;margin-bottom:1rem;text-align:center;border:1px solid var(--yellow-border);}
 
   /* Backlog pill — right side of summary row */
-  .backlog-pill{display:none;align-items:center;gap:0;margin-left:auto;border-radius:20px;overflow:hidden;border:1.5px solid #185FA5;font-size:13px;font-weight:700;flex-shrink:0;}
+  .backlog-pill{display:none;align-items:center;gap:0;margin-left:auto;border-radius:20px;overflow:hidden;border:1.5px solid #185FA5;font-size:13px;font-weight:700;flex-shrink:0;cursor:pointer;transition:opacity 0.15s,box-shadow 0.15s;text-decoration:none;}
+  .backlog-pill:hover{opacity:0.85;box-shadow:0 0 0 3px rgba(24,95,165,0.25);}
   .bp-total{background:#185FA5;color:#fff;padding:6px 14px;white-space:nowrap;}
   .bp-total-lbl{font-size:10px;font-weight:600;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em;display:block;line-height:1.1;}
   .bp-total-val{font-size:16px;line-height:1.2;}
@@ -381,7 +382,7 @@
     <span class="summary-pill pill-red"    id="p-red"></span>
     <span class="summary-pill pill-c1"     id="p-c1"></span>
     <span class="summary-pill pill-c3"     id="p-c3"></span>
-    <div class="backlog-pill" id="backlog-pill">
+    <div class="backlog-pill" id="backlog-pill" onclick="openBacklog()" title="Open Ecom Backlog">
       <div class="bp-total">
         <span class="bp-total-lbl">Backlog</span>
         <span class="bp-total-val" id="bs-total">--</span>
@@ -968,6 +969,11 @@ function makeLocBlock(loc, totes, hpOlpn) {
   }
 
   return block;
+}
+
+function openBacklog() {
+  var base = window.location.href.replace(/\/[^\/]*$/, '/');
+  window.location.href = base + 'Backlog_live.html';
 }
 
 function fetchBacklogStrip() {
