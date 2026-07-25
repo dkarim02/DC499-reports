@@ -47,6 +47,10 @@
   .refresh-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:500;display:flex;align-items:center;gap:5px;}
   .refresh-btn:hover{background:var(--accent-muted);}
   [data-theme="dark"] .refresh-btn:hover{background:var(--accent);color:#fff;}
+  .view-toggle{display:flex;border:0.5px solid var(--border);border-radius:6px;overflow:hidden;font-family:inherit;font-size:12px;}
+  .view-toggle button{background:none;border:none;padding:5px 12px;cursor:pointer;color:var(--text-muted);font-family:inherit;font-size:12px;font-weight:500;transition:background 0.12s,color 0.12s;}
+  .view-toggle button.active{background:var(--accent);color:#fff;}
+  .view-toggle button:not(.active):hover{background:var(--surface2);}
 
   /* Metric tiles */
   .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;}
@@ -144,6 +148,10 @@
       <div id="next-refresh" class="run-time" style="margin-top:2px;"></div>
     </div>
     <div class="header-btns">
+      <div class="view-toggle">
+        <button id="vt-lines"  class="active" onclick="setView('lines')">Order Lines</button>
+        <button id="vt-orders"            onclick="setView('orders')">Orders</button>
+      </div>
       <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
     </div>
   </div>
@@ -213,8 +221,8 @@
     <!-- Sidebar — hourly lines received -->
     <div class="page-sidebar">
       <div id="hourly-card" style="display:none;">
-        <div class="card-title">Lines / Hour</div>
-        <div class="card-sub">today &middot; order lines received</div>
+        <div class="card-title" id="hourly-title">Units / Hour</div>
+        <div class="card-sub" id="hourly-sub">today &middot; order lines received per hour</div>
         <div id="hourly-bars"></div>
       </div>
     </div><!-- /.page-sidebar -->
@@ -234,6 +242,7 @@
 var THEME_KEY   = 'dc499_backlog_theme_v1';
 var INTERVAL_MS = 2 * 60 * 1000;
 var lastData    = null;
+var viewMode    = 'lines'; // 'lines' | 'orders'
 var autoRefreshTimer = null;
 var countdownTimer   = null;
 var nextRefreshAt    = null;
@@ -392,11 +401,19 @@ function renderHourly(hourly) {
   rows.forEach(function(r) {
     html += '<div class="hourly-row">';
     html += '<span class="hourly-range">' + fmtHourRange(r.hour) + '</span>';
-    html += '<span class="hourly-count">' + r.lines.toLocaleString() + '<span class="hourly-uom">lines</span></span>';
+    html += '<span class="hourly-count">' + r.lines.toLocaleString() + '<span class="hourly-uom">units</span></span>';
     html += '</div>';
   });
   barsEl.innerHTML = html;
   card.style.display = 'block';
+}
+
+// -- View toggle --------------------------------------------------------------
+function setView(mode) {
+  viewMode = mode;
+  document.getElementById('vt-lines').classList.toggle('active',  mode === 'lines');
+  document.getElementById('vt-orders').classList.toggle('active', mode === 'orders');
+  if (lastData) renderData(lastData);
 }
 
 // -- Render -------------------------------------------------------------------
@@ -426,6 +443,29 @@ function renderData(data) {
     return;
   }
 
+  // In Orders mode, count distinct order_ids per status from row.orders[]
+  // In Lines mode, use the raw line counts already on each row
+  function getCount(row, status) {
+    if (viewMode === 'orders') {
+      return (row.orders || []).filter(function(o) {
+        return o.status.toUpperCase() === status;
+      }).length;
+    }
+    if (status === 'READY')     return row.ready   || 0;
+    if (status === 'ALLOCATED') return row.allocated || 0;
+    if (status === 'PACKED')    return row.packed   || 0;
+    if (status === 'SHIPPED')   return row.shipped  || 0;
+    return 0;
+  }
+
+  // Update card title to reflect current view
+  var cardTitleEl = document.querySelector('#table-card .card-title');
+  if (cardTitleEl) {
+    cardTitleEl.textContent = (viewMode === 'orders'
+      ? 'Orders by Date'
+      : 'Order Lines by Date') + ' — tap a status to see orders';
+  }
+
   var tb = document.getElementById('tb-dates');
   tb.innerHTML = '';
   var totR = 0, totA = 0, totP = 0, totO = 0, totS = 0;
@@ -434,16 +474,15 @@ function renderData(data) {
   closeDetailPanel();
 
   data.dates.forEach(function(row) {
-    var open = (row.ready || 0) + (row.allocated || 0) + (row.packed || 0);
-    totR += row.ready     || 0;
-    totA += row.allocated || 0;
-    totP += row.packed    || 0;
-    totO += open;
-    totS += row.shipped   || 0;
+    var r = getCount(row, 'READY');
+    var a = getCount(row, 'ALLOCATED');
+    var p = getCount(row, 'PACKED');
+    var s = getCount(row, 'SHIPPED');
+    var open = r + a + p;
+    totR += r; totA += a; totP += p; totO += open; totS += s;
 
     var tr = document.createElement('tr');
 
-    // Build clickable pill cells inline — use data-pill for targeting
     function pillCell(status, count, pillCls) {
       var key = row.date + '|' + status;
       var td = document.createElement('td');
@@ -454,10 +493,10 @@ function renderData(data) {
         span.setAttribute('data-pill', key);
         span.textContent = fmt(count);
         span.title = 'Show ' + status.toLowerCase() + ' orders';
-        (function(d, s, r) {
+        (function(d, st, rw) {
           span.addEventListener('click', function(e) {
             e.stopPropagation();
-            openDetailPanel(d, s, r);
+            openDetailPanel(d, st, rw);
           });
         })(row.date, status, row);
         td.appendChild(span);
@@ -481,12 +520,12 @@ function renderData(data) {
     var shipTd = document.createElement('td');
     shipTd.className = 'r';
     shipTd.style.color = 'var(--text-hint)';
-    shipTd.textContent = fmt(row.shipped);
+    shipTd.textContent = fmt(s);
 
     tr.appendChild(dateTd);
-    tr.appendChild(pillCell('READY',     row.ready     || 0, 'pill-ready'));
-    tr.appendChild(pillCell('ALLOCATED', row.allocated || 0, 'pill-alloc'));
-    tr.appendChild(pillCell('PACKED',    row.packed    || 0, 'pill-packed'));
+    tr.appendChild(pillCell('READY',     r, 'pill-ready'));
+    tr.appendChild(pillCell('ALLOCATED', a, 'pill-alloc'));
+    tr.appendChild(pillCell('PACKED',    p, 'pill-packed'));
     tr.appendChild(openTd);
     tr.appendChild(shipTd);
 
@@ -499,7 +538,7 @@ function renderData(data) {
   document.getElementById('ft-total').textContent   = fmt(totO);
   document.getElementById('ft-shipped').textContent = fmt(totS);
 
-  // Metric tiles use the same cross-date totals so they always match the footer
+  // Metric tiles match footer totals
   document.getElementById('m-ready').textContent  = fmt(totR);
   document.getElementById('m-alloc').textContent  = fmt(totA);
   document.getElementById('m-packed').textContent = fmt(totP);
