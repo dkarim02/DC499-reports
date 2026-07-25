@@ -130,6 +130,19 @@
     .dept-table thead th.col-sos,.dept-table td.val-sos{display:none;}
     .dept-table thead th.col-field{width:52%;}
   }
+
+  /* export modal */
+  .export-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:center;justify-content:center;}
+  .export-modal.open{display:flex;}
+  .export-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;width:min(680px,95vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;}
+  .export-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .export-header-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--amber);}
+  .export-header-hint{font-size:11px;color:var(--text-hint);}
+  .export-close{background:none;border:none;color:var(--text-hint);font-size:18px;cursor:pointer;line-height:1;padding:2px 6px;}
+  .export-close:hover{color:var(--text);}
+  .export-body{padding:16px 18px;overflow-y:auto;flex:1;}
+  .export-preview{background:#fff;border-radius:4px;padding:16px;font-family:Arial,sans-serif;font-size:12px;line-height:1.4;color:#111;}
+  .export-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -141,11 +154,29 @@
     <span class="dot" id="status-dot"></span>
     <span id="status-label">Loading...</span>
   </div>
+  <button class="btn" onclick="exportEmail()">Export for Email</button>
   <button class="btn" onclick="window.print()">Print / PDF</button>
 </div>
 
 <div class="container" id="main-container">
   <div style="text-align:center;padding:60px;color:var(--text-hint);font-size:13px;">Loading...</div>
+</div>
+
+<div class="export-modal" id="export-modal">
+  <div class="export-box">
+    <div class="export-header">
+      <span class="export-header-title">Export for Email</span>
+      <span class="export-header-hint">Copy the content below and paste into your email body</span>
+      <button class="export-close" onclick="closeExport()">✕</button>
+    </div>
+    <div class="export-body">
+      <div class="export-preview" id="export-preview"></div>
+    </div>
+    <div class="export-footer">
+      <button class="btn" onclick="copyExport()">Copy to Clipboard</button>
+      <button class="btn" onclick="closeExport()">Close</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -402,6 +433,188 @@ async function loadData() {
   dot.className = 'dot';
   label.textContent = 'No data — manual entry';
   render();
+}
+
+// ── email export ─────────────────────────────────────────────────────────────
+function exportEmail() {
+  const s = sos, e = eos;
+  const dateDisp = fmtDate((e||s)?.date) || '—';
+  const sosTime  = s?.captured_at || '—';
+  const eosTime  = e?.captured_at || '—';
+
+  // manual field values from the DOM (filled in by supervisor)
+  function manualVal(id) {
+    const el = document.getElementById('manual-' + id);
+    return el ? (el.value.trim() || '—') : '—';
+  }
+  function noteVal(section) {
+    const id = 'note-' + section.replace(/\s/g,'-').toLowerCase();
+    const el = document.getElementById(id);
+    return el ? (el.value.trim() || '') : '';
+  }
+
+  const waves = (e||s)?.waves || [];
+  const activeWaves = waves.filter(w => w.type !== 'Total' && (w.count||0) > 0);
+  const totalWave   = waves.find(w => w.type === 'Total');
+
+  // shared cell styles
+  const th  = 'style="background:#1a1a2e;color:#f59e0b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 10px;text-align:left;border:1px solid #333;"';
+  const thR = 'style="background:#1a1a2e;color:#f59e0b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 10px;text-align:right;border:1px solid #333;"';
+  const td  = 'style="padding:6px 10px;border:1px solid #ddd;font-size:12px;color:#222;vertical-align:top;"';
+  const tdR = 'style="padding:6px 10px;border:1px solid #ddd;font-size:12px;color:#222;text-align:right;vertical-align:top;"';
+  const tdB = 'style="padding:6px 10px;border:1px solid #ddd;font-size:13px;font-weight:700;color:#111;text-align:right;vertical-align:top;"';
+  const tdL = 'style="padding:6px 10px;border:1px solid #ddd;font-size:12px;color:#888;text-align:right;vertical-align:top;"';
+  const sec = 'style="width:100%;border-collapse:collapse;margin-bottom:14px;"';
+
+  function dataRow(label, sv, ev, highlight) {
+    const evStyle = highlight
+      ? 'style="padding:6px 10px;border:1px solid #ddd;font-size:13px;font-weight:700;text-align:right;color:' + highlight + ';vertical-align:top;"'
+      : tdB;
+    return `<tr>
+      <td ${td}>${label}</td>
+      <td ${tdL}>${sv != null ? fmt(sv) : '—'}</td>
+      <td ${evStyle}>${ev != null ? fmt(ev) : '—'}</td>
+    </tr>`;
+  }
+  function manualRow(label, id) {
+    return `<tr><td ${td}>${label}</td><td ${tdL}>—</td><td ${tdB}>${manualVal(id)}</td></tr>`;
+  }
+  function intervalRow(label, sv, ev) {
+    return `<tr>
+      <td ${td}>${label}</td>
+      <td ${tdL}>${sv != null ? sv.toFixed(1)+' min' : '—'}</td>
+      <td ${tdB}>${ev != null ? ev.toFixed(1)+' min' : '—'}</td>
+    </tr>`;
+  }
+  function sectionHeader(title) {
+    return `<tr><th colspan="3" ${th}>${title}</th></tr>
+    <tr><td ${td} style="padding:4px 10px;border:1px solid #ddd;font-size:10px;color:#888;">Field</td><td ${tdL} style="padding:4px 10px;border:1px solid #ddd;font-size:10px;color:#888;">SOS</td><td ${tdR} style="padding:4px 10px;border:1px solid #ddd;font-size:10px;color:#888;">EOS</td></tr>`;
+  }
+  function notesRow(section) {
+    const txt = noteVal(section);
+    if (!txt) return '';
+    return `<tr><td colspan="3" ${td} style="padding:6px 10px;border:1px solid #ddd;font-size:11px;color:#555;">Notes: ${txt.replace(/\n/g,'  ')}</td></tr>`;
+  }
+
+  const hospColor = (e?.hospital_orders ?? s?.hospital_orders ?? 0) > 0 ? '#b45309' : '#059669';
+
+  const html = `
+<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;max-width:640px;">
+  <tr>
+    <td colspan="2" style="background:#1a1a2e;padding:14px 16px;border-radius:4px 4px 0 0;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#f59e0b;margin-bottom:4px;">End of Shift Report &nbsp;·&nbsp; DC499 Nordstrom</div>
+      <div style="font-size:20px;font-weight:300;color:#fff;">${dateDisp}</div>
+      <div style="margin-top:8px;display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#f59e0b;border:1px solid #f59e0b;border-radius:3px;padding:2px 8px;">B Shift</div>
+      &nbsp;
+      <span style="font-size:11px;color:#aaa;">SOS: <strong style="color:#fbbf24;">${sosTime}</strong> &nbsp;·&nbsp; EOS: <strong style="color:#fff;">${eosTime}</strong></span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:14px 0 0;vertical-align:top;width:50%;">
+
+      <table ${sec}>
+        ${sectionHeader('Orders &amp; Units')}
+        ${dataRow('Total Orders', s?.open_orders, e?.open_orders)}
+        ${dataRow('Total Units', s?.open_units, e?.open_units)}
+        ${dataRow('Hospital Orders', s?.hospital_orders, e?.hospital_orders, hospColor)}
+        ${manualRow('68-Criteria Orders', 'batch-criteria')}
+      </table>
+
+      <table ${sec}>
+        ${sectionHeader('Picking')}
+        ${dataRow('Pick Tasks Open', s?.pick_open, e?.pick_open, (e?.pick_open??0)>0?'#b45309':'#059669')}
+        ${dataRow('Pick Tasks Done', s?.pick_done, e?.pick_done)}
+        ${notesRow('Picking')}
+      </table>
+
+      <table ${sec}>
+        ${sectionHeader('Packing')}
+        ${manualRow('Line Capacity', 'line-capacity')}
+        ${manualRow('Cross-Training', 'cross-training')}
+        ${dataRow('Packed Not Shipped', s?.packed_not_shipped, e?.packed_not_shipped)}
+        ${notesRow('Packing')}
+      </table>
+
+    </td>
+    <td style="padding:14px 0 0 14px;vertical-align:top;width:50%;">
+
+      <table ${sec}>
+        ${sectionHeader('Sorting')}
+        ${dataRow('Batches in Queue', s?.batches_in_queue, e?.batches_in_queue, (e?.batches_in_queue??0)>0?'#b45309':'#059669')}
+        ${dataRow('Orders Not Released', s?.orders_not_released, e?.orders_not_released)}
+        ${dataRow('Batches Cleared', s?.batches_cleared, e?.batches_cleared)}
+        ${intervalRow('Avg Release Interval', s?.avg_release_interval??null, e?.avg_release_interval??null)}
+        ${notesRow('Sorting')}
+      </table>
+
+      <table ${sec}>
+        ${sectionHeader('Shipping')}
+        ${manualRow('Pallet IDs', 'pallet-ids')}
+        ${dataRow('Loaded Virtually', s?.loaded_virtually, e?.loaded_virtually, '#059669')}
+        ${notesRow('Shipping')}
+      </table>
+
+      <table ${sec}>
+        ${sectionHeader('Stock Control')}
+        ${dataRow('Replen Tasks Open', s?.replen_open, e?.replen_open, (e?.replen_open??0)>0?'#b45309':'#059669')}
+        ${dataRow('Replen Tasks Done', s?.replen_done, e?.replen_done)}
+        ${dataRow('Putaway Open', s?.putaway_open, e?.putaway_open, (e?.putaway_open??0)>0?'#b45309':'#059669')}
+        ${dataRow('Putaway Done', s?.putaway_done, e?.putaway_done)}
+        ${notesRow('Stock Control')}
+      </table>
+
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" style="padding-top:14px;">
+      <table ${sec}>
+        <tr><th colspan="2" ${th}>Waves Run</th></tr>
+        ${activeWaves.map(w=>`<tr><td ${td}>${w.type}</td><td ${tdB}>${w.count}</td></tr>`).join('')}
+        ${totalWave ? `<tr><td style="padding:6px 10px;border:1px solid #ddd;font-size:12px;font-weight:700;color:#b45309;">Total</td><td style="padding:6px 10px;border:1px solid #ddd;font-size:13px;font-weight:700;text-align:right;color:#b45309;">${totalWave.count}</td></tr>` : ''}
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" style="padding:10px 0;font-size:9px;color:#aaa;text-align:center;">
+      Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.
+    </td>
+  </tr>
+</table>`;
+
+  document.getElementById('export-preview').innerHTML = html;
+  document.getElementById('export-modal').classList.add('open');
+}
+
+function closeExport() {
+  document.getElementById('export-modal').classList.remove('open');
+}
+
+function copyExport() {
+  const preview = document.getElementById('export-preview');
+  if (navigator.clipboard && window.ClipboardItem) {
+    const blob = new Blob([preview.innerHTML], { type: 'text/html' });
+    navigator.clipboard.write([new ClipboardItem({ 'text/html': blob })])
+      .then(() => {
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
+      })
+      .catch(() => fallbackCopy(preview));
+  } else {
+    fallbackCopy(preview);
+  }
+}
+
+function fallbackCopy(el) {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  document.execCommand('copy');
+  sel.removeAllRanges();
+  const btn = document.querySelector('.export-footer .btn');
+  if (btn) { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000); }
 }
 
 loadData();
