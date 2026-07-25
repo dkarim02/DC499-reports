@@ -521,7 +521,22 @@ async function main() {
     const out = { generated: new Date().toISOString().slice(0,19), mode: 'sos', ...snap };
     fs.writeFileSync(SOS_FILE, JSON.stringify(out, null, 2));
     console.log(`[${ts()}] ✓ eos_sos_snapshot.json written`);
-    gitPush(['eos_sos_snapshot.json'], `EOS SOS snapshot -- ${snap.date} ${snap.captured_at}`);
+
+    // If eos_report.json is from a prior date, remove it so EOS_live.html
+    // falls back to today's SOS snapshot instead of showing stale EOS data.
+    const filesToPush = ['eos_sos_snapshot.json'];
+    if (fs.existsSync(REPORT_FILE)) {
+      try {
+        const prev = JSON.parse(fs.readFileSync(REPORT_FILE, 'utf8'));
+        if (prev.date && prev.date !== snap.date) {
+          fs.unlinkSync(REPORT_FILE);
+          filesToPush.push('eos_report.json');
+          console.log(`[${ts()}]   Cleared stale eos_report.json (was ${prev.date})`);
+        }
+      } catch { /* ignore — file may already be untracked */ }
+    }
+
+    gitPush(filesToPush, `EOS SOS snapshot -- ${snap.date} ${snap.captured_at}`);
     return;
   }
 

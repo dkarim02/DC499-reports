@@ -180,8 +180,9 @@
 </div>
 
 <script>
-var DATA_URL = 'eos_report.json';
-var SOS_URL  = 'eos_sos_snapshot.json';
+var DATA_URL    = 'eos_report.json';
+var SOS_URL     = 'eos_sos_snapshot.json';
+var BACKLOG_URL = 'backlog_live.json';
 var sos = null, eos = null;
 
 function fmt(v) {
@@ -407,6 +408,17 @@ function fmtDate(str) {
   } catch { return str; }
 }
 
+async function backlogUnits(dateStr) {
+  try {
+    const r = await fetch(BACKLOG_URL + '?v=' + Date.now());
+    if (!r.ok) return null;
+    const data = await r.json();
+    const day = (data.dates || []).find(d => d.date === dateStr);
+    if (!day) return null;
+    return (day.ready || 0) + (day.allocated || 0);
+  } catch { return null; }
+}
+
 async function loadData() {
   const dot   = document.getElementById('status-dot');
   const label = document.getElementById('status-label');
@@ -415,6 +427,7 @@ async function loadData() {
     if (r.ok) {
       const data = await r.json();
       sos = data.sos; eos = data.eos;
+      if (sos && sos.open_units == null) sos.open_units = await backlogUnits(sos.date);
       dot.className = 'dot eos';
       label.textContent = `EOS captured ${(data.generated||'').slice(11,16)}`;
       render(); return;
@@ -425,6 +438,7 @@ async function loadData() {
     if (r.ok) {
       const data = await r.json();
       sos = data; eos = null;
+      if (sos.open_units == null) sos.open_units = await backlogUnits(sos.date);
       dot.className = 'dot sos';
       label.textContent = `SOS only — ${data.captured_at||''}`;
       render(); return;
