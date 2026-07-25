@@ -727,6 +727,8 @@ async function fetchBatchStatus(accessToken) {
 
   // One row per BATCH_ID — that is the friendly batch name (B_000...)
   // WORK_RELEASE_BATCH_ID groups batches released together (used for interval calc)
+  // Include batches created this shift OR cleared (status 5800) during this shift
+  // so batches started on 1st shift but completed on 2nd shift appear in the Cleared section
   const sql = `
 SELECT
   BATCH_ID,
@@ -738,18 +740,18 @@ SELECT
   UPDATED_TIMESTAMP
 FROM default_workrelease.WR_BATCH
 WHERE FACILITY_ID = '${FACILITY}'
-  AND CREATED_TIMESTAMP >= '${startStr}'
+  AND (
+    CREATED_TIMESTAMP >= '${startStr}'
+    OR (STATUS_ID = 5800 AND UPDATED_TIMESTAMP >= '${startStr}')
+  )
 ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
 
   const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
 
-  // MySQL timestamps have no timezone marker — append Z so JS parses as UTC
-  const toPdt = d => {
-    if (!d) return null;
-    const iso = String(d).replace(' ', 'T') + (String(d).includes('T') ? '' : 'Z');
-    return new Date(iso).toLocaleString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true });
-  };
+  // MAWM timestamps have no timezone marker — always force UTC before converting
+  const forceUtc = d => { const s = String(d).replace(' ','T'); return (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s)) ? s : s + 'Z'; };
+  const toPdt = d => d ? new Date(forceUtc(d)).toLocaleString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true }) : null;
 
   // Build release events — group by WORK_RELEASE_BATCH_ID to get interval timestamps
   const releaseGroups = {};
@@ -764,8 +766,8 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
   // Map each WORK_RELEASE_BATCH_ID to its interval since the prior release
   const intervalMap = {};
   for (let i = 1; i < releaseOrder.length; i++) {
-    const prev = new Date(releaseOrder[i-1][1]);
-    const curr = new Date(releaseOrder[i][1]);
+    const prev = new Date(forceUtc(releaseOrder[i-1][1]));
+    const curr = new Date(forceUtc(releaseOrder[i][1]));
     intervalMap[releaseOrder[i][0]] = Math.round((curr - prev) / 60000);
   }
 
@@ -775,7 +777,7 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
     const releasedUtc = r.CREATED_TIMESTAMP;
     const clearedUtc  = isCleared ? r.UPDATED_TIMESTAMP : null;
     const minsToClear = (releasedUtc && clearedUtc)
-      ? Math.round((new Date(clearedUtc) - new Date(releasedUtc)) / 60000)
+      ? Math.round((new Date(forceUtc(clearedUtc)) - new Date(forceUtc(releasedUtc))) / 60000)
       : null;
 
     return {
