@@ -137,6 +137,7 @@
 
   <div class="top-bar">
     <div>
+      <button class="back-btn" id="back-btn" onclick="window.close()" style="margin-bottom:10px;">&#x2190; Back to Ecom</button>
       <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.1</p>
       <h1>Ecom Order Backlog &mdash; DC499</h1>
       <p class="subtitle">Live data &middot; Auto-refreshes every 2 min</p>
@@ -159,7 +160,6 @@
         <button id="vt-lines"  class="active" onclick="setView('lines')">Order Lines</button>
         <button id="vt-orders"            onclick="setView('orders')">Orders</button>
       </div>
-      <button class="back-btn" id="back-btn" onclick="window.close()">&#x2190; Back to Ecom</button>
       <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
       <button class="teams-btn" id="send-teams-btn" onclick="sendToTeams(this)">&#x1F4E8; Send to Teams</button>
     </div>
@@ -703,8 +703,6 @@ async function sendToTeams(btn) {
 if (new URLSearchParams(window.location.search).get('from') === 'ecom') {
   var backBtn = document.getElementById('back-btn');
   if (backBtn) backBtn.classList.add('visible');
-  history.pushState({}, '');
-  window.addEventListener('popstate', function() { window.close(); });
 }
 
 // -- Init ---------------------------------------------------------------------
