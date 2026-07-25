@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Backlog Live v1.1 -- DC499</title>
+<title>Ecom Backlog Live v1.2 -- DC499</title>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -12,6 +12,9 @@
     --ready:#2E7D32;--ready-bg:#E8F5E9;
     --alloc:#E65100;--alloc-bg:#FFF3E0;
     --packed:#5B9BD5;--packed-bg:#e8f0fb;
+    --green:#2E7D32;--green-bg:#E8F5E9;
+    --amber:#E65100;--amber-bg:#FFF3E0;
+    --red:#C62828;--red-bg:#FFEBEE;
   }
   [data-theme="dark"]{
     --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;
@@ -20,11 +23,14 @@
     --ready:#4CAF50;--ready-bg:#1a2e1a;
     --alloc:#FFB74D;--alloc-bg:#2e1a00;
     --packed:#5B9BD5;--packed-bg:#0d2340;
+    --green:#4CAF50;--green-bg:#1a2e1a;
+    --amber:#FFB74D;--amber-bg:#2e1a00;
+    --red:#EF9A9A;--red-bg:#2e1010;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
   .container{max-width:1100px;margin:0 auto;}
-  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;}
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;}
   h1{font-size:20px;font-weight:500;margin-bottom:2px;}
   .dept-label{font-size:11px;color:var(--accent);font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;}
   .subtitle{font-size:14px;color:var(--text-muted);}
@@ -41,6 +47,15 @@
   .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:12px;padding:8px 14px;border-radius:8px;margin-bottom:1rem;text-align:center;}
   body:not([data-theme="dark"]) .stale-banner{background:#FFF3CD;color:#7A4F00;}
 
+  /* Tab bar */
+  .tab-bar{display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:1.25rem;}
+  .tab-btn{font-family:inherit;font-size:13px;font-weight:500;padding:9px 18px;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.12s,border-color 0.12s;}
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-pane{display:none;}
+  .tab-pane.active{display:block;}
+
+  /* Shared header-row */
   .header-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;}
   .run-time{font-size:12px;color:var(--text-hint);}
   .header-btns{display:flex;align-items:center;gap:8px;}
@@ -54,8 +69,12 @@
   .view-toggle button{background:none;border:none;padding:5px 12px;cursor:pointer;color:var(--text-muted);font-family:inherit;font-size:12px;font-weight:500;transition:background 0.12s,color 0.12s;}
   .view-toggle button.active{background:var(--accent);color:#fff;}
   .view-toggle button:not(.active):hover{background:var(--surface2);}
+  .teams-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid #6264A7;border-radius:6px;background:#f0f0fa;cursor:pointer;color:#6264A7;font-weight:500;display:flex;align-items:center;gap:5px;}
+  .teams-btn:hover{background:#6264A7;color:#fff;}
+  [data-theme="dark"] .teams-btn{background:#1e1e38;color:#9b9de0;}
+  [data-theme="dark"] .teams-btn:hover{background:#6264A7;color:#fff;}
 
-  /* Metric tiles */
+  /* Backlog metric tiles */
   .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;}
   @media(max-width:600px){.metrics{grid-template-columns:repeat(2,1fr);}}
   .metric{background:var(--surface2);border-radius:10px;padding:1rem;text-align:center;border-top:3px solid transparent;}
@@ -70,27 +89,26 @@
   .metric.packed .metric-value{color:var(--accent);}
   .metric-sub{font-size:11px;color:var(--text-hint);margin-top:4px;}
 
-  /* Summary table */
-  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+  /* Shared card */
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;overflow-x:auto;}
   .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.04em;}
-  table{width:100%;border-collapse:collapse;font-size:14px;}
-  th{text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);padding:8px 12px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);padding:8px 12px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;}
   th.r{text-align:right;}
-  td{padding:10px 12px;border-bottom:0.5px solid var(--border-light);color:var(--text);vertical-align:middle;}
+  td{padding:10px 12px;border-bottom:0.5px solid var(--border-light);color:var(--text);vertical-align:middle;white-space:nowrap;}
   td.r{text-align:right;}
   tfoot td{font-weight:500;border-top:0.5px solid var(--border);border-bottom:none;padding-top:12px;}
+  tr:last-child td{border-bottom:none;}
 
-  .status-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.03em;text-transform:uppercase;}
+  /* Backlog status pills */
+  .status-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.03em;text-transform:uppercase;cursor:pointer;transition:opacity 0.15s,box-shadow 0.15s;}
+  .status-pill:hover{opacity:0.8;}
+  .status-pill.active{box-shadow:0 0 0 2px currentColor;}
   .pill-ready  {background:var(--ready-bg);color:var(--ready);}
   .pill-alloc  {background:var(--alloc-bg);color:var(--alloc);}
   .pill-packed {background:var(--packed-bg);color:var(--packed);}
 
-  /* Status pills in table — clickable */
-  .status-pill{cursor:pointer;transition:opacity 0.15s,box-shadow 0.15s;}
-  .status-pill:hover{opacity:0.8;}
-  .status-pill.active{box-shadow:0 0 0 2px currentColor;}
-
-  /* Order detail panel — below the table card */
+  /* Order detail panel */
   .order-detail-card{display:none;background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
   .order-detail-card.open{display:block;}
   .detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
@@ -107,14 +125,7 @@
   .order-lines{font-size:11px;color:var(--text-hint);}
   .detail-empty{padding:2rem;text-align:center;color:var(--text-hint);font-size:13px;}
 
-  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
-  .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
-  .teams-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid #6264A7;border-radius:6px;background:#f0f0fa;cursor:pointer;color:#6264A7;font-weight:500;display:flex;align-items:center;gap:5px;}
-  .teams-btn:hover{background:#6264A7;color:#fff;}
-  [data-theme="dark"] .teams-btn{background:#1e1e38;color:#9b9de0;}
-  [data-theme="dark"] .teams-btn:hover{background:#6264A7;color:#fff;}
-
-  /* Page layout — main column + hourly sidebar */
+  /* Page layout */
   .page-layout{display:flex;gap:1.25rem;align-items:flex-start;}
   .page-main{flex:1;min-width:0;}
   .page-sidebar{width:260px;flex-shrink:0;}
@@ -130,6 +141,34 @@
   .hourly-count{font-size:12px;font-weight:500;color:var(--text);font-family:monospace;white-space:nowrap;text-align:right;}
   .hourly-uom{font-size:10px;font-weight:400;color:var(--text-hint);margin-left:4px;}
   .hourly-empty{font-size:12px;color:var(--text-hint);text-align:center;padding:1.5rem 0;}
+
+  /* Batch summary tiles */
+  .summary-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.5rem;}
+  @media(max-width:680px){.summary-tiles{grid-template-columns:repeat(2,1fr);}}
+  .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center;}
+  .tile-label{font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .tile-value{font-size:24px;font-weight:500;color:var(--text);}
+  .tile-value.accent{color:var(--accent);}
+  .tile-value.green {color:var(--green);}
+  .tile-value.amber {color:var(--amber);}
+  .tile-sub{font-size:11px;color:var(--text-hint);margin-top:3px;}
+
+  /* Batch status badges */
+  .status-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.03em;text-transform:uppercase;}
+  .badge-cleared{background:var(--green-bg);color:var(--green);}
+  .badge-active {background:var(--amber-bg);color:var(--amber);}
+  .badge-queued {background:var(--accent-bg);color:var(--accent);}
+
+  .batch-num{font-size:11px;font-weight:600;color:var(--text-hint);width:28px;text-align:center;}
+  .dur-fast  {color:var(--green);font-weight:500;}
+  .dur-mid   {color:var(--amber);font-weight:500;}
+  .dur-slow  {color:var(--red);font-weight:500;}
+  .dur-none  {color:var(--text-hint);}
+  .interval-cell{font-size:12px;color:var(--text-muted);}
+  .interval-first{color:var(--text-hint);font-style:italic;font-size:12px;}
+
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
+  .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
 </style>
 </head>
 <body>
@@ -138,8 +177,8 @@
   <div class="top-bar">
     <div>
       <button class="back-btn" id="back-btn" onclick="window.close()" style="margin-bottom:10px;">&#x2190; Back to Ecom</button>
-      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.1</p>
-      <h1>Ecom Order Backlog &mdash; DC499</h1>
+      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.2</p>
+      <h1>Ecom Backlog &mdash; DC499</h1>
       <p class="subtitle">Live data &middot; Auto-refreshes every 2 min</p>
     </div>
     <button class="dark-toggle" onclick="toggleDark()">
@@ -150,113 +189,177 @@
 
   <div class="stale-banner" id="stale-banner"></div>
 
-  <div class="header-row">
-    <div>
-      <div id="run-time" class="run-time">Loading...</div>
-      <div id="next-refresh" class="run-time" style="margin-top:2px;"></div>
-    </div>
-    <div class="header-btns">
-      <div class="view-toggle">
-        <button id="vt-lines"  class="active" onclick="setView('lines')">Order Lines</button>
-        <button id="vt-orders"            onclick="setView('orders')">Orders</button>
-      </div>
-      <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
-      <button class="teams-btn" id="send-teams-btn" onclick="sendToTeams(this)">&#x1F4E8; Send to Teams</button>
-    </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tb-orders" onclick="setTab('orders')">Order Backlog</button>
+    <button class="tab-btn"        id="tb-batches" onclick="setTab('batches')">Batches</button>
   </div>
 
-  <div class="page-layout">
+  <!-- ── Tab: Order Backlog ───────────────────────────────────────────────── -->
+  <div class="tab-pane active" id="tab-orders">
+    <div class="header-row">
+      <div>
+        <div id="bl-run-time" class="run-time">Loading...</div>
+        <div id="bl-next-refresh" class="run-time" style="margin-top:2px;"></div>
+      </div>
+      <div class="header-btns">
+        <div class="view-toggle">
+          <button id="vt-lines"  class="active" onclick="setView('lines')">Order Lines</button>
+          <button id="vt-orders"                onclick="setView('orders')">Orders</button>
+        </div>
+        <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
+        <button class="teams-btn" id="send-teams-btn" onclick="sendToTeams(this)">&#x1F4E8; Send to Teams</button>
+      </div>
+    </div>
 
-    <!-- Main column -->
-    <div class="page-main">
+    <div class="page-layout">
+      <div class="page-main">
+        <div class="metrics" id="metrics" style="display:none;">
+          <div class="metric ready">
+            <div class="metric-label">Ready</div>
+            <div class="metric-value" id="m-ready">--</div>
+            <div class="metric-sub">Not yet in wave</div>
+          </div>
+          <div class="metric alloc">
+            <div class="metric-label">Allocated</div>
+            <div class="metric-value" id="m-alloc">--</div>
+            <div class="metric-sub">In wave, unpicked</div>
+          </div>
+          <div class="metric packed">
+            <div class="metric-label">Packed</div>
+            <div class="metric-value" id="m-packed">--</div>
+            <div class="metric-sub">Awaiting ship</div>
+          </div>
+          <div class="metric total">
+            <div class="metric-label">Total Open</div>
+            <div class="metric-value" id="m-total">--</div>
+            <div class="metric-sub" id="m-date">Today</div>
+          </div>
+        </div>
 
-      <div class="metrics" id="metrics" style="display:none;">
-        <div class="metric ready">
-          <div class="metric-label">Ready</div>
-          <div class="metric-value" id="m-ready">--</div>
-          <div class="metric-sub">Not yet in wave</div>
+        <div class="card" id="table-card" style="display:none;">
+          <div class="card-title">Order Lines by Date &mdash; tap a status to see orders</div>
+          <table>
+            <thead><tr>
+              <th>Date</th>
+              <th class="r">Ready</th>
+              <th class="r">Allocated</th>
+              <th class="r">Packed</th>
+              <th class="r">Total Open</th>
+              <th class="r">Shipped</th>
+            </tr></thead>
+            <tbody id="tb-dates"></tbody>
+            <tfoot><tr>
+              <td>Total</td>
+              <td class="r" id="ft-ready"></td>
+              <td class="r" id="ft-alloc"></td>
+              <td class="r" id="ft-packed"></td>
+              <td class="r" id="ft-total"></td>
+              <td class="r" id="ft-shipped"></td>
+            </tr></tfoot>
+          </table>
         </div>
-        <div class="metric alloc">
-          <div class="metric-label">Allocated</div>
-          <div class="metric-value" id="m-alloc">--</div>
-          <div class="metric-sub">In wave, unpicked</div>
-        </div>
-        <div class="metric packed">
-          <div class="metric-label">Packed</div>
-          <div class="metric-value" id="m-packed">--</div>
-          <div class="metric-sub">Awaiting ship</div>
-        </div>
-        <div class="metric total">
-          <div class="metric-label">Total Open</div>
-          <div class="metric-value" id="m-total">--</div>
-          <div class="metric-sub" id="m-date">Today</div>
+
+        <div class="order-detail-card" id="order-detail-card">
+          <div class="detail-header">
+            <div class="detail-title" id="detail-title"></div>
+            <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close">&times;</button>
+          </div>
+          <div class="order-list-inner" id="detail-order-list"></div>
         </div>
       </div>
 
-      <div class="card" id="table-card" style="display:none;">
-        <div class="card-title">Order Lines by Date &mdash; tap a status to see orders</div>
-        <table>
-          <thead><tr>
-            <th>Date</th>
-            <th class="r">Ready</th>
-            <th class="r">Allocated</th>
-            <th class="r">Packed</th>
-            <th class="r">Total Open</th>
-            <th class="r">Shipped</th>
-          </tr></thead>
-          <tbody id="tb-dates"></tbody>
-          <tfoot><tr>
-            <td>Total</td>
-            <td class="r" id="ft-ready"></td>
-            <td class="r" id="ft-alloc"></td>
-            <td class="r" id="ft-packed"></td>
-            <td class="r" id="ft-total"></td>
-            <td class="r" id="ft-shipped"></td>
-          </tr></tfoot>
-        </table>
-      </div>
-
-      <!-- Order detail panel — renders below table when a status pill is clicked -->
-      <div class="order-detail-card" id="order-detail-card">
-        <div class="detail-header">
-          <div class="detail-title" id="detail-title"></div>
-          <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close">&times;</button>
+      <div class="page-sidebar">
+        <div id="hourly-card" style="display:none;">
+          <div class="card-title" id="hourly-title">Units / Hour</div>
+          <div class="card-sub" id="hourly-sub">today &middot; order lines received per hour</div>
+          <div id="hourly-bars"></div>
         </div>
-        <div class="order-list-inner" id="detail-order-list"></div>
       </div>
+    </div>
 
-    </div><!-- /.page-main -->
+    <div class="empty-state" id="bl-empty-state" style="display:none;">
+      <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
+      No data yet. Click <strong>Refresh</strong> to reload.
+    </div>
+  </div><!-- /#tab-orders -->
 
-    <!-- Sidebar — hourly lines received -->
-    <div class="page-sidebar">
-      <div id="hourly-card" style="display:none;">
-        <div class="card-title" id="hourly-title">Units / Hour</div>
-        <div class="card-sub" id="hourly-sub">today &middot; order lines received per hour</div>
-        <div id="hourly-bars"></div>
+  <!-- ── Tab: Batches ─────────────────────────────────────────────────────── -->
+  <div class="tab-pane" id="tab-batches">
+    <div class="header-row">
+      <div>
+        <div id="bt-run-time" class="run-time">Loading...</div>
+        <div id="bt-shift-start" class="run-time" style="margin-top:2px;"></div>
       </div>
-    </div><!-- /.page-sidebar -->
+      <div class="header-btns">
+        <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
+      </div>
+    </div>
 
-  </div><!-- /.page-layout -->
+    <div class="summary-tiles" id="bt-summary-tiles" style="display:none;">
+      <div class="tile">
+        <div class="tile-label">Total Batches</div>
+        <div class="tile-value accent" id="bt-t-total">--</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Cleared</div>
+        <div class="tile-value green" id="bt-t-cleared">--</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Active / Queued</div>
+        <div class="tile-value amber" id="bt-t-active">--</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Avg Time to Clear</div>
+        <div class="tile-value" id="bt-t-avg-clear">--</div>
+        <div class="tile-sub">per batch</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Avg Release Interval</div>
+        <div class="tile-value" id="bt-t-avg-interval">--</div>
+        <div class="tile-sub">between releases</div>
+      </div>
+    </div>
 
-  <div class="empty-state" id="empty-state" style="display:none;">
-    <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
-    No data yet. Click <strong>Refresh</strong> to reload.
-  </div>
+    <div class="card" id="bt-batch-card" style="display:none;">
+      <div class="card-title">Batches This Shift</div>
+      <table>
+        <thead><tr>
+          <th class="r">#</th>
+          <th>Batch</th>
+          <th>Released</th>
+          <th class="r">Orders</th>
+          <th class="r">oLPNs</th>
+          <th>Status</th>
+          <th>Cleared</th>
+          <th class="r">Time to Clear</th>
+          <th class="r">Interval Since Prev</th>
+        </tr></thead>
+        <tbody id="bt-batch-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" id="bt-empty-state" style="display:none;">
+      <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
+      No batches found for this shift yet.
+    </div>
+  </div><!-- /#tab-batches -->
 
   <p class="nordstrom-tag">Nordstrom &middot; Ecom Backlog Live &middot; DC499 &middot; <span id="footer-date"></span></p>
   <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
 </div>
 
 <script>
-var THEME_KEY   = 'dc499_backlog_theme_v1';
-var INTERVAL_MS = 2 * 60 * 1000;
-var lastData    = null;
-var viewMode    = 'lines'; // 'lines' | 'orders'
-var autoRefreshTimer = null;
-var countdownTimer   = null;
-var nextRefreshAt    = null;
-// Active pill selection: {date, status} or null
-var activeSelection  = null;
+var THEME_KEY      = 'dc499_backlog_theme_v1';
+var BL_INTERVAL_MS = 2 * 60 * 1000;
+var BT_INTERVAL_MS = 2 * 60 * 1000;
+var activeTab      = 'orders';
+
+var lastBlData = null, lastBtData = null;
+var blTimer = null, blCountdown = null, blNextAt = null;
+var btTimer = null, btCountdown = null, btNextAt = null;
+var viewMode = 'lines';
+var activeSelection = null;
+var lastAvgUph = null;
 
 // -- Theme --------------------------------------------------------------------
 function applyTheme(dark) {
@@ -264,140 +367,132 @@ function applyTheme(dark) {
   document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
   try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
 }
-function toggleDark() {
-  applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
-}
+function toggleDark() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
 (function() {
   var saved; try { saved = localStorage.getItem(THEME_KEY); } catch(e) {}
   applyTheme(saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
 })();
 
-// -- Auto-refresh -------------------------------------------------------------
-function scheduleAutoRefresh() {
-  if (autoRefreshTimer) clearTimeout(autoRefreshTimer);
-  if (countdownTimer)   clearInterval(countdownTimer);
-  nextRefreshAt = Date.now() + INTERVAL_MS;
-  autoRefreshTimer = setTimeout(function() { fetchData(false); }, INTERVAL_MS);
-  countdownTimer = setInterval(function() {
-    var remaining = Math.max(0, Math.round((nextRefreshAt - Date.now()) / 1000));
-    var m = Math.floor(remaining / 60), s = remaining % 60;
-    var el = document.getElementById('next-refresh');
-    if (el) el.textContent = 'Auto-refresh in ' + m + ':' + (s < 10 ? '0' : '') + s;
-    if (remaining === 0) clearInterval(countdownTimer);
-  }, 1000);
+// -- Tab switching ------------------------------------------------------------
+function setTab(tab) {
+  activeTab = tab;
+  document.getElementById('tb-orders').classList.toggle('active',  tab === 'orders');
+  document.getElementById('tb-batches').classList.toggle('active', tab === 'batches');
+  document.getElementById('tab-orders').classList.toggle('active',  tab === 'orders');
+  document.getElementById('tab-batches').classList.toggle('active', tab === 'batches');
+  document.getElementById('stale-banner').style.display = 'none';
+  if (tab === 'batches' && !lastBtData) fetchBatchData();
 }
 
-function manualRefresh() { fetchData(true); }
-
-function fetchData(isManual) {
-  var rtEl = document.getElementById('run-time');
-  if (rtEl) rtEl.textContent = 'Loading...';
-  var base = window.location.protocol === 'file:'
+// -- Shared helpers -----------------------------------------------------------
+function getBase() {
+  return window.location.protocol === 'file:'
     ? 'http://localhost:3001'
     : (window.location.hostname === 'dkarim02.github.io'
         ? 'https://dkarim02.github.io/DC499-reports'
         : '');
-  fetch(base + '/backlog_live.json?t=' + Date.now())
-    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(data) {
-      lastData = data;
-      renderData(data);
-      scheduleAutoRefresh();
-    })
-    .catch(function(err) {
-      if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
-      document.getElementById('empty-state').style.display = 'block';
-      scheduleAutoRefresh();
-    });
 }
-
-function isStale(generated) {
+function isStale(generated, threshMin) {
   if (!generated) return false;
   try {
     var ts = generated.endsWith('Z') ? generated : generated + 'Z';
-    return (Date.now() - new Date(ts).getTime()) / 60000 > 45;
+    return (Date.now() - new Date(ts).getTime()) / 60000 > (threshMin || 45);
   } catch(e) { return false; }
 }
-
+function fmt(n)    { return (n || 0).toLocaleString(); }
+function fmtN(n)   { return n != null ? Number(n).toLocaleString() : '—'; }
 function fmtDate(iso) {
   try { return new Date(iso + 'T12:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'}); }
   catch(e) { return iso; }
 }
-
-function fmt(n) { return (n || 0).toLocaleString(); }
-
+function fmtMins(m) {
+  if (m == null) return '—';
+  var h = Math.floor(m / 60), min = m % 60;
+  return h > 0 ? h + 'h ' + min + 'm' : min + 'm';
+}
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+function manualRefresh() {
+  if (activeTab === 'orders') fetchBacklogData(true);
+  else fetchBatchData(true);
+}
 
-// -- Order detail panel -------------------------------------------------------
-var PILL_LABEL = { READY: 'Ready', ALLOCATED: 'Allocated', PACKED: 'Packed' };
-var PILL_CLASS = { READY: 'pill-ready', ALLOCATED: 'pill-alloc', PACKED: 'pill-packed' };
+// ── BACKLOG TAB ───────────────────────────────────────────────────────────────
+function scheduleBlRefresh() {
+  if (blTimer)    clearTimeout(blTimer);
+  if (blCountdown) clearInterval(blCountdown);
+  blNextAt = Date.now() + BL_INTERVAL_MS;
+  blTimer  = setTimeout(function() { fetchBacklogData(false); }, BL_INTERVAL_MS);
+  blCountdown = setInterval(function() {
+    var rem = Math.max(0, Math.round((blNextAt - Date.now()) / 1000));
+    var m = Math.floor(rem / 60), s = rem % 60;
+    var el = document.getElementById('bl-next-refresh');
+    if (el) el.textContent = 'Auto-refresh in ' + m + ':' + (s < 10 ? '0' : '') + s;
+    if (rem === 0) clearInterval(blCountdown);
+  }, 1000);
+}
+
+function fetchBacklogData() {
+  var rtEl = document.getElementById('bl-run-time');
+  if (rtEl) rtEl.textContent = 'Loading...';
+  fetch(getBase() + '/backlog_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      lastBlData = data;
+      renderBacklogData(data);
+      scheduleBlRefresh();
+    })
+    .catch(function(err) {
+      if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
+      document.getElementById('bl-empty-state').style.display = 'block';
+      scheduleBlRefresh();
+    });
+}
+
+var PILL_LABEL = { READY:'Ready', ALLOCATED:'Allocated', PACKED:'Packed' };
+var PILL_CLASS = { READY:'pill-ready', ALLOCATED:'pill-alloc', PACKED:'pill-packed' };
 
 function openDetailPanel(date, status, row) {
   var key = date + '|' + status;
-  // Toggle off if same pill clicked again
-  if (activeSelection && activeSelection.key === key) {
-    closeDetailPanel();
-    return;
-  }
+  if (activeSelection && activeSelection.key === key) { closeDetailPanel(); return; }
   activeSelection = { key: key };
-
-  // De-highlight all pills, highlight the active one
-  document.querySelectorAll('.status-pill').forEach(function(el) {
-    el.classList.remove('active');
-  });
+  document.querySelectorAll('.status-pill').forEach(function(el) { el.classList.remove('active'); });
   var activePill = document.querySelector('[data-pill="' + key + '"]');
   if (activePill) activePill.classList.add('active');
-
-  var orders = (row.orders || []).filter(function(o) {
-    return o.status.toUpperCase() === status;
-  });
-
+  var orders = (row.orders || []).filter(function(o) { return o.status.toUpperCase() === status; });
   var titleEl = document.getElementById('detail-title');
   var listEl  = document.getElementById('detail-order-list');
   var card    = document.getElementById('order-detail-card');
-
-  var pillBadge = '<span class="status-pill ' + (PILL_CLASS[status] || '') + '" style="font-size:11px;">' + (PILL_LABEL[status] || status) + '</span>';
+  var pillBadge = '<span class="status-pill ' + (PILL_CLASS[status]||'') + '" style="font-size:11px;">' + (PILL_LABEL[status]||status) + '</span>';
   titleEl.innerHTML = fmtDate(date) + ' &nbsp;' + pillBadge + '&nbsp; <span style="color:var(--text-muted);font-weight:400;">' + orders.length + ' orders</span>';
-
   if (!orders.length) {
     listEl.innerHTML = '<div class="detail-empty">No orders found for this status.</div>';
   } else {
     var html = '';
     orders.forEach(function(o) {
-      html += '<div class="order-item">';
-      html += '<span class="order-id">' + escHtml(o.order_id) + '</span>';
-      html += '<span class="order-lines">' + o.line_count + (o.line_count === 1 ? ' line' : ' lines') + '</span>';
-      html += '</div>';
+      html += '<div class="order-item"><span class="order-id">' + escHtml(o.order_id) + '</span><span class="order-lines">' + o.line_count + (o.line_count === 1 ? ' line' : ' lines') + '</span></div>';
     });
     listEl.innerHTML = html;
   }
-
   card.classList.add('open');
-  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  card.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
-
 function closeDetailPanel() {
   activeSelection = null;
   document.getElementById('order-detail-card').classList.remove('open');
-  document.querySelectorAll('.status-pill').forEach(function(el) {
-    el.classList.remove('active');
-  });
+  document.querySelectorAll('.status-pill').forEach(function(el) { el.classList.remove('active'); });
 }
 
-// -- Hourly side card ---------------------------------------------------------
 function fmtHourRange(h) {
   function label(n) {
-    if (n === 0)  return '12 AM';
-    if (n === 12) return '12 PM';
-    if (n === 24) return '12 AM';
-    return n < 12 ? (n + ' AM') : ((n - 12) + ' PM');
+    if (n===0)  return '12 AM';
+    if (n===12) return '12 PM';
+    if (n===24) return '12 AM';
+    return n<12 ? (n+' AM') : ((n-12)+' PM');
   }
-  return label(h) + '–' + label(h + 1);
+  return label(h) + '–' + label(h+1);
 }
-
-var lastAvgUph = null;
 
 function renderHourly(hourly) {
   var card   = document.getElementById('hourly-card');
@@ -409,306 +504,280 @@ function renderHourly(hourly) {
     card.style.display = 'block';
     return;
   }
-  var total = rows.reduce(function(s, r) { return s + r.lines; }, 0);
+  var total = rows.reduce(function(s,r) { return s + r.lines; }, 0);
   lastAvgUph = Math.round(total / rows.length);
   var html = '';
   rows.forEach(function(r) {
-    html += '<div class="hourly-row">';
-    html += '<span class="hourly-range">' + fmtHourRange(r.hour) + '</span>';
-    html += '<span class="hourly-count">' + r.lines.toLocaleString() + '<span class="hourly-uom">units</span></span>';
-    html += '</div>';
+    html += '<div class="hourly-row"><span class="hourly-range">' + fmtHourRange(r.hour) + '</span><span class="hourly-count">' + r.lines.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
   });
-  html += '<div class="hourly-row" style="border-top:0.5px solid var(--border-mid);margin-top:4px;padding-top:8px;">';
-  html += '<span class="hourly-range" style="font-weight:500;color:var(--text);">Avg / hr</span>';
-  html += '<span class="hourly-count" style="color:var(--accent);">' + lastAvgUph.toLocaleString() + '<span class="hourly-uom">units</span></span>';
-  html += '</div>';
+  html += '<div class="hourly-row" style="border-top:0.5px solid var(--border-mid);margin-top:4px;padding-top:8px;"><span class="hourly-range" style="font-weight:500;color:var(--text);">Avg / hr</span><span class="hourly-count" style="color:var(--accent);">' + lastAvgUph.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
   barsEl.innerHTML = html;
   card.style.display = 'block';
 }
 
-// -- View toggle --------------------------------------------------------------
 function setView(mode) {
   viewMode = mode;
-  document.getElementById('vt-lines').classList.toggle('active',  mode === 'lines');
-  document.getElementById('vt-orders').classList.toggle('active', mode === 'orders');
-  if (lastData) renderData(lastData);
+  document.getElementById('vt-lines').classList.toggle('active',  mode==='lines');
+  document.getElementById('vt-orders').classList.toggle('active', mode==='orders');
+  if (lastBlData) renderBacklogData(lastBlData);
 }
 
-// -- Render -------------------------------------------------------------------
-function renderData(data) {
-  var rtEl    = document.getElementById('run-time');
+function renderBacklogData(data) {
+  var rtEl    = document.getElementById('bl-run-time');
   var staleEl = document.getElementById('stale-banner');
-  var emptyEl = document.getElementById('empty-state');
+  var emptyEl = document.getElementById('bl-empty-state');
   var metrEl  = document.getElementById('metrics');
   var cardEl  = document.getElementById('table-card');
 
-  if (isStale(data.generated)) {
-    staleEl.style.display = 'block';
-    var mins = Math.round((Date.now() - new Date(data.generated).getTime()) / 60000);
-    staleEl.textContent = '⚠ Data is ' + mins + ' min old — dc499_refresh.js may not be running';
-  } else {
-    staleEl.style.display = 'none';
+  if (activeTab === 'orders') {
+    if (isStale(data.generated, 45)) {
+      staleEl.style.display = 'block';
+      var mins = Math.round((Date.now() - new Date(data.generated).getTime()) / 60000);
+      staleEl.textContent = '⚠ Data is ' + mins + ' min old — dc499_refresh.js may not be running';
+    } else { staleEl.style.display = 'none'; }
   }
 
   try {
     var raw = data.generated || '';
     var d = new Date(raw.endsWith('Z') ? raw : raw + 'Z');
-    rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ' \xb7 Facility ' + (data.facility || '499');
+    rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + ' · Facility ' + (data.facility||'499');
   } catch(e) { rtEl.textContent = data.generated || ''; }
 
-  if (!data.dates || !data.dates.length) {
-    emptyEl.style.display = 'block';
-    return;
-  }
+  if (!data.dates || !data.dates.length) { emptyEl.style.display = 'block'; return; }
 
-  // In Orders mode, count distinct order_ids per status from row.orders[]
-  // In Lines mode, use the raw line counts already on each row
   function getCount(row, status) {
-    if (viewMode === 'orders') {
-      return (row.orders || []).filter(function(o) {
-        return o.status.toUpperCase() === status;
-      }).length;
-    }
-    if (status === 'READY')     return row.ready   || 0;
-    if (status === 'ALLOCATED') return row.allocated || 0;
-    if (status === 'PACKED')    return row.packed   || 0;
-    if (status === 'SHIPPED')   return row.shipped  || 0;
+    if (viewMode === 'orders') return (row.orders||[]).filter(function(o) { return o.status.toUpperCase()===status; }).length;
+    if (status==='READY')     return row.ready    || 0;
+    if (status==='ALLOCATED') return row.allocated|| 0;
+    if (status==='PACKED')    return row.packed   || 0;
+    if (status==='SHIPPED')   return row.shipped  || 0;
     return 0;
   }
 
-  // Update card title to reflect current view
   var cardTitleEl = document.querySelector('#table-card .card-title');
-  if (cardTitleEl) {
-    cardTitleEl.textContent = (viewMode === 'orders'
-      ? 'Orders by Date'
-      : 'Order Lines by Date') + ' — tap a status to see orders';
-  }
+  if (cardTitleEl) cardTitleEl.textContent = (viewMode==='orders' ? 'Orders by Date' : 'Order Lines by Date') + ' — tap a status to see orders';
 
   var tb = document.getElementById('tb-dates');
   tb.innerHTML = '';
-  var totR = 0, totA = 0, totP = 0, totO = 0, totS = 0;
-
-  // Reset active selection when data refreshes
+  var totR=0, totA=0, totP=0, totO=0, totS=0;
   closeDetailPanel();
 
   data.dates.forEach(function(row) {
-    var r = getCount(row, 'READY');
-    var a = getCount(row, 'ALLOCATED');
-    var p = getCount(row, 'PACKED');
-    var s = getCount(row, 'SHIPPED');
-    var open = r + a + p;
-    totR += r; totA += a; totP += p; totO += open; totS += s;
-
+    var r=getCount(row,'READY'), a=getCount(row,'ALLOCATED'), p=getCount(row,'PACKED'), s=getCount(row,'SHIPPED');
+    var open=r+a+p;
+    totR+=r; totA+=a; totP+=p; totO+=open; totS+=s;
     var tr = document.createElement('tr');
 
     function pillCell(status, count, pillCls) {
-      var key = row.date + '|' + status;
-      var td = document.createElement('td');
-      td.className = 'r';
-      if (count > 0) {
-        var span = document.createElement('span');
-        span.className = 'status-pill ' + pillCls;
-        span.setAttribute('data-pill', key);
-        span.textContent = fmt(count);
-        span.title = 'Show ' + status.toLowerCase() + ' orders';
-        (function(d, st, rw) {
-          span.addEventListener('click', function(e) {
-            e.stopPropagation();
-            openDetailPanel(d, st, rw);
-          });
-        })(row.date, status, row);
+      var key = row.date+'|'+status;
+      var td = document.createElement('td'); td.className='r';
+      if (count>0) {
+        var span=document.createElement('span');
+        span.className='status-pill '+pillCls;
+        span.setAttribute('data-pill',key);
+        span.textContent=fmt(count);
+        span.title='Show '+status.toLowerCase()+' orders';
+        (function(d,st,rw){ span.addEventListener('click',function(e){ e.stopPropagation(); openDetailPanel(d,st,rw); }); })(row.date,status,row);
         td.appendChild(span);
-      } else {
-        td.style.color = 'var(--text-hint)';
-        td.textContent = '0';
-      }
+      } else { td.style.color='var(--text-hint)'; td.textContent='0'; }
       return td;
     }
 
-    var dateTd = document.createElement('td');
-    dateTd.style.fontWeight = '500';
-    dateTd.innerHTML = fmtDate(row.date) +
-      (row.date === data.today ? ' <span style="font-size:10px;color:var(--text-hint);">today</span>' : '');
-
-    var openTd = document.createElement('td');
-    openTd.className = 'r';
-    openTd.style.fontWeight = '500';
-    openTd.textContent = fmt(open);
-
-    var shipTd = document.createElement('td');
-    shipTd.className = 'r';
-    shipTd.style.color = 'var(--text-hint)';
-    shipTd.textContent = fmt(s);
-
+    var dateTd=document.createElement('td'); dateTd.style.fontWeight='500';
+    dateTd.innerHTML=fmtDate(row.date)+(row.date===data.today?' <span style="font-size:10px;color:var(--text-hint);">today</span>':'');
+    var openTd=document.createElement('td'); openTd.className='r'; openTd.style.fontWeight='500'; openTd.textContent=fmt(open);
+    var shipTd=document.createElement('td'); shipTd.className='r'; shipTd.style.color='var(--text-hint)'; shipTd.textContent=fmt(s);
     tr.appendChild(dateTd);
-    tr.appendChild(pillCell('READY',     r, 'pill-ready'));
-    tr.appendChild(pillCell('ALLOCATED', a, 'pill-alloc'));
-    tr.appendChild(pillCell('PACKED',    p, 'pill-packed'));
+    tr.appendChild(pillCell('READY',r,'pill-ready'));
+    tr.appendChild(pillCell('ALLOCATED',a,'pill-alloc'));
+    tr.appendChild(pillCell('PACKED',p,'pill-packed'));
     tr.appendChild(openTd);
     tr.appendChild(shipTd);
-
     tb.appendChild(tr);
   });
 
-  document.getElementById('ft-ready').textContent   = fmt(totR);
-  document.getElementById('ft-alloc').textContent   = fmt(totA);
-  document.getElementById('ft-packed').textContent  = fmt(totP);
-  document.getElementById('ft-total').textContent   = fmt(totO);
-  document.getElementById('ft-shipped').textContent = fmt(totS);
-
-  // Metric tiles match footer totals
-  document.getElementById('m-ready').textContent  = fmt(totR);
-  document.getElementById('m-alloc').textContent  = fmt(totA);
-  document.getElementById('m-packed').textContent = fmt(totP);
-  document.getElementById('m-total').textContent  = fmt(totO);
-  document.getElementById('m-date').textContent   = 'All dates';
+  document.getElementById('ft-ready').textContent  = fmt(totR);
+  document.getElementById('ft-alloc').textContent  = fmt(totA);
+  document.getElementById('ft-packed').textContent = fmt(totP);
+  document.getElementById('ft-total').textContent  = fmt(totO);
+  document.getElementById('ft-shipped').textContent= fmt(totS);
+  document.getElementById('m-ready').textContent   = fmt(totR);
+  document.getElementById('m-alloc').textContent   = fmt(totA);
+  document.getElementById('m-packed').textContent  = fmt(totP);
+  document.getElementById('m-total').textContent   = fmt(totO);
+  document.getElementById('m-date').textContent    = 'All dates';
 
   emptyEl.style.display = 'none';
   metrEl.style.display  = 'grid';
   cardEl.style.display  = 'block';
-
   renderHourly(data.hourly || []);
 }
 
-// -- Teams --------------------------------------------------------------------
+// ── BATCHES TAB ───────────────────────────────────────────────────────────────
+function scheduleBtRefresh() {
+  if (btTimer)    clearTimeout(btTimer);
+  if (btCountdown) clearInterval(btCountdown);
+  btNextAt = Date.now() + BT_INTERVAL_MS;
+  btTimer  = setTimeout(function() { fetchBatchData(false); }, BT_INTERVAL_MS);
+  btCountdown = setInterval(function() {
+    var rem = Math.max(0, Math.round((btNextAt - Date.now()) / 1000));
+    var m = Math.floor(rem/60), s = rem%60;
+    var el = document.getElementById('bt-run-time');
+    if (el && lastBtData) {
+      try {
+        var raw = lastBtData.generated || '';
+        var d = new Date(raw.endsWith('Z') ? raw : raw+'Z');
+        el.textContent = 'Updated ' + d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) + '  ·  Next refresh in ' + m + ':' + (s<10?'0':'') + s;
+      } catch(e) {}
+    }
+    if (rem===0) clearInterval(btCountdown);
+  }, 1000);
+}
+
+function fetchBatchData() {
+  var rtEl = document.getElementById('bt-run-time');
+  if (rtEl) rtEl.textContent = 'Loading...';
+  fetch(getBase() + '/batch_status.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(data) {
+      lastBtData = data;
+      renderBatchData(data);
+      scheduleBtRefresh();
+    })
+    .catch(function(err) {
+      if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
+      document.getElementById('bt-empty-state').style.display = 'block';
+      scheduleBtRefresh();
+    });
+}
+
+function durClass(mins) {
+  if (mins==null) return 'dur-none';
+  if (mins<=60)   return 'dur-fast';
+  if (mins<=120)  return 'dur-mid';
+  return 'dur-slow';
+}
+function fmtDur(mins) {
+  if (mins==null) return '<span class="dur-none">—</span>';
+  var h=Math.floor(mins/60), m=mins%60;
+  return '<span class="'+durClass(mins)+'">'+(h>0?h+'h '+m+'m':m+'m')+'</span>';
+}
+function batchBadge(b) {
+  var label = b.status_label || b.status_code || '—';
+  if (b.is_cleared)                                         return '<span class="status-badge badge-cleared">'+label+'</span>';
+  if (b.status_code==='5400'||b.status_code==='5600'||b.status_code==='5200') return '<span class="status-badge badge-active">'+label+'</span>';
+  return '<span class="status-badge badge-queued">'+label+'</span>';
+}
+
+function renderBatchData(data) {
+  var staleEl = document.getElementById('stale-banner');
+  var emptyEl = document.getElementById('bt-empty-state');
+  var tilesEl = document.getElementById('bt-summary-tiles');
+  var cardEl  = document.getElementById('bt-batch-card');
+  var s       = data.summary || {};
+
+  if (activeTab === 'batches') {
+    if (isStale(data.generated, 90)) {
+      staleEl.style.display = 'block';
+      var mins = Math.round((Date.now() - new Date(data.generated+'Z').getTime()) / 60000);
+      staleEl.textContent = '⚠ Data is '+mins+' min old — dc499_refresh.js may not be running';
+    } else { staleEl.style.display = 'none'; }
+  }
+
+  if (data.shift_start_utc) {
+    try {
+      var sd = new Date(data.shift_start_utc.replace(' ','T')+'Z');
+      document.getElementById('bt-shift-start').textContent =
+        'Shift start: ' + sd.toLocaleTimeString('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit',hour12:true});
+    } catch(e) {}
+  }
+
+  if (!data.batches || !data.batches.length) {
+    emptyEl.style.display = 'block';
+    tilesEl.style.display = 'none';
+    cardEl.style.display  = 'none';
+    return;
+  }
+
+  document.getElementById('bt-t-total').textContent    = fmtN(s.total_batches);
+  document.getElementById('bt-t-cleared').textContent  = fmtN(s.cleared_batches);
+  document.getElementById('bt-t-active').textContent   = fmtN(s.active_batches);
+  document.getElementById('bt-t-avg-clear').textContent    = s.avg_mins_to_clear != null            ? fmtMins(s.avg_mins_to_clear) : '—';
+  document.getElementById('bt-t-avg-interval').textContent = s.avg_release_interval_mins != null    ? fmtMins(s.avg_release_interval_mins) : '—';
+
+  tilesEl.style.display = 'grid';
+  emptyEl.style.display = 'none';
+
+  var tbody = document.getElementById('bt-batch-tbody');
+  var html  = '';
+  var seenWr = {};
+  data.batches.forEach(function(b) {
+    var wrId = b.work_release_batch_id;
+    var firstOfGroup = !seenWr[wrId];
+    seenWr[wrId] = true;
+    var intervalCell = !firstOfGroup
+      ? '<span style="color:var(--text-hint)">—</span>'
+      : b.mins_since_prev_release != null
+        ? '<span class="interval-cell">'+fmtMins(b.mins_since_prev_release)+'</span>'
+        : '<span class="interval-first">first release</span>';
+    html += '<tr>';
+    html += '<td class="r batch-num">'+b.batch_num+'</td>';
+    html += '<td style="font-family:monospace;font-size:12px;">'+(b.batch_id||'—')+'</td>';
+    html += '<td>'+(b.released_pdt||'—')+'</td>';
+    html += '<td class="r">'+fmtN(b.total_orders)+'</td>';
+    html += '<td class="r">'+fmtN(b.total_olpns)+'</td>';
+    html += '<td>'+batchBadge(b)+'</td>';
+    html += '<td>'+(b.cleared_pdt||'<span style="color:var(--text-hint)">—</span>')+'</td>';
+    html += '<td class="r">'+fmtDur(b.mins_to_clear)+'</td>';
+    html += '<td class="r">'+intervalCell+'</td>';
+    html += '</tr>';
+  });
+  tbody.innerHTML = html;
+  cardEl.style.display = 'block';
+}
+
+// ── TEAMS (Backlog tab) ───────────────────────────────────────────────────────
 var TEAMS_WEBHOOKS = {
   '1st': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/3889f116d5b24ef3bce7d9e7b335bc2a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Sjq4jKaIMbSclrAgupvxReJ-9TSBFDsYA_UO2tkmZhc',
   '2nd': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/eacd8206a4274abb96f43be9d3d01256/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=8Hc0GkQ2Sobr73S7JX8Gu5gldDJaVE4IeiLuzeAsyxY',
 };
-
 function getShift() {
   var h = new Date().getHours();
-  if (h >= 6  && h < 14) return '1st';
-  if (h >= 14 && h < 22) return '2nd';
+  if (h>=6  && h<14) return '1st';
+  if (h>=14 && h<22) return '2nd';
   return '3rd';
 }
-
 async function sendToTeams(btn) {
-  if (!lastData || !lastData.dates || !lastData.dates.length) {
-    alert('No data loaded yet — wait for data to load first.');
-    return;
-  }
-  var shift   = getShift();
-  var webhook = TEAMS_WEBHOOKS[shift];
-  if (!webhook) {
-    alert('No Teams webhook configured for ' + shift + ' shift.');
-    return;
-  }
-
-  var orig = btn.textContent;
-  btn.textContent = '⏳ Sending…';
-  btn.disabled = true;
-
-  // Totals across ALL dates
-  var ready = 0, allocated = 0, packed = 0, shipped = 0;
-  (lastData.dates || []).forEach(function(d) {
-    ready     += d.ready     || 0;
-    allocated += d.allocated || 0;
-    packed    += d.packed    || 0;
-    shipped   += d.shipped   || 0;
-  });
-  var totalOpen = ready + allocated + packed;
-  var avgBridge = lastAvgUph != null ? lastAvgUph.toLocaleString() + ' units' : '—';
-
-  var ts = new Date().toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
-
-  var card = {
-    "type": "message",
-    "attachments": [{
-      "contentType": "application/vnd.microsoft.card.adaptive",
-      "content": {
-        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-        "type": "AdaptiveCard",
-        "version": "1.4",
-        "body": [
-          {
-            "type": "ColumnSet",
-            "columns": [
-              {
-                "type": "Column", "width": "stretch",
-                "items": [
-                  {"type":"TextBlock","text":"Ecom Order Backlog","weight":"Bolder","size":"Large"},
-                  {"type":"TextBlock","text":"DC499 · " + shift + " shift · " + ts,"isSubtle":true,"size":"Small","spacing":"None"}
-                ]
-              }
-            ]
-          },
-          {"type":"Separator","spacing":"Medium"},
-          {
-            "type": "FactSet",
-            "spacing": "Medium",
-            "facts": [
-              {"title":"Ready",     "value": ready.toLocaleString()     + "  (not yet in wave)"},
-              {"title":"Allocated", "value": allocated.toLocaleString() + "  (in wave, unpicked)"},
-              {"title":"Packed",    "value": packed.toLocaleString()    + "  (awaiting ship)"},
-              {"title":"Shipped",   "value": shipped.toLocaleString()}
-            ]
-          },
-          {"type":"Separator","spacing":"Small"},
-          {
-            "type": "ColumnSet",
-            "spacing": "Small",
-            "columns": [
-              {
-                "type": "Column", "width": "stretch", "style": "emphasis",
-                "items": [
-                  {"type":"TextBlock","text":"TOTAL OPEN","size":"Small","weight":"Bolder","color":"Accent","horizontalAlignment":"Center"},
-                  {"type":"TextBlock","text": totalOpen.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","horizontalAlignment":"Center","spacing":"None"}
-                ]
-              },
-              {
-                "type": "Column", "width": "stretch", "style": "emphasis",
-                "items": [
-                  {"type":"TextBlock","text":"AVG BRIDGE","size":"Small","weight":"Bolder","color":"Accent","horizontalAlignment":"Center"},
-                  {"type":"TextBlock","text": avgBridge,"size":"ExtraLarge","weight":"Bolder","horizontalAlignment":"Center","spacing":"None"}
-                ]
-              }
-            ]
-          },
-          {
-            "type": "TextBlock",
-            "text": "Throughput only · not for performance evaluation · DC499 Reporter",
-            "size": "Small",
-            "isSubtle": true,
-            "wrap": true,
-            "spacing": "Medium"
-          }
-        ]
-      }
-    }]
-  };
-
+  if (!lastBlData || !lastBlData.dates || !lastBlData.dates.length) { alert('No data loaded yet.'); return; }
+  var shift = getShift(), webhook = TEAMS_WEBHOOKS[shift];
+  if (!webhook) { alert('No Teams webhook configured for '+shift+' shift.'); return; }
+  var orig = btn.textContent; btn.textContent = '⏳ Sending…'; btn.disabled = true;
+  var ready=0, allocated=0, packed=0, shipped=0;
+  (lastBlData.dates||[]).forEach(function(d){ ready+=d.ready||0; allocated+=d.allocated||0; packed+=d.packed||0; shipped+=d.shipped||0; });
+  var totalOpen = ready+allocated+packed;
+  var avgBridge = lastAvgUph != null ? lastAvgUph.toLocaleString()+' units' : '—';
+  var ts = new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  var card = {"type":"message","attachments":[{"contentType":"application/vnd.microsoft.card.adaptive","content":{"$schema":"http://adaptivecards.io/schemas/adaptive-card.json","type":"AdaptiveCard","version":"1.4","body":[{"type":"ColumnSet","columns":[{"type":"Column","width":"stretch","items":[{"type":"TextBlock","text":"Ecom Order Backlog","weight":"Bolder","size":"Large"},{"type":"TextBlock","text":"DC499 · "+shift+" shift · "+ts,"isSubtle":true,"size":"Small","spacing":"None"}]}]},{"type":"Separator","spacing":"Medium"},{"type":"FactSet","spacing":"Medium","facts":[{"title":"Ready","value":ready.toLocaleString()+"  (not yet in wave)"},{"title":"Allocated","value":allocated.toLocaleString()+"  (in wave, unpicked)"},{"title":"Packed","value":packed.toLocaleString()+"  (awaiting ship)"},{"title":"Shipped","value":shipped.toLocaleString()}]},{"type":"Separator","spacing":"Small"},{"type":"ColumnSet","spacing":"Small","columns":[{"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"TOTAL OPEN","size":"Small","weight":"Bolder","color":"Accent","horizontalAlignment":"Center"},{"type":"TextBlock","text":totalOpen.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","horizontalAlignment":"Center","spacing":"None"}]},{"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"AVG BRIDGE","size":"Small","weight":"Bolder","color":"Accent","horizontalAlignment":"Center"},{"type":"TextBlock","text":avgBridge,"size":"ExtraLarge","weight":"Bolder","horizontalAlignment":"Center","spacing":"None"}]}]},{"type":"TextBlock","text":"Throughput only · not for performance evaluation · DC499 Reporter","size":"Small","isSubtle":true,"wrap":true,"spacing":"Medium"}]}}]};
   try {
-    var res = await fetch(webhook, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(card)
-    });
-    if (res.ok || res.status === 202) {
-      btn.textContent = '✓ Sent!';
-      setTimeout(function() { btn.textContent = orig; btn.disabled = false; }, 3000);
-    } else {
-      throw new Error('HTTP ' + res.status);
-    }
+    var res = await fetch(webhook,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(card)});
+    if (res.ok||res.status===202) { btn.textContent='✓ Sent!'; setTimeout(function(){ btn.textContent=orig; btn.disabled=false; },3000); }
+    else throw new Error('HTTP '+res.status);
   } catch(e) {
-    console.error('Teams send failed:', e);
-    btn.textContent = '⚠ Failed';
-    btn.style.borderColor = '#C0392B';
-    btn.style.color = '#C0392B';
-    setTimeout(function() { btn.textContent = orig; btn.disabled = false; btn.style.borderColor = ''; btn.style.color = ''; }, 4000);
+    btn.textContent='⚠ Failed'; btn.style.borderColor='#C0392B'; btn.style.color='#C0392B';
+    setTimeout(function(){ btn.textContent=orig; btn.disabled=false; btn.style.borderColor=''; btn.style.color=''; },4000);
   }
 }
 
-// -- Back-button closes tab when opened from Ecom ----------------------------
+// ── Back button ───────────────────────────────────────────────────────────────
 if (new URLSearchParams(window.location.search).get('from') === 'ecom') {
   var backBtn = document.getElementById('back-btn');
   if (backBtn) backBtn.classList.add('visible');
 }
 
-// -- Init ---------------------------------------------------------------------
+// ── Init ──────────────────────────────────────────────────────────────────────
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
-fetchData(false);
-scheduleAutoRefresh();
+fetchBacklogData();
+scheduleBlRefresh();
 </script>
 </body>
 </html>
