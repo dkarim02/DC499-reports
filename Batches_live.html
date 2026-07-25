@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Batch Status Live v1.0 -- DC499</title>
+<style>
+  :root {
+    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
+    --text:#1a1a1a;--text-muted:#666;--text-hint:#888;
+    --accent:#185FA5;--accent-bg:#e8f0fb;
+    --green:#2E7D32;--green-bg:#E8F5E9;
+    --amber:#E65100;--amber-bg:#FFF3E0;
+    --red:#C62828;--red-bg:#FFEBEE;
+  }
+  [data-theme="dark"]{
+    --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;
+    --text:#f0f0ee;--text-muted:#999;--text-hint:#777;
+    --accent-bg:#0d2340;
+    --green:#4CAF50;--green-bg:#1a2e1a;
+    --amber:#FFB74D;--amber-bg:#2e1a00;
+    --red:#EF9A9A;--red-bg:#2e1010;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
+  .container{max-width:1000px;margin:0 auto;}
+
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;}
+  h1{font-size:20px;font-weight:500;margin-bottom:2px;}
+  .dept-label{font-size:11px;color:var(--accent);font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;}
+  .subtitle{font-size:14px;color:var(--text-muted);}
+  .dark-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
+  .dark-toggle:hover{background:var(--surface2);}
+  .toggle-track{width:28px;height:16px;border-radius:8px;background:var(--border-mid);position:relative;transition:background 0.2s;flex-shrink:0;}
+  .toggle-thumb{width:12px;height:12px;border-radius:50%;background:var(--text-hint);position:absolute;top:2px;left:2px;transition:left 0.2s,background 0.2s;}
+  [data-theme="dark"] .toggle-track{background:#185FA5;}
+  [data-theme="dark"] .toggle-thumb{left:14px;background:#fff;}
+
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:5px;animation:livepulse 2s infinite;}
+  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.75);}}
+
+  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:12px;padding:8px 14px;border-radius:8px;margin-bottom:1rem;text-align:center;}
+  body:not([data-theme="dark"]) .stale-banner{background:#FFF3CD;color:#7A4F00;}
+
+  .header-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;}
+  .run-time{font-size:12px;color:var(--text-hint);}
+  .header-btns{display:flex;gap:8px;}
+  .refresh-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:500;}
+  .refresh-btn:hover{background:var(--accent);color:#fff;}
+
+  /* Summary tiles */
+  .summary-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.5rem;}
+  @media(max-width:680px){.summary-tiles{grid-template-columns:repeat(2,1fr);}}
+  .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center;}
+  .tile-label{font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .tile-value{font-size:24px;font-weight:500;color:var(--text);}
+  .tile-value.accent{color:var(--accent);}
+  .tile-value.green {color:var(--green);}
+  .tile-value.amber {color:var(--amber);}
+  .tile-sub{font-size:11px;color:var(--text-hint);margin-top:3px;}
+
+  /* Main table */
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;overflow-x:auto;}
+  .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.04em;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:10px;font-weight:600;color:var(--text-muted);padding:8px 10px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;}
+  th.r{text-align:right;}
+  td{padding:10px 10px;border-bottom:0.5px solid var(--border-light);color:var(--text);vertical-align:middle;white-space:nowrap;}
+  td.r{text-align:right;}
+  tr:last-child td{border-bottom:none;}
+
+  .batch-num{font-size:11px;font-weight:600;color:var(--text-hint);width:28px;text-align:center;}
+  .status-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.03em;text-transform:uppercase;}
+  .badge-cleared{background:var(--green-bg);color:var(--green);}
+  .badge-active {background:var(--amber-bg);color:var(--amber);}
+  .badge-queued {background:var(--accent-bg);color:var(--accent);}
+
+  .dur-fast  {color:var(--green);font-weight:500;}
+  .dur-mid   {color:var(--amber);font-weight:500;}
+  .dur-slow  {color:var(--red);font-weight:500;}
+  .dur-none  {color:var(--text-hint);}
+
+  .interval-cell{font-size:12px;color:var(--text-muted);}
+  .interval-first{color:var(--text-hint);font-style:italic;font-size:12px;}
+
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
+  .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
+  .teams-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid #6264A7;border-radius:6px;background:#f0f0fa;cursor:pointer;color:#6264A7;font-weight:500;}
+  .teams-btn:hover{background:#6264A7;color:#fff;}
+  [data-theme="dark"] .teams-btn{background:#1e1e38;color:#9b9de0;}
+  [data-theme="dark"] .teams-btn:hover{background:#6264A7;color:#fff;}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div>
+      <p class="dept-label"><span class="live-dot"></span>Batch Status Live v1.0</p>
+      <h1>Work Release Batches &mdash; DC499</h1>
+      <p class="subtitle">Current shift &middot; Auto-refreshes every 5 min</p>
+    </div>
+    <button class="dark-toggle" onclick="toggleDark()">
+      <span id="toggle-label">Dark mode</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </button>
+  </div>
+
+  <div class="stale-banner" id="stale-banner"></div>
+
+  <div class="header-row">
+    <div>
+      <div id="run-time" class="run-time">Loading...</div>
+      <div id="shift-start" class="run-time" style="margin-top:2px;"></div>
+    </div>
+    <div class="header-btns">
+      <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
+      <button class="teams-btn" id="send-teams-btn" onclick="sendToTeams(this)">&#x1F4E8; Send to Teams</button>
+    </div>
+  </div>
+
+  <div class="summary-tiles" id="summary-tiles" style="display:none;">
+    <div class="tile">
+      <div class="tile-label">Total Batches</div>
+      <div class="tile-value accent" id="t-total">--</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Cleared</div>
+      <div class="tile-value green" id="t-cleared">--</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Active / Queued</div>
+      <div class="tile-value amber" id="t-active">--</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Avg Time to Clear</div>
+      <div class="tile-value" id="t-avg-clear">--</div>
+      <div class="tile-sub">minutes</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Avg Release Interval</div>
+      <div class="tile-value" id="t-avg-interval">--</div>
+      <div class="tile-sub">minutes between releases</div>
+    </div>
+  </div>
+
+  <div class="card" id="batch-card" style="display:none;">
+    <div class="card-title">Batches This Shift</div>
+    <table>
+      <thead><tr>
+        <th class="r">#</th>
+        <th>Released</th>
+        <th class="r">Orders</th>
+        <th class="r">oLPNs</th>
+        <th>Status</th>
+        <th>Cleared</th>
+        <th class="r">Time to Clear</th>
+        <th class="r">Interval Since Prev</th>
+      </tr></thead>
+      <tbody id="batch-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
+    No batches found for this shift yet.
+  </div>
+
+  <p class="nordstrom-tag">Nordstrom &middot; Batch Status Live &middot; DC499 &middot; <span id="footer-date"></span></p>
+  <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
+</div>
+
+<script>
+var THEME_KEY    = 'dc499_batches_theme_v1';
+var INTERVAL_MS  = 5 * 60 * 1000;
+var lastData     = null;
+var autoTimer    = null;
+var countdownTimer = null;
+var nextRefreshAt  = null;
+
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
+  try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
+}
+function toggleDark() {
+  applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
+}
+(function() {
+  var saved; try { saved = localStorage.getItem(THEME_KEY); } catch(e) {}
+  applyTheme(saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+})();
+
+function scheduleAutoRefresh() {
+  if (autoTimer) clearTimeout(autoTimer);
+  if (countdownTimer) clearInterval(countdownTimer);
+  nextRefreshAt = Date.now() + INTERVAL_MS;
+  autoTimer = setTimeout(function() { fetchData(false); }, INTERVAL_MS);
+  countdownTimer = setInterval(function() {
+    var rem = Math.max(0, Math.round((nextRefreshAt - Date.now()) / 1000));
+    var m = Math.floor(rem / 60), s = rem % 60;
+    var el = document.getElementById('run-time');
+    if (el && lastData) {
+      try {
+        var raw = lastData.generated || '';
+        var d = new Date(raw.endsWith('Z') ? raw : raw + 'Z');
+        el.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+          + '  ·  Next refresh in ' + m + ':' + (s < 10 ? '0' : '') + s;
+      } catch(e) {}
+    }
+    if (rem === 0) clearInterval(countdownTimer);
+  }, 1000);
+}
+
+function manualRefresh() { fetchData(true); }
+
+function fetchData(isManual) {
+  var rtEl = document.getElementById('run-time');
+  if (rtEl) rtEl.textContent = 'Loading...';
+  var base = window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
+  fetch(base + '/batch_status.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      lastData = data;
+      renderData(data);
+      scheduleAutoRefresh();
+    })
+    .catch(function(err) {
+      if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
+      document.getElementById('empty-state').style.display = 'block';
+      scheduleAutoRefresh();
+    });
+}
+
+function isStale(generated) {
+  if (!generated) return false;
+  try {
+    var ts = generated.endsWith('Z') ? generated : generated + 'Z';
+    return (Date.now() - new Date(ts).getTime()) / 60000 > 90;
+  } catch(e) { return false; }
+}
+
+function fmt(n) { return n != null ? Number(n).toLocaleString() : '—'; }
+
+function durClass(mins) {
+  if (mins == null) return 'dur-none';
+  if (mins <= 60)   return 'dur-fast';
+  if (mins <= 120)  return 'dur-mid';
+  return 'dur-slow';
+}
+
+function fmtDur(mins) {
+  if (mins == null) return '<span class="dur-none">—</span>';
+  var h = Math.floor(mins / 60), m = mins % 60;
+  var txt = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+  return '<span class="' + durClass(mins) + '">' + txt + '</span>';
+}
+
+function badgeHtml(b) {
+  if (b.is_cleared) return '<span class="status-badge badge-cleared">Cleared</span>';
+  var s = String(b.status || '');
+  if (s.startsWith('5600')) return '<span class="status-badge badge-active">In Queue</span>';
+  if (s.startsWith('5400')) return '<span class="status-badge badge-active">Active</span>';
+  return '<span class="status-badge badge-queued">' + s + '</span>';
+}
+
+function renderData(data) {
+  var staleEl = document.getElementById('stale-banner');
+  var emptyEl = document.getElementById('empty-state');
+  var tilesEl = document.getElementById('summary-tiles');
+  var cardEl  = document.getElementById('batch-card');
+  var s       = data.summary || {};
+
+  if (isStale(data.generated)) {
+    staleEl.style.display = 'block';
+    var mins = Math.round((Date.now() - new Date(data.generated + 'Z').getTime()) / 60000);
+    staleEl.textContent = '⚠ Data is ' + mins + ' min old — dc499_refresh.js may not be running';
+  } else {
+    staleEl.style.display = 'none';
+  }
+
+  // Shift start display
+  if (data.shift_start_utc) {
+    try {
+      var sd = new Date(data.shift_start_utc.replace(' ','T') + 'Z');
+      document.getElementById('shift-start').textContent =
+        'Shift start: ' + sd.toLocaleTimeString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true});
+    } catch(e) {}
+  }
+
+  if (!data.batches || !data.batches.length) {
+    emptyEl.style.display = 'block';
+    tilesEl.style.display = 'none';
+    cardEl.style.display  = 'none';
+    return;
+  }
+
+  // Summary tiles
+  document.getElementById('t-total').textContent     = fmt(s.total_batches);
+  document.getElementById('t-cleared').textContent   = fmt(s.cleared_batches);
+  document.getElementById('t-active').textContent    = fmt(s.active_batches);
+  document.getElementById('t-avg-clear').textContent =
+    s.avg_mins_to_clear != null ? fmtMins(s.avg_mins_to_clear) : '—';
+  document.getElementById('t-avg-interval').textContent =
+    s.avg_release_interval_mins != null ? fmtMins(s.avg_release_interval_mins) : '—';
+
+  tilesEl.style.display = 'grid';
+  emptyEl.style.display = 'none';
+
+  // Batch table
+  var tbody = document.getElementById('batch-tbody');
+  var html  = '';
+  data.batches.forEach(function(b) {
+    var intervalCell = b.mins_since_prev_release != null
+      ? '<span class="interval-cell">' + fmtMins(b.mins_since_prev_release) + '</span>'
+      : '<span class="interval-first">first batch</span>';
+
+    html += '<tr>';
+    html += '<td class="r batch-num">' + b.batch_num + '</td>';
+    html += '<td>' + (b.released_pdt || '—') + '</td>';
+    html += '<td class="r">' + fmt(b.total_orders) + '</td>';
+    html += '<td class="r">' + fmt(b.total_olpns) + '</td>';
+    html += '<td>' + badgeHtml(b) + '</td>';
+    html += '<td>' + (b.cleared_pdt || '<span style="color:var(--text-hint)">—</span>') + '</td>';
+    html += '<td class="r">' + fmtDur(b.mins_to_clear) + '</td>';
+    html += '<td class="r">' + intervalCell + '</td>';
+    html += '</tr>';
+  });
+  tbody.innerHTML = html;
+  cardEl.style.display = 'block';
+}
+
+function fmtMins(m) {
+  if (m == null) return '—';
+  var h = Math.floor(m / 60), min = m % 60;
+  return h > 0 ? h + 'h ' + min + 'm' : min + 'm';
+}
+
+// -- Teams --------------------------------------------------------------------
+var TEAMS_WEBHOOKS = {
+  '1st': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/3889f116d5b24ef3bce7d9e7b335bc2a/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Sjq4jKaIMbSclrAgupvxReJ-9TSBFDsYA_UO2tkmZhc',
+  '2nd': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/eacd8206a4274abb96f43be9d3d01256/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=8Hc0GkQ2Sobr73S7JX8Gu5gldDJaVE4IeiLuzeAsyxY',
+};
+
+function getShift() {
+  var h = new Date().getHours();
+  if (h >= 6  && h < 14) return '1st';
+  if (h >= 14 && h < 22) return '2nd';
+  return '3rd';
+}
+
+async function sendToTeams(btn) {
+  if (!lastData || !lastData.batches || !lastData.batches.length) {
+    alert('No data loaded yet — wait for data to load first.');
+    return;
+  }
+  var shift   = getShift();
+  var webhook = TEAMS_WEBHOOKS[shift];
+  if (!webhook) { alert('No Teams webhook configured for ' + shift + ' shift.'); return; }
+
+  var orig = btn.textContent;
+  btn.textContent = '⏳ Sending…';
+  btn.disabled = true;
+
+  var s   = lastData.summary || {};
+  var ts  = new Date().toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+
+  var avgClear    = s.avg_mins_to_clear != null    ? fmtMins(s.avg_mins_to_clear)             : '—';
+  var avgInterval = s.avg_release_interval_mins != null ? fmtMins(s.avg_release_interval_mins) : '—';
+
+  // Build one fact per batch (up to 10 most recent to keep card manageable)
+  var batchFacts = lastData.batches.slice(-10).map(function(b) {
+    var val = b.released_pdt || '—';
+    if (b.is_cleared && b.cleared_pdt) val += '  →  ' + b.cleared_pdt + '  (' + fmtMins(b.mins_to_clear) + ')';
+    else val += '  ·  ' + (b.is_cleared ? 'Cleared' : 'Active');
+    return {"title": 'Batch ' + b.batch_num, "value": val};
+  });
+
+  var card = {
+    "type": "message",
+    "attachments": [{
+      "contentType": "application/vnd.microsoft.card.adaptive",
+      "content": {
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "type": "AdaptiveCard",
+        "version": "1.4",
+        "body": [
+          {
+            "type": "ColumnSet",
+            "columns": [{
+              "type": "Column", "width": "stretch",
+              "items": [
+                {"type":"TextBlock","text":"Work Release Batches","weight":"Bolder","size":"Large"},
+                {"type":"TextBlock","text":"DC499 · " + shift + " shift · " + ts,"isSubtle":true,"size":"Small","spacing":"None"}
+              ]
+            }]
+          },
+          {"type":"Separator","spacing":"Medium"},
+          {
+            "type": "FactSet",
+            "spacing": "Medium",
+            "facts": [
+              {"title":"Total Batches",        "value": String(s.total_batches    || 0)},
+              {"title":"Cleared",              "value": String(s.cleared_batches  || 0)},
+              {"title":"Active / Queued",      "value": String(s.active_batches   || 0)},
+              {"title":"Avg Time to Clear",    "value": avgClear},
+              {"title":"Avg Release Interval", "value": avgInterval}
+            ]
+          },
+          {"type":"Separator","spacing":"Small"},
+          {
+            "type": "TextBlock",
+            "text": "BATCH DETAIL",
+            "size": "Small",
+            "weight": "Bolder",
+            "color": "Accent",
+            "spacing": "Small"
+          },
+          {
+            "type": "FactSet",
+            "facts": batchFacts
+          },
+          {
+            "type": "TextBlock",
+            "text": "Throughput only · not for performance evaluation · DC499 Reporter",
+            "size": "Small",
+            "isSubtle": true,
+            "wrap": true,
+            "spacing": "Medium"
+          }
+        ]
+      }
+    }]
+  };
+
+  try {
+    var res = await fetch(webhook, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(card)
+    });
+    if (res.ok || res.status === 202) {
+      btn.textContent = '✓ Sent!';
+      setTimeout(function() { btn.textContent = orig; btn.disabled = false; }, 3000);
+    } else {
+      throw new Error('HTTP ' + res.status);
+    }
+  } catch(e) {
+    console.error('Teams send failed:', e);
+    btn.textContent = '⚠ Failed';
+    btn.style.borderColor = '#C0392B'; btn.style.color = '#C0392B';
+    setTimeout(function() { btn.textContent = orig; btn.disabled = false; btn.style.borderColor = ''; btn.style.color = ''; }, 4000);
+  }
+}
+
+document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
+fetchData(false);
+scheduleAutoRefresh();
+</script>
+</body>
+</html>

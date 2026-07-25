@@ -595,14 +595,16 @@ async function sendToTeams(btn) {
   btn.textContent = '⏳ Sending…';
   btn.disabled = true;
 
-  // Today's row — fall back to totals across all dates if not found
-  var today = lastData.today;
-  var todayRow = (lastData.dates || []).find(function(d) { return d.date === today; });
-  var ready     = todayRow ? (todayRow.ready     || 0) : 0;
-  var allocated = todayRow ? (todayRow.allocated || 0) : 0;
-  var packed    = todayRow ? (todayRow.packed    || 0) : 0;
-  var shipped   = todayRow ? (todayRow.shipped   || 0) : 0;
+  // Totals across ALL dates
+  var ready = 0, allocated = 0, packed = 0, shipped = 0;
+  (lastData.dates || []).forEach(function(d) {
+    ready     += d.ready     || 0;
+    allocated += d.allocated || 0;
+    packed    += d.packed    || 0;
+    shipped   += d.shipped   || 0;
+  });
   var totalOpen = ready + allocated + packed;
+  var avgBridge = lastAvgUph != null ? lastAvgUph.toLocaleString() + ' units' : '—';
 
   var ts = new Date().toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
 
@@ -616,76 +618,45 @@ async function sendToTeams(btn) {
         "version": "1.4",
         "body": [
           {
-            "type": "Container",
-            "style": "emphasis",
-            "items": [{
-              "type": "ColumnSet",
-              "columns": [
-                {"type":"Column","width":"auto","items":[{"type":"TextBlock","text":"DC499 · Ecom Backlog","weight":"Bolder","size":"Medium","color":"Light"}]},
-                {"type":"Column","width":"stretch","items":[{"type":"TextBlock","text":shift + " shift · " + ts,"color":"Light","isSubtle":true,"horizontalAlignment":"Right"}]}
-              ]
-            }]
-          },
-          {
-            "type": "TextBlock",
-            "text": "TODAY'S ORDERS",
-            "size": "Small",
-            "weight": "Bolder",
-            "color": "Accent",
-            "spacing": "Medium"
-          },
-          {
             "type": "ColumnSet",
             "columns": [
               {
-                "type": "Column", "width": "stretch", "style": "emphasis",
+                "type": "Column", "width": "stretch",
                 "items": [
-                  {"type":"TextBlock","text":"READY","size":"Small","weight":"Bolder","color":"Good"},
-                  {"type":"TextBlock","text": ready.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"},
-                  {"type":"TextBlock","text":"not yet in wave","size":"Small","isSubtle":true,"spacing":"None"}
-                ]
-              },
-              {
-                "type": "Column", "width": "stretch", "style": "emphasis",
-                "items": [
-                  {"type":"TextBlock","text":"ALLOCATED","size":"Small","weight":"Bolder","color":"Warning"},
-                  {"type":"TextBlock","text": allocated.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"},
-                  {"type":"TextBlock","text":"in wave, unpicked","size":"Small","isSubtle":true,"spacing":"None"}
-                ]
-              },
-              {
-                "type": "Column", "width": "stretch", "style": "emphasis",
-                "items": [
-                  {"type":"TextBlock","text":"PACKED","size":"Small","weight":"Bolder","color":"Accent"},
-                  {"type":"TextBlock","text": packed.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"},
-                  {"type":"TextBlock","text":"awaiting ship","size":"Small","isSubtle":true,"spacing":"None"}
+                  {"type":"TextBlock","text":"Ecom Order Backlog","weight":"Bolder","size":"Large"},
+                  {"type":"TextBlock","text":"DC499 · " + shift + " shift · " + ts,"isSubtle":true,"size":"Small","spacing":"None"}
                 ]
               }
             ]
           },
+          {"type":"Separator","spacing":"Medium"},
+          {
+            "type": "FactSet",
+            "spacing": "Medium",
+            "facts": [
+              {"title":"Ready",     "value": ready.toLocaleString()     + "  (not yet in wave)"},
+              {"title":"Allocated", "value": allocated.toLocaleString() + "  (in wave, unpicked)"},
+              {"title":"Packed",    "value": packed.toLocaleString()    + "  (awaiting ship)"},
+              {"title":"Shipped",   "value": shipped.toLocaleString()}
+            ]
+          },
+          {"type":"Separator","spacing":"Small"},
           {
             "type": "ColumnSet",
             "spacing": "Small",
             "columns": [
               {
-                "type": "Column", "width": "stretch", "style": "default",
+                "type": "Column", "width": "stretch", "style": "emphasis",
                 "items": [
-                  {"type":"TextBlock","text":"TOTAL OPEN","size":"Small","weight":"Bolder","color":"Default"},
-                  {"type":"TextBlock","text": totalOpen.toLocaleString(),"size":"Large","weight":"Bolder","spacing":"None"}
+                  {"type":"TextBlock","text":"TOTAL OPEN","size":"Small","weight":"Bolder","color":"Accent","horizontalAlignment":"Center"},
+                  {"type":"TextBlock","text": totalOpen.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","horizontalAlignment":"Center","spacing":"None"}
                 ]
               },
               {
-                "type": "Column", "width": "stretch", "style": "default",
+                "type": "Column", "width": "stretch", "style": "emphasis",
                 "items": [
-                  {"type":"TextBlock","text":"SHIPPED","size":"Small","weight":"Bolder","color":"Default"},
-                  {"type":"TextBlock","text": shipped.toLocaleString(),"size":"Large","weight":"Bolder","spacing":"None"}
-                ]
-              },
-              {
-                "type": "Column", "width": "stretch", "style": "default",
-                "items": [
-                  {"type":"TextBlock","text":"AVG / HR","size":"Small","weight":"Bolder","color":"Default"},
-                  {"type":"TextBlock","text": lastAvgUph != null ? lastAvgUph.toLocaleString() : '—',"size":"Large","weight":"Bolder","spacing":"None"}
+                  {"type":"TextBlock","text":"AVG BRIDGE","size":"Small","weight":"Bolder","color":"Accent","horizontalAlignment":"Center"},
+                  {"type":"TextBlock","text": avgBridge,"size":"ExtraLarge","weight":"Bolder","horizontalAlignment":"Center","spacing":"None"}
                 ]
               }
             ]

@@ -24,6 +24,7 @@ const RECV_FILE     = path.join(REPORT_DIR, 'receiving_live.json');
 const DOCK_FILE     = path.join(REPORT_DIR, 'dock_live.json');
 const TOTES_FILE    = path.join(REPORT_DIR, 'totes_live.json');
 const BACKLOG_FILE  = path.join(REPORT_DIR, 'backlog_live.json');
+const BATCH_STATUS_FILE = path.join(REPORT_DIR, 'batch_status.json');
 const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3118;
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
@@ -705,6 +706,95 @@ ORDER BY hour_pdt`.trim();
   };
 }
 
+// ── batch status query ─────────────────────────────────────────────────────────
+async function fetchBatchStatus(accessToken) {
+  const nowUtc = new Date();
+  const shiftHourUtc = 21; // 2 PM PDT
+  let shiftStart = new Date(nowUtc);
+  shiftStart.setUTCHours(shiftHourUtc, 0, 0, 0);
+  if (nowUtc.getUTCHours() < shiftHourUtc) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
+  const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
+
+  // One row per batch per status — aggregate to one row per batch
+  const sql = `
+SELECT
+  WORK_RELEASE_BATCH_ID                                   AS batch_id,
+  MAX(TOTAL_ORDERS)                                       AS total_orders,
+  MAX(TOTAL_OLPNS)                                        AS total_olpns,
+  MIN(CREATED_TIMESTAMP)                                  AS released_utc,
+  MAX(CASE WHEN STATUS_ID LIKE '5800%' THEN UPDATED_TIMESTAMP END) AS cleared_utc,
+  MAX(CASE WHEN STATUS_ID LIKE '5800%' THEN 1 ELSE 0 END) AS is_cleared,
+  MAX(STATUS_ID)                                          AS latest_status
+FROM default_workrelease.WR_BATCH
+WHERE FACILITY_ID = '${FACILITY}'
+  AND CREATED_TIMESTAMP >= '${startStr}'
+GROUP BY WORK_RELEASE_BATCH_ID
+ORDER BY MIN(CREATED_TIMESTAMP) ASC`.trim();
+
+  const resp = await mcpQuery(accessToken, sql);
+  const rows = resp.rows || [];
+
+  const batches = rows.map((r, i) => {
+    const releasedUtc = r.released_utc ? new Date(r.released_utc) : null;
+    const clearedUtc  = r.cleared_utc  ? new Date(r.cleared_utc)  : null;
+    const minsToClear = (releasedUtc && clearedUtc)
+      ? Math.round((clearedUtc - releasedUtc) / 60000)
+      : null;
+
+    // PDT display times
+    const toPdt = d => d
+      ? new Date(d).toLocaleString('en-US', { timeZone:'America/Los_Angeles', hour:'2-digit', minute:'2-digit', hour12:false })
+      : null;
+
+    return {
+      batch_num:     i + 1,
+      batch_id:      r.batch_id,
+      total_orders:  Number(r.total_orders),
+      total_olpns:   Number(r.total_olpns),
+      released_pdt:  toPdt(r.released_utc),
+      cleared_pdt:   toPdt(r.cleared_utc),
+      released_utc:  r.released_utc,
+      cleared_utc:   r.cleared_utc,
+      mins_to_clear: minsToClear,
+      is_cleared:    Number(r.is_cleared) === 1,
+      status:        r.latest_status,
+    };
+  });
+
+  // Release intervals — time between consecutive releases
+  for (let i = 1; i < batches.length; i++) {
+    const prev = batches[i-1].released_utc ? new Date(batches[i-1].released_utc) : null;
+    const curr = batches[i].released_utc   ? new Date(batches[i].released_utc)   : null;
+    batches[i].mins_since_prev_release = (prev && curr)
+      ? Math.round((curr - prev) / 60000)
+      : null;
+  }
+  if (batches.length) batches[0].mins_since_prev_release = null;
+
+  const cleared    = batches.filter(b => b.is_cleared);
+  const avgClear   = cleared.length
+    ? Math.round(cleared.reduce((s,b) => s + b.mins_to_clear, 0) / cleared.length)
+    : null;
+  const intervals  = batches.slice(1).map(b => b.mins_since_prev_release).filter(v => v != null);
+  const avgInterval = intervals.length
+    ? Math.round(intervals.reduce((s,v) => s+v, 0) / intervals.length)
+    : null;
+
+  return {
+    generated:        new Date().toISOString().slice(0,19),
+    facility:         FACILITY,
+    shift_start_utc:  startStr,
+    summary: {
+      total_batches:    batches.length,
+      cleared_batches:  cleared.length,
+      active_batches:   batches.length - cleared.length,
+      avg_mins_to_clear: avgClear,
+      avg_release_interval_mins: avgInterval,
+    },
+    batches,
+  };
+}
+
 // ── git push ───────────────────────────────────────────────────────────────────
 function gitPush() {
   const stamp = new Date().toLocaleString('en-US', {
@@ -712,7 +802,7 @@ function gitPush() {
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
   try {
-    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync(`git commit -m "Live update -- ${stamp}"`,      { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git pull --rebase --autostash origin main',    { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git push origin main',                         { cwd: REPORT_DIR, stdio: 'pipe' });
@@ -730,11 +820,12 @@ function gitPush() {
 // ── core: query + write ────────────────────────────────────────────────────────
 async function queryAndWrite(accessToken) {
   console.log(`[${ts()}] Querying...`);
-  const [recvData, dockData, totesData, backlogData] = await Promise.all([
+  const [recvData, dockData, totesData, backlogData, batchStatusData] = await Promise.all([
     fetchReceiving(accessToken),
     fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
     fetchBacklog(accessToken).catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; }),
+    fetchBatchStatus(accessToken).catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; }),
   ]);
 
   fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
@@ -757,8 +848,13 @@ async function queryAndWrite(accessToken) {
     console.log(`[${ts()}] ✓ backlog_live.json — ${open} open lines today`);
   }
 
+  if (batchStatusData) {
+    fs.writeFileSync(BATCH_STATUS_FILE, JSON.stringify(batchStatusData, null, 4));
+    console.log(`[${ts()}] ✓ batch_status.json — ${batchStatusData.summary.total_batches} batches, ${batchStatusData.summary.cleared_batches} cleared`);
+  }
+
   gitPush();
-  return { recvData, dockData, totesData, backlogData };
+  return { recvData, dockData, totesData, backlogData, batchStatusData };
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
@@ -823,6 +919,11 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
       res.end(JSON.stringify(cache?.backlogData || {}));
       return;
     }
+    if (url.pathname === '/batch_status.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(cache?.batchStatusData || {}));
+      return;
+    }
 
     // serve HTML files
     const fileMap = {
@@ -831,6 +932,7 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
       '/Receiving_live.html': 'Receiving_live.html',
       '/Totes_live.html':     'Totes_live.html',
       '/Backlog_live.html':   'Backlog_live.html',
+      '/Batches_live.html':   'Batches_live.html',
       '/MegaDash_v1.2.html':  'MegaDash_v1.2.html',
       '/Menu_v1.6.html':      'Menu_v1.6.html',
       '/Changelog.html':      'Changelog.html',
