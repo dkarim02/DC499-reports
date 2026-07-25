@@ -6,320 +6,377 @@
 <title>EOS Report — DC499</title>
 <style>
   :root {
-    --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a;
-    --border:#2e3347; --border-light:#252840;
-    --text:#e8eaf6; --text-muted:#8b8fa8; --text-hint:#555a72;
-    --accent:#5c6bc0; --accent-light:#7986cb;
-    --green:#4caf50; --yellow:#ffc107; --red:#ef5350;
-    --nord:#0061d5;
+    --bg:#0c0f1a; --surface:#111827; --surface2:#1a2235;
+    --border:#1e293b; --border-light:#162032;
+    --text:#e2e8f0; --text-muted:#94a3b8; --text-hint:#475569;
+    --amber:#f59e0b; --amber-dim:rgba(245,158,11,0.09);
+    --green:#10b981; --green-dim:rgba(16,185,129,0.08);
+    --red:#f87171; --yellow:#fbbf24; --yellow-dim:rgba(251,191,36,0.08);
+    --mono:'Consolas','Courier New',monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;padding:0 0 48px;}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;padding:0 0 56px;}
 
-  /* top bar */
-  .top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;}
-  .top-bar h1{font-size:15px;font-weight:600;letter-spacing:.3px;}
-  .top-bar .sub{font-size:12px;color:var(--text-muted);margin-left:4px;}
-  .top-bar .spacer{flex:1;}
-  .btn{padding:5px 13px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;cursor:pointer;transition:background .15s;}
-  .btn:hover{background:var(--accent);border-color:var(--accent);}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
-  .btn.primary:hover{background:var(--accent-light);}
-  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-hint);display:inline-block;margin-right:6px;}
-  .status-dot.sos{background:var(--yellow);}
-  .status-dot.eos{background:var(--green);}
+  /* ── top bar ── */
+  .top-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;}
+  .top-bar-title{font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--amber);}
+  .top-bar-sub{font-size:11px;color:var(--text-hint);margin-left:2px;font-weight:400;text-transform:none;letter-spacing:0;}
+  .spacer{flex:1;}
+  .btn{padding:5px 14px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+  .btn:hover{border-color:var(--amber);color:var(--amber);}
+  .status-chip{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-hint);padding:4px 10px;border:1px solid var(--border);border-radius:20px;}
+  .status-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--text-hint);flex-shrink:0;}
+  .status-chip .dot.sos{background:var(--yellow);}
+  .status-chip .dot.eos{background:var(--green);}
 
-  /* layout */
-  .container{max-width:960px;margin:0 auto;padding:20px 16px;}
-  .report-header{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
-  .report-header .date-label{font-size:20px;font-weight:700;letter-spacing:.5px;}
-  .report-header .shift-badge{background:var(--accent);color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:600;}
-  .report-header .snap-times{display:flex;gap:16px;margin-left:auto;}
-  .snap-time{display:flex;flex-direction:column;align-items:center;gap:2px;}
-  .snap-time .label{font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:.5px;}
-  .snap-time .value{font-size:14px;font-weight:600;color:var(--text);}
-  .snap-time .value.missing{color:var(--text-hint);font-style:italic;}
+  /* ── layout ── */
+  .container{max-width:940px;margin:0 auto;padding:24px 16px;}
 
-  /* section */
-  .section{margin-bottom:14px;}
-  .section-title{font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
-  .section-title::before{content:'';display:inline-block;width:3px;height:13px;background:var(--accent);border-radius:2px;}
+  /* ── report masthead ── */
+  .masthead{margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+  .masthead-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+  .masthead-left{}
+  .masthead-eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-hint);margin-bottom:4px;}
+  .masthead-date{font-size:28px;font-weight:300;color:var(--text);letter-spacing:-.5px;font-family:var(--mono);}
+  .masthead-shift{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--amber);border:1px solid var(--amber);border-radius:3px;padding:2px 8px;margin-top:6px;}
+  .masthead-snapshots{display:flex;gap:24px;align-items:flex-start;}
+  .snapshot{display:flex;flex-direction:column;gap:3px;align-items:flex-end;}
+  .snapshot-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-hint);}
+  .snapshot-time{font-size:18px;font-weight:400;font-family:var(--mono);color:var(--text);}
+  .snapshot-time.missing{font-size:13px;color:var(--text-hint);font-style:italic;font-family:'Segoe UI',system-ui,sans-serif;}
+  .snapshot-divider{width:1px;background:var(--border);align-self:stretch;margin:0 4px;}
 
-  /* pill grid — matches CSV section layout */
-  .pill-grid{display:grid;gap:10px;}
+  /* ── section ── */
+  .section{margin-bottom:22px;}
+  .section-title{display:flex;align-items:center;gap:0;margin-bottom:12px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--text-hint);}
+  .section-title::before,.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+  .section-title::before{margin-right:10px;}
+  .section-title::after{margin-left:10px;}
+
+  /* ── pill grid ── */
+  .pill-grid{display:grid;gap:8px;}
+  .pill-grid.cols-2{grid-template-columns:repeat(2,1fr);}
   .pill-grid.cols-3{grid-template-columns:repeat(3,1fr);}
   .pill-grid.cols-4{grid-template-columns:repeat(4,1fr);}
-  .pill-grid.cols-2{grid-template-columns:repeat(2,1fr);}
   .pill-grid.cols-5{grid-template-columns:repeat(5,1fr);}
 
-  .pill{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;}
-  .pill .pill-label{font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:.6px;font-weight:600;}
-  .pill .pill-row{display:flex;align-items:baseline;gap:12px;}
-  .pill .sos-val{font-size:18px;font-weight:700;color:var(--text-muted);}
-  .pill .eos-val{font-size:22px;font-weight:700;color:var(--text);}
-  .pill .sos-val.missing{color:var(--text-hint);font-size:14px;font-style:italic;}
-  .pill .pill-sub{font-size:10px;color:var(--text-hint);}
-  .pill .pill-sub .sos-sub{color:var(--text-muted);margin-right:10px;}
-  .pill .pill-sub .eos-sub{color:var(--text);}
-  .pill.accent{border-color:var(--accent);background:rgba(92,107,192,.07);}
-  .pill.warn{border-color:var(--yellow);background:rgba(255,193,7,.05);}
-  .pill.good{border-color:var(--green);background:rgba(76,175,80,.05);}
-  .pill.note-pill{padding:10px 14px;flex-direction:row;align-items:flex-start;gap:10px;}
-  .pill.note-pill textarea{flex:1;background:transparent;border:none;color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:40px;outline:none;}
+  /* ── pill ── */
+  .pill{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 13px;display:flex;flex-direction:column;gap:5px;position:relative;}
+  .pill-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-hint);}
+  .pill-values{display:flex;align-items:baseline;gap:10px;}
+  .sos-val{font-size:16px;font-weight:400;font-family:var(--mono);color:var(--text-hint);}
+  .sos-val.missing{font-size:11px;font-style:italic;font-family:'Segoe UI',system-ui,sans-serif;color:var(--text-hint);}
+  .eos-val{font-size:22px;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1;}
+  .pill-footer{display:flex;align-items:center;justify-content:space-between;}
+  .pill-tags{display:flex;gap:8px;}
+  .pill-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+  .pill-tag.sos{color:var(--text-hint);}
+  .pill-tag.eos{color:var(--text-muted);}
+  .diff-badge{font-size:10px;font-family:var(--mono);font-weight:700;padding:1px 5px;border-radius:3px;}
+  .diff-badge.up{color:var(--green);background:var(--green-dim);}
+  .diff-badge.dn{color:var(--red);background:rgba(248,113,113,0.1);}
+
+  /* pill accent variants */
+  .pill.accent{border-color:rgba(245,158,11,0.35);background:var(--amber-dim);}
+  .pill.accent .eos-val{color:var(--amber);}
+  .pill.warn{border-color:rgba(251,191,36,0.3);background:var(--yellow-dim);}
+  .pill.warn .eos-val{color:var(--yellow);}
+  .pill.good{border-color:rgba(16,185,129,0.25);background:var(--green-dim);}
+  .pill.good .eos-val{color:var(--green);}
+
+  /* note pill */
+  .pill.note-pill{flex-direction:column;padding:10px 13px;}
+  .pill.note-pill textarea{background:transparent;border:none;color:var(--text-muted);font-size:12px;font-family:'Segoe UI',system-ui,sans-serif;resize:vertical;min-height:44px;outline:none;width:100%;line-height:1.5;}
   .pill.note-pill textarea::placeholder{color:var(--text-hint);}
-  .pill.note-pill .note-icon{font-size:14px;color:var(--text-hint);margin-top:2px;flex-shrink:0;}
-
-  /* SOS/EOS column headers */
-  .col-headers{display:flex;gap:12px;padding:0 14px;margin-bottom:4px;}
-  .col-headers span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-hint);}
-  .col-headers .sos-h{min-width:40px;}
-  .col-headers .eos-h{color:var(--text-muted);}
-
-  /* wave table */
-  .wave-table{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
-  .wave-row{display:flex;align-items:center;padding:9px 16px;border-bottom:1px solid var(--border-light);gap:12px;}
-  .wave-row:last-child{border-bottom:none;}
-  .wave-row.header{background:var(--surface2);padding:7px 16px;}
-  .wave-row.total{background:rgba(92,107,192,.08);border-top:1px solid var(--border);}
-  .wave-type{flex:1;font-size:13px;color:var(--text);}
-  .wave-count{font-size:18px;font-weight:700;color:var(--text);min-width:48px;text-align:right;}
-  .wave-row.header .wave-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-hint);}
-  .wave-row.header .wave-count{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-hint);}
-
-  /* notes section */
-  .notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-
-  /* disclaimer */
-  .disclaimer{font-size:10px;color:var(--text-hint);text-align:center;margin-top:24px;padding:0 20px;line-height:1.5;}
 
   /* manual input */
-  .manual-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:15px;font-weight:600;padding:4px 8px;margin-top:4px;outline:none;font-family:inherit;}
-  .manual-input:focus{border-color:var(--accent);}
-  .manual-input::placeholder{color:var(--text-hint);font-size:12px;font-weight:400;}
+  .manual-input{width:100%;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-size:18px;font-weight:700;font-family:var(--mono);padding:2px 0 4px;outline:none;margin-top:2px;}
+  .manual-input:focus{border-bottom-color:var(--amber);}
+  .manual-input::placeholder{color:var(--text-hint);font-size:12px;font-weight:400;font-family:'Segoe UI',system-ui,sans-serif;}
+  .manual-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-hint);margin-top:4px;}
 
-  /* loading / error */
-  .loading{text-align:center;padding:60px;color:var(--text-muted);font-size:14px;}
-  .error-msg{background:rgba(239,83,80,.1);border:1px solid var(--red);border-radius:8px;padding:12px 16px;color:var(--red);font-size:13px;margin-bottom:16px;}
+  /* ── wave table ── */
+  .wave-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .wave-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .wave-card-header{background:var(--surface2);padding:7px 14px;display:flex;justify-content:space-between;align-items:center;}
+  .wave-card-header span{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-hint);}
+  .wave-row{display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border-light);gap:10px;}
+  .wave-row:last-child{border-bottom:none;}
+  .wave-row.total-row{background:var(--amber-dim);border-top:1px solid rgba(245,158,11,0.2);}
+  .wave-type{flex:1;font-size:12px;color:var(--text-muted);}
+  .wave-row.total-row .wave-type{font-weight:700;color:var(--amber);}
+  .wave-bar-wrap{flex:2;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .wave-bar{height:100%;background:var(--amber);border-radius:2px;opacity:.6;transition:width .4s ease;}
+  .wave-row.total-row .wave-bar{opacity:0;}
+  .wave-count{font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text);min-width:32px;text-align:right;}
+  .wave-row.total-row .wave-count{color:var(--amber);}
 
-  @media(max-width:600px){
+  /* ── error / info banner ── */
+  .info-banner{background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:20px;line-height:1.5;}
+
+  /* ── disclaimer ── */
+  .disclaimer{font-size:9px;color:var(--text-hint);text-align:center;margin-top:32px;padding:0 20px;line-height:1.6;letter-spacing:.2px;}
+
+  /* ── print ── */
+  @media print {
+    body{background:#fff;color:#111;padding:0;}
+    .top-bar,.btn{display:none;}
+    .masthead{border-color:#ddd;}
+    .masthead-date{color:#111;}
+    .masthead-eyebrow,.snapshot-label{color:#666;}
+    .snapshot-time{color:#111;}
+    .section-title{color:#999;}
+    .section-title::before,.section-title::after{background:#ddd;}
+    .pill{background:#fff;border-color:#ddd;}
+    .pill-label{color:#888;}
+    .sos-val{color:#aaa;}
+    .eos-val{color:#111;}
+    .pill.accent{background:#fffbeb;border-color:#f59e0b;}
+    .pill.warn{background:#fffbeb;border-color:#f59e0b;}
+    .pill.good{background:#f0fdf4;border-color:#10b981;}
+    .manual-input{color:#111;border-bottom-color:#aaa;}
+    .wave-card{background:#fff;border-color:#ddd;}
+    .wave-card-header{background:#f8f8f8;}
+    .wave-type{color:#444;}
+    .wave-count{color:#111;}
+    .disclaimer{color:#aaa;}
+  }
+
+  @media(max-width:640px){
     .pill-grid.cols-3,.pill-grid.cols-4,.pill-grid.cols-5{grid-template-columns:repeat(2,1fr);}
-    .notes-grid{grid-template-columns:1fr;}
-    .report-header .snap-times{margin-left:0;width:100%;}
+    .wave-grid{grid-template-columns:1fr;}
+    .masthead-top{flex-direction:column;}
+    .masthead-snapshots{flex-direction:row;}
   }
 </style>
 </head>
 <body>
 
 <div class="top-bar">
-  <div>
-    <span class="status-dot" id="status-dot"></span>
-    <span id="status-label" style="font-size:12px;color:var(--text-muted);">Loading...</span>
-  </div>
-  <h1>EOS Report <span class="sub">DC499</span></h1>
+  <span class="top-bar-title">EOS Report <span class="top-bar-sub">DC499</span></span>
   <div class="spacer"></div>
-  <button class="btn" onclick="window.print()">Print / Save PDF</button>
+  <div class="status-chip">
+    <span class="dot" id="status-dot"></span>
+    <span id="status-label">Loading...</span>
+  </div>
+  <button class="btn" onclick="window.print()">Print / PDF</button>
 </div>
 
 <div class="container" id="main-container">
-  <div class="loading" id="loading-msg">Loading report data...</div>
+  <div style="text-align:center;padding:60px;color:var(--text-hint);font-size:13px;">Loading report data...</div>
 </div>
 
 <script>
-// ── data loading ───────────────────────────────────────────────────────────────
 var DATA_URL = 'eos_report.json';
 var SOS_URL  = 'eos_sos_snapshot.json';
-var report   = null;
-var sos      = null;
-var eos      = null;
+var sos = null, eos = null;
 
-function fmt(v, fallback) {
-  if (v === null || v === undefined) return fallback !== undefined ? fallback : '—';
+function fmt(v) {
+  if (v === null || v === undefined) return '—';
   return Number(v).toLocaleString();
 }
 
-function fmtDiff(sosVal, eosVal) {
-  if (sosVal === null || eosVal === null) return '';
-  const d = eosVal - sosVal;
+function diff(s, e) {
+  if (s === null || s === undefined || e === null || e === undefined) return '';
+  const d = e - s;
   if (d === 0) return '';
   const sign = d > 0 ? '+' : '';
-  return `<span style="font-size:11px;color:${d>0?'var(--green)':'var(--red)'};margin-left:4px;">${sign}${d.toLocaleString()}</span>`;
+  const cls  = d > 0 ? 'up' : 'dn';
+  return `<span class="diff-badge ${cls}">${sign}${d.toLocaleString()}</span>`;
 }
 
 function pill(label, sosVal, eosVal, opts) {
   opts = opts || {};
-  const cls = opts.cls || '';
-  const sosTxt = sosVal !== null && sosVal !== undefined ? fmt(sosVal) : '<span class="missing">no SOS</span>';
-  const eosTxt = fmt(eosVal);
-  const diff = fmtDiff(sosVal, eosVal);
+  const cls    = opts.cls || '';
+  const sosTxt = (sosVal !== null && sosVal !== undefined)
+    ? `<span class="sos-val">${fmt(sosVal)}</span>`
+    : `<span class="sos-val missing">no SOS</span>`;
+  const hasSos = sosVal !== null && sosVal !== undefined;
   return `
   <div class="pill ${cls}">
     <div class="pill-label">${label}</div>
-    <div class="pill-row">
-      <span class="sos-val ${sosVal===null?'missing':''}">${sosTxt}</span>
-      <span class="eos-val">${eosTxt}${diff}</span>
+    <div class="pill-values">
+      ${sosTxt}
+      <span class="eos-val">${fmt(eosVal)}</span>
+      ${diff(sosVal, eosVal)}
     </div>
-    <div class="pill-sub">
-      <span class="sos-sub">SOS</span><span class="eos-sub">EOS</span>
+    <div class="pill-footer">
+      <div class="pill-tags">
+        <span class="pill-tag sos">SOS</span>
+        <span class="pill-tag eos">EOS</span>
+      </div>
     </div>
-  </div>`;
-}
-
-function pillEosOnly(label, eosVal, opts) {
-  opts = opts || {};
-  const cls = opts.cls || '';
-  return `
-  <div class="pill ${cls}">
-    <div class="pill-label">${label}</div>
-    <div class="eos-val" style="margin-top:4px;">${fmt(eosVal)}</div>
   </div>`;
 }
 
 function pillManual(label, id, opts) {
   opts = opts || {};
   const cls = opts.cls || '';
-  const placeholder = opts.placeholder || 'Enter value';
+  const ph  = opts.placeholder || 'Enter value';
   return `
   <div class="pill ${cls}">
     <div class="pill-label">${label}</div>
-    <input class="manual-input" id="manual-${id}" type="text" placeholder="${placeholder}" autocomplete="off">
-    <div class="pill-sub"><span class="eos-sub">manual entry</span></div>
+    <input class="manual-input" id="manual-${id}" type="text" placeholder="${ph}" autocomplete="off">
+    <div class="manual-tag">Manual entry</div>
   </div>`;
 }
 
 function noteField(section) {
+  const id = section.replace(/\s/g,'-').toLowerCase();
   return `
   <div class="pill note-pill">
-    <span class="note-icon">✏️</span>
-    <textarea placeholder="Notes — ${section}" rows="2" id="note-${section.replace(/\s/g,'-').toLowerCase()}"></textarea>
+    <div class="pill-label">Notes — ${section}</div>
+    <textarea id="note-${id}" placeholder="Add notes..."></textarea>
   </div>`;
 }
 
 function render() {
   const container = document.getElementById('main-container');
-  const s = sos;
-  const e = eos;
-
-  const sosTime = s ? s.captured_at : null;
-  const eosTime = e ? e.captured_at : null;
-
-  // Date display
-  const dateDisp = e ? formatDate(e.date) : (s ? formatDate(s.date) : 'Unknown Date');
+  const s = sos, e = eos;
+  const sosTime  = s ? s.captured_at  : null;
+  const eosTime  = e ? e.captured_at  : null;
+  const dateDisp = e ? fmtDate(e.date) : (s ? fmtDate(s.date) : null);
 
   let html = `
-  <div class="report-header">
-    <div class="date-label">${dateDisp}</div>
-    <div class="shift-badge">B Shift</div>
-    <div class="snap-times">
-      <div class="snap-time">
-        <div class="label">SOS</div>
-        <div class="value ${sosTime?'':'missing'}">${sosTime || 'Not captured'}</div>
+  <div class="masthead">
+    <div class="masthead-top">
+      <div class="masthead-left">
+        <div class="masthead-eyebrow">End of Shift Report &nbsp;·&nbsp; DC499 Nordstrom</div>
+        <div class="masthead-date">${dateDisp || '—'}</div>
+        <span class="masthead-shift">B Shift</span>
       </div>
-      <div class="snap-time">
-        <div class="label">EOS</div>
-        <div class="value ${eosTime?'':'missing'}">${eosTime || 'Not captured'}</div>
+      <div class="masthead-snapshots">
+        <div class="snapshot">
+          <div class="snapshot-label">SOS</div>
+          <div class="snapshot-time ${sosTime?'':'missing'}">${sosTime || 'Not captured'}</div>
+        </div>
+        <div class="snapshot-divider"></div>
+        <div class="snapshot">
+          <div class="snapshot-label">EOS</div>
+          <div class="snapshot-time ${eosTime?'':'missing'}">${eosTime || 'Not captured'}</div>
+        </div>
       </div>
     </div>
   </div>`;
 
   if (!e && !s) {
-    html += `<div class="error-msg" style="margin-bottom:16px;">No data found — run <strong>eos.bat → Option 1</strong> at 2:10 PM, or <strong>Option 2</strong> at shift end. Form is available for manual entry below.</div>`;
+    html += `<div class="info-banner">No data loaded — run <strong>eos.bat → Option 1</strong> at 2:10 PM to capture SOS, then <strong>Option 2</strong> at shift end. Fill in manual fields below.</div>`;
   }
 
-  // ── ORDERS & UNITS ─────────────────────────────────────────────────────────
+  // ORDERS & UNITS
   html += `
   <div class="section">
     <div class="section-title">Orders &amp; Units</div>
     <div class="pill-grid cols-4">
-      ${pill('Total Orders', s?.open_orders ?? null, e?.open_orders ?? null, {cls:'accent'})}
-      ${pill('Total Units',  s?.open_units  ?? null, e?.open_units  ?? null)}
-      ${pill('Hospital Orders', s?.hospital_orders ?? null, e?.hospital_orders ?? null, {cls: e?.hospital_orders > 0 ? 'warn' : ''})}
+      ${pill('Total Orders',       s?.open_orders      ?? null, e?.open_orders      ?? null, {cls:'accent'})}
+      ${pill('Total Units',        s?.open_units       ?? null, e?.open_units       ?? null)}
+      ${pill('Hospital Orders',    s?.hospital_orders  ?? null, e?.hospital_orders  ?? null, {cls: (e?.hospital_orders ?? s?.hospital_orders ?? 0) > 0 ? 'warn' : ''})}
       ${pillManual('68-Criteria Orders', 'batch-criteria', {placeholder:'e.g. 68'})}
     </div>
   </div>`;
 
-  // ── PICKING ────────────────────────────────────────────────────────────────
+  // PICKING
   html += `
   <div class="section">
     <div class="section-title">Picking</div>
     <div class="pill-grid cols-3">
-      ${pill('Pick Tasks Open',      s?.pick_open ?? null, e?.pick_open ?? null, {cls: e?.pick_open > 0 ? 'warn' : 'good'})}
+      ${pill('Pick Tasks Open',      s?.pick_open ?? null, e?.pick_open ?? null, {cls:(e?.pick_open ?? 0)>0?'warn':'good'})}
       ${pill('Pick Tasks Completed', s?.pick_done ?? null, e?.pick_done ?? null)}
       ${noteField('Picking')}
     </div>
   </div>`;
 
-  // ── SORTING ────────────────────────────────────────────────────────────────
+  // SORTING
   html += `
   <div class="section">
     <div class="section-title">Sorting</div>
     <div class="pill-grid cols-5">
-      ${pill('Batches in Queue',    s?.batches_in_queue    ?? null, e?.batches_in_queue    ?? null, {cls: e?.batches_in_queue > 0 ? 'warn' : 'good'})}
+      ${pill('Batches in Queue',    s?.batches_in_queue    ?? null, e?.batches_in_queue    ?? null, {cls:(e?.batches_in_queue ?? 0)>0?'warn':'good'})}
       ${pill('Orders Not Released', s?.orders_not_released ?? null, e?.orders_not_released ?? null)}
       ${pillManual('Avg Release Interval', 'avg-release', {placeholder:'e.g. 45 min'})}
-      ${pill('Batches Cleared',     s?.batches_cleared ?? null, e?.batches_cleared ?? null)}
+      ${pill('Batches Cleared',     s?.batches_cleared     ?? null, e?.batches_cleared     ?? null)}
       ${noteField('Sorting')}
     </div>
   </div>`;
 
-  // ── PACKING ────────────────────────────────────────────────────────────────
+  // PACKING
   html += `
   <div class="section">
     <div class="section-title">Packing</div>
     <div class="pill-grid cols-4">
-      ${pillManual('Line Capacity', 'line-capacity', {placeholder:'e.g. 6/8 stations'})}
+      ${pillManual('Line Capacity',  'line-capacity',  {placeholder:'e.g. 6/8 stations'})}
       ${pillManual('Cross-Training', 'cross-training', {placeholder:'e.g. 2 associates'})}
-      ${pill('Packed Not Shipped', s?.packed_not_shipped ?? null, e?.packed_not_shipped ?? null)}
+      ${pill('Packed Not Shipped',   s?.packed_not_shipped ?? null, e?.packed_not_shipped ?? null)}
       ${noteField('Packing')}
     </div>
   </div>`;
 
-  // ── SHIPPING ───────────────────────────────────────────────────────────────
+  // SHIPPING
   html += `
   <div class="section">
     <div class="section-title">Shipping</div>
     <div class="pill-grid cols-3">
-      ${pillManual('Pallet IDs', 'pallet-ids', {placeholder:'e.g. PLT001, PLT002'})}
-      ${pill('Loaded Virtually', s?.loaded_virtually ?? null, e?.loaded_virtually ?? null, {cls:'good'})}
+      ${pillManual('Pallet IDs',      'pallet-ids',    {placeholder:'e.g. PLT001, PLT002'})}
+      ${pill('Loaded Virtually',      s?.loaded_virtually ?? null, e?.loaded_virtually ?? null, {cls:'good'})}
       ${noteField('Shipping')}
     </div>
   </div>`;
 
-  // ── STOCK CONTROL ──────────────────────────────────────────────────────────
+  // STOCK CONTROL
   html += `
   <div class="section">
     <div class="section-title">Stock Control</div>
     <div class="pill-grid cols-4">
-      ${pill('Replen Tasks Open',      s?.replen_open  ?? null, e?.replen_open  ?? null, {cls: e?.replen_open > 0 ? 'warn' : 'good'})}
+      ${pill('Replen Tasks Open',      s?.replen_open  ?? null, e?.replen_open  ?? null, {cls:(e?.replen_open  ?? 0)>0?'warn':'good'})}
       ${pill('Replen Tasks Done',      s?.replen_done  ?? null, e?.replen_done  ?? null)}
-      ${pill('Putaway (FC Prep) Open', s?.putaway_open ?? null, e?.putaway_open ?? null, {cls: e?.putaway_open > 0 ? 'warn' : 'good'})}
+      ${pill('Putaway (FC Prep) Open', s?.putaway_open ?? null, e?.putaway_open ?? null, {cls:(e?.putaway_open ?? 0)>0?'warn':'good'})}
       ${pill('Putaway Done',           s?.putaway_done ?? null, e?.putaway_done ?? null)}
     </div>
-    <div class="pill-grid cols-2" style="margin-top:10px;">
+    <div class="pill-grid cols-2" style="margin-top:8px;">
       ${noteField('Stock Control')}
       <div></div>
     </div>
   </div>`;
 
-  // ── WAVES RUN ──────────────────────────────────────────────────────────────
-  const waves = (e || s)?.waves || [];
-  let waveRows = waves.map(w => {
-    const isTotal = w.type === 'Total';
-    return `
-    <div class="wave-row ${isTotal ? 'total' : ''}">
-      <span class="wave-type">${w.type}</span>
-      <span class="wave-count">${w.count || 0}</span>
-    </div>`;
-  }).join('');
+  // WAVES RUN
+  const waves     = (e || s)?.waves || [];
+  const nonTotal  = waves.filter(w => w.type !== 'Total');
+  const totalRow  = waves.find(w => w.type === 'Total');
+  const maxCount  = Math.max(...nonTotal.map(w => w.count || 0), 1);
+
+  const leftWaves  = nonTotal.slice(0, Math.ceil(nonTotal.length / 2));
+  const rightWaves = nonTotal.slice(Math.ceil(nonTotal.length / 2));
+
+  function waveRows(list) {
+    return list.map(w => {
+      const pct = Math.round(((w.count || 0) / maxCount) * 100);
+      return `
+      <div class="wave-row">
+        <span class="wave-type">${w.type}</span>
+        <div class="wave-bar-wrap"><div class="wave-bar" style="width:${pct}%"></div></div>
+        <span class="wave-count">${w.count || 0}</span>
+      </div>`;
+    }).join('');
+  }
 
   html += `
   <div class="section">
     <div class="section-title">Waves Run</div>
-    <div class="wave-table">
-      <div class="wave-row header">
-        <span class="wave-type">Wave Type</span>
-        <span class="wave-count">Count</span>
+    <div class="wave-grid">
+      <div class="wave-card">
+        <div class="wave-card-header"><span>Wave Type</span><span>Count</span></div>
+        ${leftWaves.length ? waveRows(leftWaves) : '<div class="wave-row"><span class="wave-type" style="color:var(--text-hint)">No data</span></div>'}
       </div>
-      ${waveRows || '<div class="wave-row"><span class="wave-type" style="color:var(--text-hint)">No wave data</span></div>'}
+      <div class="wave-card">
+        <div class="wave-card-header"><span>Wave Type</span><span>Count</span></div>
+        ${waveRows(rightWaves)}
+        ${totalRow ? `
+        <div class="wave-row total-row">
+          <span class="wave-type">Total</span>
+          <div class="wave-bar-wrap"></div>
+          <span class="wave-count">${totalRow.count || 0}</span>
+        </div>` : ''}
+      </div>
     </div>
   </div>`;
 
@@ -328,8 +385,8 @@ function render() {
   container.innerHTML = html;
 }
 
-function formatDate(str) {
-  if (!str) return '';
+function fmtDate(str) {
+  if (!str) return null;
   try {
     const [y,m,d] = str.split('-');
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -340,38 +397,28 @@ function formatDate(str) {
 async function loadData() {
   const dot   = document.getElementById('status-dot');
   const label = document.getElementById('status-label');
-
-  // Try eos_report.json first (has both SOS + EOS merged)
   try {
     const r = await fetch(DATA_URL + '?v=' + Date.now());
     if (r.ok) {
       const data = await r.json();
-      sos = data.sos;
-      eos = data.eos;
-      dot.className = 'status-dot eos';
-      label.textContent = `Updated ${data.generated?.slice(11,16) || ''}`;
-      render();
-      return;
+      sos = data.sos; eos = data.eos;
+      dot.className = 'dot eos';
+      label.textContent = `EOS captured ${data.generated?.slice(11,16) || ''}`;
+      render(); return;
     }
   } catch {}
-
-  // Fall back to SOS-only snapshot
   try {
     const r = await fetch(SOS_URL + '?v=' + Date.now());
     if (r.ok) {
       const data = await r.json();
-      sos = data;
-      eos = null;
-      dot.className = 'status-dot sos';
-      label.textContent = `SOS only — EOS not yet captured`;
-      render();
-      return;
+      sos = data; eos = null;
+      dot.className = 'dot sos';
+      label.textContent = `SOS only — ${data.captured_at || ''}`;
+      render(); return;
     }
   } catch {}
-
-  // Nothing fetched — still render the blank form for manual entry
-  dot.className = 'status-dot';
-  label.textContent = 'No data — manual entry mode';
+  dot.className = 'dot';
+  label.textContent = 'No data — manual entry';
   render();
 }
 
