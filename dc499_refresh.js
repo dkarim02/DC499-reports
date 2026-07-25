@@ -711,8 +711,8 @@ ORDER BY hour_pdt`.trim();
 //               5400=Picking Completed, 5600=Work Started, 5800=Cleared
 const BATCH_STATUS_LABELS = {
   '5000': 'Released',
-  '5200': 'Released',
-  '5400': 'Picking Completed',
+  '5200': 'Picking Started',
+  '5400': 'Work Started',
   '5600': 'Work Started',
   '5800': 'Cleared',
 };

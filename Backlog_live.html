@@ -47,6 +47,9 @@
   .refresh-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:500;display:flex;align-items:center;gap:5px;}
   .refresh-btn:hover{background:var(--accent-muted);}
   [data-theme="dark"] .refresh-btn:hover{background:var(--accent);color:#fff;}
+  .back-btn{display:none;font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface2);cursor:pointer;color:var(--text-muted);font-weight:500;align-items:center;gap:5px;}
+  .back-btn:hover{background:var(--border);}
+  .back-btn.visible{display:flex;}
   .view-toggle{display:flex;border:0.5px solid var(--border);border-radius:6px;overflow:hidden;font-family:inherit;font-size:12px;}
   .view-toggle button{background:none;border:none;padding:5px 12px;cursor:pointer;color:var(--text-muted);font-family:inherit;font-size:12px;font-weight:500;transition:background 0.12s,color 0.12s;}
   .view-toggle button.active{background:var(--accent);color:#fff;}
@@ -156,6 +159,7 @@
         <button id="vt-lines"  class="active" onclick="setView('lines')">Order Lines</button>
         <button id="vt-orders"            onclick="setView('orders')">Orders</button>
       </div>
+      <button class="back-btn" id="back-btn" onclick="window.close()">&#x2190; Back to Ecom</button>
       <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
       <button class="teams-btn" id="send-teams-btn" onclick="sendToTeams(this)">&#x1F4E8; Send to Teams</button>
     </div>
@@ -696,7 +700,9 @@ async function sendToTeams(btn) {
 }
 
 // -- Back-button closes tab when opened from Ecom ----------------------------
-if (window.opener) {
+if (new URLSearchParams(window.location.search).get('from') === 'ecom') {
+  var backBtn = document.getElementById('back-btn');
+  if (backBtn) backBtn.classList.add('visible');
   history.pushState({}, '');
   window.addEventListener('popstate', function() { window.close(); });
 }

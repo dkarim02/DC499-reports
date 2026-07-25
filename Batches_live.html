@@ -258,10 +258,10 @@ function fmtDur(mins) {
 
 function badgeHtml(b) {
   var label = b.status_label || b.status_code || '—';
-  if (b.is_cleared)           return '<span class="status-badge badge-cleared">'  + label + '</span>';
-  if (b.status_code === '5600' || b.status_code === '5400')
-                              return '<span class="status-badge badge-active">'   + label + '</span>';
-  return                             '<span class="status-badge badge-queued">'   + label + '</span>';
+  if (b.is_cleared)                                    return '<span class="status-badge badge-cleared">' + label + '</span>';
+  if (b.status_code === '5400' || b.status_code === '5600') return '<span class="status-badge badge-active">'  + label + '</span>';
+  if (b.status_code === '5200')                        return '<span class="status-badge badge-active">'  + label + '</span>';
+  return                                                      '<span class="status-badge badge-queued">'  + label + '</span>';
 }
 
 function renderData(data) {
