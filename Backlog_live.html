@@ -106,7 +106,7 @@
   /* Page layout — main column + hourly sidebar */
   .page-layout{display:flex;gap:1.25rem;align-items:flex-start;}
   .page-main{flex:1;min-width:0;}
-  .page-sidebar{width:210px;flex-shrink:0;}
+  .page-sidebar{width:260px;flex-shrink:0;}
   @media(max-width:800px){.page-layout{flex-direction:column;}.page-sidebar{width:100%;}}
 
   /* Hourly card */
@@ -117,7 +117,7 @@
   .hourly-row:last-child{border-bottom:none;}
   .hourly-range{font-size:12px;color:var(--text-muted);flex-shrink:0;}
   .hourly-count{font-size:12px;font-weight:500;color:var(--text);font-family:monospace;white-space:nowrap;text-align:right;}
-  .hourly-uom{font-size:10px;font-weight:400;color:var(--text-hint);margin-left:3px;}
+  .hourly-uom{font-size:10px;font-weight:400;color:var(--text-hint);margin-left:4px;}
   .hourly-empty{font-size:12px;color:var(--text-hint);text-align:center;padding:1.5rem 0;}
 </style>
 </head>
@@ -392,7 +392,7 @@ function renderHourly(hourly) {
   rows.forEach(function(r) {
     html += '<div class="hourly-row">';
     html += '<span class="hourly-range">' + fmtHourRange(r.hour) + '</span>';
-    html += '<span class="hourly-count">' + r.lines.toLocaleString() + '<span class="hourly-uom">ln</span></span>';
+    html += '<span class="hourly-count">' + r.lines.toLocaleString() + '<span class="hourly-uom">lines</span></span>';
     html += '</div>';
   });
   barsEl.innerHTML = html;
