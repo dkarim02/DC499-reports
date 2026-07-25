@@ -644,16 +644,15 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY line_date, ORDER_ID, STATUS
 ORDER BY ORDER_ID`.trim();
 
-  // Query 3: shipped order lines by PDT hour — used for the Hourly Throughput side card
+  // Query 3: new order lines created by PDT hour — rate at which backlog builds each hour
   const sqlHourly = `
 SELECT
   HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS hour_pdt,
-  COUNT(*) AS shipped_count
+  COUNT(*) AS line_count
 FROM default_dcorder.DCO_ORDER_LINE
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE  = 'ECOM'
   AND CANCELLED   = 0
-  AND STATUS      = 'SHIPPED'
   AND CREATED_TIMESTAMP >= '${todayUtcStart}'
   AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
 GROUP BY hour_pdt
@@ -693,8 +692,8 @@ ORDER BY hour_pdt`.trim();
   }
 
   const hourly = (respHourly.rows || []).map(r => ({
-    hour:    Number(r.hour_pdt),
-    shipped: Number(r.shipped_count),
+    hour:  Number(r.hour_pdt),
+    lines: Number(r.line_count),
   }));
 
   return {
