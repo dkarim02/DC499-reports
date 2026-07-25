@@ -340,7 +340,7 @@ function render() {
 
   // SHIPPING
   html += sectionBlock('Shipping',
-    tManual('Pallet IDs',    'pallet-ids', 'e.g. PLT001, PLT002') +
+    tManual('Status', 'shipping-status', 'e.g. All loaded virtually, Carrier delay...') +
     tRow('Loaded Virtually', s?.loaded_virtually ?? null, e?.loaded_virtually ?? null, 'is-good', u) +
     tNotes('Shipping')
   );
@@ -549,7 +549,7 @@ function exportEmail() {
 
       <table ${sec}>
         ${sectionHeader('Shipping')}
-        ${manualRow('Pallet IDs', 'pallet-ids')}
+        ${manualRow('Status', 'shipping-status')}
         ${dataRow('Loaded Virtually', s?.loaded_virtually, e?.loaded_virtually, '#059669')}
         ${notesRow('Shipping')}
       </table>
