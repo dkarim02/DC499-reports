@@ -92,6 +92,11 @@
   /* disclaimer */
   .disclaimer{font-size:10px;color:var(--text-hint);text-align:center;margin-top:24px;padding:0 20px;line-height:1.5;}
 
+  /* manual input */
+  .manual-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:15px;font-weight:600;padding:4px 8px;margin-top:4px;outline:none;font-family:inherit;}
+  .manual-input:focus{border-color:var(--accent);}
+  .manual-input::placeholder{color:var(--text-hint);font-size:12px;font-weight:400;}
+
   /* loading / error */
   .loading{text-align:center;padding:60px;color:var(--text-muted);font-size:14px;}
   .error-msg{background:rgba(239,83,80,.1);border:1px solid var(--red);border-radius:8px;padding:12px 16px;color:var(--red);font-size:13px;margin-bottom:16px;}
@@ -169,6 +174,18 @@ function pillEosOnly(label, eosVal, opts) {
   </div>`;
 }
 
+function pillManual(label, id, opts) {
+  opts = opts || {};
+  const cls = opts.cls || '';
+  const placeholder = opts.placeholder || 'Enter value';
+  return `
+  <div class="pill ${cls}">
+    <div class="pill-label">${label}</div>
+    <input class="manual-input" id="manual-${id}" type="text" placeholder="${placeholder}" autocomplete="off">
+    <div class="pill-sub"><span class="eos-sub">manual entry</span></div>
+  </div>`;
+}
+
 function noteField(section) {
   return `
   <div class="pill note-pill">
@@ -205,8 +222,7 @@ function render() {
   </div>`;
 
   if (!e && !s) {
-    container.innerHTML = html + `<div class="error-msg">No report data found. Run the EOS agent to capture data.</div>`;
-    return;
+    html += `<div class="error-msg" style="margin-bottom:16px;">No data found — run <strong>eos.bat → Option 1</strong> at 2:10 PM, or <strong>Option 2</strong> at shift end. Form is available for manual entry below.</div>`;
   }
 
   // ── ORDERS & UNITS ─────────────────────────────────────────────────────────
@@ -217,7 +233,7 @@ function render() {
       ${pill('Total Orders', s?.open_orders ?? null, e?.open_orders ?? null, {cls:'accent'})}
       ${pill('Total Units',  s?.open_units  ?? null, e?.open_units  ?? null)}
       ${pill('Hospital Orders', s?.hospital_orders ?? null, e?.hospital_orders ?? null, {cls: e?.hospital_orders > 0 ? 'warn' : ''})}
-      ${pillEosOnly('68-Criteria Orders', null)}
+      ${pillManual('68-Criteria Orders', 'batch-criteria', {placeholder:'e.g. 68'})}
     </div>
   </div>`;
 
@@ -239,7 +255,7 @@ function render() {
     <div class="pill-grid cols-5">
       ${pill('Batches in Queue',    s?.batches_in_queue    ?? null, e?.batches_in_queue    ?? null, {cls: e?.batches_in_queue > 0 ? 'warn' : 'good'})}
       ${pill('Orders Not Released', s?.orders_not_released ?? null, e?.orders_not_released ?? null)}
-      ${pillEosOnly('Avg Release Interval', null)}
+      ${pillManual('Avg Release Interval', 'avg-release', {placeholder:'e.g. 45 min'})}
       ${pill('Batches Cleared',     s?.batches_cleared ?? null, e?.batches_cleared ?? null)}
       ${noteField('Sorting')}
     </div>
@@ -250,8 +266,8 @@ function render() {
   <div class="section">
     <div class="section-title">Packing</div>
     <div class="pill-grid cols-4">
-      ${pillEosOnly('Line Capacity', null)}
-      ${pillEosOnly('Cross-Training', null)}
+      ${pillManual('Line Capacity', 'line-capacity', {placeholder:'e.g. 6/8 stations'})}
+      ${pillManual('Cross-Training', 'cross-training', {placeholder:'e.g. 2 associates'})}
       ${pill('Packed Not Shipped', s?.packed_not_shipped ?? null, e?.packed_not_shipped ?? null)}
       ${noteField('Packing')}
     </div>
@@ -262,7 +278,7 @@ function render() {
   <div class="section">
     <div class="section-title">Shipping</div>
     <div class="pill-grid cols-3">
-      ${pillEosOnly('Pallet IDs', null)}
+      ${pillManual('Pallet IDs', 'pallet-ids', {placeholder:'e.g. PLT001, PLT002'})}
       ${pill('Loaded Virtually', s?.loaded_virtually ?? null, e?.loaded_virtually ?? null, {cls:'good'})}
       ${noteField('Shipping')}
     </div>
@@ -353,11 +369,10 @@ async function loadData() {
     }
   } catch {}
 
-  // Nothing found
-  document.getElementById('loading-msg').textContent = '';
-  document.getElementById('main-container').innerHTML =
-    '<div class="error-msg">No data found. Run <strong>eos.bat → Option 1</strong> at 2:10 PM to capture SOS, then <strong>Option 2</strong> at shift end for the full report.</div>';
-  label.textContent = 'No data';
+  // Nothing fetched — still render the blank form for manual entry
+  dot.className = 'status-dot';
+  label.textContent = 'No data — manual entry mode';
+  render();
 }
 
 loadData();
