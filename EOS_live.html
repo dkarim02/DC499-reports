@@ -311,7 +311,7 @@ function render() {
     tRow('Total Orders',       s?.open_orders     ?? null, e?.open_orders     ?? null, 'is-accent', u) +
     tRow('Total Units',        s?.open_units      ?? null, e?.open_units      ?? null, '',          u) +
     tRow('Hospital Orders',    s?.hospital_orders ?? null, e?.hospital_orders ?? null, hospCls,     u) +
-    tManual('68-Criteria Orders', 'batch-criteria', 'e.g. 68')
+    tManual('Batch Criteria Not Met', 'batch-criteria', 'e.g. 68')
   );
 
   // PICKING
@@ -517,7 +517,7 @@ function exportEmail() {
         ${dataRow('Total Orders', s?.open_orders, e?.open_orders)}
         ${dataRow('Total Units', s?.open_units, e?.open_units)}
         ${dataRow('Hospital Orders', s?.hospital_orders, e?.hospital_orders, hospColor)}
-        ${manualRow('68-Criteria Orders', 'batch-criteria')}
+        ${manualRow('Batch Criteria Not Met', 'batch-criteria')}
       </table>
 
       <table ${sec}>
