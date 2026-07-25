@@ -137,18 +137,32 @@
   /* Order detail panel */
   .order-detail-card{display:none;background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
   .order-detail-card.open{display:block;}
-  .detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
   .detail-title{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:var(--text);}
   .detail-close{background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-hint);line-height:1;font-family:inherit;padding:0 4px;}
   .detail-close:hover{color:var(--text);}
+  .detail-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .detail-filter-label{font-size:11px;color:var(--text-hint);}
+  .sm-toggle{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:background 0.12s,border-color 0.12s,color 0.12s;user-select:none;}
+  .sm-toggle.s-btn{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-muted);}
+  .sm-toggle.m-btn{background:var(--alloc-bg);color:var(--alloc);border-color:var(--alloc);}
+  .sm-toggle.active.s-btn{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .sm-toggle.active.m-btn{background:var(--alloc);color:#fff;border-color:var(--alloc);}
+  .sm-toggle:hover:not(.active){opacity:0.75;}
+  .detail-count{font-size:11px;color:var(--text-hint);margin-left:4px;}
   .order-list-inner{max-height:320px;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;font-size:13px;}
   .order-list-inner::-webkit-scrollbar{width:5px;}
   .order-list-inner::-webkit-scrollbar-track{background:transparent;}
   .order-list-inner::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
   .order-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid var(--border-light);}
   .order-item:last-child{border-bottom:none;}
+  .order-item.hidden{display:none;}
   .order-id{font-family:monospace;font-size:12px;color:var(--text);}
+  .order-right{display:flex;align-items:center;gap:8px;}
   .order-lines{font-size:11px;color:var(--text-hint);}
+  .sm-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:10px;font-weight:700;flex-shrink:0;}
+  .sm-badge.S{background:var(--accent-bg);color:var(--accent);}
+  .sm-badge.M{background:var(--alloc-bg);color:var(--alloc);}
   .detail-empty{padding:2rem;text-align:center;color:var(--text-hint);font-size:13px;}
 
   /* Page layout */
@@ -297,6 +311,12 @@
           <div class="detail-header">
             <div class="detail-title" id="detail-title"></div>
             <button class="detail-close" onclick="closeDetailPanel()" aria-label="Close">&times;</button>
+          </div>
+          <div class="detail-filter-bar" id="detail-filter-bar" style="display:none;">
+            <span class="detail-filter-label">Filter:</span>
+            <span class="sm-toggle s-btn" id="sm-filter-s" onclick="setSmFilter('S')" title="Singles only">S</span>
+            <span class="sm-toggle m-btn" id="sm-filter-m" onclick="setSmFilter('M')" title="Multis only">M</span>
+            <span class="detail-count" id="detail-count"></span>
           </div>
           <div class="order-list-inner" id="detail-order-list"></div>
         </div>
@@ -507,34 +527,75 @@ function fetchBacklogData() {
 var PILL_LABEL = { READY:'Ready', ALLOCATED:'Allocated', PACKED:'Packed' };
 var PILL_CLASS = { READY:'pill-ready', ALLOCATED:'pill-alloc', PACKED:'pill-packed' };
 
+var activeSmFilter = null;
+
 function openDetailPanel(date, status, row) {
   var key = date + '|' + status;
   if (activeSelection && activeSelection.key === key) { closeDetailPanel(); return; }
+  activeSmFilter = null;
   activeSelection = { key: key };
   document.querySelectorAll('.status-pill').forEach(function(el) { el.classList.remove('active'); });
   var activePill = document.querySelector('[data-pill="' + key + '"]');
   if (activePill) activePill.classList.add('active');
   var orders = (row.orders || []).filter(function(o) { return o.status.toUpperCase() === status; });
-  var titleEl = document.getElementById('detail-title');
-  var listEl  = document.getElementById('detail-order-list');
-  var card    = document.getElementById('order-detail-card');
+  var titleEl   = document.getElementById('detail-title');
+  var listEl    = document.getElementById('detail-order-list');
+  var card      = document.getElementById('order-detail-card');
+  var filterBar = document.getElementById('detail-filter-bar');
   var pillBadge = '<span class="status-pill ' + (PILL_CLASS[status]||'') + '" style="font-size:11px;">' + (PILL_LABEL[status]||status) + '</span>';
   titleEl.innerHTML = fmtDate(date) + ' &nbsp;' + pillBadge + '&nbsp; <span style="color:var(--text-muted);font-weight:400;">' + orders.length + ' orders</span>';
   if (!orders.length) {
     listEl.innerHTML = '<div class="detail-empty">No orders found for this status.</div>';
+    filterBar.style.display = 'none';
   } else {
     var html = '';
     orders.forEach(function(o) {
-      html += '<div class="order-item"><span class="order-id">' + escHtml(o.order_id) + '</span><span class="order-lines">' + o.line_count + (o.line_count === 1 ? ' line' : ' lines') + '</span></div>';
+      var sm = o.line_count === 1 ? 'S' : 'M';
+      html += '<div class="order-item" data-sm="' + sm + '">';
+      html += '<span class="order-id">' + escHtml(o.order_id) + '</span>';
+      html += '<span class="order-right">';
+      html += '<span class="order-lines">' + o.line_count + (o.line_count === 1 ? ' line' : ' lines') + '</span>';
+      html += '<span class="sm-badge ' + sm + '">' + sm + '</span>';
+      html += '</span></div>';
     });
     listEl.innerHTML = html;
+    filterBar.style.display = 'flex';
+    document.getElementById('sm-filter-s').classList.remove('active');
+    document.getElementById('sm-filter-m').classList.remove('active');
+    updateDetailCount(orders.length);
   }
   card.classList.add('open');
   card.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
+
+function setSmFilter(f) {
+  if (activeSmFilter === f) {
+    activeSmFilter = null;
+  } else {
+    activeSmFilter = f;
+  }
+  document.getElementById('sm-filter-s').classList.toggle('active', activeSmFilter === 'S');
+  document.getElementById('sm-filter-m').classList.toggle('active', activeSmFilter === 'M');
+  var items = document.querySelectorAll('#detail-order-list .order-item');
+  var visible = 0;
+  items.forEach(function(el) {
+    var show = !activeSmFilter || el.getAttribute('data-sm') === activeSmFilter;
+    el.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+  updateDetailCount(visible);
+}
+
+function updateDetailCount(n) {
+  var el = document.getElementById('detail-count');
+  if (el) el.textContent = n + (n === 1 ? ' order' : ' orders');
+}
+
 function closeDetailPanel() {
   activeSelection = null;
+  activeSmFilter  = null;
   document.getElementById('order-detail-card').classList.remove('open');
+  document.getElementById('detail-filter-bar').style.display = 'none';
   document.querySelectorAll('.status-pill').forEach(function(el) { el.classList.remove('active'); });
 }
 
