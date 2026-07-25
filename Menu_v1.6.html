@@ -77,6 +77,8 @@
   .card-reserve:hover   { background: #1e0a30; box-shadow: 0 0 0 3px rgba(155,77,202,0.2); }
   .card-totes     { border-color: #C87D2B; }
   .card-totes:hover     { background: #2e1a08; box-shadow: 0 0 0 3px rgba(200,125,43,0.2); }
+  .card-backlog   { border-color: #185FA5; }
+  .card-backlog:hover   { background: #081a30; box-shadow: 0 0 0 3px rgba(24,95,165,0.2); }
 
   body.light .card-receiving:hover { background: #E6F7F5; }
   body.light .card-recv-live:hover  { background: #E6F7F5; }
@@ -84,6 +86,7 @@
   body.light .card-ecom:hover      { background: #e8f0fb; }
   body.light .card-reserve:hover   { background: #F3E8FF; }
   body.light .card-totes:hover     { background: #FDF3E7; }
+  body.light .card-backlog:hover   { background: #e8f0fb; }
 
   .card-version { position: absolute; top: 10px; right: 13px; font-size: 10px; color: #555; }
   body.light .card-version { color: #aaa; }
@@ -98,6 +101,7 @@
   .card-ecom      .card-name { color: #5B9BD5; }
   .card-reserve   .card-name { color: #B57FDD; }
   .card-totes     .card-name { color: #C87D2B; }
+  .card-backlog   .card-name { color: #5B9BD5; }
 
   /* Footer */
   .footer { margin-top: 1.75rem; font-size: 11px; color: #555; text-align: center; }
@@ -138,7 +142,7 @@
 <!-- Tab bar -->
 <div class="tab-bar">
   <button class="tab-btn active" id="tab-reports" onclick="switchTab('reports')">Reports</button>
-  <button class="tab-btn" id="tab-live" onclick="switchTab('live')">Live <span class="tab-badge">2</span></button>
+  <button class="tab-btn" id="tab-live" onclick="switchTab('live')">Live <span class="tab-badge">3</span></button>
 </div>
 
 <!-- Reports tab -->
@@ -189,6 +193,13 @@
       <div class="card-icon">&#x1F9FA;</div>
       <div class="card-name">Open Totes</div>
       <div class="card-sub">Live &middot; Ecom</div>
+    </button>
+
+    <button class="card card-backlog" onclick="openApp('Backlog_live.html')">
+      <span class="card-version">Live</span>
+      <div class="card-icon">&#x1F4CB;</div>
+      <div class="card-name">Ecom Backlog</div>
+      <div class="card-sub">Live &middot; Order Lines</div>
     </button>
   </div>
 </div>

@@ -103,6 +103,21 @@
   /* Stale banner */
   .stale-banner{display:none;background:var(--yellow-bg);color:var(--yellow);font-size:13px;font-weight:600;padding:10px 16px;border-radius:8px;margin-bottom:1rem;text-align:center;border:1px solid var(--yellow-border);}
 
+  /* Backlog pill — right side of summary row */
+  .backlog-pill{display:none;align-items:center;gap:0;margin-left:auto;border-radius:20px;overflow:hidden;border:1.5px solid #185FA5;font-size:13px;font-weight:700;flex-shrink:0;}
+  .bp-total{background:#185FA5;color:#fff;padding:6px 14px;white-space:nowrap;}
+  .bp-total-lbl{font-size:10px;font-weight:600;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em;display:block;line-height:1.1;}
+  .bp-total-val{font-size:16px;line-height:1.2;}
+  .bp-divider{width:1px;background:#185FA5;align-self:stretch;}
+  .bp-stat{padding:6px 12px;background:var(--surface2);display:flex;flex-direction:column;align-items:center;gap:0;white-space:nowrap;}
+  .bp-stat-val{font-size:14px;line-height:1.2;}
+  .bp-stat-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);line-height:1.1;}
+  .bp-ready{color:#4CAF50;}
+  .bp-alloc{color:#FFB74D;}
+  [data-theme="light"] .bp-stat{background:#e8f0fb;}
+  [data-theme="light"] .bp-ready{color:#2E7D32;}
+  [data-theme="light"] .bp-alloc{color:#E65100;}
+
   /* 3-column grid */
   .columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;}
   @media(max-width:900px){.columns{grid-template-columns:1fr;}}
@@ -366,6 +381,22 @@
     <span class="summary-pill pill-red"    id="p-red"></span>
     <span class="summary-pill pill-c1"     id="p-c1"></span>
     <span class="summary-pill pill-c3"     id="p-c3"></span>
+    <div class="backlog-pill" id="backlog-pill">
+      <div class="bp-total">
+        <span class="bp-total-lbl">Backlog</span>
+        <span class="bp-total-val" id="bs-total">--</span>
+      </div>
+      <div class="bp-divider"></div>
+      <div class="bp-stat">
+        <span class="bp-stat-val bp-ready" id="bs-ready">--</span>
+        <span class="bp-stat-lbl">Ready</span>
+      </div>
+      <div class="bp-divider"></div>
+      <div class="bp-stat">
+        <span class="bp-stat-val bp-alloc" id="bs-alloc">--</span>
+        <span class="bp-stat-lbl">Alloc</span>
+      </div>
+    </div>
   </div>
 
   <div class="columns" id="columns" style="display:none;">
@@ -939,9 +970,32 @@ function makeLocBlock(loc, totes, hpOlpn) {
   return block;
 }
 
+function fetchBacklogStrip() {
+  var base = window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
+  fetch(base + '/backlog_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      var today = data.dates && data.dates[0];
+      if (!today) return;
+      var ready  = today.ready     || 0;
+      var alloc  = today.allocated || 0;
+      var total  = ready + alloc;
+      document.getElementById('bs-total').textContent = total.toLocaleString();
+      document.getElementById('bs-ready').textContent = ready.toLocaleString();
+      document.getElementById('bs-alloc').textContent = alloc.toLocaleString();
+      document.getElementById('backlog-pill').style.display = 'flex';
+    })
+    .catch(function() {}); // fail silently — backlog strip is supplemental
+}
+
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 fetchData();
 scheduleAutoRefresh();
+fetchBacklogStrip();
 </script>
 </body>
 </html>

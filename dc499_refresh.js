@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * DC499 Reporter — Direct MCP Refresher
- * Writes receiving_live.json and batch_live.json without using Claude tokens.
+ * Writes receiving_live.json, dock_live.json, and totes_live.json without using Claude tokens.
  *
  * node dc499_refresh.js --auth       first-time auth
  * node dc499_refresh.js              one-shot refresh
@@ -21,9 +21,9 @@ const MCP_BASE      = 'https://mawm-data-mcp.nordstromaws.app';
 const TOKEN_FILE    = path.join('C:\\projects\\test', '.mcp_token.json'); // shared with ecom reporter
 const REPORT_DIR    = __dirname;
 const RECV_FILE     = path.join(REPORT_DIR, 'receiving_live.json');
-const BATCH_FILE    = path.join(REPORT_DIR, 'batch_live.json');
 const DOCK_FILE     = path.join(REPORT_DIR, 'dock_live.json');
 const TOTES_FILE    = path.join(REPORT_DIR, 'totes_live.json');
+const BACKLOG_FILE  = path.join(REPORT_DIR, 'backlog_live.json');
 const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3118;
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
@@ -248,154 +248,6 @@ ORDER BY hr ASC`.trim();
   };
 }
 
-// ── batch queries ──────────────────────────────────────────────────────────────
-async function fetchBatch(accessToken) {
-  // shift start in UTC — 2pm PDT = 21:00 UTC
-  const nowUtc = new Date();
-  const shiftHourUtc = 21;
-  let shiftStart = new Date(nowUtc);
-  shiftStart.setUTCHours(shiftHourUtc, 0, 0, 0);
-  if (nowUtc.getUTCHours() < shiftHourUtc) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
-  const startStr = shiftStart.toISOString().replace('T',' ').slice(0, 19);
-
-  // Single query: summary + per-(batch, status, worker) detail in one pass.
-  // Eliminates the serial sql1 → sql2 waterfall.
-  const sql = `
-SELECT
-    RESOURCE_BATCH_ID,
-    STATUS,
-    CURRENT_USER_ID,
-    COUNT(DISTINCT ORDER_ID)   AS total_orders,
-    COUNT(DISTINCT OLPN_ID)    AS total_olpns,
-    COUNT(*)                   AS task_count,
-    COUNT(DISTINCT CASE WHEN STATUS = '9000' THEN OLPN_ID END) AS completed_olpns,
-    COUNT(DISTINCT CASE WHEN STATUS = '8000' THEN OLPN_ID END) AS in_progress_olpns,
-    COUNT(DISTINCT CASE WHEN STATUS = '1000' THEN OLPN_ID END) AS pending_olpns,
-    MIN(CREATED_TIMESTAMP)     AS batch_created_utc,
-    GROUP_CONCAT(DISTINCT CURRENT_USER_ID ORDER BY CURRENT_USER_ID SEPARATOR ',') AS workers,
-    GROUP_CONCAT(DISTINCT NULLIF(WORKING_LOCATION_ID,'') ORDER BY WORKING_LOCATION_ID SEPARATOR ',') AS locations,
-    GROUP_CONCAT(DISTINCT ITEM_ID ORDER BY ITEM_ID SEPARATOR ',') AS items
-FROM default_pickpack.TSK_TASK_DETAIL
-WHERE FACILITY_ID = '${FACILITY}'
-  AND RESOURCE_BATCH_ID IS NOT NULL
-  AND RESOURCE_BATCH_ID NOT LIKE 'B_00000000000%'
-  AND CREATED_TIMESTAMP >= '${startStr}'
-GROUP BY RESOURCE_BATCH_ID, STATUS, CURRENT_USER_ID
-ORDER BY batch_created_utc DESC, RESOURCE_BATCH_ID, STATUS DESC`.trim();
-
-  const resp = await mcpQuery(accessToken, sql);
-  const rows = resp.rows || [];
-
-  if (!rows.length) {
-    return {
-      generated: new Date().toISOString().slice(0, 19),
-      facility: FACILITY, shift: shiftLabel(), shift_start_utc: startStr,
-      summary: { total_batches:0, active_batches:0, total_orders:0, total_olpns:0, completed_olpns:0, completion_pct:0 },
-      batches: [],
-    };
-  }
-
-  // Roll up rows into per-batch summaries and detail in a single pass
-  const batchMap = {};
-  for (const r of rows) {
-    const bid = r.RESOURCE_BATCH_ID;
-    if (!batchMap[bid]) {
-      batchMap[bid] = {
-        RESOURCE_BATCH_ID: bid,
-        total_orders:      0,
-        total_olpns:       0,
-        total_task_details:0,
-        completed_olpns:   0,
-        in_progress_olpns: 0,
-        pending_olpns:     0,
-        batch_created_utc: r.batch_created_utc,
-        workers:           new Set(),
-        detail:            { in_progress: [], pending: [] },
-      };
-    }
-    const b = batchMap[bid];
-    b.total_orders       += Number(r.total_orders);
-    b.total_olpns        += Number(r.total_olpns);
-    b.total_task_details += Number(r.task_count);
-    b.completed_olpns    += Number(r.completed_olpns);
-    b.in_progress_olpns  += Number(r.in_progress_olpns);
-    b.pending_olpns      += Number(r.pending_olpns);
-    if (r.batch_created_utc < b.batch_created_utc) b.batch_created_utc = r.batch_created_utc;
-    if (r.CURRENT_USER_ID) r.CURRENT_USER_ID.split(',').forEach(w => b.workers.add(w.trim()));
-
-    const locs = r.locations ? r.locations.split(',').filter(Boolean) : [];
-    if (r.STATUS === '8000') {
-      b.detail.in_progress.push({
-        worker:      r.CURRENT_USER_ID ? r.CURRENT_USER_ID.toLowerCase().split('@')[0] : 'unassigned',
-        task_count:  Number(r.task_count),
-        putwalls:    locs.filter(l => /^S\d+-PW-/.test(l)),
-        workbenches: locs.filter(l => !/^S\d+-PW-/.test(l)),
-      });
-    } else if (r.STATUS === '1000') {
-      b.detail.pending.push({
-        task_count: Number(r.task_count),
-        items:      r.items ? r.items.split(',').filter(Boolean) : [],
-      });
-    }
-  }
-
-  const summaryRows = Object.values(batchMap);
-
-  // build batch objects
-  const batches = summaryRows.map(r => {
-    const bid  = r.RESOURCE_BATCH_ID;
-    const tot  = r.total_olpns;
-    const comp = r.completed_olpns;
-    const inp  = r.in_progress_olpns;
-    const pend = r.pending_olpns;
-    const pct  = tot > 0 ? Math.round((comp / tot) * 100) : 0;
-    const workers = [...r.workers].map(w => w.toLowerCase().split('@')[0]).filter(Boolean);
-    const statusLabel = comp === tot && tot > 0 ? 'Complete'
-                      : inp > 0                  ? 'Work Started'
-                      : pend === tot             ? 'Released'
-                      :                           'In Progress';
-    return {
-      batch_id:          bid,
-      status:            statusLabel,
-      total_orders:      r.total_orders,
-      total_olpns:       tot,
-      task_details:      r.total_task_details,
-      completed_olpns:   comp,
-      in_progress_olpns: inp,
-      pending_olpns:     pend,
-      pct,
-      created_utc:       r.batch_created_utc,
-      workers,
-      detail:            r.detail,
-    };
-  });
-
-  let totalOrders = 0, totalOlpns = 0, completedOlpns = 0, activeBatches = 0;
-  for (const b of batches) {
-    totalOrders    += b.total_orders;
-    totalOlpns     += b.total_olpns;
-    completedOlpns += b.completed_olpns;
-    if (b.in_progress_olpns > 0 || b.pending_olpns > 0) activeBatches++;
-  }
-  const overallPct = totalOlpns > 0 ? Math.round((completedOlpns / totalOlpns) * 100) : 0;
-
-  return {
-    generated:       new Date().toISOString().slice(0, 19),
-    facility:        FACILITY,
-    shift:           shiftLabel(),
-    shift_start_utc: startStr,
-    summary: {
-      total_batches:   batches.length,
-      active_batches:  activeBatches,
-      total_orders:    totalOrders,
-      total_olpns:     totalOlpns,
-      completed_olpns: completedOlpns,
-      completion_pct:  overallPct,
-    },
-    batches,
-  };
-}
-
 // ── dock door query ────────────────────────────────────────────────────────────
 async function fetchDock(accessToken) {
   const sqlDoors = `
@@ -564,18 +416,31 @@ WHERE td.FACILITY_ID            = '${FACILITY}'
   AND td.CREATED_TIMESTAMP   >= NOW() - INTERVAL 2 DAY
 GROUP BY td.TARGET_CONTAINER_ID`.trim();
 
-  // Combined putwall query: oLPN count + active drop-zone tote in one pass.
-  const sqlPutwall = `
+  // Query A: true total oLPN count per putwall — ungrouped by tote so every oLPN is counted.
+  const sqlPwOlpn = `
+SELECT
+  CASE
+    WHEN LOCATION_ID LIKE 'S1-PW-%' THEN SUBSTRING(LOCATION_ID, 1, 9)
+    ELSE SUBSTRING(LOCATION_ID, 1, 8)
+  END                        AS pw_prefix,
+  COUNT(DISTINCT LPN_ID)     AS olpn_count
+FROM default_pickpack.SLA_LPN_LOCATION_ASSIGNMENT
+WHERE FACILITY_ID = '${FACILITY}'
+  AND (LOCATION_ID LIKE 'S1-PW-%' OR LOCATION_ID LIKE 'H1-PW-%')
+  AND UPDATED_TIMESTAMP >= NOW() - INTERVAL 12 HOUR
+GROUP BY pw_prefix`.trim();
+
+  // Query B: active drop-zone detection — which tote is feeding each wall right now.
+  const sqlPwActiveDz = `
 SELECT
   CASE
     WHEN sla.LOCATION_ID LIKE 'S1-PW-%' THEN SUBSTRING(sla.LOCATION_ID, 1, 9)
     ELSE SUBSTRING(sla.LOCATION_ID, 1, 8)
   END                        AS pw_prefix,
-  COUNT(DISTINCT sla.LPN_ID) AS olpn_count,
   td.SOURCE_CONTAINER_ID     AS tote_id,
-  COUNT(DISTINCT CASE WHEN td.SOURCE_CONTAINER_ID IS NOT NULL THEN sla.LPN_ID END) AS dz_count
+  COUNT(DISTINCT sla.LPN_ID) AS dz_count
 FROM default_pickpack.SLA_LPN_LOCATION_ASSIGNMENT sla
-LEFT JOIN default_pickpack.TSK_TASK_DETAIL td
+JOIN default_pickpack.TSK_TASK_DETAIL td
   ON  td.OLPN_ID             = sla.LPN_ID
  AND  td.FACILITY_ID         = '${FACILITY}'
  AND  td.SOURCE_CONTAINER_ID LIKE 'T0%'
@@ -586,10 +451,11 @@ WHERE sla.FACILITY_ID = '${FACILITY}'
 GROUP BY pw_prefix, td.SOURCE_CONTAINER_ID
 ORDER BY pw_prefix, dz_count DESC`.trim();
 
-  const [respIlpn, respTasks, respPutwall] = await Promise.all([
+  const [respIlpn, respTasks, respPwOlpn, respPwActiveDz] = await Promise.all([
     mcpQuery(accessToken, sqlIlpn),
     mcpQuery(accessToken, sqlTasks),
-    mcpQuery(accessToken, sqlPutwall),
+    mcpQuery(accessToken, sqlPwOlpn),
+    mcpQuery(accessToken, sqlPwActiveDz),
   ]);
 
   // Build task lookup keyed by tote_id
@@ -688,14 +554,16 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
     dzToteCount[r.CURRENT_LOCATION_ID] = (dzToteCount[r.CURRENT_LOCATION_ID] || 0) + 1;
   }
 
-  for (const r of (respPutwall.rows || [])) {
-    const prefix = r.pw_prefix;
-    // olpn_count is the same on every row for this prefix — only set it once
-    if (pwCountMap[prefix] === undefined) pwCountMap[prefix] = Number(r.olpn_count || 0);
-    // First row per prefix with a resolved D1- location = active drop zone
-    if (!pwActiveDzMap[prefix] && r.tote_id) {
+  // Build true oLPN counts from the dedicated count query
+  for (const r of (respPwOlpn.rows || [])) {
+    pwCountMap[r.pw_prefix] = Number(r.olpn_count || 0);
+  }
+
+  // Build active DZ map from the separate active-DZ query — first row per prefix wins (ordered by dz_count DESC)
+  for (const r of (respPwActiveDz.rows || [])) {
+    if (!pwActiveDzMap[r.pw_prefix] && r.tote_id) {
       const loc = ilpnLocMap[r.tote_id];
-      if (loc && loc.startsWith('D1-')) pwActiveDzMap[prefix] = loc;
+      if (loc && loc.startsWith('D1-')) pwActiveDzMap[r.pw_prefix] = loc;
     }
   }
 
@@ -727,6 +595,95 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
   };
 }
 
+// ── backlog query ──────────────────────────────────────────────────────────────
+async function fetchBacklog(accessToken) {
+  const pdt = nowPdt();
+
+  // Date strings in PDT (YYYY-MM-DD)
+  const todayDate    = new Date(pdt); todayDate.setHours(0, 0, 0, 0);
+  const yestDate     = new Date(todayDate); yestDate.setDate(yestDate.getDate() - 1);
+  const tomorrowDate = new Date(todayDate); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const todayStr    = todayDate.toLocaleDateString('en-CA');
+  const yestStr     = yestDate.toLocaleDateString('en-CA');
+  const tomorrowStr = tomorrowDate.toLocaleDateString('en-CA');
+
+  // PDT midnight = UTC 07:00 — build bounds directly from date strings,
+  // no setHours() so local machine timezone never interferes.
+  const yestUtcStart  = `${yestStr} 07:00:00`;
+  const todayUtcStart = `${todayStr} 07:00:00`;
+  const todayUtcEnd   = `${tomorrowStr} 07:00:00`;
+
+  // Query 1: summary counts — both days in one pass
+  const sqlCounts = `
+SELECT
+  CASE WHEN CREATED_TIMESTAMP >= '${todayUtcStart}' THEN '${todayStr}' ELSE '${yestStr}' END AS line_date,
+  STATUS,
+  COUNT(*) AS line_count
+FROM default_dcorder.DCO_ORDER_LINE
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_TYPE  = 'ECOM'
+  AND CANCELLED   = 0
+  AND CREATED_TIMESTAMP >= '${yestUtcStart}'
+  AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
+GROUP BY line_date, STATUS`.trim();
+
+  // Query 2: open order detail for drill-down (shipped lines excluded to keep payload small)
+  const sqlOrders = `
+SELECT
+  CASE WHEN CREATED_TIMESTAMP >= '${todayUtcStart}' THEN '${todayStr}' ELSE '${yestStr}' END AS line_date,
+  ORDER_ID,
+  STATUS,
+  COUNT(*) AS line_count
+FROM default_dcorder.DCO_ORDER_LINE
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_TYPE  = 'ECOM'
+  AND CANCELLED   = 0
+  AND STATUS     != 'SHIPPED'
+  AND CREATED_TIMESTAMP >= '${yestUtcStart}'
+  AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
+GROUP BY line_date, ORDER_ID, STATUS
+ORDER BY ORDER_ID`.trim();
+
+  const [respCounts, respOrders] = await Promise.all([
+    mcpQuery(accessToken, sqlCounts),
+    mcpQuery(accessToken, sqlOrders),
+  ]);
+
+  const buckets = {
+    [todayStr]: { date: todayStr, ready: 0, allocated: 0, packed: 0, shipped: 0, orders: [] },
+    [yestStr]:  { date: yestStr,  ready: 0, allocated: 0, packed: 0, shipped: 0, orders: [] },
+  };
+
+  for (const r of (respCounts.rows || [])) {
+    const b = buckets[r.line_date];
+    if (!b) continue;
+    const n = Number(r.line_count);
+    switch ((r.STATUS || '').toUpperCase()) {
+      case 'READY':     b.ready     += n; break;
+      case 'ALLOCATED': b.allocated += n; break;
+      case 'PACKED':    b.packed    += n; break;
+      case 'SHIPPED':   b.shipped   += n; break;
+    }
+  }
+
+  for (const r of (respOrders.rows || [])) {
+    const b = buckets[r.line_date];
+    if (!b) continue;
+    b.orders.push({
+      order_id:   r.ORDER_ID,
+      status:     (r.STATUS || '').toUpperCase(),
+      line_count: Number(r.line_count),
+    });
+  }
+
+  return {
+    generated: new Date().toISOString().slice(0, 19),
+    facility:  FACILITY,
+    today:     todayStr,
+    dates:     [buckets[todayStr], buckets[yestStr]],
+  };
+}
+
 // ── git push ───────────────────────────────────────────────────────────────────
 function gitPush() {
   const stamp = new Date().toLocaleString('en-US', {
@@ -734,7 +691,7 @@ function gitPush() {
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
   try {
-    execSync('git add receiving_live.json batch_live.json dock_live.json totes_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync(`git commit -m "Live update -- ${stamp}"`,      { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git pull --rebase --autostash origin main',    { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git push origin main',                         { cwd: REPORT_DIR, stdio: 'pipe' });
@@ -751,21 +708,16 @@ function gitPush() {
 
 // ── core: query + write ────────────────────────────────────────────────────────
 async function queryAndWrite(accessToken) {
-  console.log(`[${ts()}] Querying receiving...`);
-  const [recvData, batchData, dockData, totesData] = await Promise.all([
+  console.log(`[${ts()}] Querying...`);
+  const [recvData, dockData, totesData, backlogData] = await Promise.all([
     fetchReceiving(accessToken),
-    fetchBatch(accessToken).catch(e => { console.warn(`  Batch query failed: ${e.message}`); return null; }),
     fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
+    fetchBacklog(accessToken).catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; }),
   ]);
 
-  fs.writeFileSync(RECV_FILE,  JSON.stringify(recvData,  null, 4));
+  fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
   console.log(`[${ts()}] ✓ receiving_live.json — ${recvData.associates.length} associates`);
-
-  if (batchData) {
-    fs.writeFileSync(BATCH_FILE, JSON.stringify(batchData, null, 4));
-    console.log(`[${ts()}] ✓ batch_live.json — ${batchData.batches.length} batches, ${batchData.summary.completion_pct}% complete`);
-  }
 
   if (dockData) {
     fs.writeFileSync(DOCK_FILE, JSON.stringify(dockData, null, 4));
@@ -777,8 +729,15 @@ async function queryAndWrite(accessToken) {
     console.log(`[${ts()}] ✓ totes_live.json — ${totesData.summary.total} open totes`);
   }
 
+  if (backlogData) {
+    fs.writeFileSync(BACKLOG_FILE, JSON.stringify(backlogData, null, 4));
+    const today = backlogData.dates[0];
+    const open = today.ready + today.allocated + today.packed;
+    console.log(`[${ts()}] ✓ backlog_live.json — ${open} open lines today`);
+  }
+
   gitPush();
-  return { recvData, batchData, dockData, totesData };
+  return { recvData, dockData, totesData, backlogData };
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
@@ -808,11 +767,9 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
     if (url.pathname === '/api/status') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({
-        generated:    cache?.recvData?.generated || null,
-        associates:   cache?.recvData?.associates?.length || 0,
-        batches:      cache?.batchData?.batches?.length || 0,
-        completionPct: cache?.batchData?.summary?.completion_pct || 0,
-        nextRefresh:  new Date(Date.now() + intervalMs).toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles' }),
+        generated:   cache?.recvData?.generated || null,
+        associates:  cache?.recvData?.associates?.length || 0,
+        nextRefresh: new Date(Date.now() + intervalMs).toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles' }),
       }));
       return;
     }
@@ -830,11 +787,6 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
       res.end(JSON.stringify(cache?.recvData || {}));
       return;
     }
-    if (url.pathname === '/batch_live.json') {
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify(cache?.batchData || {}));
-      return;
-    }
     if (url.pathname === '/dock_live.json') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify(cache?.dockData || {}));
@@ -845,6 +797,11 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
       res.end(JSON.stringify(cache?.totesData || {}));
       return;
     }
+    if (url.pathname === '/backlog_live.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(cache?.backlogData || {}));
+      return;
+    }
 
     // serve HTML files
     const fileMap = {
@@ -852,6 +809,7 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
       '/index.html':          'index.html',
       '/Receiving_live.html': 'Receiving_live.html',
       '/Totes_live.html':     'Totes_live.html',
+      '/Backlog_live.html':   'Backlog_live.html',
       '/MegaDash_v1.2.html':  'MegaDash_v1.2.html',
       '/Menu_v1.6.html':      'Menu_v1.6.html',
       '/Changelog.html':      'Changelog.html',
@@ -900,7 +858,7 @@ async function main() {
   const isAuth  = process.argv.includes('--auth');
   const isServe = process.argv.includes('--serve');
   const port    = parseInt(process.argv.find(a => a.startsWith('--port='))?.split('=')[1] || '3001');
-  const ivMin   = parseInt(process.argv.find(a => a.startsWith('--interval='))?.split('=')[1] || '5');
+  const ivMin   = parseInt(process.argv.find(a => a.startsWith('--interval='))?.split('=')[1] || '2');
   const openArg = process.argv.find(a => a.startsWith('--open='))?.split('=').slice(1).join('=') || null;
 
   console.log('DC499 Reporter Refresher');

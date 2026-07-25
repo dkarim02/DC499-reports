@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ecom Backlog Live v1.1 -- DC499</title>
+<style>
+  :root {
+    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
+    --text:#1a1a1a;--text-muted:#666;--text-hint:#888;--bar-bg:#e5e5e5;
+    --accent:#185FA5;--accent-bg:#e8f0fb;--accent-muted:#91b8e8;
+    --ready:#2E7D32;--ready-bg:#E8F5E9;
+    --alloc:#E65100;--alloc-bg:#FFF3E0;
+    --packed:#5B9BD5;--packed-bg:#e8f0fb;
+  }
+  [data-theme="dark"]{
+    --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;
+    --text:#f0f0ee;--text-muted:#999;--text-hint:#777;--bar-bg:#3a3a3a;
+    --accent-bg:#0d2340;--accent-muted:#5B9BD5;
+    --ready:#4CAF50;--ready-bg:#1a2e1a;
+    --alloc:#FFB74D;--alloc-bg:#2e1a00;
+    --packed:#5B9BD5;--packed-bg:#0d2340;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
+  .container{max-width:900px;margin:0 auto;}
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;}
+  h1{font-size:20px;font-weight:500;margin-bottom:2px;}
+  .dept-label{font-size:11px;color:var(--accent);font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;}
+  .subtitle{font-size:14px;color:var(--text-muted);}
+  .dark-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
+  .dark-toggle:hover{background:var(--surface2);}
+  .toggle-track{width:28px;height:16px;border-radius:8px;background:var(--bar-bg);position:relative;transition:background 0.2s;flex-shrink:0;}
+  .toggle-thumb{width:12px;height:12px;border-radius:50%;background:var(--text-hint);position:absolute;top:2px;left:2px;transition:left 0.2s,background 0.2s;}
+  [data-theme="dark"] .toggle-track{background:#185FA5;}
+  [data-theme="dark"] .toggle-thumb{left:14px;background:#fff;}
+
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:5px;animation:livepulse 2s infinite;}
+  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.75);}}
+
+  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:12px;padding:8px 14px;border-radius:8px;margin-bottom:1rem;text-align:center;}
+  body:not([data-theme="dark"]) .stale-banner{background:#FFF3CD;color:#7A4F00;}
+
+  .header-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;}
+  .run-time{font-size:12px;color:var(--text-hint);}
+  .header-btns{display:flex;align-items:center;gap:8px;}
+  .refresh-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:500;display:flex;align-items:center;gap:5px;}
+  .refresh-btn:hover{background:var(--accent-muted);}
+  [data-theme="dark"] .refresh-btn:hover{background:var(--accent);color:#fff;}
+
+  /* Metric tiles */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;}
+  @media(max-width:600px){.metrics{grid-template-columns:repeat(2,1fr);}}
+  .metric{background:var(--surface2);border-radius:10px;padding:1rem;text-align:center;border-top:3px solid transparent;}
+  .metric.ready  {border-top-color:var(--ready);}
+  .metric.alloc  {border-top-color:var(--alloc);}
+  .metric.packed {border-top-color:var(--accent);}
+  .metric.total  {border-top-color:var(--border-mid);}
+  .metric-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .metric-value{font-size:26px;font-weight:500;color:var(--text);}
+  .metric.ready  .metric-value{color:var(--ready);}
+  .metric.alloc  .metric-value{color:var(--alloc);}
+  .metric.packed .metric-value{color:var(--accent);}
+  .metric-sub{font-size:11px;color:var(--text-hint);margin-top:4px;}
+
+  /* Summary table */
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+  .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.04em;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th{text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);padding:8px 12px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;}
+  th.r{text-align:right;}
+  td{padding:10px 12px;border-bottom:0.5px solid var(--border-light);color:var(--text);vertical-align:middle;}
+  td.r{text-align:right;}
+  tfoot td{font-weight:500;border-top:0.5px solid var(--border);border-bottom:none;padding-top:12px;}
+
+  .status-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.03em;text-transform:uppercase;}
+  .pill-ready  {background:var(--ready-bg);color:var(--ready);}
+  .pill-alloc  {background:var(--alloc-bg);color:var(--alloc);}
+  .pill-packed {background:var(--packed-bg);color:var(--packed);}
+
+  /* Summary row — clickable */
+  .date-row{cursor:pointer;user-select:none;transition:background 0.12s;}
+  .date-row:hover td{background:var(--surface2);}
+  .date-row td:first-child{display:flex;align-items:center;gap:6px;}
+  .chevron{font-size:10px;color:var(--text-hint);transition:transform 0.2s;flex-shrink:0;}
+  .date-row.open .chevron{transform:rotate(90deg);}
+
+  /* Expanded detail panel */
+  .detail-row{display:none;background:var(--surface2);}
+  .detail-row.open{display:table-row;}
+  .detail-panel{padding:0 12px 12px;}
+
+  /* Status section header inside detail */
+  .status-section{margin-top:12px;}
+  .status-section-header{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;padding:6px 0;border-bottom:0.5px solid var(--border-mid);}
+  .status-section-header:hover .section-label{color:var(--text);}
+  .section-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);}
+  .section-count{font-size:11px;color:var(--text-hint);}
+  .section-chevron{font-size:9px;color:var(--text-hint);transition:transform 0.2s;margin-left:auto;}
+  .status-section-header.open .section-chevron{transform:rotate(90deg);}
+
+  /* Order list inside each status section */
+  .order-list{display:none;margin-top:4px;}
+  .order-list.open{display:block;}
+  .order-list-inner{max-height:260px;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;font-size:13px;}
+  .order-list-inner::-webkit-scrollbar{width:5px;}
+  .order-list-inner::-webkit-scrollbar-track{background:transparent;}
+  .order-list-inner::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+  .order-item{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:0.5px solid var(--border-light);}
+  .order-item:last-child{border-bottom:none;}
+  .order-id{font-family:monospace;font-size:12px;color:var(--text);}
+  .order-lines{font-size:11px;color:var(--text-hint);}
+
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
+  .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div>
+      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.1</p>
+      <h1>Ecom Order Backlog &mdash; DC499</h1>
+      <p class="subtitle">Live data &middot; Auto-refreshes every 30 min</p>
+    </div>
+    <button class="dark-toggle" onclick="toggleDark()">
+      <span id="toggle-label">Dark mode</span>
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </button>
+  </div>
+
+  <div class="stale-banner" id="stale-banner"></div>
+
+  <div class="header-row">
+    <div>
+      <div id="run-time" class="run-time">Loading...</div>
+      <div id="next-refresh" class="run-time" style="margin-top:2px;"></div>
+    </div>
+    <div class="header-btns">
+      <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
+    </div>
+  </div>
+
+  <div class="metrics" id="metrics" style="display:none;">
+    <div class="metric ready">
+      <div class="metric-label">Ready</div>
+      <div class="metric-value" id="m-ready">--</div>
+      <div class="metric-sub">Not yet in wave</div>
+    </div>
+    <div class="metric alloc">
+      <div class="metric-label">Allocated</div>
+      <div class="metric-value" id="m-alloc">--</div>
+      <div class="metric-sub">In wave, unpicked</div>
+    </div>
+    <div class="metric packed">
+      <div class="metric-label">Packed</div>
+      <div class="metric-value" id="m-packed">--</div>
+      <div class="metric-sub">Awaiting ship</div>
+    </div>
+    <div class="metric total">
+      <div class="metric-label">Total Open</div>
+      <div class="metric-value" id="m-total">--</div>
+      <div class="metric-sub" id="m-date">Today</div>
+    </div>
+  </div>
+
+  <div class="card" id="table-card" style="display:none;">
+    <div class="card-title">Order Lines by Date &mdash; click a row to expand</div>
+    <table>
+      <thead><tr>
+        <th>Date</th>
+        <th class="r">Ready</th>
+        <th class="r">Allocated</th>
+        <th class="r">Packed</th>
+        <th class="r">Total Open</th>
+        <th class="r">Shipped</th>
+      </tr></thead>
+      <tbody id="tb-dates"></tbody>
+      <tfoot><tr>
+        <td>Total</td>
+        <td class="r" id="ft-ready"></td>
+        <td class="r" id="ft-alloc"></td>
+        <td class="r" id="ft-packed"></td>
+        <td class="r" id="ft-total"></td>
+        <td class="r" id="ft-shipped"></td>
+      </tr></tfoot>
+    </table>
+  </div>
+
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
+    No data yet. Click <strong>Refresh</strong> to reload.
+  </div>
+
+  <p class="nordstrom-tag">Nordstrom &middot; Ecom Backlog Live &middot; DC499 &middot; <span id="footer-date"></span></p>
+  <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
+</div>
+
+<script>
+var THEME_KEY   = 'dc499_backlog_theme_v1';
+var INTERVAL_MS = 30 * 60 * 1000;
+var lastData    = null;
+var autoRefreshTimer = null;
+var countdownTimer   = null;
+var nextRefreshAt    = null;
+
+// -- Theme --------------------------------------------------------------------
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
+  try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch(e) {}
+}
+function toggleDark() {
+  applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
+}
+(function() {
+  var saved; try { saved = localStorage.getItem(THEME_KEY); } catch(e) {}
+  applyTheme(saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+})();
+
+// -- Auto-refresh -------------------------------------------------------------
+function scheduleAutoRefresh() {
+  if (autoRefreshTimer) clearTimeout(autoRefreshTimer);
+  if (countdownTimer)   clearInterval(countdownTimer);
+  nextRefreshAt = Date.now() + INTERVAL_MS;
+  autoRefreshTimer = setTimeout(function() { fetchData(false); }, INTERVAL_MS);
+  countdownTimer = setInterval(function() {
+    var remaining = Math.max(0, Math.round((nextRefreshAt - Date.now()) / 1000));
+    var m = Math.floor(remaining / 60), s = remaining % 60;
+    var el = document.getElementById('next-refresh');
+    if (el) el.textContent = 'Auto-refresh in ' + m + ':' + (s < 10 ? '0' : '') + s;
+    if (remaining === 0) clearInterval(countdownTimer);
+  }, 1000);
+}
+
+function manualRefresh() { fetchData(true); }
+
+function fetchData(isManual) {
+  var rtEl = document.getElementById('run-time');
+  if (rtEl) rtEl.textContent = 'Loading...';
+  var base = window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
+  fetch(base + '/backlog_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      lastData = data;
+      renderData(data);
+      scheduleAutoRefresh();
+    })
+    .catch(function(err) {
+      if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
+      document.getElementById('empty-state').style.display = 'block';
+      scheduleAutoRefresh();
+    });
+}
+
+function isStale(generated) {
+  if (!generated) return false;
+  try {
+    var ts = generated.endsWith('Z') ? generated : generated + 'Z';
+    return (Date.now() - new Date(ts).getTime()) / 60000 > 45;
+  } catch(e) { return false; }
+}
+
+function fmtDate(iso) {
+  try { return new Date(iso + 'T12:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'}); }
+  catch(e) { return iso; }
+}
+
+function fmt(n) { return (n || 0).toLocaleString(); }
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// -- Detail panel builder -----------------------------------------------------
+function buildDetailPanel(row) {
+  var orders = row.orders || [];
+  if (!orders.length) {
+    return '<div class="detail-panel" style="padding:12px;font-size:13px;color:var(--text-hint);">No open order detail available.</div>';
+  }
+
+  // Group orders by status
+  var groups = {};
+  var STATUS_ORDER = ['READY', 'ALLOCATED', 'PACKED'];
+  STATUS_ORDER.forEach(function(s) { groups[s] = []; });
+  orders.forEach(function(o) {
+    var s = o.status.toUpperCase();
+    if (!groups[s]) groups[s] = [];
+    groups[s].push(o);
+  });
+
+  var pillClass = { READY: 'pill-ready', ALLOCATED: 'pill-alloc', PACKED: 'pill-packed' };
+  var html = '<div class="detail-panel">';
+
+  STATUS_ORDER.forEach(function(status) {
+    var list = groups[status] || [];
+    if (!list.length) return;
+
+    var sectionId = 'sec-' + row.date + '-' + status;
+    var listId    = 'list-' + row.date + '-' + status;
+
+    html += '<div class="status-section">';
+    html += '<div class="status-section-header" onclick="toggleSection(\'' + listId + '\',this)" id="' + sectionId + '">';
+    html += '<span class="status-pill ' + (pillClass[status] || '') + '">' + status + '</span>';
+    html += '<span class="section-count">' + list.length + ' orders</span>';
+    html += '<span class="section-chevron">&#9654;</span>';
+    html += '</div>';
+    html += '<div class="order-list" id="' + listId + '">';
+    html += '<div class="order-list-inner">';
+    list.forEach(function(o) {
+      html += '<div class="order-item">';
+      html += '<span class="order-id">' + escHtml(o.order_id) + '</span>';
+      html += '<span class="order-lines">' + o.line_count + (o.line_count === 1 ? ' line' : ' lines') + '</span>';
+      html += '</div>';
+    });
+    html += '</div></div></div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+function toggleSection(listId, headerEl) {
+  var list = document.getElementById(listId);
+  if (!list) return;
+  var isOpen = list.classList.toggle('open');
+  headerEl.classList.toggle('open', isOpen);
+}
+
+// -- Render -------------------------------------------------------------------
+function renderData(data) {
+  var rtEl    = document.getElementById('run-time');
+  var staleEl = document.getElementById('stale-banner');
+  var emptyEl = document.getElementById('empty-state');
+  var metrEl  = document.getElementById('metrics');
+  var cardEl  = document.getElementById('table-card');
+
+  if (isStale(data.generated)) {
+    staleEl.style.display = 'block';
+    var mins = Math.round((Date.now() - new Date(data.generated).getTime()) / 60000);
+    staleEl.textContent = '⚠ Data is ' + mins + ' min old — dc499_refresh.js may not be running';
+  } else {
+    staleEl.style.display = 'none';
+  }
+
+  try {
+    var raw = data.generated || '';
+    var d = new Date(raw.endsWith('Z') ? raw : raw + 'Z');
+    rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ' \xb7 Facility ' + (data.facility || '499');
+  } catch(e) { rtEl.textContent = data.generated || ''; }
+
+  if (!data.dates || !data.dates.length) {
+    emptyEl.style.display = 'block';
+    return;
+  }
+
+  var today = data.dates[0];
+  var todayOpen = (today.ready || 0) + (today.allocated || 0) + (today.packed || 0);
+
+  document.getElementById('m-ready').textContent  = fmt(today.ready);
+  document.getElementById('m-alloc').textContent  = fmt(today.allocated);
+  document.getElementById('m-packed').textContent = fmt(today.packed);
+  document.getElementById('m-total').textContent  = fmt(todayOpen);
+  document.getElementById('m-date').textContent   = fmtDate(today.date);
+
+  var tb = document.getElementById('tb-dates');
+  tb.innerHTML = '';
+  var totR = 0, totA = 0, totP = 0, totO = 0, totS = 0;
+
+  data.dates.forEach(function(row) {
+    var open = (row.ready || 0) + (row.allocated || 0) + (row.packed || 0);
+    totR += row.ready     || 0;
+    totA += row.allocated || 0;
+    totP += row.packed    || 0;
+    totO += open;
+    totS += row.shipped   || 0;
+
+    var summaryRowId = 'drow-' + row.date;
+    var detailRowId  = 'ddetail-' + row.date;
+    var detailCellId = 'dcell-' + row.date;
+
+    // Summary row
+    var tr = document.createElement('tr');
+    tr.className = 'date-row';
+    tr.id = summaryRowId;
+    tr.innerHTML =
+      '<td style="font-weight:500;"><span class="chevron">&#9654;</span>' +
+        fmtDate(row.date) + (row.date === data.today ? ' <span style="font-size:10px;color:var(--text-hint);">today</span>' : '') +
+      '</td>' +
+      '<td class="r"><span class="status-pill pill-ready">'  + fmt(row.ready)     + '</span></td>' +
+      '<td class="r"><span class="status-pill pill-alloc">'  + fmt(row.allocated) + '</span></td>' +
+      '<td class="r"><span class="status-pill pill-packed">' + fmt(row.packed)    + '</span></td>' +
+      '<td class="r" style="font-weight:500;">' + fmt(open) + '</td>' +
+      '<td class="r" style="color:var(--text-hint);">' + fmt(row.shipped) + '</td>';
+
+    // Capture for closure
+    (function(r) {
+      tr.addEventListener('click', function() {
+        var summaryRow = document.getElementById('drow-' + r.date);
+        var detailRow  = document.getElementById('ddetail-' + r.date);
+        var isOpen = summaryRow.classList.toggle('open');
+        detailRow.classList.toggle('open', isOpen);
+        // Lazy-build detail panel on first open
+        if (isOpen) {
+          var cell = document.getElementById('dcell-' + r.date);
+          if (!cell.hasChildNodes()) {
+            cell.innerHTML = buildDetailPanel(r);
+          }
+        }
+      });
+    })(row);
+
+    tb.appendChild(tr);
+
+    // Detail row (hidden until toggled)
+    var trDetail = document.createElement('tr');
+    trDetail.className = 'detail-row';
+    trDetail.id = detailRowId;
+    var tdDetail = document.createElement('td');
+    tdDetail.id = detailCellId;
+    tdDetail.colSpan = 6;
+    tdDetail.style.padding = '0';
+    trDetail.appendChild(tdDetail);
+    tb.appendChild(trDetail);
+  });
+
+  document.getElementById('ft-ready').textContent   = fmt(totR);
+  document.getElementById('ft-alloc').textContent   = fmt(totA);
+  document.getElementById('ft-packed').textContent  = fmt(totP);
+  document.getElementById('ft-total').textContent   = fmt(totO);
+  document.getElementById('ft-shipped').textContent = fmt(totS);
+
+  emptyEl.style.display = 'none';
+  metrEl.style.display  = 'grid';
+  cardEl.style.display  = 'block';
+}
+
+// -- Init ---------------------------------------------------------------------
+document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
+fetchData(false);
+scheduleAutoRefresh();
+</script>
+</body>
+</html>
