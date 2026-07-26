@@ -291,33 +291,12 @@
     <button class="tab-btn active" id="tb-orders" onclick="setTab('orders')">Order Backlog</button>
     <button class="tab-btn"        id="tb-batches" onclick="setTab('batches')">Batches</button>
     <div style="flex:1;"></div>
-    <div style="position:relative;margin-right:4px;" id="ma-op-wrap">
-      <button onclick="maOpToggle()"
-        style="font-family:inherit;font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-muted);background:transparent;cursor:pointer;white-space:nowrap;transition:background 0.12s,color 0.12s,border-color 0.12s;"
-        onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)';this.style.background='var(--accent-bg)'"
-        onmouseout="this.style.color='';this.style.borderColor='';this.style.background=''">
-        Order Planning &#x2335;
-      </button>
-      <div id="ma-op-menu" style="display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:9px;overflow:hidden;min-width:230px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:300;">
-        <div style="padding:8px 12px 5px;font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.05em;">Open in MAWM</div>
-        <a id="ma-op-plain"  href="#" target="_blank" onclick="maOpClose()" style="display:block;padding:8px 14px;font-size:12px;color:var(--text);text-decoration:none;transition:background 0.1s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-          🔗 Default view
-        </a>
-        <a id="ma-op-date"   href="#" target="_blank" onclick="maOpClose()" style="display:block;padding:8px 14px;font-size:12px;color:var(--text);text-decoration:none;transition:background 0.1s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-          📅 + Today's date <span style="font-size:10px;color:var(--text-hint);">?date=</span>
-        </a>
-        <a id="ma-op-fac"    href="#" target="_blank" onclick="maOpClose()" style="display:block;padding:8px 14px;font-size:12px;color:var(--text);text-decoration:none;transition:background 0.1s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-          🏭 + Facility 499 <span style="font-size:10px;color:var(--text-hint);">?facilityId=</span>
-        </a>
-        <a id="ma-op-both"   href="#" target="_blank" onclick="maOpClose()" style="display:block;padding:8px 14px;font-size:12px;color:var(--text);text-decoration:none;border-top:1px solid var(--border-light);transition:background 0.1s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-          ✨ + Date &amp; Facility <span style="font-size:10px;color:var(--text-hint);">both params</span>
-        </a>
-        <a id="ma-op-hash"   href="#" target="_blank" onclick="maOpClose()" style="display:block;padding:8px 14px;font-size:12px;color:var(--text);text-decoration:none;transition:background 0.1s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-          # Hash route <span style="font-size:10px;color:var(--text-hint);">#/facility/499/date/</span>
-        </a>
-        <div style="padding:6px 12px 8px;font-size:10px;color:var(--text-hint);border-top:1px solid var(--border-light);line-height:1.5;">Try each — whichever lands pre-filtered is the winner</div>
-      </div>
-    </div>
+    <a href="https://nrdrp.sce.manh.com/udc/dm-config/screen/dcorder/OrderPlanningStrategy" target="_blank"
+       style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-muted);text-decoration:none;white-space:nowrap;margin-right:4px;transition:background 0.12s,color 0.12s,border-color 0.12s;"
+       onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)';this.style.background='var(--accent-bg)'"
+       onmouseout="this.style.color='';this.style.borderColor='';this.style.background=''">
+      Order Planning &#x2197;
+    </a>
   </div>
 
   <!-- ── Tab: Order Backlog ───────────────────────────────────────────────── -->
@@ -529,53 +508,6 @@
 </div>
 
 <script>
-// ── MAWM Order Planning deep-link builder ─────────────────────────────────────
-var MA_OP_BASE = 'https://nrdrp.sce.manh.com/udc/dm-config/screen/dcorder/OrderPlanningStrategy';
-
-function maOpBuildLinks() {
-  // Today's date in PDT, YYYY-MM-DD
-  var now    = new Date();
-  var pdtMs  = now.getTime() - (7 * 3600000); // rough PDT offset
-  var pdt    = new Date(pdtMs);
-  var today  = pdt.getUTCFullYear() + '-' +
-               String(pdt.getUTCMonth() + 1).padStart(2,'0') + '-' +
-               String(pdt.getUTCDate()).padStart(2,'0');
-
-  var plain  = MA_OP_BASE;
-  var byDate = MA_OP_BASE + '?date='       + today;
-  var byFac  = MA_OP_BASE + '?facilityId=' + '499';
-  var both   = MA_OP_BASE + '?facilityId=' + '499' + '&date=' + today;
-  var hash   = MA_OP_BASE + '#/facility/499/date/' + today;
-
-  document.getElementById('ma-op-plain').href = plain;
-  document.getElementById('ma-op-date').href  = byDate;
-  document.getElementById('ma-op-fac').href   = byFac;
-  document.getElementById('ma-op-both').href  = both;
-  document.getElementById('ma-op-hash').href  = hash;
-
-  // Update the date label so you can see what date it's using
-  var dateEl = document.getElementById('ma-op-date');
-  if (dateEl) dateEl.querySelector('span').textContent = '?date=' + today;
-  var hashEl = document.getElementById('ma-op-hash');
-  if (hashEl) hashEl.querySelector('span').textContent = '#/facility/499/date/' + today;
-}
-
-function maOpToggle() {
-  var menu = document.getElementById('ma-op-menu');
-  var isOpen = menu.style.display !== 'none';
-  if (!isOpen) maOpBuildLinks();
-  menu.style.display = isOpen ? 'none' : 'block';
-}
-
-function maOpClose() {
-  document.getElementById('ma-op-menu').style.display = 'none';
-}
-
-document.addEventListener('click', function(e) {
-  var wrap = document.getElementById('ma-op-wrap');
-  if (wrap && !wrap.contains(e.target)) maOpClose();
-});
-// ──────────────────────────────────────────────────────────────────────────────
 
 var THEME_KEY      = 'dc499_backlog_theme_v1';
 var BL_INTERVAL_MS = 2 * 60 * 1000;

@@ -105,6 +105,13 @@
 
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
+
+  .teams-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid #6264A7;border-radius:6px;background:transparent;cursor:pointer;color:#6264A7;font-weight:500;transition:background 0.12s,color 0.12s;}
+  .teams-btn:hover{background:#6264A7;color:#fff;}
+  .teams-btn.sent{border-color:var(--green);color:var(--green);}
+  .teams-btn:disabled{opacity:0.5;cursor:default;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;font-size:13px;padding:10px 20px;border-radius:8px;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none;}
+  .toast.show{opacity:1;}
 </style>
 </head>
 <body>
@@ -138,6 +145,7 @@
       <div id="shift-start" class="run-time" style="margin-top:2px;"></div>
     </div>
     <div class="header-btns">
+      <button class="teams-btn" id="teams-btn" onclick="sendClearedToTeams(true)">&#x1F4AC; Send Cleared</button>
       <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
     </div>
   </div>
@@ -206,6 +214,7 @@
     No batches found for this shift yet.
   </div>
 
+  <div class="toast" id="toast"></div>
   <p class="nordstrom-tag">Nordstrom &middot; Batch Status Live &middot; DC499 &middot; <span id="footer-date"></span></p>
   <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
 </div>
@@ -271,6 +280,7 @@ function fetchData(isManual) {
       lastData = data;
       renderData(data);
       scheduleAutoRefresh();
+      autoNotifyCleared();
     })
     .catch(function(err) {
       if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
@@ -445,6 +455,145 @@ function fmtMins(m) {
   var h = Math.floor(m / 60), min = m % 60;
   return h > 0 ? h + 'h ' + min + 'm' : min + 'm';
 }
+
+// ── Teams — cleared batch notifications ───────────────────────────────────────
+var TEAMS_WEBHOOK_BATCHES = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk';
+var SENT_KEY = 'dc499_batches_sent_v1'; // localStorage key — set of batch_ids already sent
+
+function getSentSet() {
+  try { return new Set(JSON.parse(localStorage.getItem(SENT_KEY) || '[]')); } catch(e) { return new Set(); }
+}
+function addToSentSet(ids) {
+  var s = getSentSet();
+  ids.forEach(function(id) { s.add(id); });
+  try { localStorage.setItem(SENT_KEY, JSON.stringify(Array.from(s))); } catch(e) {}
+}
+
+function showToast(msg, ms) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function() { el.classList.remove('show'); }, ms || 3000);
+}
+
+// isManual=true  → always send all cleared batches regardless of sent history, show feedback
+// isManual=false → auto mode, only send newly cleared ones silently
+function sendClearedToTeams(isManual) {
+  if (!lastData || !lastData.batches) {
+    if (isManual) showToast('No data loaded yet', 2500);
+    return;
+  }
+  var cleared = lastData.batches.filter(function(b) { return b.is_cleared; });
+  if (!cleared.length) {
+    if (isManual) showToast('No cleared batches this shift', 2500);
+    return;
+  }
+
+  var sent = getSentSet();
+  var toSend = isManual
+    ? cleared  // manual: resend all cleared for visibility
+    : cleared.filter(function(b) { return !sent.has(b.batch_id); }); // auto: only new ones
+
+  if (!toSend.length) {
+    if (isManual) showToast('All cleared batches already sent', 2500);
+    return;
+  }
+
+  var btn = document.getElementById('teams-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  // Build summary rows for the card
+  var rows = toSend.map(function(b) {
+    return (b.batch_id || '—') + '  ·  Released ' + (b.released_pdt || '—') +
+           '  →  Cleared ' + (b.cleared_pdt || '—') +
+           '  ·  ' + (b.mins_to_clear != null ? b.mins_to_clear + ' min' : '—') +
+           '  ·  ' + (b.total_olpns || '—') + ' oLPNs';
+  }).join('\n');
+
+  var ts = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true});
+  var summary = lastData.summary || {};
+
+  var card = {
+    "type": "message",
+    "attachments": [{
+      "contentType": "application/vnd.microsoft.card.adaptive",
+      "content": {
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "type": "AdaptiveCard",
+        "version": "1.4",
+        "body": [
+          {
+            "type": "Container",
+            "style": "emphasis",
+            "items": [{
+              "type": "ColumnSet",
+              "columns": [
+                {"type":"Column","width":"auto","items":[{"type":"TextBlock","text":"DC499 · Batches","weight":"Bolder","size":"Medium","color":"Light"}]},
+                {"type":"Column","width":"stretch","items":[{"type":"TextBlock","text":"2nd shift · " + ts,"color":"Light","isSubtle":true,"horizontalAlignment":"Right"}]}
+              ]
+            }]
+          },
+          {
+            "type": "Container",
+            "items": [{
+              "type": "ColumnSet",
+              "columns": [
+                {"type":"Column","width":"stretch","items":[
+                  {"type":"TextBlock","text":"Total Batches","size":"Small","isSubtle":true,"weight":"Bolder"},
+                  {"type":"TextBlock","text":String(summary.total_batches || 0),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
+                ]},
+                {"type":"Column","width":"stretch","items":[
+                  {"type":"TextBlock","text":"Cleared","size":"Small","isSubtle":true,"weight":"Bolder"},
+                  {"type":"TextBlock","text":String(summary.cleared_batches || 0),"size":"ExtraLarge","weight":"Bolder","spacing":"None","color":"Good"}
+                ]},
+                {"type":"Column","width":"stretch","items":[
+                  {"type":"TextBlock","text":"Active","size":"Small","isSubtle":true,"weight":"Bolder"},
+                  {"type":"TextBlock","text":String(summary.active_batches || 0),"size":"ExtraLarge","weight":"Bolder","spacing":"None","color":"Warning"}
+                ]},
+                {"type":"Column","width":"stretch","items":[
+                  {"type":"TextBlock","text":"Avg Clear","size":"Small","isSubtle":true,"weight":"Bolder"},
+                  {"type":"TextBlock","text":(summary.avg_mins_to_clear != null ? summary.avg_mins_to_clear + ' min' : '—'),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
+                ]}
+              ]
+            }]
+          },
+          {
+            "type": "Container",
+            "separator": true,
+            "items": [
+              {"type":"TextBlock","text":"Newly Cleared (" + toSend.length + ")","weight":"Bolder","size":"Small","spacing":"Medium"},
+              {"type":"TextBlock","text":rows,"wrap":true,"size":"Small","fontType":"Monospace","isSubtle":true,"spacing":"Small"}
+            ]
+          }
+        ]
+      }
+    }]
+  };
+
+  fetch(TEAMS_WEBHOOK_BATCHES, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(card)
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    // Mark these as sent so auto-mode won't resend them
+    addToSentSet(toSend.map(function(b) { return b.batch_id; }));
+    if (btn) { btn.disabled = false; btn.textContent = '✓ Sent'; btn.classList.add('sent'); }
+    showToast('Sent ' + toSend.length + ' cleared batch' + (toSend.length > 1 ? 'es' : '') + ' to Teams', 3000);
+    setTimeout(function() { if (btn) { btn.classList.remove('sent'); btn.textContent = '💬 Send Cleared'; } }, 4000);
+  })
+  .catch(function(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '💬 Send Cleared'; }
+    showToast('Teams send failed: ' + e.message, 4000);
+  });
+}
+
+// Auto-notify after each data refresh — only new cleared batches
+function autoNotifyCleared() {
+  sendClearedToTeams(false);
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 fetchData(false);
