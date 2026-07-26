@@ -906,7 +906,7 @@ async function notifyNewCleared(batchStatusData) {
         type: 'AdaptiveCard', version: '1.4',
         body: [
           { type: 'Container', style: 'attention', items: [{ type: 'ColumnSet', columns: [
-            { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: '🩷 DC499 · Batches', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
+            { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: 'DC499 · Batches', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
             { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: `2nd shift · ${tsStr}`, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
           ]}]},
           { type: 'Container', spacing: 'Medium', items: [{ type: 'ColumnSet', columns: [
