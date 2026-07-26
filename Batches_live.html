@@ -177,6 +177,7 @@
         <th class="r">Orders</th>
         <th class="r">oLPNs</th>
         <th>Status</th>
+        <th class="r">In Status</th>
         <th class="r">Interval Since Prev</th>
       </tr></thead>
       <tbody id="batch-tbody-active"></tbody>
@@ -310,6 +311,14 @@ function badgeHtml(b) {
   return                                                      '<span class="status-badge badge-queued">'  + label + '</span>';
 }
 
+function inStatusCell(b) {
+  if (!b.status_updated_utc) return '<span class="dur-none">—</span>';
+  var s = String(b.status_updated_utc).replace(' ','T');
+  if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  var mins = Math.round((Date.now() - new Date(s).getTime()) / 60000);
+  return fmtMins(mins);
+}
+
 function renderData(data) {
   var staleEl = document.getElementById('stale-banner');
   var emptyEl = document.getElementById('empty-state');
@@ -378,6 +387,7 @@ function renderData(data) {
       htmlA += '<td class="r">' + fmt(b.total_orders) + '</td>';
       htmlA += '<td class="r">' + fmt(b.total_olpns) + '</td>';
       htmlA += '<td>' + badgeHtml(b) + '</td>';
+      htmlA += '<td class="r">' + inStatusCell(b) + '</td>';
       htmlA += '<td class="r">' + intervalCell + '</td>';
       htmlA += '</tr>';
     });

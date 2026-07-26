@@ -797,6 +797,7 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
       mins_to_clear:          minsToClear,
       is_cleared:             isCleared,
       mins_since_prev_release: intervalMap[r.WORK_RELEASE_BATCH_ID] ?? null,
+      status_updated_utc:     r.UPDATED_TIMESTAMP || null,
     };
   });
 

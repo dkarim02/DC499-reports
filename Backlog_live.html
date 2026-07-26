@@ -388,6 +388,7 @@
           <th class="r">Orders</th>
           <th class="r">oLPNs</th>
           <th>Status</th>
+          <th class="r">In Status</th>
           <th class="r">Interval Since Prev</th>
         </tr></thead>
         <tbody id="bt-batch-tbody-active"></tbody>
@@ -806,6 +807,14 @@ function batchBadge(b) {
   return '<span class="status-badge badge-queued">'+label+'</span>';
 }
 
+function btInStatusCell(b) {
+  if (!b.status_updated_utc) return '<span class="dur-none">—</span>';
+  var s = String(b.status_updated_utc).replace(' ','T');
+  if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  var mins = Math.round((Date.now() - new Date(s).getTime()) / 60000);
+  return fmtMins(mins);
+}
+
 function renderBatchData(data) {
   var staleEl = document.getElementById('stale-banner');
   var emptyEl = document.getElementById('bt-empty-state');
@@ -868,6 +877,7 @@ function renderBatchData(data) {
       html += '<td class="r">'+fmtN(b.total_orders)+'</td>';
       html += '<td class="r">'+fmtN(b.total_olpns)+'</td>';
       if (withStatus) html += '<td>'+batchBadge(b)+'</td>';
+      if (withStatus) html += '<td class="r">'+btInStatusCell(b)+'</td>';
       if (withClear)  html += '<td>'+(b.cleared_pdt||'—')+'</td>';
       if (withClear)  html += '<td class="r">'+fmtDur(b.mins_to_clear)+'</td>';
       html += '<td class="r">'+intCell+'</td>';
