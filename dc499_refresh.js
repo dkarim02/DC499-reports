@@ -741,10 +741,16 @@ async function fetchBatchStatus(accessToken) {
   if (nowUtc.getUTCHours() < shiftHourUtc) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
   const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
 
+  // Lookback covers 1st-shift releases: any batch created within 14h is a candidate
+  const lookbackStart = new Date(nowUtc.getTime() - 14 * 3600000)
+    .toISOString().replace('T',' ').slice(0,19);
+
   // One row per BATCH_ID — that is the friendly batch name (B_000...)
   // WORK_RELEASE_BATCH_ID groups batches released together (used for interval calc)
-  // Include batches created this shift OR cleared (status 5800) during this shift
-  // so batches started on 1st shift but completed on 2nd shift appear in the Cleared section
+  // Three inclusion arms:
+  //   1. Created this shift (born on 2nd shift)
+  //   2. Cleared this shift (1st-shift batch that finished on 2nd shift)
+  //   3. Still active (not cleared) but created within 14h — 1st-shift carryovers
   const sql = `
 SELECT
   BATCH_ID,
@@ -761,6 +767,7 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND (
     CREATED_TIMESTAMP >= '${startStr}'
     OR (STATUS_ID = 5800 AND UPDATED_TIMESTAMP >= '${startStr}')
+    OR (STATUS_ID != 5800 AND CREATED_TIMESTAMP >= '${lookbackStart}')
   )
 ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
 
