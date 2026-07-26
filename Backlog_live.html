@@ -214,34 +214,39 @@
   .bt-section-hdr{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;margin-top:2px;}
   .bt-section-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
   .bt-section-ct{background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;padding:1px 8px;color:var(--text-muted);letter-spacing:0;text-transform:none;}
-  .bt-grid{display:flex;flex-direction:column;gap:7px;margin-bottom:1.5rem;}
-  .bt-card{background:var(--surface);border:0.5px solid var(--border);border-left:4px solid var(--accent);border-radius:14px;padding:10px 14px;transition:box-shadow 0.15s,transform 0.15s;}
-  .bt-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.13);transform:translateY(-1px);}
+  .bt-grid{display:flex;flex-direction:column;gap:6px;margin-bottom:1.25rem;}
+  .bt-card{background:var(--surface);border:0.5px solid var(--border);border-left:4px solid var(--accent);border-radius:12px;padding:9px 13px;transition:box-shadow 0.15s,transform 0.12s;}
+  .bt-card:hover{box-shadow:0 3px 12px rgba(0,0,0,0.12);transform:translateY(-1px);}
   .bt-card.ac-amber{border-left-color:var(--amber);}
   .bt-card.ac-green{border-left-color:var(--green);}
   .bt-card.ac-red  {border-left-color:var(--red);}
   .bt-card.ac-muted{border-left-color:var(--border-mid);}
-  .bt-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-  .bt-id-wrap{display:flex;align-items:center;gap:8px;}
+  /* Row 1: id + badge */
+  .bt-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+  .bt-id-wrap{display:flex;align-items:center;gap:7px;}
   .bt-seq{font-size:10px;font-weight:700;color:var(--text-hint);}
-  .bt-id{font-family:monospace;font-size:16px;font-weight:700;color:var(--text);letter-spacing:-0.02em;}
-  .bt-body{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:8px;}
-  .bt-stat{display:flex;flex-direction:column;gap:1px;min-width:54px;}
+  .bt-id{font-family:monospace;font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.02em;}
+  /* Row 2: stats left + meta right */
+  .bt-card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .bt-card-left{display:flex;align-items:center;gap:14px;}
+  .bt-card-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .bt-meta{font-size:10px;color:var(--text-hint);white-space:nowrap;}
+  .bt-meta-sep{color:var(--border-mid);margin:0 2px;}
+  /* Stat inline */
+  .bt-inline-stat{display:flex;flex-direction:column;gap:1px;}
   .bt-stat-lbl{font-size:9px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.07em;}
-  .bt-stat-val{font-size:15px;font-weight:700;color:var(--text);line-height:1.15;}
-  .bt-stat-sub{font-size:10px;font-weight:400;color:var(--text-hint);}
-  .bt-bar{height:4px;border-radius:2px;background:var(--border);overflow:hidden;width:72px;margin-top:4px;}
+  .bt-stat-val{font-size:14px;font-weight:700;color:var(--text);line-height:1.15;}
+  .bt-bar{height:3px;border-radius:2px;background:var(--border);overflow:hidden;width:60px;margin-top:3px;}
   .bt-bar-fill{height:100%;border-radius:2px;transition:width 0.5s ease;}
   .bt-bar-fill.pct-hi {background:var(--green);}
   .bt-bar-fill.pct-mid{background:var(--amber);}
   .bt-bar-fill.pct-lo {background:var(--red);}
   .bt-bar-fill.pct-0  {background:var(--accent);}
-  .bt-chips{display:flex;gap:4px;flex-wrap:wrap;}
-  .bt-chip{font-size:10px;color:var(--text-muted);background:var(--surface2);border:0.5px solid var(--border-light);border-radius:20px;padding:2px 7px;white-space:nowrap;}
+  .bt-chip{font-size:9px;color:var(--text-muted);background:var(--surface2);border:0.5px solid var(--border-light);border-radius:20px;padding:1px 6px;white-space:nowrap;}
   .bt-chip.chip-first{font-style:italic;color:var(--text-hint);}
-  /* Cleared cards are slimmer */
-  .bt-card.bt-cleared{padding:8px 14px;}
-  .bt-card.bt-cleared .bt-card-top{margin-bottom:6px;}
+  /* Cleared cards */
+  .bt-card.bt-cleared{padding:7px 13px;}
+  .bt-card.bt-cleared .bt-card-top{margin-bottom:5px;}
   .bt-clear-time{font-size:13px;font-weight:700;color:var(--green);}
 
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
@@ -845,55 +850,56 @@ function buildBatchCard(b, isCleared, isFirstInGroup) {
   var barCls = donePct >= 80 ? 'pct-hi' : donePct >= 40 ? 'pct-mid' : donePct > 0 ? 'pct-lo' : 'pct-0';
   var acCls  = isCleared ? 'ac-green' : b.status_code === '5600' ? 'ac-amber' : b.status_code === '5200' ? 'ac-amber' : b.status_code === '5400' ? 'ac-green' : 'ac-muted';
   var inStatusMins = btInStatusMins(b);
+  var intervalChip = isFirstInGroup && b.mins_since_prev_release != null
+    ? '<span class="bt-chip">+' + fmtMins(b.mins_since_prev_release) + '</span>'
+    : !isFirstInGroup ? '<span class="bt-chip chip-first">same group</span>' : '';
 
   if (isCleared) {
+    var clearedMeta = [
+      b.released_pdt ? 'rel ' + b.released_pdt : '',
+      b.cleared_pdt  ? 'clr ' + b.cleared_pdt  : '',
+      b.mins_to_clear != null ? fmtMins(b.mins_to_clear) : '',
+    ].filter(Boolean).join('<span class="bt-meta-sep">·</span>');
     return '<div class="bt-card bt-cleared ac-green">' +
       '<div class="bt-card-top">' +
         '<div class="bt-id-wrap"><span class="bt-seq">' + b.batch_num + '</span><span class="bt-id">' + escHtml(b.batch_id || '—') + '</span></div>' +
-        '<span class="bt-chips">' +
-          (b.released_pdt ? '<span class="bt-chip">Released ' + b.released_pdt + '</span>' : '') +
-          (b.cleared_pdt  ? '<span class="bt-chip">Cleared '  + b.cleared_pdt  + '</span>' : '') +
-          (b.mins_to_clear != null ? '<span class="bt-chip">' + fmtMins(b.mins_to_clear) + ' to clear</span>' : '') +
-          (isFirstInGroup && b.mins_since_prev_release != null ? '<span class="bt-chip">+' + fmtMins(b.mins_since_prev_release) + ' since prev</span>' : '') +
-          (!isFirstInGroup ? '<span class="bt-chip chip-first">same release</span>' : '') +
-        '</span>' +
+        '<div style="display:flex;align-items:center;gap:6px;">' + batchBadge(b) + intervalChip + '</div>' +
       '</div>' +
-      '<div style="display:flex;align-items:center;gap:16px;">' +
-        (total != null ? '<span style="font-size:12px;color:var(--green);font-weight:600;">' + total + ' tasks done</span>' : '') +
-        '<span style="font-size:12px;color:var(--text-hint);">' + fmtN(b.total_olpns) + ' oLPNs</span>' +
-        '<span class="bt-chip" style="margin-left:auto;">' + batchBadge(b) + '</span>' +
+      '<div class="bt-card-foot">' +
+        '<span class="bt-meta">' + (total != null ? total + ' tasks' : '') + (b.total_olpns ? (total != null ? '<span class="bt-meta-sep">·</span>' : '') + fmtN(b.total_olpns) + ' oLPNs' : '') + '</span>' +
+        '<span class="bt-meta">' + clearedMeta + '</span>' +
       '</div>' +
     '</div>';
   }
 
-  // Active card
-  var taskLabel = open != null && total != null
-    ? open + ' / ' + total
-    : total != null ? String(total) : '—';
+  // Active card — two rows: [id · badge] then [tasks+bar · oLPNs] + [released · in-status · interval]
+  var taskLabel = open != null && total != null ? open + ' / ' + total : total != null ? String(total) : '—';
+  var metaParts = [
+    b.released_pdt ? b.released_pdt : '',
+    inStatusMins != null ? fmtMins(inStatusMins) + ' in status' : '',
+  ].filter(Boolean).join('<span class="bt-meta-sep">·</span>');
+
   return '<div class="bt-card ' + acCls + '">' +
     '<div class="bt-card-top">' +
       '<div class="bt-id-wrap"><span class="bt-seq">' + b.batch_num + '</span><span class="bt-id">' + escHtml(b.batch_id || '—') + '</span></div>' +
       batchBadge(b) +
     '</div>' +
-    '<div class="bt-body">' +
-      '<div class="bt-stat">' +
-        '<span class="bt-stat-lbl">Tasks Left</span>' +
-        '<span class="bt-stat-val">' + taskLabel + '</span>' +
-        (total ? '<div class="bt-bar"><div class="bt-bar-fill ' + barCls + '" style="width:' + donePct + '%;"></div></div>' : '') +
+    '<div class="bt-card-foot">' +
+      '<div class="bt-card-left">' +
+        '<div class="bt-inline-stat">' +
+          '<span class="bt-stat-lbl">Tasks Left</span>' +
+          '<span class="bt-stat-val">' + taskLabel + '</span>' +
+          (total ? '<div class="bt-bar"><div class="bt-bar-fill ' + barCls + '" style="width:' + donePct + '%;"></div></div>' : '') +
+        '</div>' +
+        '<div class="bt-inline-stat">' +
+          '<span class="bt-stat-lbl">oLPNs</span>' +
+          '<span class="bt-stat-val">' + fmtN(b.total_olpns) + '</span>' +
+        '</div>' +
       '</div>' +
-      '<div class="bt-stat">' +
-        '<span class="bt-stat-lbl">oLPNs</span>' +
-        '<span class="bt-stat-val">' + fmtN(b.total_olpns) + '</span>' +
+      '<div class="bt-card-right">' +
+        (intervalChip ? intervalChip : '') +
+        '<span class="bt-meta">' + metaParts + '</span>' +
       '</div>' +
-      '<div class="bt-stat">' +
-        '<span class="bt-stat-lbl">Released</span>' +
-        '<span class="bt-stat-val" style="font-size:15px;">' + (b.released_pdt || '—') + '</span>' +
-      '</div>' +
-      (inStatusMins != null ? '<div class="bt-stat"><span class="bt-stat-lbl">In Status</span><span class="bt-stat-val" style="font-size:15px;">' + fmtMins(inStatusMins) + '</span></div>' : '') +
-    '</div>' +
-    '<div class="bt-chips">' +
-      (isFirstInGroup && b.mins_since_prev_release != null ? '<span class="bt-chip">+' + fmtMins(b.mins_since_prev_release) + ' since prev release</span>' : '') +
-      (!isFirstInGroup ? '<span class="bt-chip chip-first">same release group</span>' : '') +
     '</div>' +
   '</div>';
 }
