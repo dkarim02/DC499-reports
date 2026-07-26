@@ -714,7 +714,7 @@ ORDER BY hour_pdt`.trim();
 const BATCH_STATUS_LABELS = {
   '5000': 'Released',
   '5200': 'Picking Started',
-  '5400': 'Work Started',
+  '5400': 'Picking Completed',
   '5600': 'Work Started',
   '5800': 'Cleared',
 };
