@@ -634,7 +634,8 @@ SELECT
   CASE WHEN CREATED_TIMESTAMP >= '${todayUtcStart}' THEN '${todayStr}' ELSE '${yestStr}' END AS line_date,
   ORDER_ID,
   STATUS,
-  COUNT(*) AS line_count
+  COUNT(*) AS line_count,
+  MIN(CREATED_TIMESTAMP) AS oldest_line_utc
 FROM default_dcorder.DCO_ORDER_LINE
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE  = 'ECOM'
@@ -686,9 +687,10 @@ ORDER BY hour_pdt`.trim();
     const b = buckets[r.line_date];
     if (!b) continue;
     b.orders.push({
-      order_id:   r.ORDER_ID,
-      status:     (r.STATUS || '').toUpperCase(),
-      line_count: Number(r.line_count),
+      order_id:       r.ORDER_ID,
+      status:         (r.STATUS || '').toUpperCase(),
+      line_count:     Number(r.line_count),
+      oldest_line_utc: r.oldest_line_utc || null,
     });
   }
 

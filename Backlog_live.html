@@ -163,6 +163,9 @@
   .sm-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;font-size:10px;font-weight:700;flex-shrink:0;}
   .sm-badge.S{background:var(--accent-bg);color:var(--accent);}
   .sm-badge.M{background:var(--alloc-bg);color:var(--alloc);}
+  .age-flag{font-size:13px;line-height:1;flex-shrink:0;cursor:default;}
+  .sm-toggle.warn-btn{background:var(--amber-bg);color:var(--amber);border-color:var(--amber);}
+  .sm-toggle.active.warn-btn{background:var(--amber);color:#fff;border-color:var(--amber);}
   .detail-empty{padding:2rem;text-align:center;color:var(--text-hint);font-size:13px;}
 
   /* Page layout */
@@ -314,8 +317,9 @@
           </div>
           <div class="detail-filter-bar" id="detail-filter-bar" style="display:none;">
             <span class="detail-filter-label">Filter:</span>
-            <span class="sm-toggle s-btn" id="sm-filter-s" onclick="setSmFilter('S')" title="Singles only">S</span>
-            <span class="sm-toggle m-btn" id="sm-filter-m" onclick="setSmFilter('M')" title="Multis only">M</span>
+            <span class="sm-toggle s-btn"    id="sm-filter-s"    onclick="setSmFilter('S')"    title="Singles only">S</span>
+            <span class="sm-toggle m-btn"    id="sm-filter-m"    onclick="setSmFilter('M')"    title="Multis only">M</span>
+            <span class="sm-toggle warn-btn" id="sm-filter-warn" onclick="setSmFilter('WARN')" title="Approaching 28h SLA" style="font-size:12px;">!</span>
             <span class="detail-count" id="detail-count"></span>
           </div>
           <div class="order-list-inner" id="detail-order-list"></div>
@@ -528,6 +532,18 @@ var PILL_LABEL = { READY:'Ready', ALLOCATED:'Allocated', PACKED:'Packed' };
 var PILL_CLASS = { READY:'pill-ready', ALLOCATED:'pill-alloc', PACKED:'pill-packed' };
 
 var activeSmFilter = null;
+var WARN_YELLOW_MS = (28 - 2) * 60 * 60 * 1000; // 26h — 2h to deadline
+var WARN_RED_MS    = (28 - 1) * 60 * 60 * 1000; // 27h — 1h to deadline
+
+function ageFlag(oldest_line_utc) {
+  if (!oldest_line_utc) return null;
+  var s = String(oldest_line_utc).replace(' ','T');
+  if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  var ageMs = Date.now() - new Date(s).getTime();
+  if (ageMs >= WARN_RED_MS)    return { level:'red',    icon:'🔴', title:'Less than 1h to 28h SLA' };
+  if (ageMs >= WARN_YELLOW_MS) return { level:'yellow', icon:'🟡', title:'Less than 2h to 28h SLA' };
+  return null;
+}
 
 function openDetailPanel(date, status, row) {
   var key = date + '|' + status;
@@ -548,12 +564,17 @@ function openDetailPanel(date, status, row) {
     listEl.innerHTML = '<div class="detail-empty">No orders found for this status.</div>';
     filterBar.style.display = 'none';
   } else {
+    var hasWarn = false;
     var html = '';
     orders.forEach(function(o) {
-      var sm = o.line_count === 1 ? 'S' : 'M';
-      html += '<div class="order-item" data-sm="' + sm + '">';
+      var sm   = o.line_count === 1 ? 'S' : 'M';
+      var flag = ageFlag(o.oldest_line_utc);
+      var dataWarn = flag ? ' data-warn="1"' : '';
+      if (flag) hasWarn = true;
+      html += '<div class="order-item" data-sm="' + sm + '"' + dataWarn + '>';
       html += '<span class="order-id">' + escHtml(o.order_id) + '</span>';
       html += '<span class="order-right">';
+      if (flag) html += '<span class="age-flag" title="' + flag.title + '">' + flag.icon + '</span>';
       html += '<span class="order-lines">' + o.line_count + (o.line_count === 1 ? ' line' : ' lines') + '</span>';
       html += '<span class="sm-badge ' + sm + '">' + sm + '</span>';
       html += '</span></div>';
@@ -562,6 +583,8 @@ function openDetailPanel(date, status, row) {
     filterBar.style.display = 'flex';
     document.getElementById('sm-filter-s').classList.remove('active');
     document.getElementById('sm-filter-m').classList.remove('active');
+    document.getElementById('sm-filter-warn').classList.remove('active');
+    document.getElementById('sm-filter-warn').style.display = hasWarn ? 'inline-flex' : 'none';
     updateDetailCount(orders.length);
   }
   card.classList.add('open');
@@ -569,17 +592,16 @@ function openDetailPanel(date, status, row) {
 }
 
 function setSmFilter(f) {
-  if (activeSmFilter === f) {
-    activeSmFilter = null;
-  } else {
-    activeSmFilter = f;
-  }
-  document.getElementById('sm-filter-s').classList.toggle('active', activeSmFilter === 'S');
-  document.getElementById('sm-filter-m').classList.toggle('active', activeSmFilter === 'M');
+  activeSmFilter = (activeSmFilter === f) ? null : f;
+  document.getElementById('sm-filter-s').classList.toggle('active',    activeSmFilter === 'S');
+  document.getElementById('sm-filter-m').classList.toggle('active',    activeSmFilter === 'M');
+  document.getElementById('sm-filter-warn').classList.toggle('active', activeSmFilter === 'WARN');
   var items = document.querySelectorAll('#detail-order-list .order-item');
   var visible = 0;
   items.forEach(function(el) {
-    var show = !activeSmFilter || el.getAttribute('data-sm') === activeSmFilter;
+    var show = !activeSmFilter
+      || (activeSmFilter === 'WARN' && el.getAttribute('data-warn') === '1')
+      || (activeSmFilter !== 'WARN' && el.getAttribute('data-sm') === activeSmFilter);
     el.classList.toggle('hidden', !show);
     if (show) visible++;
   });
