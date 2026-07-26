@@ -644,9 +644,15 @@ function renderHourly(hourly) {
   }
   var total = rows.reduce(function(s,r) { return s + r.lines; }, 0);
   lastAvgUph = Math.round(total / rows.length);
+  var maxLines = rows.reduce(function(mx,r) { return Math.max(mx, r.lines); }, 0);
   var html = '';
   rows.forEach(function(r) {
-    html += '<div class="hourly-row"><span class="hourly-range">' + fmtHourRange(r.hour) + '</span><span class="hourly-count">' + r.lines.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
+    var isPeak = r.lines === maxLines;
+    var countStyle = isPeak ? 'color:var(--accent);font-weight:700;' : '';
+    html += '<div class="hourly-row">' +
+      '<span class="hourly-range"' + (isPeak ? ' style="color:var(--text);font-weight:500;"' : '') + '>' + fmtHourRange(r.hour) + '</span>' +
+      '<span class="hourly-count" style="' + countStyle + '">' + r.lines.toLocaleString() + '<span class="hourly-uom">units</span></span>' +
+      '</div>';
   });
   html += '<div class="hourly-row" style="border-top:0.5px solid var(--border-mid);margin-top:4px;padding-top:8px;"><span class="hourly-range" style="font-weight:500;color:var(--text);">Avg / hr</span><span class="hourly-count" style="color:var(--accent);">' + lastAvgUph.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
   barsEl.innerHTML = html;
