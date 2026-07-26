@@ -112,6 +112,34 @@
   .teams-btn:disabled{opacity:0.5;cursor:default;}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;font-size:13px;padding:10px 20px;border-radius:8px;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none;}
   .toast.show{opacity:1;}
+
+  /* Batch picker modal */
+  .bp-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;}
+  .bp-overlay.open{display:flex;}
+  .bp-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:min(520px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.4);}
+  .bp-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .bp-title{font-size:14px;font-weight:600;color:var(--text);}
+  .bp-close{font-family:inherit;font-size:20px;line-height:1;cursor:pointer;background:none;border:none;color:var(--text-muted);padding:0 2px;}
+  .bp-close:hover{color:var(--text);}
+  .bp-body{overflow-y:auto;padding:14px 18px;flex:1;}
+  .bp-section-label{font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;margin-top:4px;}
+  .bp-section-label:not(:first-child){margin-top:16px;}
+  .bp-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px;}
+  .bp-chip{display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;transition:border-color 0.12s,background 0.12s;user-select:none;}
+  .bp-chip:hover{border-color:var(--accent);}
+  .bp-chip.selected{border-color:#6264A7;background:rgba(98,100,167,0.12);}
+  .bp-chip-id{font-family:monospace;font-size:11px;font-weight:600;color:var(--text);}
+  .bp-chip-meta{font-size:10px;color:var(--text-hint);}
+  .bp-chip-check{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;transition:background 0.12s,border-color 0.12s;}
+  .bp-chip.selected .bp-chip-check{background:#6264A7;border-color:#6264A7;color:#fff;}
+  .bp-footer{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--border);flex-shrink:0;gap:10px;}
+  .bp-count{font-size:12px;color:var(--text-muted);}
+  .bp-footer-btns{display:flex;gap:8px;}
+  .bp-cancel{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;color:var(--text-muted);}
+  .bp-cancel:hover{background:var(--surface2);}
+  .bp-send{font-family:inherit;font-size:13px;font-weight:600;padding:6px 18px;border:none;border-radius:6px;background:#6264A7;cursor:pointer;color:#fff;transition:background 0.12s;}
+  .bp-send:hover{background:#4f51a0;}
+  .bp-send:disabled{opacity:0.5;cursor:default;}
 </style>
 </head>
 <body>
@@ -145,7 +173,7 @@
       <div id="shift-start" class="run-time" style="margin-top:2px;"></div>
     </div>
     <div class="header-btns">
-      <button class="teams-btn" id="teams-btn" onclick="sendClearedToTeams(true)">&#x1F4AC; Send Cleared</button>
+      <button class="teams-btn" id="teams-btn" onclick="openBatchPicker()">&#x1F4AC; Send to Teams</button>
       <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
     </div>
   </div>
@@ -212,6 +240,24 @@
   <div class="empty-state" id="empty-state" style="display:none;">
     <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
     No batches found for this shift yet.
+  </div>
+
+  <!-- Batch picker modal -->
+  <div class="bp-overlay" id="bp-overlay" onclick="bpOverlayClick(event)">
+    <div class="bp-modal" id="bp-modal">
+      <div class="bp-header">
+        <div class="bp-title">Select batches to send</div>
+        <button class="bp-close" onclick="closeBatchPicker()">&#x2715;</button>
+      </div>
+      <div class="bp-body" id="bp-body"></div>
+      <div class="bp-footer">
+        <div class="bp-count" id="bp-count">0 selected</div>
+        <div class="bp-footer-btns">
+          <button class="bp-cancel" onclick="closeBatchPicker()">Cancel</button>
+          <button class="bp-send" id="bp-send-btn" onclick="sendSelectedBatches()" disabled>Send</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -455,18 +501,9 @@ function fmtMins(m) {
   return h > 0 ? h + 'h ' + min + 'm' : min + 'm';
 }
 
-// ── Teams — cleared batch notifications ───────────────────────────────────────
+// ── Teams — batch picker + send ───────────────────────────────────────────────
 var TEAMS_WEBHOOK_BATCHES = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk';
-var SENT_KEY = 'dc499_batches_sent_v1'; // localStorage key — set of batch_ids already sent
-
-function getSentSet() {
-  try { return new Set(JSON.parse(localStorage.getItem(SENT_KEY) || '[]')); } catch(e) { return new Set(); }
-}
-function addToSentSet(ids) {
-  var s = getSentSet();
-  ids.forEach(function(id) { s.add(id); });
-  try { localStorage.setItem(SENT_KEY, JSON.stringify(Array.from(s))); } catch(e) {}
-}
+var bpSelected = new Set(); // currently selected batch_ids in picker
 
 function showToast(msg, ms) {
   var el = document.getElementById('toast');
@@ -475,121 +512,160 @@ function showToast(msg, ms) {
   setTimeout(function() { el.classList.remove('show'); }, ms || 3000);
 }
 
-// isManual=true  → always send all cleared batches regardless of sent history, show feedback
-// isManual=false → auto mode, only send newly cleared ones silently
-function sendClearedToTeams(isManual) {
-  if (!lastData || !lastData.batches) {
-    if (isManual) showToast('No data loaded yet', 2500);
+function openBatchPicker() {
+  if (!lastData || !lastData.batches || !lastData.batches.length) {
+    showToast('No batch data loaded yet', 2500);
     return;
   }
-  var cleared = lastData.batches.filter(function(b) { return b.is_cleared; });
-  if (!cleared.length) {
-    if (isManual) showToast('No cleared batches this shift', 2500);
-    return;
+  bpSelected.clear();
+  var active  = lastData.batches.filter(function(b) { return !b.is_cleared; });
+  var cleared = lastData.batches.filter(function(b) { return  b.is_cleared; });
+  var html = '';
+
+  if (active.length) {
+    html += '<div class="bp-section-label">Active &amp; Queued (' + active.length + ')</div>';
+    html += '<div class="bp-chips">';
+    active.forEach(function(b) {
+      var meta = (b.released_pdt || '—') + ' · ' + (b.status_label || b.status_code || '—') + ' · ' + (b.total_olpns || '—') + ' oLPNs';
+      html += '<div class="bp-chip" data-bid="' + b.batch_id + '" onclick="bpToggle(this)">' +
+        '<div class="bp-chip-check"></div>' +
+        '<div><div class="bp-chip-id">' + (b.batch_id || '—') + '</div>' +
+        '<div class="bp-chip-meta">' + meta + '</div></div>' +
+        '</div>';
+    });
+    html += '</div>';
   }
 
-  var sent = getSentSet();
-  var toSend = isManual
-    ? cleared  // manual: resend all cleared for visibility
-    : cleared.filter(function(b) { return !sent.has(b.batch_id); }); // auto: only new ones
-
-  if (!toSend.length) {
-    if (isManual) showToast('All cleared batches already sent', 2500);
-    return;
+  if (cleared.length) {
+    html += '<div class="bp-section-label">Cleared (' + cleared.length + ')</div>';
+    html += '<div class="bp-chips">';
+    cleared.forEach(function(b) {
+      var meta = (b.released_pdt || '—') + ' → ' + (b.cleared_pdt || '—') +
+                 ' · ' + (b.mins_to_clear != null ? b.mins_to_clear + ' min' : '—') +
+                 ' · ' + (b.total_olpns || '—') + ' oLPNs';
+      html += '<div class="bp-chip" data-bid="' + b.batch_id + '" onclick="bpToggle(this)">' +
+        '<div class="bp-chip-check"></div>' +
+        '<div><div class="bp-chip-id">' + (b.batch_id || '—') + '</div>' +
+        '<div class="bp-chip-meta">' + meta + '</div></div>' +
+        '</div>';
+    });
+    html += '</div>';
   }
 
-  var btn = document.getElementById('teams-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  document.getElementById('bp-body').innerHTML = html;
+  bpUpdateFooter();
+  document.getElementById('bp-overlay').classList.add('open');
+}
 
-  // Build summary rows for the card
-  var rows = toSend.map(function(b) {
-    return (b.batch_id || '—') + '  ·  Released ' + (b.released_pdt || '—') +
-           '  →  Cleared ' + (b.cleared_pdt || '—') +
-           '  ·  ' + (b.mins_to_clear != null ? b.mins_to_clear + ' min' : '—') +
-           '  ·  ' + (b.total_olpns || '—') + ' oLPNs';
-  }).join('\n');
+function bpToggle(el) {
+  var bid = el.getAttribute('data-bid');
+  if (bpSelected.has(bid)) {
+    bpSelected.delete(bid);
+    el.classList.remove('selected');
+    el.querySelector('.bp-chip-check').textContent = '';
+  } else {
+    bpSelected.add(bid);
+    el.classList.add('selected');
+    el.querySelector('.bp-chip-check').textContent = '✓';
+  }
+  bpUpdateFooter();
+}
 
-  var ts = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true});
+function bpUpdateFooter() {
+  var n = bpSelected.size;
+  document.getElementById('bp-count').textContent = n + ' selected';
+  document.getElementById('bp-send-btn').disabled = n === 0;
+}
+
+function closeBatchPicker() {
+  document.getElementById('bp-overlay').classList.remove('open');
+  bpSelected.clear();
+}
+
+function bpOverlayClick(e) {
+  if (e.target === document.getElementById('bp-overlay')) closeBatchPicker();
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeBatchPicker();
+});
+
+function sendSelectedBatches() {
+  if (!bpSelected.size) return;
+  var toSend = lastData.batches.filter(function(b) { return bpSelected.has(b.batch_id); });
+  if (!toSend.length) return;
+
+  var sendBtn = document.getElementById('bp-send-btn');
+  sendBtn.disabled = true;
+  sendBtn.textContent = 'Sending…';
+
+  var active  = toSend.filter(function(b) { return !b.is_cleared; });
+  var cleared = toSend.filter(function(b) { return  b.is_cleared; });
   var summary = lastData.summary || {};
+  var tsStr   = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true});
+
+  // Build body sections — active first, then cleared
+  var bodyItems = [
+    { type: 'Container', style: 'emphasis', items: [{ type: 'ColumnSet', columns: [
+      { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: 'DC499 · Batches', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
+      { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: '2nd shift · ' + tsStr, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
+    ]}]},
+    { type: 'Container', items: [{ type: 'ColumnSet', columns: [
+      { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Total',    size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(summary.total_batches   || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None' }] },
+      { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Cleared',  size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(summary.cleared_batches || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None', color: 'Good'    }] },
+      { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Active',   size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(summary.active_batches  || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None', color: 'Warning' }] },
+      { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Avg Clear',size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: summary.avg_mins_to_clear != null ? summary.avg_mins_to_clear + ' min' : '—', size: 'ExtraLarge', weight: 'Bolder', spacing: 'None' }] },
+    ]}]},
+  ];
+
+  if (active.length) {
+    var activeRows = active.map(function(b) {
+      return (b.batch_id || '—') + '  ·  ' + (b.status_label || '—') +
+             '  ·  Released ' + (b.released_pdt || '—') +
+             '  ·  ' + (b.total_olpns || '—') + ' oLPNs';
+    }).join('\n');
+    bodyItems.push({ type: 'Container', separator: true, items: [
+      { type: 'TextBlock', text: 'Active (' + active.length + ')', weight: 'Bolder', size: 'Small', spacing: 'Medium', color: 'Warning' },
+      { type: 'TextBlock', text: activeRows, wrap: true, size: 'Small', fontType: 'Monospace', isSubtle: true, spacing: 'Small' },
+    ]});
+  }
+
+  if (cleared.length) {
+    var clearedRows = cleared.map(function(b) {
+      return (b.batch_id || '—') + '  ·  Released ' + (b.released_pdt || '—') +
+             '  →  Cleared ' + (b.cleared_pdt || '—') +
+             '  ·  ' + (b.mins_to_clear != null ? b.mins_to_clear + ' min' : '—') +
+             '  ·  ' + (b.total_olpns || '—') + ' oLPNs';
+    }).join('\n');
+    bodyItems.push({ type: 'Container', separator: !!active.length, items: [
+      { type: 'TextBlock', text: 'Cleared (' + cleared.length + ')', weight: 'Bolder', size: 'Small', spacing: 'Medium', color: 'Good' },
+      { type: 'TextBlock', text: clearedRows, wrap: true, size: 'Small', fontType: 'Monospace', isSubtle: true, spacing: 'Small' },
+    ]});
+  }
 
   var card = {
-    "type": "message",
-    "attachments": [{
-      "contentType": "application/vnd.microsoft.card.adaptive",
-      "content": {
-        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-        "type": "AdaptiveCard",
-        "version": "1.4",
-        "body": [
-          {
-            "type": "Container",
-            "style": "emphasis",
-            "items": [{
-              "type": "ColumnSet",
-              "columns": [
-                {"type":"Column","width":"auto","items":[{"type":"TextBlock","text":"DC499 · Batches","weight":"Bolder","size":"Medium","color":"Light"}]},
-                {"type":"Column","width":"stretch","items":[{"type":"TextBlock","text":"2nd shift · " + ts,"color":"Light","isSubtle":true,"horizontalAlignment":"Right"}]}
-              ]
-            }]
-          },
-          {
-            "type": "Container",
-            "items": [{
-              "type": "ColumnSet",
-              "columns": [
-                {"type":"Column","width":"stretch","items":[
-                  {"type":"TextBlock","text":"Total Batches","size":"Small","isSubtle":true,"weight":"Bolder"},
-                  {"type":"TextBlock","text":String(summary.total_batches || 0),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
-                ]},
-                {"type":"Column","width":"stretch","items":[
-                  {"type":"TextBlock","text":"Cleared","size":"Small","isSubtle":true,"weight":"Bolder"},
-                  {"type":"TextBlock","text":String(summary.cleared_batches || 0),"size":"ExtraLarge","weight":"Bolder","spacing":"None","color":"Good"}
-                ]},
-                {"type":"Column","width":"stretch","items":[
-                  {"type":"TextBlock","text":"Active","size":"Small","isSubtle":true,"weight":"Bolder"},
-                  {"type":"TextBlock","text":String(summary.active_batches || 0),"size":"ExtraLarge","weight":"Bolder","spacing":"None","color":"Warning"}
-                ]},
-                {"type":"Column","width":"stretch","items":[
-                  {"type":"TextBlock","text":"Avg Clear","size":"Small","isSubtle":true,"weight":"Bolder"},
-                  {"type":"TextBlock","text":(summary.avg_mins_to_clear != null ? summary.avg_mins_to_clear + ' min' : '—'),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}
-                ]}
-              ]
-            }]
-          },
-          {
-            "type": "Container",
-            "separator": true,
-            "items": [
-              {"type":"TextBlock","text":"Newly Cleared (" + toSend.length + ")","weight":"Bolder","size":"Small","spacing":"Medium"},
-              {"type":"TextBlock","text":rows,"wrap":true,"size":"Small","fontType":"Monospace","isSubtle":true,"spacing":"Small"}
-            ]
-          }
-        ]
-      }
-    }]
+    type: 'message',
+    attachments: [{ contentType: 'application/vnd.microsoft.card.adaptive', content: {
+      '$schema': 'http://adaptivecards.io/schemas/adaptive-card.json',
+      type: 'AdaptiveCard', version: '1.4',
+      body: bodyItems,
+    }}],
   };
 
-  fetch(TEAMS_WEBHOOK_BATCHES, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(card)
-  })
+  fetch(TEAMS_WEBHOOK_BATCHES, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(card) })
   .then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    // Mark these as sent so auto-mode won't resend them
-    addToSentSet(toSend.map(function(b) { return b.batch_id; }));
-    if (btn) { btn.disabled = false; btn.textContent = '✓ Sent'; btn.classList.add('sent'); }
-    showToast('Sent ' + toSend.length + ' cleared batch' + (toSend.length > 1 ? 'es' : '') + ' to Teams', 3000);
-    setTimeout(function() { if (btn) { btn.classList.remove('sent'); btn.textContent = '💬 Send Cleared'; } }, 4000);
+    closeBatchPicker();
+    var btn = document.getElementById('teams-btn');
+    if (btn) { btn.textContent = '✓ Sent'; btn.classList.add('sent'); setTimeout(function() { btn.classList.remove('sent'); btn.textContent = '💬 Send to Teams'; }, 4000); }
+    showToast('Sent ' + toSend.length + ' batch' + (toSend.length > 1 ? 'es' : '') + ' to Teams', 3000);
   })
   .catch(function(e) {
-    if (btn) { btn.disabled = false; btn.textContent = '💬 Send Cleared'; }
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send';
     showToast('Teams send failed: ' + e.message, 4000);
   });
 }
-
-// Auto-notify runs in dc499_refresh.js (server-side), not here — avoids
-// duplicate sends when multiple browsers have this page open.
 // ──────────────────────────────────────────────────────────────────────────────
 
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
