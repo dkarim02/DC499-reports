@@ -56,6 +56,17 @@
     --amber:#fde68a;--amber-bg:#2e2410;
     --red:#fca5a5;--red-bg:#2e1a1a;
   }
+  [data-theme="candy"] {
+    --bg:#fdf0f5;--surface:#fff5f8;--surface2:#f7dce7;--border:#e8b8cc;--border-light:#f5e0ea;--border-mid:#eecad8;
+    --text:#2a1520;--text-muted:#8b566b;--text-hint:#b08090;--bar-bg:#e8b8cc;
+    --accent:#c2185b;--accent-bg:#fce4ec;--accent-muted:#e05c8a;
+    --ready:#2E7D32;--ready-bg:#e8f5e9;
+    --alloc:#E65100;--alloc-bg:#fff3e0;
+    --packed:#c2185b;--packed-bg:#fce4ec;
+    --green:#2E7D32;--green-bg:#e8f5e9;
+    --amber:#E65100;--amber-bg:#fff3e0;
+    --red:#C62828;--red-bg:#ffebee;
+  }
   .theme-picker{position:relative;}
   .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
   .theme-btn:hover{background:var(--surface2);}
@@ -311,6 +322,7 @@
         <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
         <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
         <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
+        <div class="theme-option" data-tv="candy"  onclick="pickTheme('candy')">Candy 🩷</div>
         <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
       </div>
     </div>
@@ -572,8 +584,8 @@ var activeSelection = null;
 var lastAvgUph = null;
 
 // -- Theme --------------------------------------------------------------------
-var THEME_VALS_BL = ['dark','solid','pastel','light'];
-var THEME_NAMES_BL = {dark:'Dark',solid:'Solid',pastel:'Pastel',light:'Light'};
+var THEME_VALS_BL = ['dark','solid','pastel','candy','light'];
+var THEME_NAMES_BL = {dark:'Dark',solid:'Solid',pastel:'Pastel',candy:'Candy 🩷',light:'Light'};
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES_BL[t] || t;
