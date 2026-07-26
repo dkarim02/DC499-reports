@@ -984,8 +984,9 @@ function getShift() {
 }
 async function sendToTeams(btn) {
   if (!lastBlData || !lastBlData.dates || !lastBlData.dates.length) { alert('No data loaded yet.'); return; }
-  var shift = getShift(), webhook = TEAMS_WEBHOOKS[shift];
-  if (!webhook) { alert('No Teams webhook configured for '+shift+' shift.'); return; }
+  var shift = getShift();
+  var webhook = TEAMS_WEBHOOKS[shift] || TEAMS_WEBHOOKS['2nd'];
+  if (!webhook) { alert('No Teams webhook configured.'); return; }
   var orig = btn.textContent; btn.textContent = '⏳ Sending…'; btn.disabled = true;
   var ready=0, allocated=0, packed=0, shipped=0;
   (lastBlData.dates||[]).forEach(function(d){ ready+=d.ready||0; allocated+=d.allocated||0; packed+=d.packed||0; shipped+=d.shipped||0; });
@@ -995,11 +996,17 @@ async function sendToTeams(btn) {
   var card = {"type":"message","attachments":[{"contentType":"application/vnd.microsoft.card.adaptive","content":{"$schema":"http://adaptivecards.io/schemas/adaptive-card.json","type":"AdaptiveCard","version":"1.4","body":[{"type":"ColumnSet","columns":[{"type":"Column","width":"stretch","items":[{"type":"TextBlock","text":"Ecom Order Backlog","weight":"Bolder","size":"Large"},{"type":"TextBlock","text":"DC499 · "+shift+" shift · "+ts,"isSubtle":true,"size":"Small","spacing":"None"}]}]},{"type":"Separator","spacing":"Medium"},{"type":"FactSet","spacing":"Medium","facts":[{"title":"Ready","value":ready.toLocaleString()+"  (not yet in wave)"},{"title":"Allocated","value":allocated.toLocaleString()+"  (in wave, unpicked)"},{"title":"Packed","value":packed.toLocaleString()+"  (awaiting ship)"},{"title":"Shipped","value":shipped.toLocaleString()}]},{"type":"Separator","spacing":"Small"},{"type":"ColumnSet","spacing":"Small","columns":[{"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"TOTAL OPEN","size":"Small","weight":"Bolder","color":"Accent","horizontalAlignment":"Center"},{"type":"TextBlock","text":totalOpen.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","horizontalAlignment":"Center","spacing":"None"}]},{"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"AVG BRIDGE","size":"Small","weight":"Bolder","color":"Accent","horizontalAlignment":"Center"},{"type":"TextBlock","text":avgBridge,"size":"ExtraLarge","weight":"Bolder","horizontalAlignment":"Center","spacing":"None"}]}]},{"type":"TextBlock","text":"Throughput only · not for performance evaluation · DC499 Reporter","size":"Small","isSubtle":true,"wrap":true,"spacing":"Medium"}]}}]};
   try {
     var res = await fetch(webhook,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(card)});
-    if (res.ok||res.status===202) { btn.textContent='✓ Sent!'; setTimeout(function(){ btn.textContent=orig; btn.disabled=false; },3000); }
-    else throw new Error('HTTP '+res.status);
+    if (res.status >= 200 && res.status < 300) {
+      btn.textContent='✓ Sent!'; setTimeout(function(){ btn.textContent=orig; btn.disabled=false; },3000);
+    } else {
+      var body = ''; try { body = await res.text(); } catch(_) {}
+      throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
+    }
   } catch(e) {
+    console.error('Teams send failed:', e.message);
     btn.textContent='⚠ Failed'; btn.style.borderColor='#C0392B'; btn.style.color='#C0392B';
     setTimeout(function(){ btn.textContent=orig; btn.disabled=false; btn.style.borderColor=''; btn.style.color=''; },4000);
+    alert('Teams send failed: ' + e.message);
   }
 }
 
