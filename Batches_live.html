@@ -280,7 +280,6 @@ function fetchData(isManual) {
       lastData = data;
       renderData(data);
       scheduleAutoRefresh();
-      autoNotifyCleared();
     })
     .catch(function(err) {
       if (rtEl) rtEl.textContent = 'Failed to load: ' + err.message;
@@ -589,10 +588,8 @@ function sendClearedToTeams(isManual) {
   });
 }
 
-// Auto-notify after each data refresh — only new cleared batches
-function autoNotifyCleared() {
-  sendClearedToTeams(false);
-}
+// Auto-notify runs in dc499_refresh.js (server-side), not here — avoids
+// duplicate sends when multiple browsers have this page open.
 // ──────────────────────────────────────────────────────────────────────────────
 
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();

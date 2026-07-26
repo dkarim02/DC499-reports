@@ -856,6 +856,73 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
   };
 }
 
+// ── Teams: cleared batch notifier ─────────────────────────────────────────────
+const TEAMS_WEBHOOK_BATCHES = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk';
+const SENT_BATCHES_FILE = path.join(REPORT_DIR, '.sent_batches.json');
+
+function loadSentBatches() {
+  try { return new Set(JSON.parse(fs.readFileSync(SENT_BATCHES_FILE, 'utf8'))); }
+  catch { return new Set(); }
+}
+function saveSentBatches(set) {
+  try { fs.writeFileSync(SENT_BATCHES_FILE, JSON.stringify([...set])); } catch {}
+}
+
+async function notifyNewCleared(batchStatusData) {
+  if (!batchStatusData?.batches) return;
+  const cleared = batchStatusData.batches.filter(b => b.is_cleared);
+  if (!cleared.length) return;
+
+  const sent    = loadSentBatches();
+  const newOnes = cleared.filter(b => !sent.has(b.batch_id));
+  if (!newOnes.length) return;
+
+  const s   = batchStatusData.summary || {};
+  const tsPdt = new Date(new Date().getTime() - 7 * 3600000);
+  const tsStr = (tsPdt.getUTCHours() % 12 || 12) + ':' +
+                String(tsPdt.getUTCMinutes()).padStart(2,'0') + ' ' +
+                (tsPdt.getUTCHours() >= 12 ? 'PM' : 'AM');
+
+  const rows = newOnes.map(b =>
+    `${b.batch_id}  ·  Released ${b.released_pdt || '—'}  →  Cleared ${b.cleared_pdt || '—'}  ·  ${b.mins_to_clear != null ? b.mins_to_clear + ' min' : '—'}  ·  ${b.total_olpns || '—'} oLPNs`
+  ).join('\n');
+
+  const card = {
+    type: 'message',
+    attachments: [{
+      contentType: 'application/vnd.microsoft.card.adaptive',
+      content: {
+        $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+        type: 'AdaptiveCard', version: '1.4',
+        body: [
+          { type: 'Container', style: 'emphasis', items: [{ type: 'ColumnSet', columns: [
+            { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: 'DC499 · Batches', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
+            { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: `2nd shift · ${tsStr}`, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
+          ]}]},
+          { type: 'Container', items: [{ type: 'ColumnSet', columns: [
+            { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Total',    size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(s.total_batches   || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None' }] },
+            { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Cleared',  size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(s.cleared_batches || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None', color: 'Good'    }] },
+            { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Active',   size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(s.active_batches  || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None', color: 'Warning' }] },
+            { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Avg Clear',size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: s.avg_mins_to_clear != null ? `${s.avg_mins_to_clear} min` : '—', size: 'ExtraLarge', weight: 'Bolder', spacing: 'None' }] },
+          ]}]},
+          { type: 'Container', separator: true, items: [
+            { type: 'TextBlock', text: `Newly Cleared (${newOnes.length})`, weight: 'Bolder', size: 'Small', spacing: 'Medium' },
+            { type: 'TextBlock', text: rows, wrap: true, size: 'Small', fontType: 'Monospace', isSubtle: true, spacing: 'Small' },
+          ]},
+        ],
+      },
+    }],
+  };
+
+  try {
+    const res = await jsonPost(TEAMS_WEBHOOK_BATCHES, JSON.stringify(card), { 'Content-Type': 'application/json' });
+    saveSentBatches(new Set([...sent, ...newOnes.map(b => b.batch_id)]));
+    console.log(`[${ts()}] ✓ Teams — notified ${newOnes.length} newly cleared batch(es)`);
+  } catch (e) {
+    console.warn(`[${ts()}]   Teams batch notify failed: ${e.message}`);
+  }
+}
+
 // ── git push ───────────────────────────────────────────────────────────────────
 function gitPush() {
   const stamp = new Date().toLocaleString('en-US', {
@@ -912,6 +979,7 @@ async function queryAndWrite(accessToken) {
   if (batchStatusData) {
     fs.writeFileSync(BATCH_STATUS_FILE, JSON.stringify(batchStatusData, null, 4));
     console.log(`[${ts()}] ✓ batch_status.json — ${batchStatusData.summary.total_batches} batches, ${batchStatusData.summary.cleared_batches} cleared`);
+    await notifyNewCleared(batchStatusData);
   }
 
   gitPush();
