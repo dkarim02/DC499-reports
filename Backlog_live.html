@@ -210,6 +210,40 @@
   .interval-cell{font-size:12px;color:var(--text-muted);}
   .interval-first{color:var(--text-hint);font-style:italic;font-size:12px;}
 
+  /* ── Batch cards ──────────────────────────────────────────────────────────── */
+  .bt-section-hdr{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;margin-top:2px;}
+  .bt-section-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .bt-section-ct{background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;padding:1px 8px;color:var(--text-muted);letter-spacing:0;text-transform:none;}
+  .bt-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:1.75rem;}
+  .bt-card{background:var(--surface);border:0.5px solid var(--border);border-left:4px solid var(--accent);border-radius:16px;padding:14px 16px;transition:box-shadow 0.15s,transform 0.15s;}
+  .bt-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.13);transform:translateY(-1px);}
+  .bt-card.ac-amber{border-left-color:var(--amber);}
+  .bt-card.ac-green{border-left-color:var(--green);}
+  .bt-card.ac-red  {border-left-color:var(--red);}
+  .bt-card.ac-muted{border-left-color:var(--border-mid);}
+  .bt-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .bt-id-wrap{display:flex;align-items:center;gap:7px;}
+  .bt-seq{font-size:11px;font-weight:700;color:var(--text-hint);}
+  .bt-id{font-family:monospace;font-size:13px;font-weight:600;color:var(--text);}
+  .bt-body{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-bottom:12px;}
+  .bt-stat{display:flex;flex-direction:column;gap:2px;min-width:60px;}
+  .bt-stat-lbl{font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.06em;}
+  .bt-stat-val{font-size:18px;font-weight:700;color:var(--text);line-height:1.1;}
+  .bt-stat-sub{font-size:11px;font-weight:400;color:var(--text-hint);}
+  .bt-bar{height:5px;border-radius:3px;background:var(--border);overflow:hidden;width:80px;margin-top:5px;}
+  .bt-bar-fill{height:100%;border-radius:3px;transition:width 0.5s ease;}
+  .bt-bar-fill.pct-hi {background:var(--green);}
+  .bt-bar-fill.pct-mid{background:var(--amber);}
+  .bt-bar-fill.pct-lo {background:var(--red);}
+  .bt-bar-fill.pct-0  {background:var(--accent);}
+  .bt-chips{display:flex;gap:6px;flex-wrap:wrap;}
+  .bt-chip{font-size:11px;color:var(--text-muted);background:var(--surface2);border:0.5px solid var(--border-light);border-radius:20px;padding:3px 10px;white-space:nowrap;}
+  .bt-chip.chip-first{font-style:italic;color:var(--text-hint);}
+  /* Cleared cards are slimmer */
+  .bt-card.bt-cleared{padding:11px 16px;}
+  .bt-card.bt-cleared .bt-card-top{margin-bottom:8px;}
+  .bt-clear-time{font-size:13px;font-weight:700;color:var(--green);}
+
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
 </style>
@@ -378,38 +412,22 @@
       </div>
     </div>
 
-    <div class="card" id="bt-batch-card-active" style="display:none;">
-      <div class="card-title">Active &amp; Queued</div>
-      <table>
-        <thead><tr>
-          <th class="r">#</th>
-          <th>Batch</th>
-          <th>Released</th>
-          <th class="r">Tasks Left</th>
-          <th class="r">oLPNs</th>
-          <th>Status</th>
-          <th class="r">In Status</th>
-          <th class="r">Interval Since Prev</th>
-        </tr></thead>
-        <tbody id="bt-batch-tbody-active"></tbody>
-      </table>
+    <div id="bt-batch-card-active" style="display:none;">
+      <div class="bt-section-hdr">
+        <span class="bt-section-dot" style="background:var(--amber);"></span>
+        Active &amp; Queued
+        <span class="bt-section-ct" id="bt-active-ct"></span>
+      </div>
+      <div class="bt-grid" id="bt-batch-tbody-active"></div>
     </div>
 
-    <div class="card" id="bt-batch-card-cleared" style="display:none;">
-      <div class="card-title">Cleared</div>
-      <table>
-        <thead><tr>
-          <th class="r">#</th>
-          <th>Batch</th>
-          <th>Released</th>
-          <th class="r">Tasks Done</th>
-          <th class="r">oLPNs</th>
-          <th>Cleared</th>
-          <th class="r">Time to Clear</th>
-          <th class="r">Interval Since Prev</th>
-        </tr></thead>
-        <tbody id="bt-batch-tbody-cleared"></tbody>
-      </table>
+    <div id="bt-batch-card-cleared" style="display:none;">
+      <div class="bt-section-hdr">
+        <span class="bt-section-dot" style="background:var(--green);"></span>
+        Cleared
+        <span class="bt-section-ct" id="bt-cleared-ct"></span>
+      </div>
+      <div class="bt-grid" id="bt-batch-tbody-cleared"></div>
     </div>
 
     <div class="empty-state" id="bt-empty-state" style="display:none;">
@@ -813,24 +831,71 @@ function batchBadge(b) {
   return '<span class="status-badge badge-queued">'+label+'</span>';
 }
 
-function btTasksCell(b, isCleared) {
-  var total = b.total_tasks != null ? Number(b.total_tasks) : null;
-  var open  = b.open_tasks  != null ? Number(b.open_tasks)  : null;
-  if (isCleared) {
-    return total != null ? '<span class="dur-fast">' + total + '</span>' : '—';
-  }
-  if (open == null || total == null) return total != null ? String(total) : '—';
-  if (open === 0) return '<span class="dur-fast">0 / ' + total + '</span>';
-  var cls = open <= 2 ? 'dur-fast' : open <= Math.ceil(total / 2) ? 'dur-mid' : 'dur-slow';
-  return '<span class="' + cls + '">' + open + '</span><span style="color:var(--text-hint);font-size:11px;"> / ' + total + '</span>';
-}
-
-function btInStatusCell(b) {
-  if (!b.status_updated_utc) return '<span class="dur-none">—</span>';
+function btInStatusMins(b) {
+  if (!b.status_updated_utc) return null;
   var s = String(b.status_updated_utc).replace(' ','T');
   if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
-  var mins = Math.round((Date.now() - new Date(s).getTime()) / 60000);
-  return fmtMins(mins);
+  return Math.round((Date.now() - new Date(s).getTime()) / 60000);
+}
+
+function buildBatchCard(b, isCleared, isFirstInGroup) {
+  var total = b.total_tasks != null ? Number(b.total_tasks) : null;
+  var open  = b.open_tasks  != null ? Number(b.open_tasks)  : null;
+  var donePct = (total && total > 0) ? Math.round(((total - (open || 0)) / total) * 100) : 0;
+  var barCls = donePct >= 80 ? 'pct-hi' : donePct >= 40 ? 'pct-mid' : donePct > 0 ? 'pct-lo' : 'pct-0';
+  var acCls  = isCleared ? 'ac-green' : b.status_code === '5600' ? 'ac-amber' : b.status_code === '5200' ? 'ac-amber' : b.status_code === '5400' ? 'ac-green' : 'ac-muted';
+  var inStatusMins = btInStatusMins(b);
+
+  if (isCleared) {
+    return '<div class="bt-card bt-cleared ac-green">' +
+      '<div class="bt-card-top">' +
+        '<div class="bt-id-wrap"><span class="bt-seq">' + b.batch_num + '</span><span class="bt-id">' + escHtml(b.batch_id || '—') + '</span></div>' +
+        '<span class="bt-chips">' +
+          (b.released_pdt ? '<span class="bt-chip">Released ' + b.released_pdt + '</span>' : '') +
+          (b.cleared_pdt  ? '<span class="bt-chip">Cleared '  + b.cleared_pdt  + '</span>' : '') +
+          (b.mins_to_clear != null ? '<span class="bt-chip">' + fmtMins(b.mins_to_clear) + ' to clear</span>' : '') +
+          (isFirstInGroup && b.mins_since_prev_release != null ? '<span class="bt-chip">+' + fmtMins(b.mins_since_prev_release) + ' since prev</span>' : '') +
+          (!isFirstInGroup ? '<span class="bt-chip chip-first">same release</span>' : '') +
+        '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:16px;">' +
+        (total != null ? '<span style="font-size:12px;color:var(--green);font-weight:600;">' + total + ' tasks done</span>' : '') +
+        '<span style="font-size:12px;color:var(--text-hint);">' + fmtN(b.total_olpns) + ' oLPNs</span>' +
+        '<span class="bt-chip" style="margin-left:auto;">' + batchBadge(b) + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Active card
+  var taskLabel = open != null && total != null
+    ? open + ' / ' + total
+    : total != null ? String(total) : '—';
+  return '<div class="bt-card ' + acCls + '">' +
+    '<div class="bt-card-top">' +
+      '<div class="bt-id-wrap"><span class="bt-seq">' + b.batch_num + '</span><span class="bt-id">' + escHtml(b.batch_id || '—') + '</span></div>' +
+      batchBadge(b) +
+    '</div>' +
+    '<div class="bt-body">' +
+      '<div class="bt-stat">' +
+        '<span class="bt-stat-lbl">Tasks Left</span>' +
+        '<span class="bt-stat-val">' + taskLabel + '</span>' +
+        (total ? '<div class="bt-bar"><div class="bt-bar-fill ' + barCls + '" style="width:' + donePct + '%;"></div></div>' : '') +
+      '</div>' +
+      '<div class="bt-stat">' +
+        '<span class="bt-stat-lbl">oLPNs</span>' +
+        '<span class="bt-stat-val">' + fmtN(b.total_olpns) + '</span>' +
+      '</div>' +
+      '<div class="bt-stat">' +
+        '<span class="bt-stat-lbl">Released</span>' +
+        '<span class="bt-stat-val" style="font-size:15px;">' + (b.released_pdt || '—') + '</span>' +
+      '</div>' +
+      (inStatusMins != null ? '<div class="bt-stat"><span class="bt-stat-lbl">In Status</span><span class="bt-stat-val" style="font-size:15px;">' + fmtMins(inStatusMins) + '</span></div>' : '') +
+    '</div>' +
+    '<div class="bt-chips">' +
+      (isFirstInGroup && b.mins_since_prev_release != null ? '<span class="bt-chip">+' + fmtMins(b.mins_since_prev_release) + ' since prev release</span>' : '') +
+      (!isFirstInGroup ? '<span class="bt-chip chip-first">same release group</span>' : '') +
+    '</div>' +
+  '</div>';
 }
 
 function renderBatchData(data) {
@@ -878,41 +943,28 @@ function renderBatchData(data) {
   var active  = data.batches.filter(function(b) { return !b.is_cleared; });
   var cleared = data.batches.filter(function(b) { return  b.is_cleared; });
 
-  function buildRows(list, withStatus, withClear) {
+  function buildCards(list, isCleared) {
     var seen = {}, html = '';
     list.forEach(function(b) {
       var wrId = b.work_release_batch_id;
       var first = !seen[wrId]; seen[wrId] = true;
-      var intCell = !first
-        ? '<span style="color:var(--text-hint)">—</span>'
-        : b.mins_since_prev_release != null
-          ? '<span class="interval-cell">'+fmtMins(b.mins_since_prev_release)+'</span>'
-          : '<span class="interval-first">first release</span>';
-      html += '<tr>';
-      html += '<td class="r batch-num">'+b.batch_num+'</td>';
-      html += '<td style="font-family:monospace;font-size:12px;">'+(b.batch_id||'—')+'</td>';
-      html += '<td>'+(b.released_pdt||'—')+'</td>';
-      html += '<td class="r">'+btTasksCell(b, withClear)+'</td>';
-      html += '<td class="r">'+fmtN(b.total_olpns)+'</td>';
-      if (withStatus) html += '<td>'+batchBadge(b)+'</td>';
-      if (withStatus) html += '<td class="r">'+btInStatusCell(b)+'</td>';
-      if (withClear)  html += '<td>'+(b.cleared_pdt||'—')+'</td>';
-      if (withClear)  html += '<td class="r">'+fmtDur(b.mins_to_clear)+'</td>';
-      html += '<td class="r">'+intCell+'</td>';
-      html += '</tr>';
+      html += buildBatchCard(b, isCleared, first);
     });
     return html;
   }
 
+  var ctEl;
   if (active.length) {
-    document.getElementById('bt-batch-tbody-active').innerHTML = buildRows(active, true, false);
+    document.getElementById('bt-batch-tbody-active').innerHTML = buildCards(active, false);
+    ctEl = document.getElementById('bt-active-ct'); if (ctEl) ctEl.textContent = active.length;
     activeCardEl.style.display = 'block';
   } else {
     activeCardEl.style.display = 'none';
   }
 
   if (cleared.length) {
-    document.getElementById('bt-batch-tbody-cleared').innerHTML = buildRows(cleared, false, true);
+    document.getElementById('bt-batch-tbody-cleared').innerHTML = buildCards(cleared, true);
+    ctEl = document.getElementById('bt-cleared-ct'); if (ctEl) ctEl.textContent = cleared.length;
     clearedCardEl.style.display = 'block';
   } else {
     clearedCardEl.style.display = 'none';
