@@ -57,15 +57,15 @@
     --red:#fca5a5;--red-bg:#2e1a1a;
   }
   [data-theme="candy"] {
-    --bg:#d4708f;--surface:#fae8f3;--surface2:#efbdd6;--border:#c06090;--border-light:#e8c0d8;--border-mid:#d8a8c8;
-    --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;--bar-bg:#d8a8c8;
-    --accent:#b0003a;--accent-bg:#f48fb1;--accent-muted:#e06090;
-    --ready:#1b5e20;--ready-bg:#81c784;
-    --alloc:#e65100;--alloc-bg:#ffb74d;
-    --packed:#b0003a;--packed-bg:#f48fb1;
-    --green:#1b5e20;--green-bg:#81c784;
-    --amber:#e65100;--amber-bg:#ffb74d;
-    --red:#b71c1c;--red-bg:#e57373;
+    --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
+    --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;--bar-bg:#e8c0d8;
+    --accent:#b0003a;--accent-bg:#f8d0e8;--accent-muted:#d06090;
+    --ready:#1b5e20;--ready-bg:#f0d8e8;
+    --alloc:#8b3000;--alloc-bg:#fad0e0;
+    --packed:#b0003a;--packed-bg:#f8d0e8;
+    --green:#1b5e20;--green-bg:#f0d8e8;
+    --amber:#8b3000;--amber-bg:#fad0e0;
+    --red:#7b0020;--red-bg:#f8c8d8;
   }
   .theme-picker{position:relative;}
   .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
@@ -1296,12 +1296,13 @@ function sendSelectedBatches() {
   sendBtn.disabled = true; sendBtn.textContent = 'Sending…';
   var active  = toSend.filter(function(b){ return !b.is_cleared; });
   var cleared = toSend.filter(function(b){ return  b.is_cleared; });
-  var summary = (lastBtData.summary || {});
-  var tsStr = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true});
+  var summary    = (lastBtData.summary || {});
+  var shiftLabel = lastBtData.shift_label || '2nd shift';
+  var tsStr      = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true});
   var bodyItems = [
     {type:'Container',style:'attention',items:[{type:'ColumnSet',columns:[
       {type:'Column',width:'auto',items:[{type:'TextBlock',text:'DC499 · Batches',weight:'Bolder',size:'Medium',color:'Light'}]},
-      {type:'Column',width:'stretch',items:[{type:'TextBlock',text:'2nd shift · '+tsStr,color:'Light',isSubtle:true,horizontalAlignment:'Right'}]},
+      {type:'Column',width:'stretch',items:[{type:'TextBlock',text:shiftLabel+' · '+tsStr,color:'Light',isSubtle:true,horizontalAlignment:'Right'}]},
     ]}]},
     {type:'Container',spacing:'Medium',items:[{type:'ColumnSet',columns:[
       {type:'Column',width:'stretch',items:[{type:'TextBlock',text:'Total',    size:'Small',isSubtle:true,weight:'Bolder'},{type:'TextBlock',text:String(summary.total_batches  ||0),size:'ExtraLarge',weight:'Bolder',spacing:'None'}]},

@@ -38,12 +38,12 @@
     --accent:#7ecec4;--accent-bg:#152e2c;
   }
   [data-theme="candy"] {
-    --bg:#d4708f;--surface:#fae8f3;--surface2:#efbdd6;--border:#c06090;--border-light:#e8c0d8;--border-mid:#d8a8c8;
+    --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
     --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;
-    --accent:#b0003a;--accent-bg:#f48fb1;
-    --green:#1b5e20;--green-bg:#81c784;
-    --amber:#e65100;--amber-bg:#ffb74d;
-    --red:#b71c1c;--red-bg:#e57373;
+    --accent:#b0003a;--accent-bg:#f8d0e8;
+    --green:#1b5e20;--green-bg:#f0d8e8;
+    --amber:#8b3000;--amber-bg:#fad0e0;
+    --red:#7b0020;--red-bg:#f8c8d8;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
@@ -610,14 +610,15 @@ function sendSelectedBatches() {
 
   var active  = toSend.filter(function(b) { return !b.is_cleared; });
   var cleared = toSend.filter(function(b) { return  b.is_cleared; });
-  var summary = lastData.summary || {};
-  var tsStr   = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true});
+  var summary    = lastData.summary || {};
+  var shiftLabel = lastData.shift_label || '2nd shift';
+  var tsStr      = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true});
 
   // Build body sections — active first, then cleared
   var bodyItems = [
     { type: 'Container', style: 'attention', items: [{ type: 'ColumnSet', columns: [
       { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: 'DC499 · Batches', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
-      { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: '2nd shift · ' + tsStr, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
+      { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: shiftLabel + ' · ' + tsStr, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
     ]}]},
     { type: 'Container', spacing: 'Medium', items: [{ type: 'ColumnSet', columns: [
       { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Total',    size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(summary.total_batches   || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None' }] },

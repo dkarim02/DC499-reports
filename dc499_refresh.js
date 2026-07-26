@@ -735,10 +735,15 @@ const BATCH_STATUS_LABELS = {
 
 async function fetchBatchStatus(accessToken) {
   const nowUtc = new Date();
-  const shiftHourUtc = 21; // 2 PM PDT
+  const nowUtcHour = nowUtc.getUTCHours();
+  // 1st shift: 3 AM PDT (10:00 UTC) – 1:59 PM PDT (20:59 UTC)
+  // 2nd shift: 2 PM PDT (21:00 UTC) – 2:59 AM PDT next day (09:59 UTC next)
+  const is1stShift = nowUtcHour >= 10 && nowUtcHour < 21;
+  const shiftHourUtc = is1stShift ? 10 : 21; // 3 AM PDT or 2 PM PDT
+  const shiftLabel   = is1stShift ? '1st shift' : '2nd shift';
   let shiftStart = new Date(nowUtc);
   shiftStart.setUTCHours(shiftHourUtc, 0, 0, 0);
-  if (nowUtc.getUTCHours() < shiftHourUtc) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
+  if (!is1stShift && nowUtcHour < shiftHourUtc) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
   const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
 
   // Lookback covers 1st-shift releases: any batch created within 14h is a candidate
@@ -851,6 +856,7 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
   return {
     generated:        new Date().toISOString().slice(0,19),
     facility:         FACILITY,
+    shift_label:      shiftLabel,
     shift_start_utc:  startStr,
     summary: {
       total_batches:             batches.length,
@@ -884,7 +890,8 @@ async function notifyNewCleared(batchStatusData) {
   const newOnes = cleared.filter(b => !sent.has(b.batch_id));
   if (!newOnes.length) return;
 
-  const s   = batchStatusData.summary || {};
+  const s          = batchStatusData.summary || {};
+  const shiftLabel = batchStatusData.shift_label || '2nd shift';
   const tsPdt = new Date(new Date().getTime() - 7 * 3600000);
   const tsStr = (tsPdt.getUTCHours() % 12 || 12) + ':' +
                 String(tsPdt.getUTCMinutes()).padStart(2,'0') + ' ' +
@@ -914,7 +921,7 @@ async function notifyNewCleared(batchStatusData) {
         body: [
           { type: 'Container', style: 'attention', items: [{ type: 'ColumnSet', columns: [
             { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: 'DC499 · Batches', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
-            { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: `2nd shift · ${tsStr}`, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
+            { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: `${shiftLabel} · ${tsStr}`, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
           ]}]},
           { type: 'Container', spacing: 'Medium', items: [{ type: 'ColumnSet', columns: [
             { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Total',    size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(s.total_batches   || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None' }] },
