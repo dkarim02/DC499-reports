@@ -244,6 +244,16 @@
   .bt-card.bt-cleared .bt-card-top{margin-bottom:6px;}
   .bt-clear-time{font-size:13px;font-weight:700;color:var(--green);}
 
+  /* ── View toggle (Bubbles / Compact) ─────────────────────────────────────── */
+  .bt-view-bar{display:flex;align-items:center;justify-content:flex-end;margin-bottom:1rem;}
+  .bt-view-switch{display:flex;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;overflow:hidden;font-size:11px;font-weight:600;}
+  .bt-view-opt{padding:4px 14px;cursor:pointer;color:var(--text-hint);transition:background 0.12s,color 0.12s;white-space:nowrap;border:none;background:none;font-family:inherit;font-size:11px;font-weight:600;}
+  .bt-view-opt.active{background:var(--accent);color:#fff;border-radius:20px;}
+  .bt-view-opt:not(.active):hover{color:var(--text);}
+  /* Compact table overrides (reuses shared table styles) */
+  .bt-compact-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;overflow-x:auto;}
+  .bt-compact-card .card-title{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.05em;}
+
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
 </style>
@@ -412,22 +422,67 @@
       </div>
     </div>
 
-    <div id="bt-batch-card-active" style="display:none;">
-      <div class="bt-section-hdr">
-        <span class="bt-section-dot" style="background:var(--amber);"></span>
-        Active &amp; Queued
-        <span class="bt-section-ct" id="bt-active-ct"></span>
+    <div class="bt-view-bar" id="bt-view-bar" style="display:none;">
+      <div class="bt-view-switch">
+        <button class="bt-view-opt active" id="bt-view-bubbles" onclick="setBtView('bubbles')">Bubbles</button>
+        <button class="bt-view-opt"        id="bt-view-compact" onclick="setBtView('compact')">Compact</button>
       </div>
-      <div class="bt-grid" id="bt-batch-tbody-active"></div>
     </div>
 
-    <div id="bt-batch-card-cleared" style="display:none;">
-      <div class="bt-section-hdr">
-        <span class="bt-section-dot" style="background:var(--green);"></span>
-        Cleared
-        <span class="bt-section-ct" id="bt-cleared-ct"></span>
+    <!-- Bubbles view -->
+    <div id="bt-bubbles-view">
+      <div id="bt-batch-card-active" style="display:none;">
+        <div class="bt-section-hdr">
+          <span class="bt-section-dot" style="background:var(--amber);"></span>
+          Active &amp; Queued
+          <span class="bt-section-ct" id="bt-active-ct"></span>
+        </div>
+        <div class="bt-grid" id="bt-batch-tbody-active"></div>
       </div>
-      <div class="bt-grid" id="bt-batch-tbody-cleared"></div>
+      <div id="bt-batch-card-cleared" style="display:none;">
+        <div class="bt-section-hdr">
+          <span class="bt-section-dot" style="background:var(--green);"></span>
+          Cleared
+          <span class="bt-section-ct" id="bt-cleared-ct"></span>
+        </div>
+        <div class="bt-grid" id="bt-batch-tbody-cleared"></div>
+      </div>
+    </div>
+
+    <!-- Compact view -->
+    <div id="bt-compact-view" style="display:none;">
+      <div class="bt-compact-card" id="bt-compact-active" style="display:none;">
+        <div class="card-title">Active &amp; Queued</div>
+        <table>
+          <thead><tr>
+            <th class="r">#</th>
+            <th>Batch</th>
+            <th>Released</th>
+            <th class="r">Tasks Left</th>
+            <th class="r">oLPNs</th>
+            <th>Status</th>
+            <th class="r">In Status</th>
+            <th class="r">Interval</th>
+          </tr></thead>
+          <tbody id="bt-compact-tbody-active"></tbody>
+        </table>
+      </div>
+      <div class="bt-compact-card" id="bt-compact-cleared" style="display:none;">
+        <div class="card-title">Cleared</div>
+        <table>
+          <thead><tr>
+            <th class="r">#</th>
+            <th>Batch</th>
+            <th>Released</th>
+            <th class="r">Tasks Done</th>
+            <th class="r">oLPNs</th>
+            <th>Cleared</th>
+            <th class="r">Time to Clear</th>
+            <th class="r">Interval</th>
+          </tr></thead>
+          <tbody id="bt-compact-tbody-cleared"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="empty-state" id="bt-empty-state" style="display:none;">
@@ -898,6 +953,51 @@ function buildBatchCard(b, isCleared, isFirstInGroup) {
   '</div>';
 }
 
+var btView = 'bubbles';
+function setBtView(v) {
+  btView = v;
+  document.getElementById('bt-view-bubbles').classList.toggle('active', v === 'bubbles');
+  document.getElementById('bt-view-compact').classList.toggle('active', v === 'compact');
+  document.getElementById('bt-bubbles-view').style.display = v === 'bubbles' ? '' : 'none';
+  document.getElementById('bt-compact-view').style.display = v === 'compact' ? '' : 'none';
+  try { localStorage.setItem('dc499_bt_view_v1', v); } catch(e) {}
+}
+
+function buildCompactRows(list, withStatus, withClear) {
+  var seen = {}, html = '';
+  list.forEach(function(b) {
+    var wrId = b.work_release_batch_id;
+    var first = !seen[wrId]; seen[wrId] = true;
+    var total = b.total_tasks != null ? Number(b.total_tasks) : null;
+    var open  = b.open_tasks  != null ? Number(b.open_tasks)  : null;
+    var intCell = !first
+      ? '<span style="color:var(--text-hint)">—</span>'
+      : b.mins_since_prev_release != null
+        ? '<span class="interval-cell">'+fmtMins(b.mins_since_prev_release)+'</span>'
+        : '<span class="interval-first">first</span>';
+    var taskCell = withClear
+      ? (total != null ? '<span class="dur-fast">'+total+'</span>' : '—')
+      : (open != null && total != null
+          ? (open === 0 ? '<span class="dur-fast">0/'+total+'</span>'
+            : '<span class="'+(open<=2?'dur-fast':open<=Math.ceil(total/2)?'dur-mid':'dur-slow')+'">'+open+'</span><span style="color:var(--text-hint);font-size:11px;">/'+total+'</span>')
+          : (total != null ? String(total) : '—'));
+    var inStatusMins = btInStatusMins(b);
+    html += '<tr>';
+    html += '<td class="r batch-num">'+b.batch_num+'</td>';
+    html += '<td style="font-family:monospace;font-size:12px;">'+(b.batch_id||'—')+'</td>';
+    html += '<td>'+(b.released_pdt||'—')+'</td>';
+    html += '<td class="r">'+taskCell+'</td>';
+    html += '<td class="r">'+fmtN(b.total_olpns)+'</td>';
+    if (withStatus) html += '<td>'+batchBadge(b)+'</td>';
+    if (withStatus) html += '<td class="r">'+(inStatusMins != null ? fmtMins(inStatusMins) : '—')+'</td>';
+    if (withClear)  html += '<td>'+(b.cleared_pdt||'—')+'</td>';
+    if (withClear)  html += '<td class="r">'+fmtDur(b.mins_to_clear)+'</td>';
+    html += '<td class="r">'+intCell+'</td>';
+    html += '</tr>';
+  });
+  return html;
+}
+
 function renderBatchData(data) {
   var staleEl = document.getElementById('stale-banner');
   var emptyEl = document.getElementById('bt-empty-state');
@@ -939,10 +1039,12 @@ function renderBatchData(data) {
 
   tilesEl.style.display = 'grid';
   emptyEl.style.display = 'none';
+  document.getElementById('bt-view-bar').style.display = 'flex';
 
   var active  = data.batches.filter(function(b) { return !b.is_cleared; });
   var cleared = data.batches.filter(function(b) { return  b.is_cleared; });
 
+  // ── Bubbles view ──
   function buildCards(list, isCleared) {
     var seen = {}, html = '';
     list.forEach(function(b) {
@@ -956,18 +1058,24 @@ function renderBatchData(data) {
   var ctEl;
   if (active.length) {
     document.getElementById('bt-batch-tbody-active').innerHTML = buildCards(active, false);
+    document.getElementById('bt-compact-tbody-active').innerHTML = buildCompactRows(active, true, false);
     ctEl = document.getElementById('bt-active-ct'); if (ctEl) ctEl.textContent = active.length;
     activeCardEl.style.display = 'block';
+    document.getElementById('bt-compact-active').style.display = 'block';
   } else {
     activeCardEl.style.display = 'none';
+    document.getElementById('bt-compact-active').style.display = 'none';
   }
 
   if (cleared.length) {
     document.getElementById('bt-batch-tbody-cleared').innerHTML = buildCards(cleared, true);
+    document.getElementById('bt-compact-tbody-cleared').innerHTML = buildCompactRows(cleared, false, true);
     ctEl = document.getElementById('bt-cleared-ct'); if (ctEl) ctEl.textContent = cleared.length;
     clearedCardEl.style.display = 'block';
+    document.getElementById('bt-compact-cleared').style.display = 'block';
   } else {
     clearedCardEl.style.display = 'none';
+    document.getElementById('bt-compact-cleared').style.display = 'none';
   }
 }
 
@@ -1018,6 +1126,7 @@ if (new URLSearchParams(window.location.search).get('from') === 'ecom') {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
+(function(){ var v; try { v = localStorage.getItem('dc499_bt_view_v1'); } catch(e){} if (v === 'compact') setBtView('compact'); })();
 fetchBacklogData();
 scheduleBlRefresh();
 </script>
