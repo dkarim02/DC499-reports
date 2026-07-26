@@ -138,6 +138,54 @@
   body.pastel .menu-theme-option:hover{background:#2c2f3e;color:#d4d0e8;}
   .menu-theme-option.active{color:#0E9E8E;}
 
+  /* MAWM Quick Links */
+  .ma-list { display:flex;flex-direction:column;gap:7px;width:100%;max-width:420px; }
+  .ma-row { display:flex;align-items:center;gap:10px;padding:10px 14px;background:#2a2a2a;border:1.5px solid #3a3a3a;border-radius:12px;transition:background 0.15s,border-color 0.15s; }
+  .ma-row:hover { background:#313131;border-color:#4A9EFF66; }
+  body.light .ma-row { background:#fff;border-color:#ddd; }
+  body.light .ma-row:hover { background:#f0f5ff;border-color:#4A9EFF88; }
+  body.solid .ma-row { background:#1b2035;border-color:#2e3650; }
+  body.pastel .ma-row { background:#232631;border-color:#3c3f52; }
+  .ma-icon { font-size:22px;width:28px;text-align:center;flex-shrink:0; }
+  .ma-info { flex:1;min-width:0; }
+  .ma-name { font-size:13px;font-weight:600;color:#f0f0ee; }
+  body.light .ma-name { color:#1a1a1a; }
+  .ma-sub { font-size:10px;color:#666;text-transform:uppercase;letter-spacing:0.04em;margin-top:1px; }
+  .ma-badge { display:inline-block;font-size:9px;padding:1px 4px;background:#333;border-radius:4px;color:#888;margin-left:5px;vertical-align:middle;font-weight:400; }
+  .ma-btns { display:flex;gap:5px;flex-shrink:0; }
+  .ma-btn { font-family:inherit;font-size:11px;font-weight:600;padding:5px 10px;border-radius:7px;border:1.5px solid #3a3a3a;background:transparent;cursor:pointer;color:#888;transition:background 0.12s,color 0.12s,border-color 0.12s;white-space:nowrap; }
+  .ma-btn:hover,.ma-btn-frame:hover { background:#4A9EFF18;border-color:#4A9EFF;color:#4A9EFF; }
+  .ma-btn-frame { border-color:#4A9EFF44;color:#4A9EFF99; }
+  .ma-url-bar { display:flex;gap:6px;margin-bottom:10px;width:100%;max-width:420px; }
+  .ma-url-input { flex:1;font-family:inherit;font-size:11px;padding:7px 10px;background:#2a2a2a;border:1.5px solid #3a3a3a;border-radius:8px;color:#f0f0ee;outline:none;min-width:0; }
+  .ma-url-input::placeholder { color:#555; }
+  .ma-url-input:focus { border-color:#4A9EFF; }
+  body.light .ma-url-input { background:#fff;border-color:#ddd;color:#1a1a1a; }
+  .ma-url-btn { font-family:inherit;font-size:12px;font-weight:700;padding:7px 11px;border-radius:8px;border:1.5px solid #4A9EFF55;background:transparent;cursor:pointer;color:#4A9EFF;transition:background 0.12s;flex-shrink:0; }
+  .ma-url-btn:hover { background:#4A9EFF18; }
+
+  /* MA Iframe drawer */
+  .ma-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:1000; }
+  .ma-overlay.open { display:block; }
+  .ma-drawer { position:fixed;top:0;right:0;bottom:0;width:70%;min-width:320px;max-width:960px;background:#1a1a1a;border-left:1.5px solid #333;z-index:1001;display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.25s cubic-bezier(0.4,0,0.2,1); }
+  .ma-drawer.open { transform:translateX(0); }
+  .ma-drawer-bar { display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #2a2a2a;flex-shrink:0;background:#222; }
+  .ma-drawer-close { font-family:inherit;font-size:20px;line-height:1;cursor:pointer;background:none;border:none;color:#666;padding:0 4px;transition:color 0.1s; }
+  .ma-drawer-close:hover { color:#f0f0ee; }
+  .ma-drawer-title { flex:1;font-size:12px;font-weight:600;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .ma-drawer-url { font-size:10px;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px; }
+  .ma-drawer-newtab { font-family:inherit;font-size:11px;cursor:pointer;background:none;border:1px solid #4A9EFF55;color:#4A9EFF;border-radius:6px;padding:4px 10px;transition:background 0.1s;flex-shrink:0; }
+  .ma-drawer-newtab:hover { background:#4A9EFF18; }
+  .ma-drawer-body { flex:1;position:relative;overflow:hidden; }
+  .ma-drawer-frame { width:100%;height:100%;border:none;display:none; }
+  .ma-drawer-status { display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#1a1a1a;text-align:center;padding:2rem; }
+  .ma-drawer-status.show { display:flex; }
+  .ma-status-icon { font-size:38px; }
+  .ma-status-msg { font-size:13px;color:#777;max-width:280px;line-height:1.7; }
+  .ma-status-action { font-family:inherit;font-size:12px;font-weight:600;padding:9px 20px;border-radius:9px;border:1.5px solid #4A9EFF;background:transparent;cursor:pointer;color:#4A9EFF;margin-top:4px;transition:background 0.12s; }
+  .ma-status-action:hover { background:#4A9EFF18; }
+  @media(max-width:600px){.ma-drawer{width:100%;}}
+
   /* Missing files warning */
   .warning {
     display: none; margin-top: 1rem; padding: 10px 16px;
@@ -158,6 +206,7 @@
 <div class="tab-bar">
   <button class="tab-btn active" id="tab-reports" onclick="switchTab('reports')">Reports</button>
   <button class="tab-btn" id="tab-live" onclick="switchTab('live')">Live <span class="tab-badge">3</span></button>
+  <button class="tab-btn" id="tab-mawm" onclick="switchTab('mawm')">MAWM</button>
 </div>
 
 <!-- Reports tab -->
@@ -219,6 +268,112 @@
   </div>
 </div>
 
+<!-- MAWM tab -->
+<div class="tab-panel" id="panel-mawm">
+  <div class="ma-url-bar">
+    <input class="ma-url-input" id="ma-custom-url" placeholder="Paste any MAWM screen path…" />
+    <button class="ma-url-btn" onclick="maOpenCustom()">Go</button>
+  </div>
+  <div class="ma-list">
+    <div class="ma-row">
+      <div class="ma-icon">🌊</div>
+      <div class="ma-info">
+        <div class="ma-name">Wave Runs <span class="ma-badge">Order Planning</span></div>
+        <div class="ma-sub">dcorder / OrderPlanningRunStrategy</div>
+      </div>
+      <div class="ma-btns">
+        <button class="ma-btn ma-btn-frame" onclick="maDrawer('Wave Runs','dcorder/OrderPlanningRunStrategy')">Panel</button>
+        <button class="ma-btn" onclick="maNewTab('dcorder/OrderPlanningRunStrategy')">&#x2197;</button>
+      </div>
+    </div>
+    <div class="ma-row">
+      <div class="ma-icon">📦</div>
+      <div class="ma-info">
+        <div class="ma-name">Batch Visibility <span class="ma-badge">Work Release</span></div>
+        <div class="ma-sub">workrelease / WRBatchVisibility</div>
+      </div>
+      <div class="ma-btns">
+        <button class="ma-btn ma-btn-frame" onclick="maDrawer('Batch Visibility','workrelease/WRBatchVisibility')">Panel</button>
+        <button class="ma-btn" onclick="maNewTab('workrelease/WRBatchVisibility')">&#x2197;</button>
+      </div>
+    </div>
+    <div class="ma-row">
+      <div class="ma-icon">🗂️</div>
+      <div class="ma-info">
+        <div class="ma-name">Task Management <span class="ma-badge">Task</span></div>
+        <div class="ma-sub">task / TaskManager</div>
+      </div>
+      <div class="ma-btns">
+        <button class="ma-btn ma-btn-frame" onclick="maDrawer('Task Management','task/TaskManager')">Panel</button>
+        <button class="ma-btn" onclick="maNewTab('task/TaskManager')">&#x2197;</button>
+      </div>
+    </div>
+    <div class="ma-row">
+      <div class="ma-icon">📋</div>
+      <div class="ma-info">
+        <div class="ma-name">Order Management <span class="ma-badge">DC Order</span></div>
+        <div class="ma-sub">dcorder / OrderManagement</div>
+      </div>
+      <div class="ma-btns">
+        <button class="ma-btn ma-btn-frame" onclick="maDrawer('Order Management','dcorder/OrderManagement')">Panel</button>
+        <button class="ma-btn" onclick="maNewTab('dcorder/OrderManagement')">&#x2197;</button>
+      </div>
+    </div>
+    <div class="ma-row">
+      <div class="ma-icon">🔁</div>
+      <div class="ma-info">
+        <div class="ma-name">Replenishment <span class="ma-badge">Inventory</span></div>
+        <div class="ma-sub">dcinventory / Replenishment</div>
+      </div>
+      <div class="ma-btns">
+        <button class="ma-btn ma-btn-frame" onclick="maDrawer('Replenishment','dcinventory/Replenishment')">Panel</button>
+        <button class="ma-btn" onclick="maNewTab('dcinventory/Replenishment')">&#x2197;</button>
+      </div>
+    </div>
+    <div class="ma-row">
+      <div class="ma-icon">📍</div>
+      <div class="ma-info">
+        <div class="ma-name">Location Manager <span class="ma-badge">DC Inventory</span></div>
+        <div class="ma-sub">dcinventory / LocationManager</div>
+      </div>
+      <div class="ma-btns">
+        <button class="ma-btn ma-btn-frame" onclick="maDrawer('Location Manager','dcinventory/LocationManager')">Panel</button>
+        <button class="ma-btn" onclick="maNewTab('dcinventory/LocationManager')">&#x2197;</button>
+      </div>
+    </div>
+    <div class="ma-row">
+      <div class="ma-icon">👷</div>
+      <div class="ma-info">
+        <div class="ma-name">Labor Management <span class="ma-badge">LM Core</span></div>
+        <div class="ma-sub">lmcore / LaborManagement</div>
+      </div>
+      <div class="ma-btns">
+        <button class="ma-btn ma-btn-frame" onclick="maDrawer('Labor Management','lmcore/LaborManagement')">Panel</button>
+        <button class="ma-btn" onclick="maNewTab('lmcore/LaborManagement')">&#x2197;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MA iframe drawer (slide-in panel) -->
+<div class="ma-overlay" id="ma-overlay" onclick="maCloseDrawer()"></div>
+<div class="ma-drawer" id="ma-drawer">
+  <div class="ma-drawer-bar">
+    <button class="ma-drawer-close" onclick="maCloseDrawer()">&#x2715;</button>
+    <div class="ma-drawer-title" id="ma-drawer-title">MAWM</div>
+    <div class="ma-drawer-url" id="ma-drawer-url"></div>
+    <button class="ma-drawer-newtab" id="ma-drawer-newtab-btn">Open full tab &#x2197;</button>
+  </div>
+  <div class="ma-drawer-body">
+    <iframe class="ma-drawer-frame" id="ma-drawer-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"></iframe>
+    <div class="ma-drawer-status show" id="ma-drawer-status">
+      <div class="ma-status-icon">🔗</div>
+      <div class="ma-status-msg" id="ma-status-msg">Loading MAWM…</div>
+      <button class="ma-status-action" id="ma-status-action">Open in new tab ↗</button>
+    </div>
+  </div>
+</div>
+
 <div class="warning" id="warning">
   &#x26A0; Make sure all dept files are in the same folder as this menu file.
 </div>
@@ -256,7 +411,7 @@ var isDark    = true;
 
 // ── TABS ───────────────────────────────────────────────
 function switchTab(name) {
-  ['reports','live'].forEach(function(t) {
+  ['reports','live','mawm'].forEach(function(t) {
     document.getElementById('tab-' + t).classList.toggle('active', t === name);
     document.getElementById('panel-' + t).classList.toggle('active', t === name);
   });
@@ -298,8 +453,119 @@ document.getElementById('date').textContent = new Date().toLocaleDateString();
 initTheme();
 try {
   var savedTab = localStorage.getItem(TAB_KEY);
-  if (savedTab === 'live') switchTab('live');
+  if (savedTab === 'live' || savedTab === 'mawm') switchTab(savedTab);
 } catch(e) {}
+
+// ── MAWM LINKS ────────────────────────────────────────
+var MA_BASE = 'https://nrdrp.sce.manh.com/udc/dm/screen/';
+var maCurrentUrl = '';
+
+function maUrl(path) {
+  // Accept full URLs or bare paths like "dcorder/WaveRuns"
+  if (path.startsWith('http')) return path;
+  return MA_BASE + path;
+}
+
+function maNewTab(path) {
+  window.open(maUrl(path), '_blank');
+}
+
+function maOpenCustom() {
+  var val = (document.getElementById('ma-custom-url').value || '').trim();
+  if (!val) return;
+  maDrawer(val, val);
+}
+
+function maDrawer(title, path) {
+  var url = maUrl(path);
+  maCurrentUrl = url;
+  document.getElementById('ma-drawer-title').textContent = title;
+  document.getElementById('ma-drawer-url').textContent = url;
+  document.getElementById('ma-drawer-newtab-btn').onclick = function() { window.open(url, '_blank'); };
+  document.getElementById('ma-status-action').onclick = function() { window.open(url, '_blank'); };
+
+  var frame = document.getElementById('ma-drawer-frame');
+  var status = document.getElementById('ma-drawer-status');
+  var statusMsg = document.getElementById('ma-status-msg');
+
+  // Show loading state
+  frame.style.display = 'none';
+  status.classList.add('show');
+  document.getElementById('ma-status-icon') && (document.querySelector('.ma-status-icon').textContent = '⏳');
+  statusMsg.textContent = 'Loading MAWM…';
+
+  // Open drawer
+  document.getElementById('ma-overlay').classList.add('open');
+  document.getElementById('ma-drawer').classList.add('open');
+
+  // Attempt to load iframe — detect X-Frame-Options block via load event
+  frame.onload = function() {
+    // If it loaded something, try to show it
+    // Accessing contentDocument throws if blocked by CORS/X-Frame-Options
+    try {
+      var doc = frame.contentDocument || frame.contentWindow.document;
+      // If the page loaded but is empty or an error page, doc.body may exist but be short
+      if (doc && doc.body) {
+        frame.style.display = 'block';
+        status.classList.remove('show');
+        return;
+      }
+    } catch(e) { /* cross-origin block — fall through to fallback */ }
+    maShowBlocked(url);
+  };
+  frame.onerror = function() { maShowBlocked(url); };
+
+  // Set a timeout — if frame doesn't load in 4s, assume it's blocked
+  var loadTimer = setTimeout(function() {
+    if (status.classList.contains('show') && statusMsg.textContent === 'Loading MAWM…') {
+      maShowBlocked(url);
+    }
+  }, 4000);
+
+  frame.onload = function() {
+    clearTimeout(loadTimer);
+    try {
+      var doc = frame.contentDocument || frame.contentWindow.document;
+      if (doc && doc.body && doc.body.innerHTML.length > 100) {
+        frame.style.display = 'block';
+        status.classList.remove('show');
+        return;
+      }
+    } catch(e) {}
+    maShowBlocked(url);
+  };
+
+  frame.src = url;
+}
+
+function maShowBlocked(url) {
+  var frame = document.getElementById('ma-drawer-frame');
+  var status = document.getElementById('ma-drawer-status');
+  frame.style.display = 'none';
+  status.classList.add('show');
+  document.querySelector('.ma-status-icon').textContent = '🔒';
+  document.getElementById('ma-status-msg').textContent =
+    'MAWM blocked this site from loading in a panel — this is a security setting on their end, not a bug. Click below to open it in a full tab instead (auto-login applies).';
+}
+
+function maCloseDrawer() {
+  document.getElementById('ma-overlay').classList.remove('open');
+  document.getElementById('ma-drawer').classList.remove('open');
+  // Clear iframe src after animation so it stops loading in background
+  setTimeout(function() {
+    var frame = document.getElementById('ma-drawer-frame');
+    frame.src = 'about:blank';
+    frame.style.display = 'none';
+    document.getElementById('ma-drawer-status').classList.add('show');
+    document.querySelector('.ma-status-icon').textContent = '🔗';
+    document.getElementById('ma-status-msg').textContent = 'Loading MAWM…';
+  }, 300);
+}
+
+// Close drawer on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') maCloseDrawer();
+});
 
 function toggleWhatsNew() {
   var panel = document.getElementById('whats-new-panel');

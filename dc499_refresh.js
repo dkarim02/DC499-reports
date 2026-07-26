@@ -100,6 +100,20 @@ async function getAccessToken() {
   }
 }
 
+// Silent variant for --serve mode: never opens a browser, throws AuthError on failure
+class AuthError extends Error {}
+async function getAccessTokenSilent() {
+  const stored = loadToken();
+  if (!stored?.refresh_token) throw new AuthError('No refresh token — run --auth first');
+  try {
+    const fresh = await refreshAccessToken(stored.refresh_token);
+    saveToken({ ...stored, ...fresh });
+    return fresh.access_token;
+  } catch (e) {
+    throw new AuthError('Token refresh failed: ' + e.message);
+  }
+}
+
 // ── HTTP helpers ───────────────────────────────────────────────────────────────
 function jsonPost(url, body, headers = {}) {
   return new Promise((resolve, reject) => {
@@ -739,6 +753,7 @@ SELECT
   TOTAL_ORDERS,
   TOTAL_OLPNS,
   TOTAL_NUMBER_OF_TASKS,
+  TOTAL_NUMBER_OF_TASKS_DETAILS,
   CREATED_TIMESTAMP,
   UPDATED_TIMESTAMP
 FROM default_workrelease.WR_BATCH
@@ -749,32 +764,8 @@ WHERE FACILITY_ID = '${FACILITY}'
   )
 ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
 
-  // Open tasks per WORK_RELEASE_BATCH_ID (status 3000=queued, 5000=assigned, 7000=in progress)
-  const sqlTasks = `
-SELECT
-  WORK_RELEASE_BATCH_ID,
-  SUM(CASE WHEN STATUS IN ('3000','5000','7000') THEN 1 ELSE 0 END) AS open_tasks,
-  SUM(CASE WHEN STATUS NOT IN ('9000') THEN 1 ELSE 0 END)           AS total_tasks
-FROM default_task.TSK_TASK
-WHERE FACILITY_ID = '${FACILITY}'
-  AND TRANSACTION_TYPE_ID = 'Pick'
-  AND CREATED_TIMESTAMP >= '${startStr}'
-GROUP BY WORK_RELEASE_BATCH_ID`.trim();
-
-  const [resp, respTasks] = await Promise.all([
-    mcpQuery(accessToken, sql),
-    mcpQuery(accessToken, sqlTasks).catch(() => ({ rows: [] })),
-  ]);
+  const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
-
-  // Build task lookup keyed by WORK_RELEASE_BATCH_ID
-  const taskMap = {};
-  for (const r of (respTasks.rows || [])) {
-    taskMap[r.WORK_RELEASE_BATCH_ID] = {
-      open_tasks:  Number(r.open_tasks),
-      total_tasks: Number(r.total_tasks),
-    };
-  }
 
   // MAWM timestamps have no timezone marker — always force UTC before converting
   const forceUtc = d => { const s = String(d).replace(' ','T'); return (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s)) ? s : s + 'Z'; };
@@ -814,16 +805,15 @@ GROUP BY WORK_RELEASE_BATCH_ID`.trim();
       ? Math.round((new Date(forceUtc(clearedUtc)) - new Date(forceUtc(releasedUtc))) / 60000)
       : null;
 
-    const tasks = taskMap[r.WORK_RELEASE_BATCH_ID] || null;
-
     return {
       batch_num:              i + 1,
       batch_id:               r.BATCH_ID,
       work_release_batch_id:  r.WORK_RELEASE_BATCH_ID,
       total_orders:           Number(r.TOTAL_ORDERS),
       total_olpns:            Number(r.TOTAL_OLPNS),
-      open_tasks:             tasks ? tasks.open_tasks  : null,
-      total_tasks:            tasks ? tasks.total_tasks : Number(r.TOTAL_NUMBER_OF_TASKS),
+      open_tasks:             null,
+      total_tasks:            Number(r.TOTAL_NUMBER_OF_TASKS),
+      total_task_details:     Number(r.TOTAL_NUMBER_OF_TASKS_DETAILS),
       status_code:            statusCode,
       status_label:           BATCH_STATUS_LABELS[statusCode] || statusCode,
       released_pdt:           toPdt(releasedUtc),
@@ -930,11 +920,29 @@ async function queryAndWrite(accessToken) {
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
 async function serveMode(port, intervalMin, accessToken, openPage) {
-  let cache = null;
+  let cache        = null;
+  let authNeeded   = false;
+  let lastAuthWarn = 0;
 
   async function refresh() {
     try {
-      try { accessToken = await getAccessToken(); } catch {}
+      // Try a silent token refresh every cycle — never opens a browser
+      try {
+        accessToken = await getAccessTokenSilent();
+        authNeeded  = false;
+      } catch (e) {
+        if (e instanceof AuthError) {
+          authNeeded = true;
+          const now = Date.now();
+          // Only print the warning once per 5 minutes so it doesn't spam
+          if (now - lastAuthWarn > 5 * 60 * 1000) {
+            lastAuthWarn = now;
+            console.error(`\n[${ts()}] ⚠  TOKEN EXPIRED — run: node dc499_refresh.js --auth\n`);
+          }
+          return; // skip this cycle, keep old cache, retry next interval
+        }
+        throw e;
+      }
       cache = await queryAndWrite(accessToken);
       console.log(`[${ts()}] ✓ Cache updated`);
     } catch (e) {
@@ -958,6 +966,7 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
         generated:   cache?.recvData?.generated || null,
         associates:  cache?.recvData?.associates?.length || 0,
         nextRefresh: new Date(Date.now() + intervalMs).toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles' }),
+        auth_needed: authNeeded,
       }));
       return;
     }
