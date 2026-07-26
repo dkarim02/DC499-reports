@@ -753,7 +753,14 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
 
   // MAWM timestamps have no timezone marker — always force UTC before converting
   const forceUtc = d => { const s = String(d).replace(' ','T'); return (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s)) ? s : s + 'Z'; };
-  const toPdt = d => d ? new Date(forceUtc(d)).toLocaleString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true }) : null;
+  const toPdt = d => {
+    if (!d) return null;
+    // toLocaleString with named timezone is unreliable on Node builds without full ICU.
+    // DC499 shift runs in PDT (UTC-7 summer) — apply offset directly.
+    const pdt = new Date(new Date(forceUtc(d)).getTime() - 7 * 3600000);
+    const h = pdt.getUTCHours(), m = pdt.getUTCMinutes();
+    return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
+  };
 
   // Build release events — group by WORK_RELEASE_BATCH_ID to get interval timestamps
   const releaseGroups = {};
