@@ -838,8 +838,13 @@ GROUP BY WORK_RELEASE_BATCH_ID`.trim();
   });
 
   const cleared     = batches.filter(b => b.is_cleared);
-  const avgClear    = cleared.length
-    ? Math.round(cleared.reduce((s,b) => s + b.mins_to_clear, 0) / cleared.length)
+  // Only average batches released this shift (CREATED >= shiftStart) so lingering
+  // cross-midnight batches don't skew the number.
+  const clearedThisShift = cleared.filter(b =>
+    b.released_utc && new Date(forceUtc(b.released_utc)) >= shiftStart
+  );
+  const avgClear    = clearedThisShift.length
+    ? Math.round(clearedThisShift.reduce((s,b) => s + b.mins_to_clear, 0) / clearedThisShift.length)
     : null;
   const intervals   = Object.values(intervalMap);
   const avgInterval = intervals.length
