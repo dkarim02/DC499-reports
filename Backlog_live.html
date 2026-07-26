@@ -287,9 +287,16 @@
 
   <div class="stale-banner" id="stale-banner"></div>
 
-  <div class="tab-bar">
+  <div class="tab-bar" style="align-items:center;">
     <button class="tab-btn active" id="tb-orders" onclick="setTab('orders')">Order Backlog</button>
     <button class="tab-btn"        id="tb-batches" onclick="setTab('batches')">Batches</button>
+    <div style="flex:1;"></div>
+    <a href="https://nrdrp.sce.manh.com/udc/dm-config/screen/dcorder/OrderPlanningStrategy" target="_blank"
+       style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-muted);text-decoration:none;white-space:nowrap;margin-right:4px;transition:background 0.12s,color 0.12s,border-color 0.12s;"
+       onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)';this.style.background='var(--accent-bg)'"
+       onmouseout="this.style.color='';this.style.borderColor='';this.style.background=''">
+      Order Planning &#x2197;
+    </a>
   </div>
 
   <!-- ── Tab: Order Backlog ───────────────────────────────────────────────── -->
