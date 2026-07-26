@@ -883,9 +883,19 @@ async function notifyNewCleared(batchStatusData) {
                 String(tsPdt.getUTCMinutes()).padStart(2,'0') + ' ' +
                 (tsPdt.getUTCHours() >= 12 ? 'PM' : 'AM');
 
-  const rows = newOnes.map(b =>
-    `${b.batch_id}  ·  Released ${b.released_pdt || '—'}  →  Cleared ${b.cleared_pdt || '—'}  ·  ${b.mins_to_clear != null ? b.mins_to_clear + ' min' : '—'}  ·  ${b.total_olpns || '—'} oLPNs`
-  ).join('\n');
+  const batchRows = newOnes.map(b => ({
+    type: 'ColumnSet', spacing: 'Small', separator: false,
+    columns: [
+      { type: 'Column', width: 'stretch', items: [
+        { type: 'TextBlock', text: b.batch_id || '—', weight: 'Bolder', size: 'Small', color: 'Light' },
+        { type: 'TextBlock', text: `${b.released_pdt || '—'}  →  ${b.cleared_pdt || '—'}`, size: 'Small', isSubtle: true, spacing: 'None', wrap: true },
+      ]},
+      { type: 'Column', width: 'auto', items: [
+        { type: 'TextBlock', text: b.mins_to_clear != null ? `${b.mins_to_clear} min` : '—', weight: 'Bolder', color: 'Good', size: 'Small', horizontalAlignment: 'Right' },
+        { type: 'TextBlock', text: `${b.total_olpns || '—'} oLPNs`, size: 'Small', isSubtle: true, spacing: 'None', horizontalAlignment: 'Right' },
+      ]},
+    ],
+  }));
 
   const card = {
     type: 'message',
@@ -895,19 +905,19 @@ async function notifyNewCleared(batchStatusData) {
         $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
         type: 'AdaptiveCard', version: '1.4',
         body: [
-          { type: 'Container', style: 'emphasis', items: [{ type: 'ColumnSet', columns: [
-            { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: 'DC499 · Batches', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
+          { type: 'Container', style: 'attention', items: [{ type: 'ColumnSet', columns: [
+            { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: '🩷 DC499 · Batches', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
             { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: `2nd shift · ${tsStr}`, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
           ]}]},
-          { type: 'Container', items: [{ type: 'ColumnSet', columns: [
+          { type: 'Container', spacing: 'Medium', items: [{ type: 'ColumnSet', columns: [
             { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Total',    size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(s.total_batches   || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None' }] },
             { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Cleared',  size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(s.cleared_batches || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None', color: 'Good'    }] },
             { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Active',   size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(s.active_batches  || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None', color: 'Warning' }] },
             { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Avg Clear',size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: s.avg_mins_to_clear != null ? `${s.avg_mins_to_clear} min` : '—', size: 'ExtraLarge', weight: 'Bolder', spacing: 'None' }] },
           ]}]},
-          { type: 'Container', separator: true, items: [
-            { type: 'TextBlock', text: `Newly Cleared (${newOnes.length})`, weight: 'Bolder', size: 'Small', spacing: 'Medium' },
-            { type: 'TextBlock', text: rows, wrap: true, size: 'Small', fontType: 'Monospace', isSubtle: true, spacing: 'Small' },
+          { type: 'Container', separator: true, spacing: 'Medium', items: [
+            { type: 'TextBlock', text: `✅  Newly Cleared  (${newOnes.length})`, weight: 'Bolder', size: 'Small', spacing: 'Small', color: 'Good' },
+            ...batchRows,
           ]},
         ],
       },

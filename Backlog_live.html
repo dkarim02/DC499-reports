@@ -1299,11 +1299,11 @@ function sendSelectedBatches() {
   var summary = (lastBtData.summary || {});
   var tsStr = new Date().toLocaleString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true});
   var bodyItems = [
-    {type:'Container',style:'emphasis',items:[{type:'ColumnSet',columns:[
-      {type:'Column',width:'auto',items:[{type:'TextBlock',text:'DC499 · Batches',weight:'Bolder',size:'Medium',color:'Light'}]},
+    {type:'Container',style:'attention',items:[{type:'ColumnSet',columns:[
+      {type:'Column',width:'auto',items:[{type:'TextBlock',text:'🩷 DC499 · Batches',weight:'Bolder',size:'Medium',color:'Light'}]},
       {type:'Column',width:'stretch',items:[{type:'TextBlock',text:'2nd shift · '+tsStr,color:'Light',isSubtle:true,horizontalAlignment:'Right'}]},
     ]}]},
-    {type:'Container',items:[{type:'ColumnSet',columns:[
+    {type:'Container',spacing:'Medium',items:[{type:'ColumnSet',columns:[
       {type:'Column',width:'stretch',items:[{type:'TextBlock',text:'Total',    size:'Small',isSubtle:true,weight:'Bolder'},{type:'TextBlock',text:String(summary.total_batches  ||0),size:'ExtraLarge',weight:'Bolder',spacing:'None'}]},
       {type:'Column',width:'stretch',items:[{type:'TextBlock',text:'Cleared',  size:'Small',isSubtle:true,weight:'Bolder'},{type:'TextBlock',text:String(summary.cleared_batches||0),size:'ExtraLarge',weight:'Bolder',spacing:'None',color:'Good'}]},
       {type:'Column',width:'stretch',items:[{type:'TextBlock',text:'Active',   size:'Small',isSubtle:true,weight:'Bolder'},{type:'TextBlock',text:String(summary.active_batches ||0),size:'ExtraLarge',weight:'Bolder',spacing:'None',color:'Warning'}]},
@@ -1311,16 +1311,37 @@ function sendSelectedBatches() {
     ]}]},
   ];
   if (active.length) {
-    bodyItems.push({type:'Container',separator:true,items:[
-      {type:'TextBlock',text:'Active ('+active.length+')',weight:'Bolder',size:'Small',spacing:'Medium',color:'Warning'},
-      {type:'TextBlock',text:active.map(function(b){ return (b.batch_id||'—')+'  ·  '+(b.status_label||'—')+'  ·  Released '+(b.released_pdt||'—')+'  ·  '+(b.total_olpns||'—')+' oLPNs'; }).join('\n'),wrap:true,size:'Small',fontType:'Monospace',isSubtle:true,spacing:'Small'},
-    ]});
+    var activeRows = active.map(function(b){
+      return {type:'ColumnSet',spacing:'Small',columns:[
+        {type:'Column',width:'stretch',items:[
+          {type:'TextBlock',text:b.batch_id||'—',weight:'Bolder',size:'Small',color:'Light'},
+          {type:'TextBlock',text:(b.status_label||'—')+'  ·  Released '+(b.released_pdt||'—'),size:'Small',isSubtle:true,spacing:'None',wrap:true},
+        ]},
+        {type:'Column',width:'auto',items:[
+          {type:'TextBlock',text:(b.total_olpns||'—')+' oLPNs',size:'Small',isSubtle:true,horizontalAlignment:'Right'},
+        ]},
+      ]};
+    });
+    bodyItems.push({type:'Container',separator:true,spacing:'Medium',items:[
+      {type:'TextBlock',text:'🔄  Active  ('+active.length+')',weight:'Bolder',size:'Small',spacing:'Small',color:'Warning'},
+    ].concat(activeRows)});
   }
   if (cleared.length) {
-    bodyItems.push({type:'Container',separator:!!active.length,items:[
-      {type:'TextBlock',text:'Cleared ('+cleared.length+')',weight:'Bolder',size:'Small',spacing:'Medium',color:'Good'},
-      {type:'TextBlock',text:cleared.map(function(b){ return (b.batch_id||'—')+'  ·  Released '+(b.released_pdt||'—')+'  →  Cleared '+(b.cleared_pdt||'—')+'  ·  '+(b.mins_to_clear!=null ? b.mins_to_clear+' min':'—')+'  ·  '+(b.total_olpns||'—')+' oLPNs'; }).join('\n'),wrap:true,size:'Small',fontType:'Monospace',isSubtle:true,spacing:'Small'},
-    ]});
+    var clearedRows = cleared.map(function(b){
+      return {type:'ColumnSet',spacing:'Small',columns:[
+        {type:'Column',width:'stretch',items:[
+          {type:'TextBlock',text:b.batch_id||'—',weight:'Bolder',size:'Small',color:'Light'},
+          {type:'TextBlock',text:(b.released_pdt||'—')+'  →  '+(b.cleared_pdt||'—'),size:'Small',isSubtle:true,spacing:'None',wrap:true},
+        ]},
+        {type:'Column',width:'auto',items:[
+          {type:'TextBlock',text:b.mins_to_clear!=null ? b.mins_to_clear+' min':'—',weight:'Bolder',color:'Good',size:'Small',horizontalAlignment:'Right'},
+          {type:'TextBlock',text:(b.total_olpns||'—')+' oLPNs',size:'Small',isSubtle:true,spacing:'None',horizontalAlignment:'Right'},
+        ]},
+      ]};
+    });
+    bodyItems.push({type:'Container',separator:!!active.length,spacing:'Medium',items:[
+      {type:'TextBlock',text:'✅  Cleared  ('+cleared.length+')',weight:'Bolder',size:'Small',spacing:'Small',color:'Good'},
+    ].concat(clearedRows)});
   }
   var card = {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',content:{'$schema':'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body:bodyItems}}]};
   fetch(TEAMS_WEBHOOK_BATCHES, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(card)})
