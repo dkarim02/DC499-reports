@@ -897,16 +897,20 @@ async function notifyNewCleared(batchStatusData) {
                 String(tsPdt.getUTCMinutes()).padStart(2,'0') + ' ' +
                 (tsPdt.getUTCHours() >= 12 ? 'PM' : 'AM');
 
-  const batchRows = newOnes.map(b => ({
-    type: 'ColumnSet', spacing: 'Small', separator: false,
-    columns: [
-      { type: 'Column', width: 'stretch', items: [
-        { type: 'TextBlock', text: b.batch_id || '—', weight: 'Bolder', size: 'Small', color: 'Light' },
-        { type: 'TextBlock', text: `${b.released_pdt || '—'}  →  ${b.cleared_pdt || '—'}`, size: 'Small', isSubtle: true, spacing: 'None', wrap: true },
-      ]},
-      { type: 'Column', width: 'auto', items: [
-        { type: 'TextBlock', text: b.mins_to_clear != null ? `${b.mins_to_clear} min` : '—', weight: 'Bolder', color: 'Good', size: 'Small', horizontalAlignment: 'Right' },
-        { type: 'TextBlock', text: `${b.total_olpns || '—'} oLPNs`, size: 'Small', isSubtle: true, spacing: 'None', horizontalAlignment: 'Right' },
+  const batchCards = newOnes.map((b, i) => ({
+    type: 'Container',
+    separator: i > 0,
+    spacing: i > 0 ? 'Small' : 'None',
+    items: [
+      { type: 'ColumnSet', spacing: 'Small', columns: [
+        { type: 'Column', width: 'stretch', items: [
+          { type: 'TextBlock', text: `✅  ${b.batch_id || '—'}`, weight: 'Bolder', size: 'Medium', color: 'Good', wrap: false },
+          { type: 'TextBlock', text: `Released  ${b.released_pdt || '—'}   →   Cleared  ${b.cleared_pdt || '—'}`, size: 'Small', isSubtle: true, spacing: 'None', wrap: true },
+        ]},
+        { type: 'Column', width: 'auto', verticalContentAlignment: 'Center', items: [
+          { type: 'TextBlock', text: b.mins_to_clear != null ? `${b.mins_to_clear} min` : '—', weight: 'Bolder', size: 'ExtraLarge', color: 'Good', horizontalAlignment: 'Right', spacing: 'None' },
+          { type: 'TextBlock', text: `${b.total_olpns || '—'} oLPNs`, size: 'Small', isSubtle: true, spacing: 'None', horizontalAlignment: 'Right' },
+        ]},
       ]},
     ],
   }));
@@ -929,9 +933,9 @@ async function notifyNewCleared(batchStatusData) {
             { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Active',   size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: String(s.active_batches  || 0), size: 'ExtraLarge', weight: 'Bolder', spacing: 'None', color: 'Warning' }] },
             { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: 'Avg Clear',size: 'Small', isSubtle: true, weight: 'Bolder' }, { type: 'TextBlock', text: s.avg_mins_to_clear != null ? `${s.avg_mins_to_clear} min` : '—', size: 'ExtraLarge', weight: 'Bolder', spacing: 'None' }] },
           ]}]},
-          { type: 'Container', separator: true, spacing: 'Medium', items: [
-            { type: 'TextBlock', text: `✅  Newly Cleared  (${newOnes.length})`, weight: 'Bolder', size: 'Small', spacing: 'Small', color: 'Good' },
-            ...batchRows,
+          { type: 'Container', separator: true, spacing: 'Medium', style: 'emphasis', items: [
+            { type: 'TextBlock', text: `Newly Cleared  ·  ${newOnes.length} batch${newOnes.length > 1 ? 'es' : ''}`, weight: 'Bolder', size: 'Small', spacing: 'Small', color: 'Good', isSubtle: false },
+            ...batchCards,
           ]},
         ],
       },
