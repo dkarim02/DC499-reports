@@ -738,6 +738,7 @@ SELECT
   STATUS_ID,
   TOTAL_ORDERS,
   TOTAL_OLPNS,
+  TOTAL_NUMBER_OF_TASKS,
   CREATED_TIMESTAMP,
   UPDATED_TIMESTAMP
 FROM default_workrelease.WR_BATCH
@@ -748,8 +749,32 @@ WHERE FACILITY_ID = '${FACILITY}'
   )
 ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
 
-  const resp = await mcpQuery(accessToken, sql);
+  // Open tasks per WORK_RELEASE_BATCH_ID (status 3000=queued, 5000=assigned, 7000=in progress)
+  const sqlTasks = `
+SELECT
+  WORK_RELEASE_BATCH_ID,
+  SUM(CASE WHEN STATUS IN ('3000','5000','7000') THEN 1 ELSE 0 END) AS open_tasks,
+  SUM(CASE WHEN STATUS NOT IN ('9000') THEN 1 ELSE 0 END)           AS total_tasks
+FROM default_task.TSK_TASK
+WHERE FACILITY_ID = '${FACILITY}'
+  AND TRANSACTION_TYPE_ID = 'Pick'
+  AND CREATED_TIMESTAMP >= '${startStr}'
+GROUP BY WORK_RELEASE_BATCH_ID`.trim();
+
+  const [resp, respTasks] = await Promise.all([
+    mcpQuery(accessToken, sql),
+    mcpQuery(accessToken, sqlTasks).catch(() => ({ rows: [] })),
+  ]);
   const rows = resp.rows || [];
+
+  // Build task lookup keyed by WORK_RELEASE_BATCH_ID
+  const taskMap = {};
+  for (const r of (respTasks.rows || [])) {
+    taskMap[r.WORK_RELEASE_BATCH_ID] = {
+      open_tasks:  Number(r.open_tasks),
+      total_tasks: Number(r.total_tasks),
+    };
+  }
 
   // MAWM timestamps have no timezone marker — always force UTC before converting
   const forceUtc = d => { const s = String(d).replace(' ','T'); return (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s)) ? s : s + 'Z'; };
@@ -789,12 +814,16 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
       ? Math.round((new Date(forceUtc(clearedUtc)) - new Date(forceUtc(releasedUtc))) / 60000)
       : null;
 
+    const tasks = taskMap[r.WORK_RELEASE_BATCH_ID] || null;
+
     return {
       batch_num:              i + 1,
       batch_id:               r.BATCH_ID,
       work_release_batch_id:  r.WORK_RELEASE_BATCH_ID,
       total_orders:           Number(r.TOTAL_ORDERS),
       total_olpns:            Number(r.TOTAL_OLPNS),
+      open_tasks:             tasks ? tasks.open_tasks  : null,
+      total_tasks:            tasks ? tasks.total_tasks : Number(r.TOTAL_NUMBER_OF_TASKS),
       status_code:            statusCode,
       status_label:           BATCH_STATUS_LABELS[statusCode] || statusCode,
       released_pdt:           toPdt(releasedUtc),

@@ -385,7 +385,7 @@
           <th class="r">#</th>
           <th>Batch</th>
           <th>Released</th>
-          <th class="r">Orders</th>
+          <th class="r">Tasks Left</th>
           <th class="r">oLPNs</th>
           <th>Status</th>
           <th class="r">In Status</th>
@@ -402,7 +402,7 @@
           <th class="r">#</th>
           <th>Batch</th>
           <th>Released</th>
-          <th class="r">Orders</th>
+          <th class="r">Tasks Done</th>
           <th class="r">oLPNs</th>
           <th>Cleared</th>
           <th class="r">Time to Clear</th>
@@ -813,6 +813,18 @@ function batchBadge(b) {
   return '<span class="status-badge badge-queued">'+label+'</span>';
 }
 
+function btTasksCell(b, isCleared) {
+  var total = b.total_tasks != null ? Number(b.total_tasks) : null;
+  var open  = b.open_tasks  != null ? Number(b.open_tasks)  : null;
+  if (isCleared) {
+    return total != null ? '<span class="dur-fast">' + total + '</span>' : '—';
+  }
+  if (open == null || total == null) return total != null ? String(total) : '—';
+  if (open === 0) return '<span class="dur-fast">0 / ' + total + '</span>';
+  var cls = open <= 2 ? 'dur-fast' : open <= Math.ceil(total / 2) ? 'dur-mid' : 'dur-slow';
+  return '<span class="' + cls + '">' + open + '</span><span style="color:var(--text-hint);font-size:11px;"> / ' + total + '</span>';
+}
+
 function btInStatusCell(b) {
   if (!b.status_updated_utc) return '<span class="dur-none">—</span>';
   var s = String(b.status_updated_utc).replace(' ','T');
@@ -880,7 +892,7 @@ function renderBatchData(data) {
       html += '<td class="r batch-num">'+b.batch_num+'</td>';
       html += '<td style="font-family:monospace;font-size:12px;">'+(b.batch_id||'—')+'</td>';
       html += '<td>'+(b.released_pdt||'—')+'</td>';
-      html += '<td class="r">'+fmtN(b.total_orders)+'</td>';
+      html += '<td class="r">'+btTasksCell(b, withClear)+'</td>';
       html += '<td class="r">'+fmtN(b.total_olpns)+'</td>';
       if (withStatus) html += '<td>'+batchBadge(b)+'</td>';
       if (withStatus) html += '<td class="r">'+btInStatusCell(b)+'</td>';

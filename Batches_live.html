@@ -174,7 +174,7 @@
         <th class="r">#</th>
         <th>Batch</th>
         <th>Released</th>
-        <th class="r">Orders</th>
+        <th class="r">Tasks Left</th>
         <th class="r">oLPNs</th>
         <th>Status</th>
         <th class="r">In Status</th>
@@ -191,7 +191,7 @@
         <th class="r">#</th>
         <th>Batch</th>
         <th>Released</th>
-        <th class="r">Orders</th>
+        <th class="r">Tasks Done</th>
         <th class="r">oLPNs</th>
         <th>Cleared</th>
         <th class="r">Time to Clear</th>
@@ -311,6 +311,18 @@ function badgeHtml(b) {
   return                                                      '<span class="status-badge badge-queued">'  + label + '</span>';
 }
 
+function tasksCell(b, isCleared) {
+  var total = b.total_tasks != null ? Number(b.total_tasks) : null;
+  var open  = b.open_tasks  != null ? Number(b.open_tasks)  : null;
+  if (isCleared) {
+    return total != null ? '<span class="dur-fast">' + total + '</span>' : '—';
+  }
+  if (open == null || total == null) return total != null ? String(total) : '—';
+  if (open === 0) return '<span class="dur-fast">0 / ' + total + '</span>';
+  var cls = open <= 2 ? 'dur-fast' : open <= Math.ceil(total / 2) ? 'dur-mid' : 'dur-slow';
+  return '<span class="' + cls + '">' + open + '</span><span style="color:var(--text-hint);font-size:11px;"> / ' + total + '</span>';
+}
+
 function inStatusCell(b) {
   if (!b.status_updated_utc) return '<span class="dur-none">—</span>';
   var s = String(b.status_updated_utc).replace(' ','T');
@@ -384,7 +396,7 @@ function renderData(data) {
       htmlA += '<td class="r batch-num">' + b.batch_num + '</td>';
       htmlA += '<td style="font-family:monospace;font-size:12px;">' + (b.batch_id || '—') + '</td>';
       htmlA += '<td>' + (b.released_pdt || '—') + '</td>';
-      htmlA += '<td class="r">' + fmt(b.total_orders) + '</td>';
+      htmlA += '<td class="r">' + tasksCell(b, false) + '</td>';
       htmlA += '<td class="r">' + fmt(b.total_olpns) + '</td>';
       htmlA += '<td>' + badgeHtml(b) + '</td>';
       htmlA += '<td class="r">' + inStatusCell(b) + '</td>';
@@ -413,7 +425,7 @@ function renderData(data) {
       htmlC += '<td class="r batch-num">' + b.batch_num + '</td>';
       htmlC += '<td style="font-family:monospace;font-size:12px;">' + (b.batch_id || '—') + '</td>';
       htmlC += '<td>' + (b.released_pdt || '—') + '</td>';
-      htmlC += '<td class="r">' + fmt(b.total_orders) + '</td>';
+      htmlC += '<td class="r">' + tasksCell(b, true) + '</td>';
       htmlC += '<td class="r">' + fmt(b.total_olpns) + '</td>';
       htmlC += '<td>' + (b.cleared_pdt || '—') + '</td>';
       htmlC += '<td class="r">' + fmtDur(b.mins_to_clear) + '</td>';
