@@ -1143,9 +1143,10 @@ function gitPush() {
   });
   try {
     execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync(`git commit -m "Live update -- ${stamp}"`,      { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync('git pull --rebase --autostash origin main',    { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync('git push origin main',                         { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync(`git commit -m "Live update -- ${stamp}"`,             { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git fetch origin main',                               { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git rebase --autostash origin/main',                  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git push origin main',                                { cwd: REPORT_DIR, stdio: 'pipe' });
     console.log(`[${ts()}] ✓ Pushed to git`);
   } catch (e) {
     const msg = e.stderr?.toString() || e.stdout?.toString() || e.message;
