@@ -271,6 +271,58 @@
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
 
+  /* ── Retail Replen widget ─────────────────────────────────────────────── */
+  .rr-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;margin-top:1rem;overflow:hidden;}
+  .rr-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;}
+  .rr-header:hover{background:var(--surface2);}
+  .rr-header-left{display:flex;align-items:center;gap:8px;}
+  .rr-title{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .rr-pills{display:flex;gap:6px;}
+  .rr-pill{font-size:11px;font-weight:600;padding:1px 8px;border-radius:10px;border:0.5px solid var(--border);}
+  .rr-pill.items{background:var(--surface2);color:var(--text-muted);}
+  .rr-pill.orders{background:var(--accent-bg);color:var(--accent);}
+  .rr-pill.clear{background:var(--green-bg,#0f2e1a);color:var(--green);border-color:var(--green-border,#1a5c32);}
+  .rr-chevron{font-size:11px;color:var(--text-hint);transition:transform 0.2s;}
+  .rr-chevron.open{transform:rotate(180deg);}
+  .rr-body{display:none;border-top:0.5px solid var(--border-light);}
+  .rr-body.open{display:block;}
+  .rr-row{display:flex;align-items:center;padding:8px 14px;cursor:pointer;gap:10px;border-bottom:0.5px solid var(--border-light);}
+  .rr-row:last-child{border-bottom:none;}
+  .rr-row:hover{background:var(--surface2);}
+  .rr-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .rr-dot.red{background:var(--red);}
+  .rr-dot.yellow{background:var(--amber,#f59e0b);}
+  .rr-dot.green{background:var(--green);}
+  .rr-sku{font-size:13px;font-weight:700;color:var(--text);min-width:90px;}
+  .rr-gap{font-size:12px;color:var(--red);font-weight:600;min-width:90px;}
+  .rr-task-summary{font-size:12px;color:var(--text-muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rr-task-summary.warn{color:var(--red);font-weight:600;}
+  .rr-age{font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;flex-shrink:0;}
+  .rr-age.red{background:var(--red-bg,#2e1a1a);color:var(--red);border:0.5px solid var(--red-border,#6b2020);}
+  .rr-age.yellow{background:var(--yellow-bg,#2e2510);color:var(--amber,#f59e0b);border:0.5px solid var(--yellow-border,#6b4f10);}
+  .rr-age.green{background:var(--green-bg,#0f2e1a);color:var(--green);border:0.5px solid var(--green-border,#1a5c32);}
+  .rr-expand{display:none;padding:10px 14px 12px 30px;border-bottom:0.5px solid var(--border-light);background:var(--surface2);}
+  .rr-expand.open{display:block;}
+  .rr-expand:last-child{border-bottom:none;}
+  .rr-expand-grid{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px;}
+  .rr-metric{min-width:80px;}
+  .rr-metric-label{font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;}
+  .rr-metric-value{font-size:15px;font-weight:700;color:var(--text);}
+  .rr-metric-value.neg{color:var(--red);}
+  .rr-metric-value.pos{color:var(--green);}
+  .rr-tasks-label{font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;}
+  .rr-task-row{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px;border-top:0.5px solid var(--border-light);}
+  .rr-task-id{font-family:monospace;font-weight:600;color:var(--accent);}
+  .rr-task-status{font-size:11px;font-weight:600;padding:1px 6px;border-radius:4px;}
+  .rr-task-status.queued{background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border);}
+  .rr-task-status.assigned{background:var(--yellow-bg,#2e2510);color:var(--amber,#f59e0b);}
+  .rr-task-status.inprogress{background:var(--green-bg,#0f2e1a);color:var(--green);}
+  .rr-task-loc{color:var(--text-hint);font-size:11px;}
+  .rr-orders-label{font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;margin:8px 0 5px;}
+  .rr-order-chips{display:flex;flex-wrap:wrap;gap:5px;}
+  .rr-order-chip{font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border);font-family:monospace;}
+  .rr-no-task{font-size:12px;font-weight:600;color:var(--red);padding:5px 8px;background:var(--red-bg,#2e1a1a);border:0.5px solid var(--red-border,#6b2020);border-radius:5px;display:inline-block;margin-top:4px;}
+
   /* Batch picker modal */
   .bp-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;}
   .bp-overlay.open{display:flex;}
@@ -436,6 +488,24 @@
       <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
       No data yet. Click <strong>Refresh</strong> to reload.
     </div>
+
+    <!-- Retail Replen widget -->
+    <div class="rr-widget" id="rr-widget" style="display:none;">
+      <div class="rr-header" onclick="toggleRrWidget()">
+        <div class="rr-header-left">
+          <span class="rr-title">Retail Replen Watch</span>
+          <div class="rr-pills">
+            <span class="rr-pill items" id="rr-pill-items">— items</span>
+            <span class="rr-pill orders" id="rr-pill-orders">— orders</span>
+          </div>
+        </div>
+        <span class="rr-chevron" id="rr-chevron">&#9660;</span>
+      </div>
+      <div class="rr-body" id="rr-body">
+        <div id="rr-rows"></div>
+      </div>
+    </div>
+
   </div><!-- /#tab-orders -->
 
   <!-- ── Tab: Batches ─────────────────────────────────────────────────────── -->
@@ -1356,10 +1426,128 @@ function sendSelectedBatches() {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
+// ── Retail Replen widget ──────────────────────────────────────────────────────
+var rrOpen = false;
+var rrExpandOpen = {};
+
+function toggleRrWidget() {
+  rrOpen = !rrOpen;
+  document.getElementById('rr-body').classList.toggle('open', rrOpen);
+  document.getElementById('rr-chevron').classList.toggle('open', rrOpen);
+}
+
+function toggleRrRow(idx) {
+  rrExpandOpen[idx] = !rrExpandOpen[idx];
+  var el = document.getElementById('rr-expand-' + idx);
+  if (el) el.classList.toggle('open', rrExpandOpen[idx]);
+}
+
+function fetchRrData() {
+  var isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+    || /^192\.168\./.test(location.hostname) || /^10\./.test(location.hostname);
+  var url = (isLocal ? '/' : '') + 'retail_replen.json?t=' + Date.now();
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) { renderRrWidget(data); })
+    .catch(function() {});
+}
+
+function renderRrWidget(data) {
+  var widget = document.getElementById('rr-widget');
+  var items  = data.items || [];
+  var s      = data.summary || {};
+
+  if (!items.length) {
+    // All clear — show widget collapsed with green pill
+    widget.style.display = 'block';
+    document.getElementById('rr-pill-items').textContent = '0 items';
+    document.getElementById('rr-pill-items').className   = 'rr-pill clear';
+    document.getElementById('rr-pill-orders').style.display = 'none';
+    document.getElementById('rr-rows').innerHTML =
+      '<div style="padding:12px 14px;font-size:12px;color:var(--green);">All ecom demand covered by active face stock.</div>';
+    return;
+  }
+
+  widget.style.display = 'block';
+  var pillItems  = document.getElementById('rr-pill-items');
+  var pillOrders = document.getElementById('rr-pill-orders');
+  pillItems.textContent  = s.flagged_items  + ' item'  + (s.flagged_items  !== 1 ? 's'  : '');
+  pillOrders.textContent = s.orders_at_risk + ' order' + (s.orders_at_risk !== 1 ? 's'  : '');
+  pillItems.className    = 'rr-pill items';
+  pillOrders.style.display = '';
+
+  var statusLabel = { 'Queued': 'queued', 'Assigned': 'assigned', 'In Progress': 'inprogress' };
+
+  var html = items.map(function(item, idx) {
+    var sev      = item.age_severity || 'green';
+    var ageStr   = item.age_hrs != null ? item.age_hrs + ' hrs' : '—';
+    var tasks    = item.tasks || [];
+    var orders   = item.order_ids || [];
+
+    var taskSummary, taskSummaryCls;
+    if (!tasks.length) {
+      taskSummary    = 'No replen task — needs attention';
+      taskSummaryCls = 'rr-task-summary warn';
+    } else {
+      var inProg = tasks.filter(function(t) { return t.status === 'In Progress'; }).length;
+      var queued = tasks.filter(function(t) { return t.status === 'Queued'; }).length;
+      var parts  = [];
+      if (inProg) parts.push(inProg + ' in progress');
+      if (queued) parts.push(queued + ' queued');
+      taskSummary    = tasks.length + ' task' + (tasks.length !== 1 ? 's' : '') + ' — ' + parts.join(', ');
+      taskSummaryCls = 'rr-task-summary';
+    }
+
+    // Expanded section
+    var taskRowsHtml = tasks.length
+      ? '<div class="rr-tasks-label">Replen Tasks</div>' + tasks.map(function(t) {
+          var cls = statusLabel[t.status] || 'queued';
+          var loc = t.source && t.target ? t.source + ' → ' + t.target : '';
+          return '<div class="rr-task-row">' +
+            '<span class="rr-task-id">' + t.task_id + '</span>' +
+            '<span class="rr-task-status ' + cls + '">' + t.status + '</span>' +
+            (loc ? '<span class="rr-task-loc">' + loc + '</span>' : '') +
+            '</div>';
+        }).join('')
+      : '<span class="rr-no-task">No replen task exists — demand will not be filled automatically</span>';
+
+    var orderChips = orders.slice(0, 15).map(function(o) {
+      return '<span class="rr-order-chip">' + o + '</span>';
+    }).join('');
+    if (orders.length > 15) orderChips += '<span class="rr-order-chip">+' + (orders.length - 15) + ' more</span>';
+    var ordersHtml = orders.length
+      ? '<div class="rr-orders-label">Affected Orders (' + orders.length + ')</div><div class="rr-order-chips">' + orderChips + '</div>'
+      : '';
+
+    return '<div class="rr-row" onclick="toggleRrRow(' + idx + ')">' +
+        '<span class="rr-dot ' + sev + '"></span>' +
+        '<span class="rr-sku">' + item.item_id + '</span>' +
+        '<span class="rr-gap">' + item.gap + ' units</span>' +
+        '<span class="' + taskSummaryCls + '">' + taskSummary + '</span>' +
+        '<span class="rr-age ' + sev + '">' + ageStr + '</span>' +
+      '</div>' +
+      '<div class="rr-expand" id="rr-expand-' + idx + '">' +
+        '<div class="rr-expand-grid">' +
+          '<div class="rr-metric"><div class="rr-metric-label">Units Needed</div><div class="rr-metric-value">' + item.units_needed + '</div></div>' +
+          '<div class="rr-metric"><div class="rr-metric-label">Face Stock</div><div class="rr-metric-value ' + (item.face_stock > 0 ? '' : 'neg') + '">' + item.face_stock + '</div></div>' +
+          '<div class="rr-metric"><div class="rr-metric-label">Gap</div><div class="rr-metric-value neg">' + item.gap + '</div></div>' +
+          '<div class="rr-metric"><div class="rr-metric-label">Source (R1H/R2H)</div><div class="rr-metric-value ' + (item.source_stock > 0 ? 'pos' : 'neg') + '">' + item.source_stock + '</div></div>' +
+          '<div class="rr-metric"><div class="rr-metric-label">Orders</div><div class="rr-metric-value">' + item.order_count + '</div></div>' +
+        '</div>' +
+        taskRowsHtml +
+        ordersHtml +
+      '</div>';
+  }).join('');
+
+  document.getElementById('rr-rows').innerHTML = html;
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 (function(){ var v; try { v = localStorage.getItem('dc499_bt_view_v1'); } catch(e){} if (v === 'compact') setBtView('compact'); })();
 fetchBacklogData();
+fetchRrData();
+setInterval(fetchRrData, 2 * 60 * 1000);
 scheduleBlRefresh();
 </script>
 </body>
