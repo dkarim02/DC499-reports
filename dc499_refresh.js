@@ -945,8 +945,21 @@ WHERE FACILITY_ID = '${FACILITY}'
   )
 ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
 
-  const resp = await mcpQuery(accessToken, sql);
+  const sqlQueued = `
+SELECT COUNT(DISTINCT ORDER_ID) AS queued_orders
+FROM default_dcorder.DCO_ORDER
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_TYPE  = 'ECOM'
+  AND CANCELLED   = 0
+  AND MAXIMUM_STATUS = '1000'
+  AND CREATED_TIMESTAMP >= '${startStr}'`.trim();
+
+  const [resp, respQueued] = await Promise.all([
+    mcpQuery(accessToken, sql),
+    mcpQuery(accessToken, sqlQueued).catch(e => { console.warn(`  Queued orders query failed: ${e.message}`); return null; }),
+  ]);
   const rows = resp.rows || [];
+  const queuedOrders = respQueued ? Math.round(Number(respQueued.rows?.[0]?.queued_orders || 0)) : null;
 
   // MAWM timestamps have no timezone marker — always force UTC before converting
   const forceUtc = d => { const s = String(d).replace(' ','T'); return (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s)) ? s : s + 'Z'; };
@@ -1033,6 +1046,8 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
       active_batches:            batches.length - cleared.length,
       avg_mins_to_clear:         avgClear,
       avg_release_interval_mins: avgInterval,
+      queued_orders:             queuedOrders,
+      batch_threshold:           96,
     },
     batches,
   };

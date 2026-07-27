@@ -76,6 +76,28 @@
   .refresh-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:500;}
   .refresh-btn:hover{background:var(--accent);color:#fff;}
 
+  /* Next batch progress bar */
+  .next-batch-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:1.5rem;display:none;}
+  .next-batch-widget.visible{display:block;}
+  .nb-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .nb-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .nb-meta{display:flex;gap:16px;font-size:11px;color:var(--text-hint);}
+  .nb-meta span{display:flex;align-items:center;gap:4px;}
+  .nb-meta strong{color:var(--text-muted);}
+  .nb-bar-track{height:20px;background:var(--surface2);border-radius:6px;overflow:hidden;position:relative;}
+  .nb-bar-fill{height:100%;border-radius:6px;transition:width 0.6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;}
+  .nb-bar-fill.low{background:var(--accent);}
+  .nb-bar-fill.mid{background:var(--amber,#f59e0b);}
+  .nb-bar-fill.high{background:var(--green);}
+  .nb-bar-label{font-size:11px;font-weight:700;color:#fff;white-space:nowrap;}
+  .nb-bar-label.outside{position:absolute;left:calc(var(--pct) + 4px);top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:11px;font-weight:700;}
+  .nb-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;gap:6px;}
+  .nb-count{font-size:13px;font-weight:700;color:var(--text);}
+  .nb-count span{font-size:11px;font-weight:400;color:var(--text-muted);}
+  .nb-eta{font-size:12px;color:var(--text-muted);}
+  .nb-eta strong{color:var(--text);}
+  .nb-ready{font-size:12px;font-weight:700;color:var(--green);padding:2px 8px;background:var(--green-bg,#0f2e1a);border:1px solid var(--green-border,#1a5c32);border-radius:5px;}
+
   /* Summary tiles */
   .summary-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.5rem;}
   @media(max-width:680px){.summary-tiles{grid-template-columns:repeat(2,1fr);}}
@@ -209,6 +231,26 @@
       <div class="tile-label">Avg Release Interval</div>
       <div class="tile-value" id="t-avg-interval">--</div>
       <div class="tile-sub">minutes between releases</div>
+    </div>
+  </div>
+
+  <div class="next-batch-widget" id="next-batch-widget">
+    <div class="nb-header">
+      <span class="nb-title">Next Batch Progress</span>
+      <div class="nb-meta">
+        <span><strong id="nb-last-release">—</strong> since last release</span>
+        <span>Threshold <strong>96 orders</strong></span>
+      </div>
+    </div>
+    <div class="nb-bar-track" id="nb-bar-track">
+      <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%">
+        <span class="nb-bar-label" id="nb-bar-label-inner"></span>
+      </div>
+      <span class="nb-bar-label outside" id="nb-bar-label-outside" style="display:none;--pct:0%"></span>
+    </div>
+    <div class="nb-footer">
+      <div class="nb-count"><span id="nb-queued">—</span> <span>queued orders</span></div>
+      <div id="nb-eta-wrap" class="nb-eta"></div>
     </div>
   </div>
 
@@ -434,6 +476,65 @@ function renderData(data) {
     s.avg_mins_to_clear != null ? fmtMins(s.avg_mins_to_clear) : '—';
   document.getElementById('t-avg-interval').textContent =
     s.avg_release_interval_mins != null ? fmtMins(s.avg_release_interval_mins) : '—';
+
+  // Next batch progress widget
+  var nbWidget = document.getElementById('next-batch-widget');
+  var queued    = s.queued_orders;
+  var threshold = s.batch_threshold || 96;
+  if (queued != null) {
+    nbWidget.classList.add('visible');
+    var pct     = Math.min(Math.round((queued / threshold) * 100), 100);
+    var fill    = document.getElementById('nb-bar-fill');
+    var labelIn = document.getElementById('nb-bar-label-inner');
+    var labelOut= document.getElementById('nb-bar-label-outside');
+    fill.style.width = pct + '%';
+    fill.className   = 'nb-bar-fill ' + (pct >= 100 ? 'high' : pct >= 60 ? 'mid' : 'low');
+    var labelText = queued + ' / ' + threshold;
+    if (pct >= 25) {
+      labelIn.textContent      = labelText;
+      labelOut.style.display   = 'none';
+    } else {
+      labelIn.textContent      = '';
+      labelOut.textContent     = labelText;
+      labelOut.style.setProperty('--pct', pct + '%');
+      labelOut.style.display   = 'inline';
+    }
+    document.getElementById('nb-queued').textContent = queued;
+
+    // Time since last release
+    var lastReleasedUtc = null;
+    if (data.batches && data.batches.length) {
+      var sorted = data.batches.slice().sort(function(a,b) {
+        return (b.released_utc||'') > (a.released_utc||'') ? 1 : -1;
+      });
+      lastReleasedUtc = sorted[0].released_utc || null;
+    }
+    var sinceEl = document.getElementById('nb-last-release');
+    if (lastReleasedUtc) {
+      var sinceMs  = Date.now() - new Date(lastReleasedUtc.replace(' ','T') + 'Z').getTime();
+      var sinceMins = Math.round(sinceMs / 60000);
+      sinceEl.textContent = sinceMins < 60
+        ? sinceMins + ' min'
+        : Math.floor(sinceMins/60) + 'h ' + (sinceMins%60) + 'm';
+    } else {
+      sinceEl.textContent = '—';
+    }
+
+    // ETA / status line
+    var etaEl = document.getElementById('nb-eta-wrap');
+    if (pct >= 100) {
+      etaEl.innerHTML = '<span class="nb-ready">Ready to release</span>';
+    } else {
+      var needed = threshold - queued;
+      if (needed > 0) {
+        etaEl.innerHTML = '<span class="nb-eta"><strong>' + needed + '</strong> more orders needed</span>';
+      } else {
+        etaEl.innerHTML = '';
+      }
+    }
+  } else {
+    nbWidget.classList.remove('visible');
+  }
 
   tilesEl.style.display = 'grid';
   emptyEl.style.display = 'none';
