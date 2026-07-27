@@ -25,6 +25,7 @@ const DOCK_FILE     = path.join(REPORT_DIR, 'dock_live.json');
 const TOTES_FILE    = path.join(REPORT_DIR, 'totes_live.json');
 const BACKLOG_FILE  = path.join(REPORT_DIR, 'backlog_live.json');
 const BATCH_STATUS_FILE = path.join(REPORT_DIR, 'batch_status.json');
+const RETAIL_REPLEN_FILE = path.join(REPORT_DIR, 'retail_replen.json');
 const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3118;
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
@@ -722,6 +723,165 @@ ORDER BY hour_pdt`.trim();
   };
 }
 
+// ── retail replen query ────────────────────────────────────────────────────────
+async function fetchRetailReplen(accessToken) {
+  const pdt = nowPdt();
+  const todayStr     = pdt.toLocaleDateString('en-CA');
+  const tomorrowDate = new Date(pdt); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowStr  = tomorrowDate.toLocaleDateString('en-CA');
+  const todayUtcStart  = `${todayStr} 07:00:00`;
+  const todayUtcEnd    = `${tomorrowStr} 07:00:00`;
+
+  // Q1: open ecom order lines today grouped by item
+  const sqlOrders = `
+SELECT
+  ol.ITEM_ID,
+  COUNT(DISTINCT ol.ORDER_ID)          AS order_count,
+  SUM(ol.ORDERED_QUANTITY)             AS units_needed,
+  MIN(ol.CREATED_TIMESTAMP)            AS oldest_order_utc,
+  GROUP_CONCAT(DISTINCT ol.ORDER_ID ORDER BY ol.ORDER_ID SEPARATOR ',') AS order_ids
+FROM default_dcorder.DCO_ORDER_LINE ol
+WHERE ol.FACILITY_ID = '${FACILITY}'
+  AND ol.ORDER_TYPE  = 'ECOM'
+  AND ol.CANCELLED   = 0
+  AND ol.STATUS IN ('READY','ALLOCATED')
+  AND ol.CREATED_TIMESTAMP >= '${todayUtcStart}'
+  AND ol.CREATED_TIMESTAMP <  '${todayUtcEnd}'
+GROUP BY ol.ITEM_ID`.trim();
+
+  // Q2: active face inventory per item (F1H, F2H, P1H, P2H)
+  const sqlFaceInv = `
+SELECT
+  ITEM_ID,
+  SUM(ON_HAND) AS face_on_hand
+FROM default_dcinventory.DCI_INVENTORY
+WHERE FACILITY_ID = '${FACILITY}'
+  AND (
+    LOCATION_ID LIKE 'F1H%' OR LOCATION_ID LIKE 'F2H%' OR
+    LOCATION_ID LIKE 'P1H%' OR LOCATION_ID LIKE 'P2H%'
+  )
+GROUP BY ITEM_ID`.trim();
+
+  // Q3: retail source inventory per item (R1H, R2H)
+  const sqlSourceInv = `
+SELECT
+  ITEM_ID,
+  SUM(ON_HAND) AS source_on_hand
+FROM default_dcinventory.DCI_INVENTORY
+WHERE FACILITY_ID = '${FACILITY}'
+  AND (LOCATION_ID LIKE 'R1H%' OR LOCATION_ID LIKE 'R2H%')
+GROUP BY ITEM_ID`.trim();
+
+  // Q4: open retail replen tasks per item (not done/cancelled)
+  const sqlTasks = `
+SELECT
+  td.ITEM_ID,
+  t.TASK_ID,
+  t.STATUS,
+  t.SOURCE_LOCATION_ID,
+  t.TARGET_LOCATION_ID,
+  t.CREATED_TIMESTAMP
+FROM default_task.TSK_TASK t
+JOIN default_task.TSK_TASK_DETAIL td
+  ON  td.TASK_ID      = t.TASK_ID
+  AND td.FACILITY_ID  = '${FACILITY}'
+  AND td.CREATED_TIMESTAMP >= NOW() - INTERVAL 3 DAY
+WHERE t.FACILITY_ID     = '${FACILITY}'
+  AND t.TRANSACTION_ID  = 'Retail iLPN Replen Pull'
+  AND t.STATUS NOT IN ('8000','9000')
+  AND t.CREATED_TIMESTAMP >= NOW() - INTERVAL 3 DAY`.trim();
+
+  const [respOrders, respFace, respSource, respTasks] = await Promise.all([
+    mcpQuery(accessToken, sqlOrders),
+    mcpQuery(accessToken, sqlFaceInv),
+    mcpQuery(accessToken, sqlSourceInv),
+    mcpQuery(accessToken, sqlTasks),
+  ]);
+
+  // Build lookup maps
+  const faceMap   = {};
+  for (const r of (respFace.rows   || [])) faceMap[r.ITEM_ID]   = Number(r.face_on_hand   || 0);
+  const sourceMap = {};
+  for (const r of (respSource.rows || [])) sourceMap[r.ITEM_ID] = Number(r.source_on_hand || 0);
+
+  // Group tasks by item_id — dedupe task IDs (multiple detail rows per task)
+  const taskMap = {};
+  const statusLabel = { '3000':'Queued', '5000':'Assigned', '7000':'In Progress' };
+  for (const r of (respTasks.rows || [])) {
+    if (!r.ITEM_ID) continue;
+    if (!taskMap[r.ITEM_ID]) taskMap[r.ITEM_ID] = {};
+    if (!taskMap[r.ITEM_ID][r.TASK_ID]) {
+      taskMap[r.ITEM_ID][r.TASK_ID] = {
+        task_id: r.TASK_ID,
+        status:  statusLabel[String(r.STATUS)] || String(r.STATUS),
+        source:  r.SOURCE_LOCATION_ID || null,
+        target:  r.TARGET_LOCATION_ID || null,
+      };
+    }
+  }
+
+  const nowMs = Date.now();
+  const items = [];
+
+  for (const r of (respOrders.rows || [])) {
+    const itemId      = r.ITEM_ID;
+    const unitsNeeded = Math.round(Number(r.units_needed || 0));
+    const faceStock   = faceMap[itemId]   || 0;
+    const sourceStock = sourceMap[itemId] || 0;
+    const gap         = faceStock - unitsNeeded;
+    const tasks       = taskMap[itemId] ? Object.values(taskMap[itemId]) : [];
+
+    // Only surface items where face stock can't cover demand
+    if (gap >= 0) continue;
+
+    const oldestUtc  = r.oldest_order_utc;
+    const ageHrs     = oldestUtc
+      ? Math.round((nowMs - new Date(String(oldestUtc).replace(' ','T') + 'Z').getTime()) / 36000) / 100
+      : null;
+    const ageSeverity = ageHrs === null ? 'green'
+      : ageHrs >= 28.8 ? 'red'
+      : ageHrs >= 15   ? 'yellow'
+      : 'green';
+
+    items.push({
+      item_id:       itemId,
+      order_count:   Number(r.order_count),
+      units_needed:  unitsNeeded,
+      face_stock:    Math.round(faceStock),
+      source_stock:  Math.round(sourceStock),
+      gap:           Math.round(gap),
+      order_ids:     (r.order_ids || '').split(',').filter(Boolean),
+      oldest_order_utc: oldestUtc || null,
+      age_hrs:       ageHrs,
+      age_severity:  ageSeverity,
+      tasks,
+    });
+  }
+
+  // Sort: red first, then yellow, then by age desc
+  const sevOrder = { red: 0, yellow: 1, green: 2 };
+  items.sort((a, b) =>
+    sevOrder[a.age_severity] - sevOrder[b.age_severity] ||
+    (b.age_hrs || 0) - (a.age_hrs || 0)
+  );
+
+  const totalOrders = items.reduce((s, i) => s + i.order_count, 0);
+  const totalTasks  = items.reduce((s, i) => s + i.tasks.length, 0);
+  const oldestItem  = items.length ? items.reduce((a, b) => (b.age_hrs || 0) > (a.age_hrs || 0) ? b : a) : null;
+
+  return {
+    generated:    new Date().toISOString().slice(0,19),
+    facility:     FACILITY,
+    summary: {
+      flagged_items:     items.length,
+      orders_at_risk:    totalOrders,
+      open_replen_tasks: totalTasks,
+      oldest_age_hrs:    oldestItem ? oldestItem.age_hrs : null,
+    },
+    items,
+  };
+}
+
 // ── batch status query ─────────────────────────────────────────────────────────
 // Status codes: 5000=Released, 5200=Released(picking assigned),
 //               5400=Picking Completed, 5600=Work Started, 5800=Cleared
@@ -958,7 +1118,7 @@ function gitPush() {
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
   try {
-    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync(`git commit -m "Live update -- ${stamp}"`,      { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git pull --rebase --autostash origin main',    { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git push origin main',                         { cwd: REPORT_DIR, stdio: 'pipe' });
@@ -976,12 +1136,13 @@ function gitPush() {
 // ── core: query + write ────────────────────────────────────────────────────────
 async function queryAndWrite(accessToken) {
   console.log(`[${ts()}] Querying...`);
-  const [recvData, dockData, totesData, backlogData, batchStatusData] = await Promise.all([
+  const [recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData] = await Promise.all([
     fetchReceiving(accessToken),
     fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
     fetchBacklog(accessToken).catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; }),
     fetchBatchStatus(accessToken).catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; }),
+    fetchRetailReplen(accessToken).catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
   ]);
 
   fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
@@ -1010,8 +1171,13 @@ async function queryAndWrite(accessToken) {
     await notifyNewCleared(batchStatusData);
   }
 
+  if (retailReplenData) {
+    fs.writeFileSync(RETAIL_REPLEN_FILE, JSON.stringify(retailReplenData, null, 4));
+    console.log(`[${ts()}] ✓ retail_replen.json — ${retailReplenData.summary.flagged_items} items flagged, ${retailReplenData.summary.orders_at_risk} orders at risk`);
+  }
+
   gitPush();
-  return { recvData, dockData, totesData, backlogData, batchStatusData };
+  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData };
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
@@ -1100,6 +1266,11 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
       res.end(JSON.stringify(cache?.batchStatusData || {}));
       return;
     }
+    if (url.pathname === '/retail_replen.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(cache?.retailReplenData || {}));
+      return;
+    }
 
     // serve HTML files
     const fileMap = {
@@ -1108,7 +1279,8 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
       '/Receiving_live.html': 'Receiving_live.html',
       '/Totes_live.html':     'Totes_live.html',
       '/Backlog_live.html':   'Backlog_live.html',
-      '/Batches_live.html':   'Batches_live.html',
+      '/Batches_live.html':    'Batches_live.html',
+      '/RetailReplen_live.html': 'RetailReplen_live.html',
       '/MegaDash_v1.2.html':  'MegaDash_v1.2.html',
       '/Menu_v1.6.html':      'Menu_v1.6.html',
       '/Changelog.html':      'Changelog.html',

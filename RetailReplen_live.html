@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DC499 — Retail Replen Watch v1.0</title>
+<style>
+/* ── reset / base ──────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s,color .2s}
+
+/* ── themes ────────────────────────────────────────────────────────────────── */
+[data-theme="dark"]{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2a2f45;--border-light:#1e2236;
+  --text:#e8eaf6;--text-muted:#8b90a8;--text-hint:#555a78;
+  --accent:#7c83f5;--accent-bg:#1a1d38;
+  --red:#f87171;--red-bg:#2e1a1a;--red-border:#6b2020;
+  --yellow:#fbbf24;--yellow-bg:#2e2510;--yellow-border:#6b4f10;
+  --green:#4ade80;--green-bg:#0f2e1a;--green-border:#1a5c32;
+}
+[data-theme="solid"]{
+  --bg:#1a1a2e;--surface:#16213e;--surface2:#0f3460;--border:#1e3a5f;--border-light:#162040;
+  --text:#e0e0ff;--text-muted:#8888bb;--text-hint:#445588;
+  --accent:#6c8ebf;--accent-bg:#0d1f3c;
+  --red:#f87171;--red-bg:#2e1a1a;--red-border:#6b2020;
+  --yellow:#fbbf24;--yellow-bg:#2e2510;--yellow-border:#6b4f10;
+  --green:#4ade80;--green-bg:#0f2e1a;--green-border:#1a5c32;
+}
+[data-theme="pastel"]{
+  --bg:#f0f4ff;--surface:#fff;--surface2:#e8eeff;--border:#c8d4f8;--border-light:#dde6ff;
+  --text:#2a3060;--text-muted:#6070b0;--text-hint:#9aaad8;
+  --accent:#5570e8;--accent-bg:#e8eeff;
+  --red:#dc2626;--red-bg:#fee2e2;--red-border:#fca5a5;
+  --yellow:#d97706;--yellow-bg:#fef3c7;--yellow-border:#fcd34d;
+  --green:#16a34a;--green-bg:#dcfce7;--green-border:#86efac;
+}
+[data-theme="starr"]{
+  --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;
+  --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;
+  --accent:#c0306a;--accent-bg:#fce8f0;
+  --red:#be123c;--red-bg:#ffe4e6;--red-border:#fda4af;
+  --yellow:#b45309;--yellow-bg:#fef3c7;--yellow-border:#fcd34d;
+  --green:#15803d;--green-bg:#dcfce7;--green-border:#86efac;
+}
+[data-theme="light"]{
+  --bg:#f5f7fa;--surface:#fff;--surface2:#eef1f7;--border:#dde2ef;--border-light:#eef1f7;
+  --text:#1a1d2e;--text-muted:#5a6080;--text-hint:#9aaac8;
+  --accent:#4455cc;--accent-bg:#eef1ff;
+  --red:#dc2626;--red-bg:#fee2e2;--red-border:#fca5a5;
+  --yellow:#d97706;--yellow-bg:#fef3c7;--yellow-border:#fcd34d;
+  --green:#16a34a;--green-bg:#dcfce7;--green-border:#86efac;
+}
+
+/* ── layout ────────────────────────────────────────────────────────────────── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar h1{font-size:15px;font-weight:700;color:var(--text);letter-spacing:.3px}
+.badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent);letter-spacing:.5px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+
+/* ── theme picker ──────────────────────────────────────────────────────────── */
+.theme-wrap{position:relative}
+.theme-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px}
+.theme-btn:hover{border-color:var(--accent);color:var(--text)}
+.theme-menu{display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;min-width:110px;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.theme-menu.open{display:block}
+.theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted)}
+.theme-option:hover{background:var(--surface2);color:var(--text)}
+.theme-option.active{color:var(--accent);background:var(--surface2)}
+
+/* ── refresh controls ──────────────────────────────────────────────────────── */
+.refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px}
+.refresh-btn:hover{border-color:var(--accent);color:var(--text)}
+.stale-banner{display:none;background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border);padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600}
+.stale-banner.show{display:block}
+
+/* ── summary bar ───────────────────────────────────────────────────────────── */
+.summary-bar{display:flex;gap:12px;padding:14px 20px;flex-wrap:wrap}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:140px;flex:1}
+.stat-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.stat-value{font-size:24px;font-weight:800;color:var(--text)}
+.stat-value.red{color:var(--red)}
+.stat-value.yellow{color:var(--yellow)}
+.stat-value.green{color:var(--green)}
+.stat-sub{font-size:11px;color:var(--text-hint);margin-top:2px}
+
+/* ── main content ──────────────────────────────────────────────────────────── */
+.content{padding:0 20px 40px}
+.section-title{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;padding:16px 0 8px}
+
+/* ── item cards ────────────────────────────────────────────────────────────── */
+.item-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.item-card.red{border-left:3px solid var(--red)}
+.item-card.yellow{border-left:3px solid var(--yellow)}
+.item-card.green{border-left:3px solid var(--green)}
+
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;gap:12px}
+.card-header:hover{background:var(--surface2)}
+.card-left{display:flex;align-items:center;gap:12px;min-width:0}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dot.red{background:var(--red)}
+.dot.yellow{background:var(--yellow)}
+.dot.green{background:var(--green)}
+.sku{font-size:15px;font-weight:700;color:var(--text)}
+.order-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border)}
+
+.card-right{display:flex;align-items:center;gap:16px;flex-shrink:0}
+.age-badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px}
+.age-badge.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.age-badge.yellow{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border)}
+.age-badge.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.chevron{color:var(--text-hint);font-size:12px;transition:transform .2s}
+.chevron.open{transform:rotate(180deg)}
+
+.card-body{display:none;padding:0 16px 14px;border-top:1px solid var(--border-light)}
+.card-body.open{display:block}
+
+.metrics-row{display:flex;gap:20px;flex-wrap:wrap;padding:12px 0 10px}
+.metric{min-width:80px}
+.metric-label{font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.metric-value{font-size:16px;font-weight:700;color:var(--text)}
+.metric-value.negative{color:var(--red)}
+.metric-value.positive{color:var(--green)}
+
+.tasks-section{margin-top:8px}
+.tasks-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.task-row{display:flex;align-items:center;gap:10px;padding:5px 0;border-top:1px solid var(--border-light);font-size:12px}
+.task-id{font-weight:600;color:var(--accent);font-family:monospace;font-size:12px}
+.task-status{font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px}
+.task-status.queued{background:var(--surface2);color:var(--text-muted)}
+.task-status.assigned{background:var(--yellow-bg);color:var(--yellow)}
+.task-status.inprogress{background:var(--green-bg);color:var(--green)}
+.task-loc{color:var(--text-hint);font-size:11px}
+
+.orders-section{margin-top:10px}
+.orders-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.order-chips{display:flex;flex-wrap:wrap;gap:6px}
+.order-chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--surface2);color:var(--text-muted);border:1px solid var(--border);font-family:monospace}
+
+.no-task-warn{font-size:12px;color:var(--red);font-weight:600;margin-top:6px;padding:6px 10px;background:var(--red-bg);border:1px solid var(--red-border);border-radius:6px;display:inline-block}
+
+/* ── empty state ───────────────────────────────────────────────────────────── */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.empty-state .check{font-size:40px;margin-bottom:12px}
+.empty-state p{font-size:15px;font-weight:600;color:var(--text)}
+.empty-state small{font-size:13px;color:var(--text-muted)}
+
+/* ── footer ────────────────────────────────────────────────────────────────── */
+.footer{text-align:center;padding:20px;font-size:11px;color:var(--text-hint);border-top:1px solid var(--border-light)}
+
+/* ── loading ───────────────────────────────────────────────────────────────── */
+.loading{text-align:center;padding:60px;color:var(--text-muted);font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>Retail Replen Watch</h1>
+    <span class="badge">LIVE</span>
+  </div>
+  <div class="topbar-right">
+    <span class="stale-banner" id="stale-banner">Data stale</span>
+    <button class="refresh-btn" onclick="loadData()">Refresh</button>
+    <div class="theme-wrap">
+      <button class="theme-btn" onclick="toggleThemeMenu()">
+        <span id="toggle-label">Dark</span> ▾
+      </button>
+      <div class="theme-menu" id="theme-menu">
+        <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
+        <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
+        <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
+        <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
+        <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="summary-bar" id="summary-bar">
+  <div class="stat"><div class="stat-label">Items Flagged</div><div class="stat-value" id="stat-items">—</div><div class="stat-sub">face stock below demand</div></div>
+  <div class="stat"><div class="stat-label">Orders at Risk</div><div class="stat-value" id="stat-orders">—</div><div class="stat-sub">READY / ALLOCATED</div></div>
+  <div class="stat"><div class="stat-label">Open Replen Tasks</div><div class="stat-value" id="stat-tasks">—</div><div class="stat-sub">Retail iLPN Replen Pull</div></div>
+  <div class="stat"><div class="stat-label">Oldest Order</div><div class="stat-value" id="stat-oldest">—</div><div class="stat-sub">hours since created</div></div>
+</div>
+
+<div class="content">
+  <div class="section-title">Flagged Items</div>
+  <div id="cards-container"><div class="loading">Loading...</div></div>
+  <div class="footer">
+    DC499 Reporter · Retail Replen Watch v1.0<br>
+    <span id="gen-time" style="color:var(--text-hint)"></span><br><br>
+    <em>Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</em>
+  </div>
+</div>
+
+<script>
+var THEME_VALS  = ['dark','solid','pastel','starr','light'];
+var THEME_NAMES = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',light:'Light'};
+var lastData    = null;
+var staleTimer  = null;
+
+// ── theme ─────────────────────────────────────────────────────────────────────
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('toggle-label').textContent = THEME_NAMES[t] || t;
+  document.querySelectorAll('.theme-option').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-tv') === t);
+  });
+  try { localStorage.setItem('dc499_replen_theme', t); } catch(e) {}
+}
+function pickTheme(t) { applyTheme(t); document.getElementById('theme-menu').classList.remove('open'); }
+function toggleThemeMenu() { document.getElementById('theme-menu').classList.toggle('open'); }
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.theme-wrap')) document.getElementById('theme-menu').classList.remove('open');
+});
+(function() {
+  var saved = null;
+  try { saved = localStorage.getItem('dc499_replen_theme'); } catch(e) {}
+  applyTheme(saved && THEME_VALS.indexOf(saved) !== -1 ? saved : 'dark');
+})();
+
+// ── data load ─────────────────────────────────────────────────────────────────
+function getJsonUrl() {
+  var isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || /^192\.168\./.test(location.hostname) || /^10\./.test(location.hostname);
+  return isLocal ? '/retail_replen.json' : 'retail_replen.json';
+}
+
+function loadData() {
+  fetch(getJsonUrl() + '?t=' + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      lastData = data;
+      render(data);
+      clearTimeout(staleTimer);
+      staleTimer = setTimeout(function() {
+        document.getElementById('stale-banner').classList.add('show');
+      }, 10 * 60 * 1000);
+      document.getElementById('stale-banner').classList.remove('show');
+    })
+    .catch(function(e) {
+      document.getElementById('cards-container').innerHTML =
+        '<div class="loading">Could not load data — ' + e.message + '</div>';
+    });
+}
+
+// ── render ────────────────────────────────────────────────────────────────────
+function render(data) {
+  var s = data.summary || {};
+
+  // summary stats
+  var itemsEl   = document.getElementById('stat-items');
+  var ordersEl  = document.getElementById('stat-orders');
+  var tasksEl   = document.getElementById('stat-tasks');
+  var oldestEl  = document.getElementById('stat-oldest');
+
+  itemsEl.textContent  = s.flagged_items  != null ? s.flagged_items  : '—';
+  ordersEl.textContent = s.orders_at_risk != null ? s.orders_at_risk : '—';
+  tasksEl.textContent  = s.open_replen_tasks != null ? s.open_replen_tasks : '—';
+
+  var ageHrs = s.oldest_age_hrs;
+  oldestEl.textContent = ageHrs != null ? ageHrs + ' hrs' : '—';
+  oldestEl.className   = 'stat-value ' + (ageHrs == null ? '' : ageHrs >= 28.8 ? 'red' : ageHrs >= 15 ? 'yellow' : 'green');
+  itemsEl.className    = 'stat-value ' + (s.flagged_items > 0 ? (ageHrs >= 28.8 ? 'red' : ageHrs >= 15 ? 'yellow' : 'green') : '');
+
+  document.getElementById('gen-time').textContent = data.generated ? 'Updated ' + data.generated + ' UTC' : '';
+
+  var items = data.items || [];
+  var container = document.getElementById('cards-container');
+
+  if (!items.length) {
+    container.innerHTML = '<div class="empty-state"><div class="check">✅</div><p>No items flagged</p><small>All ecom demand is covered by active face stock</small></div>';
+    return;
+  }
+
+  container.innerHTML = items.map(function(item, idx) {
+    var sev   = item.age_severity || 'green';
+    var ageStr = item.age_hrs != null ? item.age_hrs + ' hrs' : '—';
+    var gap    = item.gap;
+    var tasks  = item.tasks || [];
+    var orders = item.order_ids || [];
+
+    var tasksHtml = '';
+    if (tasks.length) {
+      var rows = tasks.map(function(t) {
+        var cls = t.status === 'In Progress' ? 'inprogress' : t.status === 'Assigned' ? 'assigned' : 'queued';
+        var locStr = t.source && t.target ? t.source + ' → ' + t.target : '';
+        return '<div class="task-row">' +
+          '<span class="task-id">' + t.task_id + '</span>' +
+          '<span class="task-status ' + cls + '">' + t.status + '</span>' +
+          (locStr ? '<span class="task-loc">' + locStr + '</span>' : '') +
+          '</div>';
+      }).join('');
+      tasksHtml = '<div class="tasks-section"><div class="tasks-title">Open Replen Tasks (' + tasks.length + ')</div>' + rows + '</div>';
+    } else {
+      tasksHtml = '<span class="no-task-warn">No replen task exists for this item — demand will not be filled automatically</span>';
+    }
+
+    var orderChips = orders.slice(0,20).map(function(o) {
+      return '<span class="order-chip">' + o + '</span>';
+    }).join('');
+    if (orders.length > 20) orderChips += '<span class="order-chip">+' + (orders.length - 20) + ' more</span>';
+    var ordersHtml = '<div class="orders-section"><div class="orders-title">Affected Orders (' + orders.length + ')</div><div class="order-chips">' + orderChips + '</div></div>';
+
+    return '<div class="item-card ' + sev + '">' +
+      '<div class="card-header" onclick="toggleCard(' + idx + ')">' +
+        '<div class="card-left">' +
+          '<div class="dot ' + sev + '"></div>' +
+          '<span class="sku">' + item.item_id + '</span>' +
+          '<span class="order-pill">' + item.order_count + ' order' + (item.order_count !== 1 ? 's' : '') + '</span>' +
+        '</div>' +
+        '<div class="card-right">' +
+          '<span class="age-badge ' + sev + '">' + ageStr + '</span>' +
+          '<span class="chevron" id="chev-' + idx + '">▼</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card-body" id="body-' + idx + '">' +
+        '<div class="metrics-row">' +
+          '<div class="metric"><div class="metric-label">Units Needed</div><div class="metric-value">' + item.units_needed + '</div></div>' +
+          '<div class="metric"><div class="metric-label">Face Stock</div><div class="metric-value ' + (item.face_stock > 0 ? '' : 'negative') + '">' + item.face_stock + '</div></div>' +
+          '<div class="metric"><div class="metric-label">Gap</div><div class="metric-value negative">' + gap + '</div></div>' +
+          '<div class="metric"><div class="metric-label">Source (R1H/R2H)</div><div class="metric-value ' + (item.source_stock > 0 ? 'positive' : 'negative') + '">' + item.source_stock + '</div></div>' +
+        '</div>' +
+        tasksHtml +
+        ordersHtml +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleCard(idx) {
+  var body = document.getElementById('body-' + idx);
+  var chev = document.getElementById('chev-' + idx);
+  var open = body.classList.toggle('open');
+  chev.classList.toggle('open', open);
+}
+
+// ── auto-refresh ──────────────────────────────────────────────────────────────
+loadData();
+setInterval(loadData, 2 * 60 * 1000);
+</script>
+</body>
+</html>
