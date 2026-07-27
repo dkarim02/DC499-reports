@@ -822,6 +822,7 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
 
   const nowMs = Date.now();
   const items = [];
+  const riskOrderIds = new Set();
 
   for (const r of (respOrders.rows || [])) {
     const itemId      = r.ITEM_ID;
@@ -830,6 +831,11 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
     const sourceStock = sourceMap[itemId] || 0;
     const gap         = faceStock - unitsNeeded;
     const tasks       = taskMap[itemId] ? Object.values(taskMap[itemId]) : [];
+
+    // Only flag items that are actually retail-sourced:
+    // must have inventory in R1H/R2H OR have an open retail replen task
+    const isRetailItem = sourceStock > 0 || tasks.length > 0;
+    if (!isRetailItem) continue;
 
     // Only surface items where face stock can't cover demand
     if (gap >= 0) continue;
@@ -843,6 +849,9 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
       : ageHrs >= 15   ? 'yellow'
       : 'green';
 
+    const orderIds = (r.order_ids || '').split(',').filter(Boolean);
+    orderIds.forEach(o => riskOrderIds.add(o));
+
     items.push({
       item_id:       itemId,
       order_count:   Number(r.order_count),
@@ -850,7 +859,7 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
       face_stock:    Math.round(faceStock),
       source_stock:  Math.round(sourceStock),
       gap:           Math.round(gap),
-      order_ids:     (r.order_ids || '').split(',').filter(Boolean),
+      order_ids:     orderIds,
       oldest_order_utc: oldestUtc || null,
       age_hrs:       ageHrs,
       age_severity:  ageSeverity,
@@ -865,7 +874,7 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
     (b.age_hrs || 0) - (a.age_hrs || 0)
   );
 
-  const totalOrders = items.reduce((s, i) => s + i.order_count, 0);
+  const totalOrders = riskOrderIds.size; // unique order IDs across all flagged items
   const totalTasks  = items.reduce((s, i) => s + i.tasks.length, 0);
   const oldestItem  = items.length ? items.reduce((a, b) => (b.age_hrs || 0) > (a.age_hrs || 0) ? b : a) : null;
 
