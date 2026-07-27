@@ -56,7 +56,7 @@
     --amber:#fde68a;--amber-bg:#2e2410;
     --red:#fca5a5;--red-bg:#2e1a1a;
   }
-  [data-theme="candy"] {
+  [data-theme="starr"] {
     --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
     --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;--bar-bg:#e8c0d8;
     --accent:#b0003a;--accent-bg:#f8d0e8;--accent-muted:#d06090;
@@ -322,7 +322,7 @@
         <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
         <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
         <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
-        <div class="theme-option" data-tv="candy"  onclick="pickTheme('candy')">Candy 🩷</div>
+        <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
         <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
       </div>
     </div>
@@ -584,8 +584,8 @@ var activeSelection = null;
 var lastAvgUph = null;
 
 // -- Theme --------------------------------------------------------------------
-var THEME_VALS_BL = ['dark','solid','pastel','candy','light'];
-var THEME_NAMES_BL = {dark:'Dark',solid:'Solid',pastel:'Pastel',candy:'Candy 🩷',light:'Light'};
+var THEME_VALS_BL = ['dark','solid','pastel','starr','light'];
+var THEME_NAMES_BL = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',light:'Light'};
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES_BL[t] || t;

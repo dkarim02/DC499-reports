@@ -37,7 +37,7 @@
     --red:#fca5a5;--red-bg:#2e1a1a;
     --accent:#7ecec4;--accent-bg:#152e2c;
   }
-  [data-theme="candy"] {
+  [data-theme="starr"] {
     --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
     --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;
     --accent:#b0003a;--accent-bg:#f8d0e8;
@@ -168,7 +168,7 @@
         <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
         <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
         <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
-        <div class="theme-option" data-tv="candy"  onclick="pickTheme('candy')">Candy 🩷</div>
+        <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
         <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
       </div>
     </div>
@@ -282,8 +282,8 @@ var autoTimer    = null;
 var countdownTimer = null;
 var nextRefreshAt  = null;
 
-var THEME_VALS_BT = ['dark','solid','pastel','candy','light'];
-var THEME_NAMES_BT = {dark:'Dark',solid:'Solid',pastel:'Pastel',candy:'Candy 🩷',light:'Light'};
+var THEME_VALS_BT = ['dark','solid','pastel','starr','light'];
+var THEME_NAMES_BT = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',light:'Light'};
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES_BT[t] || t;
