@@ -18,7 +18,7 @@ const { execSync } = require('child_process');
 
 // ── config ─────────────────────────────────────────────────────────────────────
 const MCP_BASE      = 'https://mawm-data-mcp.nordstromaws.app';
-const TOKEN_FILE    = path.join('C:\\projects\\test', '.mcp_token.json'); // shared with ecom reporter
+const TOKEN_FILE    = path.join(__dirname, '.mcp_token.json');
 const REPORT_DIR    = __dirname;
 const RECV_FILE     = path.join(REPORT_DIR, 'receiving_live.json');
 const DOCK_FILE     = path.join(REPORT_DIR, 'dock_live.json');

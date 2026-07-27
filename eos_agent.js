@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const { execSync } = require('child_process');
 
 const MCP_BASE      = 'https://mawm-data-mcp.nordstromaws.app';
-const TOKEN_FILE    = path.join('C:\\projects\\test', '.mcp_token.json');
+const TOKEN_FILE    = path.join(__dirname, '.mcp_token.json');
 const REPORT_DIR    = __dirname;
 const SOS_FILE      = path.join(REPORT_DIR, 'eos_sos_snapshot.json');
 const REPORT_FILE   = path.join(REPORT_DIR, 'eos_report.json');
