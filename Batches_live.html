@@ -170,21 +170,21 @@
   .bp-send:disabled{opacity:0.5;cursor:default;}
 
   /* ── Remi sprite ──────────────────────────────────────────── */
-  .next-batch-widget{position:relative;}
   #remi{
-    position:absolute;
+    position:fixed;
     width:40px;
     height:40px;
-    top:-20px;
-    left:0;
     pointer-events:none;
-    z-index:10;
+    z-index:900;
     display:none;
     transform-origin:center center;
+    mix-blend-mode:multiply;
   }
+  [data-theme="light"] #remi{ mix-blend-mode:normal; }
 </style>
 </head>
 <body>
+<video id="remi" src="remi.mp4" autoplay loop muted playsinline></video>
 <div class="container">
 
   <div class="top-bar">
@@ -247,7 +247,6 @@
   </div>
 
   <div class="next-batch-widget" id="next-batch-widget">
-    <video id="remi" src="remi.mp4" autoplay loop muted playsinline></video>
     <span class="nb-title">Next Batch</span>
     <div class="nb-bar-track">
       <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%"></div>
@@ -786,43 +785,46 @@ scheduleAutoRefresh();
 
 // ── Remi sprite ───────────────────────────────────────────────────────────────
 (function() {
-  var el = document.getElementById('remi');
-  var speed = 120; // px per second
-  var x = 0;
-  var dir = 1; // 1 = right, -1 = left
+  var el     = document.getElementById('remi');
+  var speed  = 60; // px per second
+  var x      = 0;
+  var dir    = 1;  // 1 = right, -1 = left
   var lastTs = null;
 
-  function getWidth() {
-    var pill = document.getElementById('next-batch-widget');
-    return pill ? pill.offsetWidth : 0;
+  function getPill() {
+    return document.getElementById('next-batch-widget');
   }
 
   function step(ts) {
     if (!lastTs) lastTs = ts;
-    var dt = Math.min((ts - lastTs) / 1000, 0.1); // cap dt to avoid jumps
+    var dt = Math.min((ts - lastTs) / 1000, 0.1);
     lastTs = ts;
 
-    var w = getWidth();
-    var spriteW = el.offsetWidth || 40;
+    var pill = getPill();
+    if (!pill || pill.style.display === 'none') { requestAnimationFrame(step); return; }
 
-    if (w < 10) { requestAnimationFrame(step); return; }
+    var rect     = pill.getBoundingClientRect();
+    var spriteW  = el.offsetWidth  || 40;
+    var spriteH  = el.offsetHeight || 40;
+    var trackW   = rect.width;
 
     el.style.display = 'block';
 
     x += speed * dir * dt;
+    if (x + spriteW >= trackW) { x = trackW - spriteW; dir = -1; }
+    if (x <= 0)                 { x = 0;                dir =  1; }
 
-    // Bounce at edges
-    if (x + spriteW >= w) { x = w - spriteW; dir = -1; }
-    if (x <= 0)            { x = 0;           dir =  1; }
-
-    el.style.left      = x + 'px';
+    // Fixed position: above the pill's top edge
+    el.style.left      = (rect.left + x) + 'px';
+    el.style.top       = (rect.top - spriteH + 4) + 'px';
     el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
 
     requestAnimationFrame(step);
   }
 
   function tryStart() {
-    if (getWidth() > 10) {
+    var pill = getPill();
+    if (pill && pill.getBoundingClientRect().width > 10) {
       requestAnimationFrame(step);
     } else {
       setTimeout(tryStart, 300);
