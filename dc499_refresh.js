@@ -745,7 +745,7 @@ ORDER BY wave_runs DESC`.trim();
 
   function waveLabel(sid, chase) {
     if (sid === 'NRDR_CORE_REPLEN_ORDER_PLANNING_STRATEGY')         return 'Replen';
-    if (sid === 'NRDR_CORE_RETAIL_ORDER_PLANNING_STRATEGY')         return 'Ecom';
+    if (sid === 'NRDR_CORE_RETAIL_ORDER_PLANNING_STRATEGY')         return null;
     if (sid === 'SINGLE_CHASE_ORDER_PLANNING_STRATEGY')             return 'Single Chase';
     if (sid === 'MULTI_CHASE_ORDER_PLANNING_STRATEGY')              return 'Multi Chase';
     if (sid === 'NRDR_NEW_PIPELINE_CHASE_ORDER_PLANNING_STRATEGY') {
@@ -759,6 +759,7 @@ ORDER BY wave_runs DESC`.trim();
   const waveCounts = {};
   for (const r of (respWaves.rows || [])) {
     const label = waveLabel(r.PLANNING_STRATEGY_ID, r.CHASE_MODE);
+    if (!label) continue;
     waveCounts[label] = (waveCounts[label] || 0) + Number(r.wave_runs);
   }
   const waveOrder = ['Ecom','Replen','Single Chase','Multi Chase','Fill/Kill','RTV/RTI'];
