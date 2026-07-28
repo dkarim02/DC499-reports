@@ -67,6 +67,17 @@
     --amber:#8b3000;--amber-bg:#fad0e0;
     --red:#7b0020;--red-bg:#f8c8d8;
   }
+  [data-theme="remi"] {
+    --bg:#0e0b18;--surface:#16112a;--surface2:#1e1838;--border:#2e2550;--border-light:#1e1838;--border-mid:#3a3060;
+    --text:#e8e0f8;--text-muted:#9880cc;--text-hint:#5a4880;--bar-bg:#2e2550;
+    --accent:#8ee8de;--accent-bg:#0a2e2c;--accent-muted:#5ecec4;
+    --ready:#8ee8de;--ready-bg:#0a2e2c;
+    --alloc:#c89af0;--alloc-bg:#2a1850;
+    --packed:#8ee8de;--packed-bg:#0a2e2c;
+    --green:#8ee8de;--green-bg:#0a2e2c;
+    --amber:#c89af0;--amber-bg:#2a1850;
+    --red:#f08080;--red-bg:#2e1020;
+  }
   .theme-picker{position:relative;}
   .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
   .theme-btn:hover{background:var(--surface2);}
@@ -400,7 +411,7 @@
   .bt-teams-btn{font-family:inherit;font-size:12px;font-weight:600;padding:5px 12px;border:0.5px solid #6264A7;border-radius:6px;background:transparent;cursor:pointer;color:#6264A7;transition:background 0.12s,color 0.12s;}
   .bt-teams-btn:hover{background:#6264A7;color:#fff;}
   .bt-teams-btn.sent{border-color:var(--green);color:var(--green);}
-  #bl-remi,#bl-remi2{position:fixed;width:48px;height:42px;pointer-events:none;z-index:900;display:none;transform-origin:center center;mix-blend-mode:multiply;clip-path:inset(4px 6px 6px 6px);}
+  #bl-remi{position:fixed;width:48px;height:42px;pointer-events:none;z-index:900;display:none;transform-origin:center center;mix-blend-mode:multiply;clip-path:inset(4px 6px 6px 6px);}
 </style>
 </head>
 <body>
@@ -423,6 +434,7 @@
         <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
         <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
         <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
+        <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Remi 🧙</div>
         <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
         <div class="theme-divider"></div>
         <div class="theme-toggle-row" onclick="toggleRemi()">
@@ -721,7 +733,6 @@
 </div>
 
 <video id="bl-remi" src="remi.mp4" autoplay loop muted playsinline></video>
-<video id="bl-remi2" src="remi.mp4" autoplay loop muted playsinline></video>
 
 <script>
 
@@ -738,8 +749,8 @@ var activeSelection = null;
 var lastAvgUph = null;
 
 // -- Theme --------------------------------------------------------------------
-var THEME_VALS_BL = ['dark','solid','pastel','starr','light'];
-var THEME_NAMES_BL = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',light:'Light'};
+var THEME_VALS_BL = ['dark','solid','pastel','starr','remi','light'];
+var THEME_NAMES_BL = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',remi:'Remi 🧙',light:'Light'};
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES_BL[t] || t;
@@ -756,9 +767,8 @@ try { var _r = localStorage.getItem(REMI_KEY); if (_r !== null) remiEnabled = _r
 function applyRemiToggle() {
   document.getElementById('rem-pill').classList.toggle('on', remiEnabled);
   if (!remiEnabled) {
-    var r1 = document.getElementById('bl-remi'), r2 = document.getElementById('bl-remi2');
+    var r1 = document.getElementById('bl-remi');
     if (r1) r1.style.display = 'none';
-    if (r2) r2.style.display = 'none';
   }
 }
 function toggleRemi() {
@@ -1783,49 +1793,6 @@ scheduleBlRefresh();
   requestAnimationFrame(step);
 })();
 
-// ── Remi sprite (active & queued card) ───────────────────────────────────────
-(function() {
-  var el    = document.getElementById('bl-remi2');
-  var speed = 60;
-  var W     = 48, H = 42;
-  var x     = 0, dir = 1, lastTs = null;
-
-  function getCard() {
-    if (!remiEnabled) return null;
-    if (activeTab !== 'batches') return null;
-    var c = document.getElementById('bt-batch-card-active');
-    if (!c || c.style.display === 'none') return null;
-    var r = c.getBoundingClientRect();
-    return r.width > 10 ? c : null;
-  }
-
-  function step(ts) {
-    if (!lastTs) lastTs = ts;
-    var dt = Math.min((ts - lastTs) / 1000, 0.1);
-    lastTs = ts;
-    var card = getCard();
-    if (!card) { el.style.display = 'none'; requestAnimationFrame(step); return; }
-    var rect = card.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > window.innerHeight) {
-      el.style.display = 'none'; requestAnimationFrame(step); return;
-    }
-    el.style.display = 'block';
-    x += speed * dir * dt;
-    if (x + W >= rect.width) { x = rect.width - W; dir = -1; }
-    if (x <= 0)               { x = 0;              dir =  1; }
-    el.style.left      = (rect.left + x) + 'px';
-    el.style.top       = (rect.top - H + 12) + 'px';
-    el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
-    requestAnimationFrame(step);
-  }
-
-  function tryStart() {
-    if (document.getElementById('bt-batch-card-active')) {
-      requestAnimationFrame(step);
-    } else { setTimeout(tryStart, 300); }
-  }
-  tryStart();
-})();
 // ─────────────────────────────────────────────────────────────────────────────
 </script>
 </body>

@@ -45,6 +45,14 @@
     --amber:#8b3000;--amber-bg:#fad0e0;
     --red:#7b0020;--red-bg:#f8c8d8;
   }
+  [data-theme="remi"] {
+    --bg:#0e0b18;--surface:#16112a;--surface2:#1e1838;--border:#2e2550;--border-light:#1e1838;--border-mid:#3a3060;
+    --text:#e8e0f8;--text-muted:#9880cc;--text-hint:#5a4880;--bar-bg:#2e2550;
+    --accent:#8ee8de;--accent-bg:#0a2e2c;--accent-muted:#5ecec4;
+    --green:#8ee8de;--green-bg:#0a2e2c;
+    --amber:#c89af0;--amber-bg:#2a1850;
+    --red:#f08080;--red-bg:#2e1020;
+  }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
   .container{max-width:1000px;margin:0 auto;}
@@ -203,6 +211,7 @@
         <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
         <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
         <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
+        <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Remi 🧙</div>
         <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
       </div>
     </div>
@@ -328,8 +337,8 @@ var autoTimer    = null;
 var countdownTimer = null;
 var nextRefreshAt  = null;
 
-var THEME_VALS_BT = ['dark','solid','pastel','starr','light'];
-var THEME_NAMES_BT = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',light:'Light'};
+var THEME_VALS_BT = ['dark','solid','pastel','starr','remi','light'];
+var THEME_NAMES_BT = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',remi:'Remi 🧙',light:'Light'};
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES_BT[t] || t;

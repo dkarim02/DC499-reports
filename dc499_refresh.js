@@ -790,13 +790,16 @@ ORDER BY wave_runs DESC`.trim();
 // ── retail replen query ────────────────────────────────────────────────────────
 async function fetchRetailReplen(accessToken) {
   const pdt = nowPdt();
-  const todayStr     = pdt.toLocaleDateString('en-CA');
-  const tomorrowDate = new Date(pdt); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const todayDate    = new Date(pdt); todayDate.setHours(0, 0, 0, 0);
+  const yestDate     = new Date(todayDate); yestDate.setDate(yestDate.getDate() - 1);
+  const tomorrowDate = new Date(todayDate); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const todayStr     = todayDate.toLocaleDateString('en-CA');
+  const yestStr      = yestDate.toLocaleDateString('en-CA');
   const tomorrowStr  = tomorrowDate.toLocaleDateString('en-CA');
-  const todayUtcStart  = `${todayStr} 07:00:00`;
+  const yestUtcStart   = `${yestStr} 07:00:00`;
   const todayUtcEnd    = `${tomorrowStr} 07:00:00`;
 
-  // Q1: open ecom order lines today grouped by item
+  // Q1: open ecom order lines (yesterday + today) grouped by item — matches backlog date window
   const sqlOrders = `
 SELECT
   ol.ITEM_ID,
@@ -809,7 +812,7 @@ WHERE ol.FACILITY_ID = '${FACILITY}'
   AND ol.ORDER_TYPE  = 'ECOM'
   AND ol.CANCELLED   = 0
   AND ol.STATUS IN ('READY','ALLOCATED')
-  AND ol.CREATED_TIMESTAMP >= '${todayUtcStart}'
+  AND ol.CREATED_TIMESTAMP >= '${yestUtcStart}'
   AND ol.CREATED_TIMESTAMP <  '${todayUtcEnd}'
 GROUP BY ol.ITEM_ID`.trim();
 
@@ -896,8 +899,7 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
     const gap         = faceStock - unitsNeeded;
     const tasks       = taskMap[itemId] ? Object.values(taskMap[itemId]) : [];
 
-    // Only flag items that are actually retail-sourced:
-    // must have inventory in R1H/R2H OR have an open retail replen task
+    // Only retail items: must have R1H/R2H reserve stock OR an open replen task
     const isRetailItem = sourceStock > 0 || tasks.length > 0;
     if (!isRetailItem) continue;
 
