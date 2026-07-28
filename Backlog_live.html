@@ -339,6 +339,12 @@
   .rr-task-status.inprogress{background:var(--green-bg,#0f2e1a);color:var(--green);}
   .rr-task-loc{color:var(--text-hint);font-size:11px;}
   .rr-orders-label{font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;margin:8px 0 5px;}
+  /* Solid theme: text-hint (#4a5570) is too dark on surface2 — brighten rr subtext only */
+  [data-theme="solid"] .rr-tasks-label,
+  [data-theme="solid"] .rr-orders-label { color: #6a7a9e; }
+  [data-theme="solid"] .rr-task-loc     { color: #7080a8; }
+  [data-theme="solid"] .rr-task-summary { color: #9aaac8; }
+  [data-theme="solid"] .rr-metric-label { color: #6a7a9e; }
   .rr-order-chips{display:flex;flex-wrap:wrap;gap:5px;}
   .rr-order-chip{font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border);font-family:monospace;}
   .rr-no-task{font-size:12px;font-weight:600;color:var(--red);padding:5px 8px;background:var(--red-bg,#2e1a1a);border:0.5px solid var(--red-border,#6b2020);border-radius:5px;display:inline-block;margin-top:4px;}
