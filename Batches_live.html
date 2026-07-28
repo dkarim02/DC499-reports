@@ -178,13 +178,20 @@
     z-index:900;
     display:none;
     transform-origin:center center;
-    image-rendering:auto;
+  }
+  #remi-src{
+    position:fixed;
+    width:64px;
+    height:56px;
+    pointer-events:none;
+    z-index:899;
+    opacity:0;
   }
 </style>
 </head>
 <body>
 <canvas id="remi"></canvas>
-<video id="remi-src" src="remigreen.mp4" autoplay loop muted playsinline style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;"></video>
+<video id="remi-src" src="remigreen.mp4" autoplay loop muted playsinline></video>
 <div class="container">
 
   <div class="top-bar">
@@ -859,8 +866,12 @@ scheduleAutoRefresh();
     if (x + W >= trackW) { x = trackW - W; dir = -1; }
     if (x <= 0)           { x = 0;          dir =  1; }
 
-    canvas.style.left = (rect.left + x) + 'px';
-    canvas.style.top  = (rect.top  - H + 6) + 'px';
+    var left = (rect.left + x) + 'px';
+    var top  = (rect.top  - H + 6) + 'px';
+    canvas.style.left  = left;
+    canvas.style.top   = top;
+    srcImg.style.left  = left;
+    srcImg.style.top   = top;
 
     chromaDraw(dir === -1);
     requestAnimationFrame(step);
