@@ -184,7 +184,7 @@
 </head>
 <body>
 <canvas id="remi"></canvas>
-<img id="remi-src" src="solidrem.gif" style="display:none;" crossorigin="anonymous" alt="">
+<video id="remi-src" src="remigreen.mp4" autoplay loop muted playsinline style="display:none;"></video>
 <div class="container">
 
   <div class="top-bar">
@@ -802,7 +802,7 @@ scheduleAutoRefresh();
   var offCtx    = offCanvas.getContext('2d');
 
   function chromaDraw(flip) {
-    if (!srcImg.complete || !srcImg.naturalWidth) return;
+    if (!srcImg.readyState) return;
     offCanvas.width  = W;
     offCanvas.height = H;
     offCtx.drawImage(srcImg, 0, 0, W, H);
@@ -858,13 +858,13 @@ scheduleAutoRefresh();
 
   function tryStart() {
     var pill = getPill();
-    if (srcImg.complete && pill && pill.getBoundingClientRect().width > 10) {
+    if (srcImg.readyState >= 2 && pill && pill.getBoundingClientRect().width > 10) {
       requestAnimationFrame(step);
     } else {
       setTimeout(tryStart, 300);
     }
   }
-  srcImg.onload = tryStart;
+  srcImg.oncanplay = tryStart;
   tryStart();
 })();
 // ─────────────────────────────────────────────────────────────────────────────
