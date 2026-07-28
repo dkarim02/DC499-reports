@@ -1294,6 +1294,9 @@ function renderBatchData(data) {
     nbWidget.style.display = 'none';
   }
 
+  // Waves come from backlog_live.json, not batch_status.json
+  if (lastBlData) renderWaves(lastBlData.waves || []);
+
   var active  = data.batches.filter(function(b) { return !b.is_cleared; });
   var cleared = data.batches.filter(function(b) { return  b.is_cleared; });
 
