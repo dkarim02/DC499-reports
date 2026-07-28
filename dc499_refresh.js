@@ -949,13 +949,15 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
   // Formula: COUNT(DISTINCT waved multis) - SUM(TOTAL_ORDERS of active batches).
   // Batches only contain multi-line orders; singles go through a separate path.
   // WR_ALLOCATION (the direct staging table) is ephemeral and always empty by query time.
+  // All allocated multi-line orders regardless of when created, minus orders
+  // already absorbed into active (non-cleared) batches this shift.
   const sqlQueued = `
 SELECT
   ( SELECT COUNT(DISTINCT o.ORDER_ID)
     FROM default_dcorder.DCO_ORDER o
-    WHERE o.FACILITY_ID = '${FACILITY}'
-      AND o.ORDER_TYPE  = 'ECOM'
-      AND o.CANCELLED   = 0
+    WHERE o.FACILITY_ID    = '${FACILITY}'
+      AND o.ORDER_TYPE     = 'ECOM'
+      AND o.CANCELLED      = 0
       AND o.MAXIMUM_STATUS = '2090'
       AND o.SINGLE_LINE_ORDER = 0
   )
