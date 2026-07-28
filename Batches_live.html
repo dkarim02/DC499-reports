@@ -177,10 +177,6 @@
     pointer-events:none;
     z-index:900;
     display:none;
-    border-radius:50%;
-    background:rgba(0,0,0,0.55);
-    box-shadow:0 0 0 1.5px rgba(255,255,255,0.08);
-    overflow:hidden;
   }
   #remi{
     width:100%;
@@ -822,7 +818,7 @@ scheduleAutoRefresh();
     if (x <= 0)              { x = 0;             dir =  1; }
 
     wrap.style.left      = (rect.left + x) + 'px';
-    wrap.style.top       = (rect.top - SIZE + 16) + 'px';
+    wrap.style.top       = (rect.top - SIZE + 6) + 'px';
     el.style.transform   = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
 
     requestAnimationFrame(step);
