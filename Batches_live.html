@@ -598,7 +598,16 @@ function fmtMins(m) {
 }
 
 // ── Teams — batch picker + send ───────────────────────────────────────────────
-var TEAMS_WEBHOOK_BATCHES = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk';
+var TEAMS_WEBHOOKS_BATCHES = {
+  '1st': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/a26c40b1c9ee4739abd0269aedbef04b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=mkz_8DUX8eAfH1clRiMjPNXFz-zCT0bwAJeEMxkZwHY',
+  '2nd': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk',
+};
+function getShift() {
+  var h = new Date().getHours();
+  if (h >= 6  && h < 14) return '1st';
+  if (h >= 14 && h < 22) return '2nd';
+  return '3rd';
+}
 var bpSelected = new Set(); // currently selected batch_ids in picker
 
 function showToast(msg, ms) {
@@ -763,7 +772,8 @@ function sendSelectedBatches() {
     }}],
   };
 
-  fetch(TEAMS_WEBHOOK_BATCHES, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(card) })
+  var webhook = TEAMS_WEBHOOKS_BATCHES[getShift()] || TEAMS_WEBHOOKS_BATCHES['2nd'];
+  fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(card) })
   .then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     closeBatchPicker();

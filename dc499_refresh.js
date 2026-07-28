@@ -1118,7 +1118,16 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
 }
 
 // ── Teams: cleared batch notifier ─────────────────────────────────────────────
-const TEAMS_WEBHOOK_BATCHES = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk';
+const TEAMS_WEBHOOKS_BATCHES = {
+  '1st': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/a26c40b1c9ee4739abd0269aedbef04b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=mkz_8DUX8eAfH1clRiMjPNXFz-zCT0bwAJeEMxkZwHY',
+  '2nd': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk',
+};
+function getShiftLabel() {
+  const h = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getHours();
+  if (h >= 6  && h < 14) return '1st';
+  if (h >= 14 && h < 22) return '2nd';
+  return '3rd';
+}
 const SENT_BATCHES_FILE = path.join(REPORT_DIR, '.sent_batches.json');
 
 function loadSentBatches() {
@@ -1193,7 +1202,8 @@ async function notifyNewCleared(batchStatusData) {
   // Write sent list BEFORE posting so a concurrent process sees it and skips
   saveSentBatches(new Set([...sent, ...newOnes.map(b => b.batch_id)]));
   try {
-    await jsonPost(TEAMS_WEBHOOK_BATCHES, JSON.stringify(card), { 'Content-Type': 'application/json' });
+    const webhook = TEAMS_WEBHOOKS_BATCHES[getShiftLabel()] || TEAMS_WEBHOOKS_BATCHES['2nd'];
+  await jsonPost(webhook, JSON.stringify(card), { 'Content-Type': 'application/json' });
     console.log(`[${ts()}] ✓ Teams — notified ${newOnes.length} newly cleared batch(es)`);
   } catch (e) {
     console.warn(`[${ts()}]   Teams batch notify failed: ${e.message}`);
