@@ -1706,48 +1706,12 @@ fetchRrData();
 setInterval(fetchRrData, 2 * 60 * 1000);
 scheduleBlRefresh();
 
-// ── Remi sprite (chroma key) ──────────────────────────────────────────────────
+// ── Remi sprite ───────────────────────────────────────────────────────────────
 (function() {
-  var canvas  = document.getElementById('bl-remi');
-  var ctx     = canvas.getContext('2d');
-  var srcImg  = document.getElementById('bl-remi-src');
-  var speed   = 60;
-  var W = 64, H = 56;
-  canvas.width  = W;
-  canvas.height = H;
-
-  var x        = 0;
-  var dir      = 1;
-  var lastTs   = null;
-  var lastTime = -1;
-  var lastFlip = null;
-
-  var offCanvas = document.createElement('canvas');
-  offCanvas.width = W; offCanvas.height = H;
-  var offCtx = offCanvas.getContext('2d');
-
-  function chromaDraw(flip) {
-    if (!srcImg.readyState) return;
-    var newFrame   = srcImg.currentTime !== lastTime;
-    var flipChanged = flip !== lastFlip;
-    if (!newFrame && !flipChanged) return;
-    lastTime = srcImg.currentTime;
-    lastFlip = flip;
-    if (newFrame) {
-      offCtx.drawImage(srcImg, 0, 0, W, H);
-      var imgData = offCtx.getImageData(0, 0, W, H);
-      var d = imgData.data;
-      for (var i = 0; i < d.length; i += 4) {
-        var r = d[i], g = d[i+1], b = d[i+2];
-        if (g > 100 && g > r * 1.4 && g > b * 1.4) d[i+3] = 0;
-      }
-      offCtx.putImageData(imgData, 0, 0);
-    }
-    ctx.clearRect(0, 0, W, H);
-    if (flip) { ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(offCanvas, 0, 0);
-    if (flip) ctx.restore();
-  }
+  var el    = document.getElementById('bl-remi');
+  var speed = 60;
+  var W     = 64, H = 56;
+  var x     = 0, dir = 1, lastTs = null;
 
   function getPill() { return document.getElementById('next-batch-widget'); }
 
@@ -1757,39 +1721,30 @@ scheduleBlRefresh();
     lastTs = ts;
     var pill = getPill();
     if (!pill || pill.style.display === 'none' || pill.style.display === '') { requestAnimationFrame(step); return; }
-    var rect   = pill.getBoundingClientRect();
-    var trackW = rect.width;
+    var rect = pill.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > window.innerHeight) {
-      canvas.style.display = 'none';
-      srcImg.style.display = 'none';
-      requestAnimationFrame(step);
-      return;
+      el.style.display = 'none'; requestAnimationFrame(step); return;
     }
-    canvas.style.display  = 'block';
-    srcImg.style.display  = 'block';
+    el.style.display = 'block';
     x += speed * dir * dt;
-    if (x + W >= trackW) { x = trackW - W; dir = -1; }
-    if (x <= 0)           { x = 0;          dir =  1; }
-    var left = (rect.left + x) + 'px';
-    var top  = (rect.top  - H + 12) + 'px';
-    canvas.style.left = left; canvas.style.top = top;
-    srcImg.style.left = left; srcImg.style.top = top;
-    chromaDraw(dir === -1);
+    if (x + W >= rect.width) { x = rect.width - W; dir = -1; }
+    if (x <= 0)               { x = 0;              dir =  1; }
+    el.style.left      = (rect.left + x) + 'px';
+    el.style.top       = (rect.top - H + 12) + 'px';
+    el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
     requestAnimationFrame(step);
   }
 
   function tryStart() {
     var pill = getPill();
-    if (srcImg.readyState >= 2 && pill && pill.getBoundingClientRect().width > 10) {
+    if (pill && pill.getBoundingClientRect().width > 10) {
       requestAnimationFrame(step);
     } else { setTimeout(tryStart, 300); }
   }
-  srcImg.oncanplay = tryStart;
   tryStart();
 })();
 // ─────────────────────────────────────────────────────────────────────────────
 </script>
-<canvas id="bl-remi" style="position:fixed;width:64px;height:56px;pointer-events:none;z-index:900;display:none;"></canvas>
-<video id="bl-remi-src" src="remigreen.mp4" autoplay loop muted playsinline style="position:fixed;width:64px;height:56px;pointer-events:none;z-index:899;opacity:0;display:none;"></video>
+<video id="bl-remi" src="remi.mp4" autoplay loop muted playsinline style="position:fixed;width:64px;height:56px;pointer-events:none;z-index:900;display:none;mix-blend-mode:multiply;transform-origin:center center;"></video>
 </body>
 </html>

@@ -178,20 +178,13 @@
     z-index:900;
     display:none;
     transform-origin:center center;
+    mix-blend-mode:multiply;
   }
-  #remi-src{
-    position:fixed;
-    width:64px;
-    height:56px;
-    pointer-events:none;
-    z-index:899;
-    opacity:0;
-  }
+  [data-theme="light"] #remi{ mix-blend-mode:normal; }
 </style>
 </head>
 <body>
-<canvas id="remi"></canvas>
-<video id="remi-src" src="remigreen.mp4" autoplay loop muted playsinline></video>
+<video id="remi" src="remi.mp4" autoplay loop muted playsinline></video>
 <div class="container">
 
   <div class="top-bar">
@@ -800,61 +793,14 @@ document.getElementById('footer-date').textContent = new Date().toLocaleDateStri
 fetchData(false);
 scheduleAutoRefresh();
 
-// ── Remi sprite (chroma key) ──────────────────────────────────────────────────
+// ── Remi sprite ───────────────────────────────────────────────────────────────
 (function() {
-  var canvas  = document.getElementById('remi');
-  var ctx     = canvas.getContext('2d');
-  var srcImg  = document.getElementById('remi-src');
-  var speed   = 60;  // px per second
-  var W = 64, H = 56;
-  canvas.width  = W;
-  canvas.height = H;
+  var el    = document.getElementById('remi');
+  var speed = 60;
+  var W     = 64, H = 56;
+  var x     = 0, dir = 1, lastTs = null;
 
-  var x         = 0;
-  var dir       = 1;
-  var lastTs    = null;
-  var lastTime  = -1;
-  var lastFlip  = null;
-
-  // Off-screen canvas for chroma key processing
-  var offCanvas = document.createElement('canvas');
-  offCanvas.width  = W;
-  offCanvas.height = H;
-  var offCtx = offCanvas.getContext('2d');
-
-  function chromaDraw(flip) {
-    if (!srcImg.readyState) return;
-    var newFrame = srcImg.currentTime !== lastTime;
-    var flipChanged = flip !== lastFlip;
-
-    if (!newFrame && !flipChanged) return; // same frame, same direction — skip redraw
-    lastTime = srcImg.currentTime;
-    lastFlip = flip;
-
-    if (newFrame) {
-      offCtx.drawImage(srcImg, 0, 0, W, H);
-      var imgData = offCtx.getImageData(0, 0, W, H);
-      var d = imgData.data;
-      for (var i = 0; i < d.length; i += 4) {
-        var r = d[i], g = d[i+1], b = d[i+2];
-        if (g > 100 && g > r * 1.4 && g > b * 1.4) d[i+3] = 0;
-      }
-      offCtx.putImageData(imgData, 0, 0);
-    }
-
-    ctx.clearRect(0, 0, W, H);
-    if (flip) {
-      ctx.save();
-      ctx.translate(W, 0);
-      ctx.scale(-1, 1);
-    }
-    ctx.drawImage(offCanvas, 0, 0);
-    if (flip) ctx.restore();
-  }
-
-  function getPill() {
-    return document.getElementById('next-batch-widget');
-  }
+  function getPill() { return document.getElementById('next-batch-widget'); }
 
   function step(ts) {
     if (!lastTs) lastTs = ts;
@@ -864,44 +810,29 @@ scheduleAutoRefresh();
     var pill = getPill();
     if (!pill || pill.style.display === 'none') { requestAnimationFrame(step); return; }
 
-    var rect   = pill.getBoundingClientRect();
-    var trackW = rect.width;
-
-    // Hide if pill has scrolled off screen
+    var rect = pill.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > window.innerHeight) {
-      canvas.style.display = 'none';
-      srcImg.style.display = 'none';
-      requestAnimationFrame(step);
-      return;
+      el.style.display = 'none'; requestAnimationFrame(step); return;
     }
 
-    canvas.style.display = 'block';
-    srcImg.style.display = 'block';
-
+    el.style.display = 'block';
     x += speed * dir * dt;
-    if (x + W >= trackW) { x = trackW - W; dir = -1; }
-    if (x <= 0)           { x = 0;          dir =  1; }
+    if (x + W >= rect.width) { x = rect.width - W; dir = -1; }
+    if (x <= 0)               { x = 0;              dir =  1; }
 
-    var left = (rect.left + x) + 'px';
-    var top  = (rect.top  - H + 12) + 'px';
-    canvas.style.left  = left;
-    canvas.style.top   = top;
-    srcImg.style.left  = left;
-    srcImg.style.top   = top;
+    el.style.left      = (rect.left + x) + 'px';
+    el.style.top       = (rect.top - H + 12) + 'px';
+    el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
 
-    chromaDraw(dir === -1);
     requestAnimationFrame(step);
   }
 
   function tryStart() {
     var pill = getPill();
-    if (srcImg.readyState >= 2 && pill && pill.getBoundingClientRect().width > 10) {
+    if (pill && pill.getBoundingClientRect().width > 10) {
       requestAnimationFrame(step);
-    } else {
-      setTimeout(tryStart, 300);
-    }
+    } else { setTimeout(tryStart, 300); }
   }
-  srcImg.oncanplay = tryStart;
   tryStart();
 })();
 // ─────────────────────────────────────────────────────────────────────────────
