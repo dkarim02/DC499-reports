@@ -344,6 +344,25 @@
   .rr-order-chip{font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border);font-family:monospace;}
   .rr-no-task{font-size:12px;font-weight:600;color:var(--red);padding:5px 8px;background:var(--red-bg,#2e1a1a);border:0.5px solid var(--red-border,#6b2020);border-radius:5px;display:inline-block;margin-top:4px;}
 
+  /* ── Waves widget ───────────────────────────────────────────────────────── */
+  .waves-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;}
+  .waves-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none;}
+  .waves-header:hover{background:var(--surface2);}
+  .waves-header-left{display:flex;align-items:center;gap:10px;}
+  .waves-title{font-size:13px;font-weight:600;color:var(--text);}
+  .waves-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;background:var(--accent-bg);color:var(--accent);border:0.5px solid var(--accent-border,var(--accent));}
+  .waves-chevron{font-size:11px;color:var(--text-hint);transition:transform 0.2s;}
+  .waves-chevron.open{transform:rotate(180deg);}
+  .waves-body{max-height:0;overflow:hidden;border-top:0.5px solid var(--border-light);transition:max-height 0.22s ease;}
+  .waves-body.open{max-height:400px;}
+  .waves-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .waves-table th{text-align:left;font-size:10px;font-weight:600;color:var(--text-muted);padding:8px 14px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;}
+  .waves-table th.r{text-align:right;}
+  .waves-table td{padding:9px 14px;border-bottom:0.5px solid var(--border-light);color:var(--text);}
+  .waves-table td.r{text-align:right;font-weight:600;}
+  .waves-table tr:last-child td{border-bottom:none;}
+  .waves-table tr.wave-total td{color:var(--amber);font-weight:700;border-top:0.5px solid var(--border-mid);}
+
   /* Batch picker modal */
   .bp-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center;}
   .bp-overlay.open{display:flex;}
@@ -493,6 +512,23 @@
             <span class="detail-count" id="detail-count"></span>
           </div>
           <div class="order-list-inner" id="detail-order-list"></div>
+        </div>
+
+        <!-- Waves Run accordion — sits below retail replen widget -->
+        <div class="waves-widget" id="waves-widget" style="display:none;margin-top:1rem;">
+          <div class="waves-header" onclick="toggleWavesWidget()">
+            <div class="waves-header-left">
+              <span class="waves-title">Waves Run This Shift</span>
+              <span class="waves-pill" id="waves-total-pill"></span>
+            </div>
+            <span class="waves-chevron" id="waves-chevron">&#9660;</span>
+          </div>
+          <div class="waves-body" id="waves-body">
+            <table class="waves-table">
+              <thead><tr><th>Type</th><th class="r">Count</th></tr></thead>
+              <tbody id="waves-tbody"></tbody>
+            </table>
+          </div>
         </div>
 
         <!-- Retail Replen widget — sits below date table in left column -->
@@ -1005,6 +1041,7 @@ function renderBacklogData(data) {
   metrEl.style.display  = 'grid';
   cardEl.style.display  = 'block';
   renderHourly(data.hourly || []);
+  renderWaves(data.waves || []);
 }
 
 // ── BATCHES TAB ───────────────────────────────────────────────────────────────
@@ -1496,6 +1533,35 @@ function sendSelectedBatches() {
   .catch(function(e){ sendBtn.disabled=false; sendBtn.textContent='Send'; showToast('Teams send failed: '+e.message, 4000); });
 }
 // ──────────────────────────────────────────────────────────────────────────────
+
+// ── Waves widget ─────────────────────────────────────────────────────────────
+var wavesOpen = false;
+
+function toggleWavesWidget() {
+  wavesOpen = !wavesOpen;
+  document.getElementById('waves-body').classList.toggle('open', wavesOpen);
+  document.getElementById('waves-chevron').classList.toggle('open', wavesOpen);
+}
+
+function renderWaves(waves) {
+  var widget  = document.getElementById('waves-widget');
+  var tbody   = document.getElementById('waves-tbody');
+  var pill    = document.getElementById('waves-total-pill');
+
+  if (!waves || !waves.length) { widget.style.display = 'none'; return; }
+
+  var nonTotal = waves.filter(function(w) { return w.type !== 'Total'; });
+  var totalRow = waves.find(function(w) { return w.type === 'Total'; });
+
+  tbody.innerHTML = nonTotal.map(function(w) {
+    return '<tr><td>' + w.type + '</td><td class="r">' + w.count + '</td></tr>';
+  }).join('') + (totalRow
+    ? '<tr class="wave-total"><td>Total</td><td class="r">' + totalRow.count + '</td></tr>'
+    : '');
+
+  pill.textContent = (totalRow ? totalRow.count : nonTotal.reduce(function(a,w){return a+w.count;},0)) + ' waves';
+  widget.style.display = 'block';
+}
 
 // ── Retail Replen widget ──────────────────────────────────────────────────────
 var rrOpen = false;

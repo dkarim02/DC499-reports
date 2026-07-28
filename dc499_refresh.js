@@ -675,10 +675,32 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY hour_pdt
 ORDER BY hour_pdt`.trim();
 
-  const [respCounts, respOrders, respHourly] = await Promise.all([
+  // Query 4: wave runs this shift — same logic as eos_agent
+  const nowUtc       = new Date();
+  const nowUtcHour   = nowUtc.getUTCHours();
+  const is1st        = nowUtcHour >= 10 && nowUtcHour < 21;
+  const shiftHourUtc = is1st ? 10 : 21;
+  let   waveShiftStart = new Date(nowUtc);
+  waveShiftStart.setUTCHours(shiftHourUtc, 0, 0, 0);
+  if (!is1st && nowUtcHour < shiftHourUtc) waveShiftStart.setUTCDate(waveShiftStart.getUTCDate() - 1);
+  const waveStartStr = waveShiftStart.toISOString().replace('T',' ').slice(0,19);
+
+  const sqlWaves = `
+SELECT
+  PLANNING_STRATEGY_ID,
+  CHASE_MODE,
+  COUNT(*) AS wave_runs
+FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
+WHERE FACILITY_ID = '${FACILITY}'
+  AND CREATED_TIMESTAMP >= '${waveStartStr}'
+GROUP BY PLANNING_STRATEGY_ID, CHASE_MODE
+ORDER BY wave_runs DESC`.trim();
+
+  const [respCounts, respOrders, respHourly, respWaves] = await Promise.all([
     mcpQuery(accessToken, sqlCounts),
     mcpQuery(accessToken, sqlOrders),
     mcpQuery(accessToken, sqlHourly),
+    mcpQuery(accessToken, sqlWaves),
   ]);
 
   const buckets = {
@@ -714,12 +736,35 @@ ORDER BY hour_pdt`.trim();
     lines: Number(r.line_count),
   }));
 
+  function waveLabel(sid, chase) {
+    if (sid === 'ECOM_REPLEN')       return 'Replen';
+    if (sid === 'ECOM_RTV')          return 'RTV/RTI';
+    if (chase === 'Y' || chase === 'SINGLE_CHASE') return 'Single Chase';
+    if (chase === 'MULTI_CHASE')     return 'Multi Chase';
+    if (sid && sid.includes('FILL')) return 'Fill/Kill';
+    if (sid && sid.includes('MULTI'))return 'Multi';
+    return 'Ecom';
+  }
+  const waveCounts = {};
+  for (const r of (respWaves.rows || [])) {
+    const label = waveLabel(r.PLANNING_STRATEGY_ID, r.CHASE_MODE);
+    waveCounts[label] = (waveCounts[label] || 0) + Number(r.wave_runs);
+  }
+  const waveOrder = ['Ecom','Replen','Single Chase','Multi Chase','Fill/Kill','Multi','RTV/RTI'];
+  const waves = waveOrder
+    .filter(t => waveCounts[t] > 0)
+    .map(t => ({ type: t, count: waveCounts[t] }));
+  const waveTotal = Object.values(waveCounts).reduce((a,b) => a+b, 0);
+  if (waveTotal > 0) waves.push({ type: 'Total', count: waveTotal });
+
   return {
     generated: new Date().toISOString().slice(0, 19),
     facility:  FACILITY,
     today:     todayStr,
     dates:     [buckets[todayStr], buckets[yestStr]],
     hourly,
+    waves,
+    shift_label: is1st ? '1st shift' : '2nd shift',
   };
 }
 
