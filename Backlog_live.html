@@ -1620,6 +1620,13 @@ function renderRrWidget(data) {
   }).join('');
 
   document.getElementById('rr-rows').innerHTML = html;
+
+  // Auto-expand the widget body if row count is small enough to show without scrolling
+  if (items.length < 5 && !rrOpen) {
+    rrOpen = true;
+    document.getElementById('rr-body').classList.add('open');
+    document.getElementById('rr-chevron').classList.add('open');
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

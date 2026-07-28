@@ -949,28 +949,24 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
   // Formula: COUNT(DISTINCT waved multis) - SUM(TOTAL_ORDERS of active batches).
   // Batches only contain multi-line orders; singles go through a separate path.
   // WR_ALLOCATION (the direct staging table) is ephemeral and always empty by query time.
-  // All allocated multi-line orders regardless of when created, minus orders
-  // already absorbed into active (non-cleared) batches this shift.
+  // Direct count: waved multi-line orders (status 2090) that have no task
+  // detail row tied to any batch this shift = truly queued, not yet released.
   const sqlQueued = `
-SELECT
-  ( SELECT COUNT(DISTINCT o.ORDER_ID)
-    FROM default_dcorder.DCO_ORDER o
-    WHERE o.FACILITY_ID    = '${FACILITY}'
-      AND o.ORDER_TYPE     = 'ECOM'
-      AND o.CANCELLED      = 0
-      AND o.MAXIMUM_STATUS = '2090'
-      AND o.SINGLE_LINE_ORDER = 0
-  )
-  -
-  COALESCE(
-    ( SELECT SUM(b.TOTAL_ORDERS)
-      FROM default_workrelease.WR_BATCH b
-      WHERE b.FACILITY_ID = '${FACILITY}'
-        AND b.STATUS_ID NOT IN (5800, 9000)
-        AND b.CREATED_TIMESTAMP >= '${startStr}'
-    ), 0
-  )
-  AS queued_orders`.trim();
+SELECT COUNT(DISTINCT o.ORDER_ID) AS queued_orders
+FROM default_dcorder.DCO_ORDER o
+WHERE o.FACILITY_ID     = '${FACILITY}'
+  AND o.ORDER_TYPE      = 'ECOM'
+  AND o.CANCELLED       = 0
+  AND o.SINGLE_LINE_ORDER = 0
+  AND o.MAXIMUM_STATUS  = '2090'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM default_pickpack.TSK_TASK_DETAIL td
+    WHERE td.FACILITY_ID         = '${FACILITY}'
+      AND td.ORDER_ID            = o.ORDER_ID
+      AND td.RESOURCE_BATCH_ID   IS NOT NULL
+      AND td.CREATED_TIMESTAMP   >= '${startStr}'
+  )`.trim();
 
   const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
