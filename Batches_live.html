@@ -810,30 +810,37 @@ scheduleAutoRefresh();
   canvas.width  = W;
   canvas.height = H;
 
-  var x      = 0;
-  var dir    = 1;
-  var lastTs = null;
+  var x         = 0;
+  var dir       = 1;
+  var lastTs    = null;
+  var lastTime  = -1;
+  var lastFlip  = null;
 
   // Off-screen canvas for chroma key processing
   var offCanvas = document.createElement('canvas');
-  var offCtx    = offCanvas.getContext('2d');
+  offCanvas.width  = W;
+  offCanvas.height = H;
+  var offCtx = offCanvas.getContext('2d');
 
   function chromaDraw(flip) {
     if (!srcImg.readyState) return;
-    offCanvas.width  = W;
-    offCanvas.height = H;
-    offCtx.drawImage(srcImg, 0, 0, W, H);
+    var newFrame = srcImg.currentTime !== lastTime;
+    var flipChanged = flip !== lastFlip;
 
-    var imgData = offCtx.getImageData(0, 0, W, H);
-    var d = imgData.data;
-    for (var i = 0; i < d.length; i += 4) {
-      var r = d[i], g = d[i+1], b = d[i+2];
-      // Key out green: g dominant, not too red, not too blue
-      if (g > 100 && g > r * 1.4 && g > b * 1.4) {
-        d[i+3] = 0; // transparent
+    if (!newFrame && !flipChanged) return; // same frame, same direction — skip redraw
+    lastTime = srcImg.currentTime;
+    lastFlip = flip;
+
+    if (newFrame) {
+      offCtx.drawImage(srcImg, 0, 0, W, H);
+      var imgData = offCtx.getImageData(0, 0, W, H);
+      var d = imgData.data;
+      for (var i = 0; i < d.length; i += 4) {
+        var r = d[i], g = d[i+1], b = d[i+2];
+        if (g > 100 && g > r * 1.4 && g > b * 1.4) d[i+3] = 0;
       }
+      offCtx.putImageData(imgData, 0, 0);
     }
-    offCtx.putImageData(imgData, 0, 0);
 
     ctx.clearRect(0, 0, W, H);
     if (flip) {
@@ -867,7 +874,7 @@ scheduleAutoRefresh();
     if (x <= 0)           { x = 0;          dir =  1; }
 
     var left = (rect.left + x) + 'px';
-    var top  = (rect.top  - H + 6) + 'px';
+    var top  = (rect.top  - H + 11) + 'px';
     canvas.style.left  = left;
     canvas.style.top   = top;
     srcImg.style.left  = left;
