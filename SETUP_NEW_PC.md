@@ -7,7 +7,7 @@ Follow these steps to get SCOUT running on a new machine or to hand off to anoth
 ## What you need
 
 - Git for Windows: https://git-scm.com/download/win
-- Node.js (LTS): https://nodejs.org  ← just install from the website, takes 2 min
+- Node.js (LTS): https://nodejs.org  — just install from the website, takes 2 min
 - A Nordstrom SSO account with MAWM data access
 
 ---
@@ -32,13 +32,13 @@ Put it wherever you want (Desktop, Documents, etc.). The folder name doesn't mat
 4. A browser window opens — sign in with your Nordstrom SSO account
 5. After "Authorized!" appears in the browser, come back to the terminal
 
-That's it. The token file (`.mcp_token.json`) is saved in the project folder.
+The token is saved in the project folder. You only do this once.
 
 ---
 
 ## Step 3 — Test it
 
-Double-click **dc499.bat** → press **1** (Refresh data only).
+Double-click **dc499.bat** and press **1** (Refresh data only).
 
 You should see lines like:
 ```
@@ -50,36 +50,36 @@ Done.
 
 ---
 
-## Step 4 — Set up the auto-refresh (so it runs while you're away)
+## Step 4 — Start the live server
 
-1. Right-click **dc499_setup_task.ps1** → **Run with PowerShell**
-2. It will say "Task registered" — done.
+Double-click **dc499.bat** and press **2** (Start live server).
 
-This schedules the refresh to run every 20 hours automatically, even with the screen locked.
+Leave the terminal window open and the screen locked (Win+L). The server refreshes data every 2 minutes and pushes to GitHub automatically. It runs until the terminal is closed or the PC restarts — so don't close it and don't log out.
 
-**Important:** The PC must be **locked, not logged out.** Lock it with Win+L before you leave.  
-Also: go to Windows Update settings and disable "Restart this device as soon as possible" so a surprise restart doesn't kill the session over the weekend.
+This is what keeps the reports live for Sunday crew and 1st shift Monday.
 
 ---
 
-## Moving the project to a different location
+## Optional — Auto-refresh safety net
 
-The project is fully portable — all paths are relative to the folder. Just move the whole folder and re-run **dc499_setup_task.ps1** to update the scheduled task path.
+If you want the data to keep updating even if the terminal gets closed, double-click **dc499_install_task.bat**. It registers a scheduled task that runs a one-shot refresh every 20 hours in the background.
 
----
-
-## If the token expires (auth failed on refresh)
-
-Double-click **dc499.bat** → press **4**. Done. Takes 30 seconds.
+This is a backup, not a replacement for Step 4. It won't give 2-minute updates — just keeps data from going completely stale.
 
 ---
 
-## Check the auto-refresh log
+## If the token expires
 
-Open **dc499_autorefresh.log** in the project folder to see when it last ran and whether it succeeded.
+Double-click **dc499.bat** and press **4**. Done in 30 seconds. This should only happen if the PC was fully restarted or logged out.
 
 ---
 
-## Re-register the scheduled task after moving folders
+## Check the log
 
-If you move the DC499 Reporter folder, run **dc499_setup_task.ps1** again — it will update the path automatically.
+Open **dc499_autorefresh.log** in the project folder to see when the scheduled task last ran and whether it succeeded.
+
+---
+
+## Moving the project to a different folder
+
+Everything is portable — all paths are relative. Just move the whole folder. If you registered the scheduled task, run **dc499_install_task.bat** again to update its path.
