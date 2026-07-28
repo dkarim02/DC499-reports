@@ -168,9 +168,22 @@
   .bp-send{font-family:inherit;font-size:13px;font-weight:600;padding:6px 18px;border:none;border-radius:6px;background:#6264A7;cursor:pointer;color:#fff;transition:background 0.12s;}
   .bp-send:hover{background:#4f51a0;}
   .bp-send:disabled{opacity:0.5;cursor:default;}
+
+  /* ── Remi sprite ──────────────────────────────────────────── */
+  #remi{
+    position:fixed;
+    width:48px;
+    height:48px;
+    pointer-events:none;
+    z-index:900;
+    mix-blend-mode:multiply;
+    display:none;
+    transform-origin:center center;
+  }
 </style>
 </head>
 <body>
+<video id="remi" src="remi.mp4" autoplay loop muted playsinline></video>
 <div class="container">
 
   <div class="top-bar">
@@ -768,6 +781,98 @@ function sendSelectedBatches() {
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 fetchData(false);
 scheduleAutoRefresh();
+
+// ── Remi sprite ───────────────────────────────────────────────────────────────
+(function() {
+  var el = document.getElementById('remi');
+  var speed = 80; // px per second
+  var pad = 4;    // offset from card edge so Remi sits just outside the border
+
+  // Perimeter walk state
+  var perimPos = 0; // distance along perimeter
+  var perimLen = 0;
+  var rect = null;
+
+  // sides: 0=top(L→R), 1=right(T→B), 2=bottom(R→L), 3=left(B→T)
+  var lastTs = null;
+
+  function getRect() {
+    // prefer active card, fall back to cleared card, then the container
+    var card = document.getElementById('batch-card-active');
+    if (!card || card.style.display === 'none') card = document.getElementById('batch-card-cleared');
+    if (!card || card.style.display === 'none') card = document.querySelector('.container');
+    return card ? card.getBoundingClientRect() : null;
+  }
+
+  function posFromPerim(p, r) {
+    var w = r.width, h = r.height;
+    var top = w, right = w + h, bottom = w + h + w, left = w + h + w + h;
+    var x, y, angle;
+    if (p < top) {
+      x = r.left - pad + p;
+      y = r.top - pad - el.offsetHeight;
+      angle = 0;
+    } else if (p < right) {
+      x = r.right + pad;
+      y = r.top - pad + (p - top);
+      angle = 90;
+    } else if (p < bottom) {
+      x = r.right + pad - (p - right);
+      y = r.bottom + pad;
+      angle = 180;
+    } else {
+      x = r.left - pad - el.offsetWidth;
+      y = r.bottom + pad - (p - bottom);
+      angle = 270;
+    }
+    return { x: x, y: y, angle: angle };
+  }
+
+  function step(ts) {
+    if (!lastTs) lastTs = ts;
+    var dt = (ts - lastTs) / 1000;
+    lastTs = ts;
+
+    rect = getRect();
+    if (!rect || rect.width < 10) { requestAnimationFrame(step); return; }
+
+    el.style.display = 'block';
+
+    var w = rect.width, h = rect.height;
+    perimLen = 2 * (w + h);
+    perimPos = (perimPos + speed * dt) % perimLen;
+
+    var pos = posFromPerim(perimPos, rect);
+
+    // Top (0°): faces right — no flip
+    // Right (90°): faces down — rotate 90
+    // Bottom (180°): faces left — flip horizontally (no rotate)
+    // Left (270°): faces up — rotate -90
+    var transform;
+    if (pos.angle === 0)        transform = 'scaleX(1)';
+    else if (pos.angle === 90)  transform = 'rotate(90deg)';
+    else if (pos.angle === 180) transform = 'scaleX(-1)';
+    else                        transform = 'rotate(-90deg)';
+    el.style.transform = transform;
+
+    el.style.left = pos.x + 'px';
+    el.style.top  = pos.y + 'px';
+
+    requestAnimationFrame(step);
+  }
+
+  // Start once card is visible (may take a moment after data loads)
+  function tryStart() {
+    rect = getRect();
+    if (rect && rect.width > 10) {
+      requestAnimationFrame(step);
+    } else {
+      setTimeout(tryStart, 500);
+    }
+  }
+  tryStart();
+})();
+// ─────────────────────────────────────────────────────────────────────────────
 </script>
 </body>
 </html>
