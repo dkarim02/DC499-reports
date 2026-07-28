@@ -274,7 +274,7 @@
   .bt-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 
   /* ── View toggle (Bubbles / Compact) ─────────────────────────────────────── */
-  .bt-view-bar{display:flex;align-items:center;justify-content:flex-end;margin-bottom:1rem;}
+  .bt-view-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:10px;}
   .bt-view-switch{display:flex;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;overflow:hidden;font-size:11px;font-weight:600;}
   .bt-view-opt{padding:4px 14px;cursor:pointer;color:var(--text-hint);transition:background 0.12s,color 0.12s;white-space:nowrap;border:none;background:none;font-family:inherit;font-size:11px;font-weight:600;}
   .bt-view-opt.active{background:var(--accent);color:#fff;border-radius:20px;}
@@ -567,20 +567,19 @@
       </div>
     </div>
 
-    <div class="next-batch-widget" id="next-batch-widget">
-      <span class="nb-title">Next Batch</span>
-      <div class="nb-bar-track">
-        <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%"></div>
-      </div>
-      <div class="nb-footer">
-        <span class="nb-count"><span id="nb-queued">—</span><span> / 96 orders</span></span>
-        <span id="nb-eta-wrap" class="nb-eta"></span>
-        <span class="nb-meta" id="nb-since-wrap"></span>
-      </div>
-    </div>
-
     <div class="bt-view-bar" id="bt-view-bar" style="display:none;">
-      <div class="bt-view-switch">
+      <div class="next-batch-widget" id="next-batch-widget" style="flex:1;margin-bottom:0;border:none;background:none;padding:0;">
+        <span class="nb-title">Next Batch</span>
+        <div class="nb-bar-track">
+          <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%"></div>
+        </div>
+        <div class="nb-footer">
+          <span class="nb-count"><span id="nb-queued">—</span><span> / 96 orders</span></span>
+          <span id="nb-eta-wrap" class="nb-eta"></span>
+          <span class="nb-meta" id="nb-since-wrap"></span>
+        </div>
+      </div>
+      <div class="bt-view-switch" style="flex-shrink:0;">
         <button class="bt-view-opt active" id="bt-view-bubbles" onclick="setBtView('bubbles')">Bubbles</button>
         <button class="bt-view-opt"        id="bt-view-compact" onclick="setBtView('compact')">Compact</button>
       </div>
@@ -1224,7 +1223,7 @@ function renderBatchData(data) {
   var queued    = s.queued_orders;
   var threshold = s.batch_threshold || 96;
   if (queued != null) {
-    nbWidget.classList.add('visible');
+    nbWidget.style.display = 'flex';
     var pct  = Math.min(Math.round((queued / threshold) * 100), 100);
     var fill = document.getElementById('nb-bar-fill');
     fill.style.width = pct + '%';
@@ -1255,7 +1254,7 @@ function renderBatchData(data) {
       etaEl.textContent = needed > 0 ? needed + ' more needed' : '';
     }
   } else {
-    nbWidget.classList.remove('visible');
+    nbWidget.style.display = 'none';
   }
 
   var active  = data.batches.filter(function(b) { return !b.is_cleared; });
