@@ -205,10 +205,17 @@ function nowPdt() {
 
 // ── receiving query ────────────────────────────────────────────────────────────
 async function fetchReceiving(accessToken) {
-  const today = nowPdt().toLocaleDateString('en-CA'); // YYYY-MM-DD in PDT
-
-  // 06:00 PDT = 13:00 UTC — avoid wrapping CREATED_TIMESTAMP in functions so the index fires
-  const shiftStartUtc = `${today} 13:00:00`;
+  const nowUtc = new Date();
+  const nowUtcHour = nowUtc.getUTCHours();
+  const is1stRcv = nowUtcHour >= 13 && nowUtcHour < 21; // 06:00–13:59 PDT
+  let rcvShiftStart = new Date(nowUtc);
+  if (is1stRcv) {
+    rcvShiftStart.setUTCHours(13, 0, 0, 0); // 06:00 PDT
+  } else {
+    rcvShiftStart.setUTCHours(21, 0, 0, 0); // 14:00 PDT
+    if (nowUtcHour < 21) rcvShiftStart.setUTCDate(rcvShiftStart.getUTCDate() - 1);
+  }
+  const shiftStartUtc = rcvShiftStart.toISOString().replace('T',' ').slice(0,19);
 
   const sqlAssociates = `
 SELECT
