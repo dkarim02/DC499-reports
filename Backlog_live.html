@@ -393,7 +393,7 @@
   .bt-teams-btn{font-family:inherit;font-size:12px;font-weight:600;padding:5px 12px;border:0.5px solid #6264A7;border-radius:6px;background:transparent;cursor:pointer;color:#6264A7;transition:background 0.12s,color 0.12s;}
   .bt-teams-btn:hover{background:#6264A7;color:#fff;}
   .bt-teams-btn.sent{border-color:var(--green);color:var(--green);}
-  #bl-remi,#bl-remi2{position:fixed;width:64px;height:56px;pointer-events:none;z-index:900;display:none;transform-origin:center center;mix-blend-mode:multiply;}
+  #bl-remi,#bl-remi2{position:fixed;width:48px;height:42px;pointer-events:none;z-index:900;display:none;transform-origin:center center;mix-blend-mode:multiply;}
   [data-theme="light"] #bl-remi,[data-theme="light"] #bl-remi2{mix-blend-mode:normal;}
 </style>
 </head>
@@ -1715,7 +1715,7 @@ scheduleBlRefresh();
 (function() {
   var el    = document.getElementById('bl-remi');
   var speed = 60;
-  var W     = 64, H = 56;
+  var W     = 48, H = 42;
   var x     = 0, dir = 1, lastTs = null;
 
   function getPill() {
@@ -1741,7 +1741,7 @@ scheduleBlRefresh();
     if (x + W >= rect.width) { x = rect.width - W; dir = -1; }
     if (x <= 0)               { x = 0;              dir =  1; }
     el.style.left      = (rect.left + x) + 'px';
-    el.style.top       = (rect.top + rect.height / 2 - H / 2) + 'px';
+    el.style.top       = (rect.top - H + 10) + 'px';
     el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
     requestAnimationFrame(step);
   }
@@ -1753,7 +1753,7 @@ scheduleBlRefresh();
 (function() {
   var el    = document.getElementById('bl-remi2');
   var speed = 60;
-  var W     = 64, H = 56;
+  var W     = 48, H = 42;
   var x     = 0, dir = 1, lastTs = null;
 
   function getCard() {
