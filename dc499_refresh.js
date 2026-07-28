@@ -945,16 +945,30 @@ WHERE FACILITY_ID = '${FACILITY}'
   )
 ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
 
-  // WR_ALLOCATION holds allocations stuck at status 4000 with error WOR::214
-  // (threshold not met). One row per pick line — distinct ORDER_ID = orders queued.
-  // Table is ephemeral: empty between wave runs, populated only in the window after
-  // a wave fires but before the next batch releases. Zero is a valid real count.
+  // Queued orders = waved multi-line orders not yet absorbed into an active batch.
+  // Formula: COUNT(DISTINCT waved multis) - SUM(TOTAL_ORDERS of active batches).
+  // Batches only contain multi-line orders; singles go through a separate path.
+  // WR_ALLOCATION (the direct staging table) is ephemeral and always empty by query time.
   const sqlQueued = `
-SELECT COUNT(DISTINCT ORDER_ID) AS queued_orders
-FROM default_workrelease.WR_ALLOCATION
-WHERE FACILITY_ID = '${FACILITY}'
-  AND STATUS_ID   = '4000'
-  AND ERROR_CODE  = 'WOR::214'`.trim();
+SELECT
+  ( SELECT COUNT(DISTINCT o.ORDER_ID)
+    FROM default_dcorder.DCO_ORDER o
+    WHERE o.FACILITY_ID = '${FACILITY}'
+      AND o.ORDER_TYPE  = 'ECOM'
+      AND o.CANCELLED   = 0
+      AND o.MAXIMUM_STATUS = '2090'
+      AND o.SINGLE_LINE_ORDER = 0
+  )
+  -
+  COALESCE(
+    ( SELECT SUM(b.TOTAL_ORDERS)
+      FROM default_workrelease.WR_BATCH b
+      WHERE b.FACILITY_ID = '${FACILITY}'
+        AND b.STATUS_ID NOT IN (5800, 9000)
+        AND b.CREATED_TIMESTAMP >= '${startStr}'
+    ), 0
+  )
+  AS queued_orders`.trim();
 
   const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
