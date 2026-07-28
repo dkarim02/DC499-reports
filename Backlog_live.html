@@ -1675,9 +1675,9 @@ function renderRrWidget(data) {
       '<div class="rr-expand" id="rr-expand-' + idx + '">' +
         '<div class="rr-expand-grid">' +
           '<div class="rr-metric"><div class="rr-metric-label">Units Needed</div><div class="rr-metric-value">' + item.units_needed + '</div></div>' +
-          '<div class="rr-metric"><div class="rr-metric-label">Face Stock</div><div class="rr-metric-value ' + (item.face_stock > 0 ? '' : 'neg') + '">' + item.face_stock + '</div></div>' +
-          '<div class="rr-metric"><div class="rr-metric-label">Gap</div><div class="rr-metric-value neg">' + item.gap + '</div></div>' +
-          '<div class="rr-metric"><div class="rr-metric-label">Source (R1H/R2H)</div><div class="rr-metric-value ' + (item.source_stock > 0 ? 'pos' : 'neg') + '">' + item.source_stock + '</div></div>' +
+          '<div class="rr-metric"><div class="rr-metric-label">Active</div><div class="rr-metric-value ' + (item.face_stock > 0 ? '' : 'neg') + '">' + item.face_stock + '</div></div>' +
+          '<div class="rr-metric"><div class="rr-metric-label">Fill</div><div class="rr-metric-value neg">' + item.gap + '</div></div>' +
+          '<div class="rr-metric"><div class="rr-metric-label">Reserve</div><div class="rr-metric-value ' + (item.source_stock > 0 ? 'pos' : 'neg') + '">' + item.source_stock + '</div></div>' +
           '<div class="rr-metric"><div class="rr-metric-label">Orders</div><div class="rr-metric-value">' + item.order_count + '</div></div>' +
         '</div>' +
         taskRowsHtml +
