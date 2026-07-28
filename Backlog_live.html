@@ -1746,8 +1746,8 @@ scheduleBlRefresh();
 // ── Remi sprite (next-batch bar) ─────────────────────────────────────────────
 (function() {
   var el    = document.getElementById('bl-remi');
-  var speed = 60;
-  var W     = 48, H = 42;
+  var speed = 45;
+  var W     = 48, H = 42, CLIP = 6;
   var x     = 0, dir = 1, lastTs = null;
 
   function getPill() {
@@ -1770,10 +1770,11 @@ scheduleBlRefresh();
       el.style.display = 'none'; requestAnimationFrame(step); return;
     }
     el.style.display = 'block';
+    var maxX = rect.width - (W - CLIP);
     x += speed * dir * dt;
-    if (x + W >= rect.width) { x = rect.width - W; dir = -1; }
-    if (x <= 0)               { x = 0;              dir =  1; }
-    el.style.left      = (rect.left + x) + 'px';
+    if (x >= maxX) { x = maxX; dir = -1; }
+    if (x <= 0)    { x = 0;    dir =  1; }
+    el.style.left      = (rect.left - CLIP + x) + 'px';
     el.style.top       = (rect.top - H + 10) + 'px';
     el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
     requestAnimationFrame(step);
