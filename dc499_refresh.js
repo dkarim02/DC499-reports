@@ -945,21 +945,28 @@ WHERE FACILITY_ID = '${FACILITY}'
   )
 ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
 
+  // WR_ALLOCATION holds allocations stuck at status 4000 with error WOR::214
+  // (threshold not met). One row per pick line — distinct ORDER_ID = orders queued.
+  // Table is ephemeral: empty between wave runs, populated only in the window after
+  // a wave fires but before the next batch releases. Zero is a valid real count.
   const sqlQueued = `
 SELECT COUNT(DISTINCT ORDER_ID) AS queued_orders
-FROM default_dcorder.DCO_ORDER
+FROM default_workrelease.WR_ALLOCATION
 WHERE FACILITY_ID = '${FACILITY}'
-  AND ORDER_TYPE  = 'ECOM'
-  AND CANCELLED   = 0
-  AND MAXIMUM_STATUS = '1000'
-  AND CREATED_TIMESTAMP >= '${startStr}'`.trim();
+  AND STATUS_ID   = '4000'
+  AND ERROR_CODE  = 'WOR::214'`.trim();
 
-  const [resp, respQueued] = await Promise.all([
-    mcpQuery(accessToken, sql),
-    mcpQuery(accessToken, sqlQueued).catch(e => { console.warn(`  Queued orders query failed: ${e.message}`); return null; }),
-  ]);
+  const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
-  const queuedOrders = respQueued ? Math.round(Number(respQueued.rows?.[0]?.queued_orders || 0)) : null;
+
+  // Run queued orders query after batch query to avoid parallel timeout
+  let queuedOrders = null;
+  try {
+    const respQueued = await mcpQuery(accessToken, sqlQueued);
+    queuedOrders = Math.round(Number(respQueued.rows?.[0]?.queued_orders || 0));
+  } catch(e) {
+    console.warn(`  Queued orders query failed: ${e.message}`);
+  }
 
   // MAWM timestamps have no timezone marker — always force UTC before converting
   const forceUtc = d => { const s = String(d).replace(' ','T'); return (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s)) ? s : s + 'Z'; };
@@ -1126,9 +1133,10 @@ async function notifyNewCleared(batchStatusData) {
     }],
   };
 
+  // Write sent list BEFORE posting so a concurrent process sees it and skips
+  saveSentBatches(new Set([...sent, ...newOnes.map(b => b.batch_id)]));
   try {
-    const res = await jsonPost(TEAMS_WEBHOOK_BATCHES, JSON.stringify(card), { 'Content-Type': 'application/json' });
-    saveSentBatches(new Set([...sent, ...newOnes.map(b => b.batch_id)]));
+    await jsonPost(TEAMS_WEBHOOK_BATCHES, JSON.stringify(card), { 'Content-Type': 'application/json' });
     console.log(`[${ts()}] ✓ Teams — notified ${newOnes.length} newly cleared batch(es)`);
   } catch (e) {
     console.warn(`[${ts()}]   Teams batch notify failed: ${e.message}`);
@@ -1161,14 +1169,18 @@ function gitPush() {
 // ── core: query + write ────────────────────────────────────────────────────────
 async function queryAndWrite(accessToken) {
   console.log(`[${ts()}] Querying...`);
-  const [recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData] = await Promise.all([
+  // fetchBatchStatus runs TWO sequential MCP queries (WR_BATCH then DCO_ORDER).
+  // Running it inside Promise.all with 5 other concurrent queries causes the second
+  // query to time out. Run it after the parallel group instead.
+  const [recvData, dockData, totesData, backlogData, retailReplenData] = await Promise.all([
     fetchReceiving(accessToken),
     fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
     fetchBacklog(accessToken).catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; }),
-    fetchBatchStatus(accessToken).catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; }),
     fetchRetailReplen(accessToken).catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
   ]);
+  const batchStatusData = await fetchBatchStatus(accessToken)
+    .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; });
 
   fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
   console.log(`[${ts()}] ✓ receiving_live.json — ${recvData.associates.length} associates`);
