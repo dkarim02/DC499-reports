@@ -170,20 +170,21 @@
   .bp-send:disabled{opacity:0.5;cursor:default;}
 
   /* ── Remi sprite ──────────────────────────────────────────── */
+  .next-batch-widget{position:relative;}
   #remi{
-    position:fixed;
-    width:48px;
-    height:48px;
+    position:absolute;
+    width:40px;
+    height:40px;
+    top:-20px;
+    left:0;
     pointer-events:none;
-    z-index:900;
-    mix-blend-mode:multiply;
+    z-index:10;
     display:none;
     transform-origin:center center;
   }
 </style>
 </head>
 <body>
-<video id="remi" src="remi.mp4" autoplay loop muted playsinline></video>
 <div class="container">
 
   <div class="top-bar">
@@ -246,6 +247,7 @@
   </div>
 
   <div class="next-batch-widget" id="next-batch-widget">
+    <video id="remi" src="remi.mp4" autoplay loop muted playsinline></video>
     <span class="nb-title">Next Batch</span>
     <div class="nb-bar-track">
       <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%"></div>
@@ -785,89 +787,45 @@ scheduleAutoRefresh();
 // ── Remi sprite ───────────────────────────────────────────────────────────────
 (function() {
   var el = document.getElementById('remi');
-  var speed = 80; // px per second
-  var pad = 4;    // offset from card edge so Remi sits just outside the border
-
-  // Perimeter walk state
-  var perimPos = 0; // distance along perimeter
-  var perimLen = 0;
-  var rect = null;
-
-  // sides: 0=top(L→R), 1=right(T→B), 2=bottom(R→L), 3=left(B→T)
+  var speed = 120; // px per second
+  var x = 0;
+  var dir = 1; // 1 = right, -1 = left
   var lastTs = null;
 
-  function getRect() {
-    // prefer active card, fall back to cleared card, then the container
-    var card = document.getElementById('batch-card-active');
-    if (!card || card.style.display === 'none') card = document.getElementById('batch-card-cleared');
-    if (!card || card.style.display === 'none') card = document.querySelector('.container');
-    return card ? card.getBoundingClientRect() : null;
-  }
-
-  function posFromPerim(p, r) {
-    var w = r.width, h = r.height;
-    var top = w, right = w + h, bottom = w + h + w, left = w + h + w + h;
-    var x, y, angle;
-    if (p < top) {
-      x = r.left - pad + p;
-      y = r.top - pad - el.offsetHeight;
-      angle = 0;
-    } else if (p < right) {
-      x = r.right + pad;
-      y = r.top - pad + (p - top);
-      angle = 90;
-    } else if (p < bottom) {
-      x = r.right + pad - (p - right);
-      y = r.bottom + pad;
-      angle = 180;
-    } else {
-      x = r.left - pad - el.offsetWidth;
-      y = r.bottom + pad - (p - bottom);
-      angle = 270;
-    }
-    return { x: x, y: y, angle: angle };
+  function getWidth() {
+    var pill = document.getElementById('next-batch-widget');
+    return pill ? pill.offsetWidth : 0;
   }
 
   function step(ts) {
     if (!lastTs) lastTs = ts;
-    var dt = (ts - lastTs) / 1000;
+    var dt = Math.min((ts - lastTs) / 1000, 0.1); // cap dt to avoid jumps
     lastTs = ts;
 
-    rect = getRect();
-    if (!rect || rect.width < 10) { requestAnimationFrame(step); return; }
+    var w = getWidth();
+    var spriteW = el.offsetWidth || 40;
+
+    if (w < 10) { requestAnimationFrame(step); return; }
 
     el.style.display = 'block';
 
-    var w = rect.width, h = rect.height;
-    perimLen = 2 * (w + h);
-    perimPos = (perimPos + speed * dt) % perimLen;
+    x += speed * dir * dt;
 
-    var pos = posFromPerim(perimPos, rect);
+    // Bounce at edges
+    if (x + spriteW >= w) { x = w - spriteW; dir = -1; }
+    if (x <= 0)            { x = 0;           dir =  1; }
 
-    // Top (0°): faces right — no flip
-    // Right (90°): faces down — rotate 90
-    // Bottom (180°): faces left — flip horizontally (no rotate)
-    // Left (270°): faces up — rotate -90
-    var transform;
-    if (pos.angle === 0)        transform = 'scaleX(1)';
-    else if (pos.angle === 90)  transform = 'rotate(90deg)';
-    else if (pos.angle === 180) transform = 'scaleX(-1)';
-    else                        transform = 'rotate(-90deg)';
-    el.style.transform = transform;
-
-    el.style.left = pos.x + 'px';
-    el.style.top  = pos.y + 'px';
+    el.style.left      = x + 'px';
+    el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
 
     requestAnimationFrame(step);
   }
 
-  // Start once card is visible (may take a moment after data loads)
   function tryStart() {
-    rect = getRect();
-    if (rect && rect.width > 10) {
+    if (getWidth() > 10) {
       requestAnimationFrame(step);
     } else {
-      setTimeout(tryStart, 500);
+      setTimeout(tryStart, 300);
     }
   }
   tryStart();
