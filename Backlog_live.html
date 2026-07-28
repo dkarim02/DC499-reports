@@ -1737,7 +1737,7 @@ scheduleBlRefresh();
     if (x + W >= rect.width) { x = rect.width - W; dir = -1; }
     if (x <= 0)               { x = 0;              dir =  1; }
     el.style.left      = (rect.left + x) + 'px';
-    el.style.top       = (rect.top - H + 12) + 'px';
+    el.style.top       = (rect.top + rect.height / 2 - H / 2) + 'px';
     el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
     requestAnimationFrame(step);
   }
