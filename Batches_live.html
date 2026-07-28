@@ -867,7 +867,16 @@ scheduleAutoRefresh();
     var rect   = pill.getBoundingClientRect();
     var trackW = rect.width;
 
+    // Hide if pill has scrolled off screen
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      canvas.style.display = 'none';
+      srcImg.style.display = 'none';
+      requestAnimationFrame(step);
+      return;
+    }
+
     canvas.style.display = 'block';
+    srcImg.style.display = 'block';
 
     x += speed * dir * dt;
     if (x + W >= trackW) { x = trackW - W; dir = -1; }

@@ -1756,6 +1756,12 @@ scheduleBlRefresh();
     if (!pill || !pill.classList.contains('visible')) { requestAnimationFrame(step); return; }
     var rect   = pill.getBoundingClientRect();
     var trackW = rect.width;
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      canvas.style.display = 'none';
+      srcImg.style.display = 'none';
+      requestAnimationFrame(step);
+      return;
+    }
     canvas.style.display  = 'block';
     srcImg.style.display  = 'block';
     x += speed * dir * dt;
