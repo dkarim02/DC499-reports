@@ -1714,10 +1714,9 @@ scheduleBlRefresh();
   var x     = 0, dir = 1, lastTs = null;
 
   function getPill() {
+    if (activeTab !== 'batches') return null;
     var p = document.getElementById('next-batch-widget');
-    if (!p) return null;
-    // visible when display is explicitly set to flex (set by renderBatchData)
-    if (p.style.display !== 'flex') return null;
+    if (!p || p.style.display !== 'flex') return null;
     var r = p.getBoundingClientRect();
     return r.width > 10 ? p : null;
   }
@@ -1753,8 +1752,11 @@ scheduleBlRefresh();
   var x     = 0, dir = 1, lastTs = null;
 
   function getCard() {
+    if (activeTab !== 'batches') return null;
     var c = document.getElementById('bt-batch-card-active');
-    return (c && c.style.display !== 'none') ? c : null;
+    if (!c || c.style.display === 'none') return null;
+    var r = c.getBoundingClientRect();
+    return r.width > 10 ? c : null;
   }
 
   function step(ts) {
