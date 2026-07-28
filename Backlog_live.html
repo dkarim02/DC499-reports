@@ -284,8 +284,8 @@
   .rr-pill.clear{background:var(--green-bg,#0f2e1a);color:var(--green);border-color:var(--green-border,#1a5c32);}
   .rr-chevron{font-size:11px;color:var(--text-hint);transition:transform 0.2s;}
   .rr-chevron.open{transform:rotate(180deg);}
-  .rr-body{display:none;border-top:0.5px solid var(--border-light);}
-  .rr-body.open{display:block;}
+  .rr-body{max-height:0;overflow:hidden;border-top:0.5px solid var(--border-light);transition:max-height 0.22s ease;}
+  .rr-body.open{max-height:1200px;}
   .rr-row{display:flex;align-items:center;padding:8px 14px;cursor:pointer;gap:10px;border-bottom:0.5px solid var(--border-light);}
   .rr-row:last-child{border-bottom:none;}
   .rr-row:hover{background:var(--surface2);}
@@ -301,8 +301,8 @@
   .rr-age.red{background:var(--red-bg,#2e1a1a);color:var(--red);border:0.5px solid var(--red-border,#6b2020);}
   .rr-age.yellow{background:var(--yellow-bg,#2e2510);color:var(--amber,#f59e0b);border:0.5px solid var(--yellow-border,#6b4f10);}
   .rr-age.green{background:var(--green-bg,#0f2e1a);color:var(--green);border:0.5px solid var(--green-border,#1a5c32);}
-  .rr-expand{display:none;padding:10px 14px 12px 30px;border-bottom:0.5px solid var(--border-light);background:var(--surface2);}
-  .rr-expand.open{display:block;}
+  .rr-expand{max-height:0;overflow:hidden;padding:0 14px 0 30px;border-bottom:0.5px solid var(--border-light);background:var(--surface2);transition:max-height 0.18s ease,padding 0.18s ease;}
+  .rr-expand.open{max-height:600px;padding:10px 14px 12px 30px;}
   .rr-expand:last-child{border-bottom:none;}
   .rr-expand-grid{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:10px;}
   .rr-metric{min-width:80px;}
@@ -473,6 +473,23 @@
           </div>
           <div class="order-list-inner" id="detail-order-list"></div>
         </div>
+
+        <!-- Retail Replen widget — sits below date table in left column -->
+        <div class="rr-widget" id="rr-widget" style="display:none;margin-top:1rem;">
+          <div class="rr-header" onclick="toggleRrWidget()">
+            <div class="rr-header-left">
+              <span class="rr-title">Retail Replen Watch</span>
+              <div class="rr-pills">
+                <span class="rr-pill items" id="rr-pill-items">— items</span>
+                <span class="rr-pill orders" id="rr-pill-orders">— orders</span>
+              </div>
+            </div>
+            <span class="rr-chevron" id="rr-chevron">&#9660;</span>
+          </div>
+          <div class="rr-body" id="rr-body">
+            <div id="rr-rows"></div>
+          </div>
+        </div>
       </div>
 
       <div class="page-sidebar">
@@ -487,23 +504,6 @@
     <div class="empty-state" id="bl-empty-state" style="display:none;">
       <div style="font-size:32px;margin-bottom:10px;">&#x1F4E6;</div>
       No data yet. Click <strong>Refresh</strong> to reload.
-    </div>
-
-    <!-- Retail Replen widget -->
-    <div class="rr-widget" id="rr-widget" style="display:none;">
-      <div class="rr-header" onclick="toggleRrWidget()">
-        <div class="rr-header-left">
-          <span class="rr-title">Retail Replen Watch</span>
-          <div class="rr-pills">
-            <span class="rr-pill items" id="rr-pill-items">— items</span>
-            <span class="rr-pill orders" id="rr-pill-orders">— orders</span>
-          </div>
-        </div>
-        <span class="rr-chevron" id="rr-chevron">&#9660;</span>
-      </div>
-      <div class="rr-body" id="rr-body">
-        <div id="rr-rows"></div>
-      </div>
     </div>
 
   </div><!-- /#tab-orders -->
@@ -1437,9 +1437,18 @@ function toggleRrWidget() {
 }
 
 function toggleRrRow(idx) {
-  rrExpandOpen[idx] = !rrExpandOpen[idx];
+  var opening = !rrExpandOpen[idx];
+  // Close all rows first (accordion)
+  Object.keys(rrExpandOpen).forEach(function(k) {
+    if (rrExpandOpen[k]) {
+      rrExpandOpen[k] = false;
+      var other = document.getElementById('rr-expand-' + k);
+      if (other) other.classList.remove('open');
+    }
+  });
+  rrExpandOpen[idx] = opening;
   var el = document.getElementById('rr-expand-' + idx);
-  if (el) el.classList.toggle('open', rrExpandOpen[idx]);
+  if (el) el.classList.toggle('open', opening);
 }
 
 function fetchRrData() {
