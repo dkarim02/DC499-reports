@@ -675,14 +675,21 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY hour_pdt
 ORDER BY hour_pdt`.trim();
 
-  // Query 4: wave runs this shift — same logic as eos_agent
+  // Query 4: wave runs this shift
+  // 2nd shift starts 1:40 PM PDT = 20:40 UTC, 1st shift starts 3:00 AM PDT = 10:00 UTC
   const nowUtc       = new Date();
   const nowUtcHour   = nowUtc.getUTCHours();
-  const is1st        = nowUtcHour >= 10 && nowUtcHour < 21;
-  const shiftHourUtc = is1st ? 10 : 21;
+  const nowUtcMin    = nowUtc.getUTCMinutes();
+  const is1st        = (nowUtcHour > 10 || (nowUtcHour === 10 && nowUtcMin >= 0)) && nowUtcHour < 20;
   let   waveShiftStart = new Date(nowUtc);
-  waveShiftStart.setUTCHours(shiftHourUtc, 0, 0, 0);
-  if (!is1st && nowUtcHour < shiftHourUtc) waveShiftStart.setUTCDate(waveShiftStart.getUTCDate() - 1);
+  if (is1st) {
+    waveShiftStart.setUTCHours(10, 0, 0, 0);
+  } else {
+    waveShiftStart.setUTCHours(20, 40, 0, 0);
+    if (nowUtcHour < 20 || (nowUtcHour === 20 && nowUtcMin < 40)) {
+      waveShiftStart.setUTCDate(waveShiftStart.getUTCDate() - 1);
+    }
+  }
   const waveStartStr = waveShiftStart.toISOString().replace('T',' ').slice(0,19);
 
   const sqlWaves = `
@@ -737,12 +744,16 @@ ORDER BY wave_runs DESC`.trim();
   }));
 
   function waveLabel(sid, chase) {
-    if (sid === 'ECOM_REPLEN')       return 'Replen';
-    if (sid === 'ECOM_RTV')          return 'RTV/RTI';
-    if (chase === 'Y' || chase === 'SINGLE_CHASE') return 'Single Chase';
-    if (chase === 'MULTI_CHASE')     return 'Multi Chase';
+    if (sid === 'NRDR_CORE_REPLEN_ORDER_PLANNING_STRATEGY')         return 'Replen';
+    if (sid === 'NRDR_CORE_RETAIL_ORDER_PLANNING_STRATEGY')         return 'Retail';
+    if (sid === 'SINGLE_CHASE_ORDER_PLANNING_STRATEGY')             return 'Single Chase';
+    if (sid === 'MULTI_CHASE_ORDER_PLANNING_STRATEGY')              return 'Multi Chase';
+    if (sid === 'NRDR_NEW_PIPELINE_CHASE_ORDER_PLANNING_STRATEGY') {
+      if (chase === 'CHASE_ONLY') return 'Single Chase';
+      return 'Multi Chase';
+    }
+    if (sid && sid.includes('RTV'))  return 'RTV/RTI';
     if (sid && sid.includes('FILL')) return 'Fill/Kill';
-    if (sid && sid.includes('MULTI'))return 'Multi';
     return 'Ecom';
   }
   const waveCounts = {};
@@ -750,7 +761,7 @@ ORDER BY wave_runs DESC`.trim();
     const label = waveLabel(r.PLANNING_STRATEGY_ID, r.CHASE_MODE);
     waveCounts[label] = (waveCounts[label] || 0) + Number(r.wave_runs);
   }
-  const waveOrder = ['Ecom','Replen','Single Chase','Multi Chase','Fill/Kill','Multi','RTV/RTI'];
+  const waveOrder = ['Ecom','Replen','Retail','Single Chase','Multi Chase','Fill/Kill','RTV/RTI'];
   const waves = waveOrder
     .filter(t => waveCounts[t] > 0)
     .map(t => ({ type: t, count: waveCounts[t] }));
