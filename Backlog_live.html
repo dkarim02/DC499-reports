@@ -1713,14 +1713,21 @@ scheduleBlRefresh();
   var W     = 64, H = 56;
   var x     = 0, dir = 1, lastTs = null;
 
-  function getPill() { return document.getElementById('next-batch-widget'); }
+  function getPill() {
+    var p = document.getElementById('next-batch-widget');
+    if (!p) return null;
+    // visible when display is explicitly set to flex (set by renderBatchData)
+    if (p.style.display !== 'flex') return null;
+    var r = p.getBoundingClientRect();
+    return r.width > 10 ? p : null;
+  }
 
   function step(ts) {
     if (!lastTs) lastTs = ts;
     var dt = Math.min((ts - lastTs) / 1000, 0.1);
     lastTs = ts;
     var pill = getPill();
-    if (!pill || pill.style.display === 'none' || pill.style.display === '') { requestAnimationFrame(step); return; }
+    if (!pill) { el.style.display = 'none'; requestAnimationFrame(step); return; }
     var rect = pill.getBoundingClientRect();
     if (rect.bottom < 0 || rect.top > window.innerHeight) {
       el.style.display = 'none'; requestAnimationFrame(step); return;
@@ -1735,13 +1742,7 @@ scheduleBlRefresh();
     requestAnimationFrame(step);
   }
 
-  function tryStart() {
-    var pill = getPill();
-    if (pill && pill.getBoundingClientRect().width > 10) {
-      requestAnimationFrame(step);
-    } else { setTimeout(tryStart, 300); }
-  }
-  tryStart();
+  requestAnimationFrame(step);
 })();
 
 // ── Remi sprite (active & queued card) ───────────────────────────────────────
