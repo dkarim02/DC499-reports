@@ -1706,7 +1706,7 @@ fetchRrData();
 setInterval(fetchRrData, 2 * 60 * 1000);
 scheduleBlRefresh();
 
-// ── Remi sprite ───────────────────────────────────────────────────────────────
+// ── Remi sprite (next-batch bar) ─────────────────────────────────────────────
 (function() {
   var el    = document.getElementById('bl-remi');
   var speed = 60;
@@ -1743,8 +1743,49 @@ scheduleBlRefresh();
   }
   tryStart();
 })();
+
+// ── Remi sprite (active & queued card) ───────────────────────────────────────
+(function() {
+  var el    = document.getElementById('bl-remi2');
+  var speed = 60;
+  var W     = 64, H = 56;
+  var x     = 0, dir = 1, lastTs = null;
+
+  function getCard() {
+    var c = document.getElementById('bt-batch-card-active');
+    return (c && c.style.display !== 'none') ? c : null;
+  }
+
+  function step(ts) {
+    if (!lastTs) lastTs = ts;
+    var dt = Math.min((ts - lastTs) / 1000, 0.1);
+    lastTs = ts;
+    var card = getCard();
+    if (!card) { el.style.display = 'none'; requestAnimationFrame(step); return; }
+    var rect = card.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      el.style.display = 'none'; requestAnimationFrame(step); return;
+    }
+    el.style.display = 'block';
+    x += speed * dir * dt;
+    if (x + W >= rect.width) { x = rect.width - W; dir = -1; }
+    if (x <= 0)               { x = 0;              dir =  1; }
+    el.style.left      = (rect.left + x) + 'px';
+    el.style.top       = (rect.top - H + 12) + 'px';
+    el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
+    requestAnimationFrame(step);
+  }
+
+  function tryStart() {
+    if (document.getElementById('bt-batch-card-active')) {
+      requestAnimationFrame(step);
+    } else { setTimeout(tryStart, 300); }
+  }
+  tryStart();
+})();
 // ─────────────────────────────────────────────────────────────────────────────
 </script>
 <video id="bl-remi" src="remi.mp4" autoplay loop muted playsinline style="position:fixed;width:64px;height:56px;pointer-events:none;z-index:900;display:none;mix-blend-mode:multiply;transform-origin:center center;"></video>
+<video id="bl-remi2" src="remi.mp4" autoplay loop muted playsinline style="position:fixed;width:64px;height:56px;pointer-events:none;z-index:900;display:none;mix-blend-mode:multiply;transform-origin:center center;"></video>
 </body>
 </html>
