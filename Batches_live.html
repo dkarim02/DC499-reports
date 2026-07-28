@@ -77,24 +77,22 @@
   .refresh-btn:hover{background:var(--accent);color:#fff;}
 
   /* Next batch progress bar */
-  .next-batch-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:1.5rem;display:none;}
-  .next-batch-widget.visible{display:block;}
-  .nb-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
-  .nb-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
-  .nb-meta{display:flex;gap:16px;font-size:11px;color:var(--text-hint);}
-  .nb-meta span{display:flex;align-items:center;gap:4px;}
-  .nb-meta strong{color:var(--text-muted);}
-  .nb-bar-track{height:20px;background:var(--surface2);border-radius:6px;overflow:hidden;position:relative;}
-  .nb-bar-fill{height:100%;border-radius:6px;transition:width 0.6s ease;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;}
+  .next-batch-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:1rem;display:none;align-items:center;gap:10px;flex-wrap:wrap;}
+  .next-batch-widget.visible{display:flex;}
+  .nb-title{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;}
+  .nb-bar-track{height:10px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative;flex:1;min-width:80px;}
+  .nb-bar-fill{height:100%;border-radius:4px;transition:width 0.6s ease;}
   .nb-bar-fill.low{background:var(--accent);}
   .nb-bar-fill.mid{background:var(--amber,#f59e0b);}
   .nb-bar-fill.high{background:var(--green);}
-  .nb-bar-label{font-size:11px;font-weight:700;color:#fff;white-space:nowrap;}
-  .nb-bar-label.outside{position:absolute;left:calc(var(--pct) + 4px);top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:11px;font-weight:700;}
-  .nb-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;gap:6px;}
-  .nb-count{font-size:13px;font-weight:700;color:var(--text);}
+  .nb-bar-label{display:none;}
+  .nb-bar-label.outside{display:none;}
+  .nb-footer{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .nb-count{font-size:12px;font-weight:700;color:var(--text);}
   .nb-count span{font-size:11px;font-weight:400;color:var(--text-muted);}
-  .nb-eta{font-size:12px;color:var(--text-muted);}
+  .nb-meta{font-size:11px;color:var(--text-hint);white-space:nowrap;}
+  .nb-eta{font-size:11px;color:var(--text-muted);}
+  .nb-ready{font-size:11px;font-weight:700;color:var(--green);}
   .nb-eta strong{color:var(--text);}
   .nb-ready{font-size:12px;font-weight:700;color:var(--green);padding:2px 8px;background:var(--green-bg,#0f2e1a);border:1px solid var(--green-border,#1a5c32);border-radius:5px;}
 
@@ -235,22 +233,14 @@
   </div>
 
   <div class="next-batch-widget" id="next-batch-widget">
-    <div class="nb-header">
-      <span class="nb-title">Next Batch Progress</span>
-      <div class="nb-meta">
-        <span><strong id="nb-last-release">—</strong> since last release</span>
-        <span>Threshold <strong>96 orders</strong></span>
-      </div>
-    </div>
-    <div class="nb-bar-track" id="nb-bar-track">
-      <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%">
-        <span class="nb-bar-label" id="nb-bar-label-inner"></span>
-      </div>
-      <span class="nb-bar-label outside" id="nb-bar-label-outside" style="display:none;--pct:0%"></span>
+    <span class="nb-title">Next Batch</span>
+    <div class="nb-bar-track">
+      <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%"></div>
     </div>
     <div class="nb-footer">
-      <div class="nb-count"><span id="nb-queued">—</span> <span>queued orders</span></div>
-      <div id="nb-eta-wrap" class="nb-eta"></div>
+      <span class="nb-count"><span id="nb-queued">—</span><span> / 96 orders</span></span>
+      <span id="nb-eta-wrap" class="nb-eta"></span>
+      <span class="nb-meta" id="nb-since-wrap"></span>
     </div>
   </div>
 
@@ -483,25 +473,13 @@ function renderData(data) {
   var threshold = s.batch_threshold || 96;
   if (queued != null) {
     nbWidget.classList.add('visible');
-    var pct     = Math.min(Math.round((queued / threshold) * 100), 100);
-    var fill    = document.getElementById('nb-bar-fill');
-    var labelIn = document.getElementById('nb-bar-label-inner');
-    var labelOut= document.getElementById('nb-bar-label-outside');
+    var pct  = Math.min(Math.round((queued / threshold) * 100), 100);
+    var fill = document.getElementById('nb-bar-fill');
     fill.style.width = pct + '%';
     fill.className   = 'nb-bar-fill ' + (pct >= 100 ? 'high' : pct >= 60 ? 'mid' : 'low');
-    var labelText = queued + ' / ' + threshold;
-    if (pct >= 25) {
-      labelIn.textContent      = labelText;
-      labelOut.style.display   = 'none';
-    } else {
-      labelIn.textContent      = '';
-      labelOut.textContent     = labelText;
-      labelOut.style.setProperty('--pct', pct + '%');
-      labelOut.style.display   = 'inline';
-    }
     document.getElementById('nb-queued').textContent = queued;
 
-    // Time since last release
+    // "since last release" label
     var lastReleasedUtc = null;
     if (data.batches && data.batches.length) {
       var sorted = data.batches.slice().sort(function(a,b) {
@@ -509,28 +487,22 @@ function renderData(data) {
       });
       lastReleasedUtc = sorted[0].released_utc || null;
     }
-    var sinceEl = document.getElementById('nb-last-release');
+    var sinceEl = document.getElementById('nb-since-wrap');
     if (lastReleasedUtc) {
-      var sinceMs  = Date.now() - new Date(lastReleasedUtc.replace(' ','T') + 'Z').getTime();
+      var sinceMs   = Date.now() - new Date(lastReleasedUtc.replace(' ','T') + 'Z').getTime();
       var sinceMins = Math.round(sinceMs / 60000);
-      sinceEl.textContent = sinceMins < 60
-        ? sinceMins + ' min'
-        : Math.floor(sinceMins/60) + 'h ' + (sinceMins%60) + 'm';
+      var sinceStr  = sinceMins < 60 ? sinceMins + 'm ago' : Math.floor(sinceMins/60) + 'h ' + (sinceMins%60) + 'm ago';
+      sinceEl.textContent = sinceStr;
     } else {
-      sinceEl.textContent = '—';
+      sinceEl.textContent = '';
     }
 
-    // ETA / status line
     var etaEl = document.getElementById('nb-eta-wrap');
     if (pct >= 100) {
-      etaEl.innerHTML = '<span class="nb-ready">Ready to release</span>';
+      etaEl.innerHTML = '<span class="nb-ready">Ready</span>';
     } else {
       var needed = threshold - queued;
-      if (needed > 0) {
-        etaEl.innerHTML = '<span class="nb-eta"><strong>' + needed + '</strong> more orders needed</span>';
-      } else {
-        etaEl.innerHTML = '';
-      }
+      etaEl.textContent = needed > 0 ? needed + ' more needed' : '';
     }
   } else {
     nbWidget.classList.remove('visible');
