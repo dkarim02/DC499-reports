@@ -170,25 +170,21 @@
   .bp-send:disabled{opacity:0.5;cursor:default;}
 
   /* ── Remi sprite ──────────────────────────────────────────── */
-  #remi-wrap{
+  #remi{
     position:fixed;
-    width:48px;
-    height:48px;
+    width:64px;
+    height:56px;
     pointer-events:none;
     z-index:900;
     display:none;
-  }
-  #remi{
-    width:100%;
-    height:100%;
-    display:block;
     transform-origin:center center;
-    background:transparent;
+    image-rendering:auto;
   }
 </style>
 </head>
 <body>
-<div id="remi-wrap"><img id="remi" src="remlin.gif" alt=""></div>
+<canvas id="remi"></canvas>
+<img id="remi-src" src="solidrem.gif" style="display:none;" crossorigin="anonymous" alt="">
 <div class="container">
 
   <div class="top-bar">
@@ -787,15 +783,50 @@ document.getElementById('footer-date').textContent = new Date().toLocaleDateStri
 fetchData(false);
 scheduleAutoRefresh();
 
-// ── Remi sprite ───────────────────────────────────────────────────────────────
+// ── Remi sprite (chroma key) ──────────────────────────────────────────────────
 (function() {
-  var wrap   = document.getElementById('remi-wrap');
-  var el     = document.getElementById('remi');
-  var speed  = 60; // px per second
+  var canvas  = document.getElementById('remi');
+  var ctx     = canvas.getContext('2d');
+  var srcImg  = document.getElementById('remi-src');
+  var speed   = 60;  // px per second
+  var W = 64, H = 56;
+  canvas.width  = W;
+  canvas.height = H;
+
   var x      = 0;
-  var dir    = 1;  // 1 = right, -1 = left
+  var dir    = 1;
   var lastTs = null;
-  var SIZE   = 40;
+
+  // Off-screen canvas for chroma key processing
+  var offCanvas = document.createElement('canvas');
+  var offCtx    = offCanvas.getContext('2d');
+
+  function chromaDraw(flip) {
+    if (!srcImg.complete || !srcImg.naturalWidth) return;
+    offCanvas.width  = W;
+    offCanvas.height = H;
+    offCtx.drawImage(srcImg, 0, 0, W, H);
+
+    var imgData = offCtx.getImageData(0, 0, W, H);
+    var d = imgData.data;
+    for (var i = 0; i < d.length; i += 4) {
+      var r = d[i], g = d[i+1], b = d[i+2];
+      // Key out green: g dominant, not too red, not too blue
+      if (g > 100 && g > r * 1.4 && g > b * 1.4) {
+        d[i+3] = 0; // transparent
+      }
+    }
+    offCtx.putImageData(imgData, 0, 0);
+
+    ctx.clearRect(0, 0, W, H);
+    if (flip) {
+      ctx.save();
+      ctx.translate(W, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(offCanvas, 0, 0);
+    if (flip) ctx.restore();
+  }
 
   function getPill() {
     return document.getElementById('next-batch-widget');
@@ -812,27 +843,28 @@ scheduleAutoRefresh();
     var rect   = pill.getBoundingClientRect();
     var trackW = rect.width;
 
-    wrap.style.display = 'block';
+    canvas.style.display = 'block';
 
     x += speed * dir * dt;
-    if (x + SIZE >= trackW) { x = trackW - SIZE; dir = -1; }
-    if (x <= 0)              { x = 0;             dir =  1; }
+    if (x + W >= trackW) { x = trackW - W; dir = -1; }
+    if (x <= 0)           { x = 0;          dir =  1; }
 
-    wrap.style.left      = (rect.left + x) + 'px';
-    wrap.style.top       = (rect.top - SIZE + 6) + 'px';
-    el.style.transform   = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
+    canvas.style.left = (rect.left + x) + 'px';
+    canvas.style.top  = (rect.top  - H + 6) + 'px';
 
+    chromaDraw(dir === -1);
     requestAnimationFrame(step);
   }
 
   function tryStart() {
     var pill = getPill();
-    if (pill && pill.getBoundingClientRect().width > 10) {
+    if (srcImg.complete && pill && pill.getBoundingClientRect().width > 10) {
       requestAnimationFrame(step);
     } else {
       setTimeout(tryStart, 300);
     }
   }
+  srcImg.onload = tryStart;
   tryStart();
 })();
 // ─────────────────────────────────────────────────────────────────────────────
