@@ -393,6 +393,8 @@
   .bt-teams-btn{font-family:inherit;font-size:12px;font-weight:600;padding:5px 12px;border:0.5px solid #6264A7;border-radius:6px;background:transparent;cursor:pointer;color:#6264A7;transition:background 0.12s,color 0.12s;}
   .bt-teams-btn:hover{background:#6264A7;color:#fff;}
   .bt-teams-btn.sent{border-color:var(--green);color:var(--green);}
+  #bl-remi,#bl-remi2{position:fixed;width:64px;height:56px;pointer-events:none;z-index:900;display:none;transform-origin:center center;mix-blend-mode:multiply;}
+  [data-theme="light"] #bl-remi,[data-theme="light"] #bl-remi2{mix-blend-mode:normal;}
 </style>
 </head>
 <body>
@@ -706,6 +708,9 @@
   <p class="nordstrom-tag">Nordstrom &middot; Ecom Backlog Live &middot; DC499 &middot; <span id="footer-date"></span></p>
   <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
 </div>
+
+<video id="bl-remi" src="remi.mp4" autoplay loop muted playsinline></video>
+<video id="bl-remi2" src="remi.mp4" autoplay loop muted playsinline></video>
 
 <script>
 
@@ -1788,7 +1793,5 @@ scheduleBlRefresh();
 })();
 // ─────────────────────────────────────────────────────────────────────────────
 </script>
-<video id="bl-remi" src="remi.mp4" autoplay loop muted playsinline style="position:fixed;width:64px;height:56px;pointer-events:none;z-index:900;display:none;mix-blend-mode:multiply;transform-origin:center center;"></video>
-<video id="bl-remi2" src="remi.mp4" autoplay loop muted playsinline style="position:fixed;width:64px;height:56px;pointer-events:none;z-index:900;display:none;mix-blend-mode:multiply;transform-origin:center center;"></video>
 </body>
 </html>
