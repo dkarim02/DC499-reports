@@ -1753,7 +1753,7 @@ scheduleBlRefresh();
     var dt = Math.min((ts - lastTs) / 1000, 0.1);
     lastTs = ts;
     var pill = getPill();
-    if (!pill || !pill.classList.contains('visible')) { requestAnimationFrame(step); return; }
+    if (!pill || pill.style.display === 'none' || pill.style.display === '') { requestAnimationFrame(step); return; }
     var rect   = pill.getBoundingClientRect();
     var trackW = rect.width;
     if (rect.bottom < 0 || rect.top > window.innerHeight) {
