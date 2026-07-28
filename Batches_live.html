@@ -170,21 +170,28 @@
   .bp-send:disabled{opacity:0.5;cursor:default;}
 
   /* ── Remi sprite ──────────────────────────────────────────── */
-  #remi{
+  #remi-wrap{
     position:fixed;
     width:40px;
     height:40px;
     pointer-events:none;
     z-index:900;
     display:none;
-    transform-origin:center center;
-    mix-blend-mode:multiply;
+    border-radius:50%;
+    background:rgba(0,0,0,0.55);
+    box-shadow:0 0 0 1.5px rgba(255,255,255,0.08);
+    overflow:hidden;
   }
-  [data-theme="light"] #remi{ mix-blend-mode:normal; }
+  #remi{
+    width:100%;
+    height:100%;
+    display:block;
+    transform-origin:center center;
+  }
 </style>
 </head>
 <body>
-<video id="remi" src="remi.mp4" autoplay loop muted playsinline></video>
+<div id="remi-wrap"><video id="remi" src="remi.mp4" autoplay loop muted playsinline></video></div>
 <div class="container">
 
   <div class="top-bar">
@@ -785,11 +792,13 @@ scheduleAutoRefresh();
 
 // ── Remi sprite ───────────────────────────────────────────────────────────────
 (function() {
+  var wrap   = document.getElementById('remi-wrap');
   var el     = document.getElementById('remi');
   var speed  = 60; // px per second
   var x      = 0;
   var dir    = 1;  // 1 = right, -1 = left
   var lastTs = null;
+  var SIZE   = 40;
 
   function getPill() {
     return document.getElementById('next-batch-widget');
@@ -803,21 +812,18 @@ scheduleAutoRefresh();
     var pill = getPill();
     if (!pill || pill.style.display === 'none') { requestAnimationFrame(step); return; }
 
-    var rect     = pill.getBoundingClientRect();
-    var spriteW  = el.offsetWidth  || 40;
-    var spriteH  = el.offsetHeight || 40;
-    var trackW   = rect.width;
+    var rect   = pill.getBoundingClientRect();
+    var trackW = rect.width;
 
-    el.style.display = 'block';
+    wrap.style.display = 'block';
 
     x += speed * dir * dt;
-    if (x + spriteW >= trackW) { x = trackW - spriteW; dir = -1; }
-    if (x <= 0)                 { x = 0;                dir =  1; }
+    if (x + SIZE >= trackW) { x = trackW - SIZE; dir = -1; }
+    if (x <= 0)              { x = 0;             dir =  1; }
 
-    // Fixed position: above the pill's top edge
-    el.style.left      = (rect.left + x) + 'px';
-    el.style.top       = (rect.top - spriteH + 4) + 'px';
-    el.style.transform = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
+    wrap.style.left      = (rect.left + x) + 'px';
+    wrap.style.top       = (rect.top - SIZE + 16) + 'px';
+    el.style.transform   = dir === -1 ? 'scaleX(-1)' : 'scaleX(1)';
 
     requestAnimationFrame(step);
   }
