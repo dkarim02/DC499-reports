@@ -1457,7 +1457,10 @@ if (new URLSearchParams(window.location.search).get('from') === 'ecom') {
 }
 
 // ── Batch picker (Teams) ──────────────────────────────────────────────────────
-var TEAMS_WEBHOOK_BATCHES = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk';
+var TEAMS_WEBHOOKS_BATCHES = {
+  '1st': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/a26c40b1c9ee4739abd0269aedbef04b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=mkz_8DUX8eAfH1clRiMjPNXFz-zCT0bwAJeEMxkZwHY',
+  '2nd': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk',
+};
 var bpSelected = new Set();
 
 function openBatchPicker() {
@@ -1560,7 +1563,7 @@ function sendSelectedBatches() {
     ].concat(clearedRows)});
   }
   var card = {type:'message',attachments:[{contentType:'application/vnd.microsoft.card.adaptive',content:{'$schema':'http://adaptivecards.io/schemas/adaptive-card.json',type:'AdaptiveCard',version:'1.4',body:bodyItems}}]};
-  fetch(TEAMS_WEBHOOK_BATCHES, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(card)})
+  fetch(TEAMS_WEBHOOKS_BATCHES[getShift()] || TEAMS_WEBHOOKS_BATCHES['2nd'], {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(card)})
   .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status);
     closeBatchPicker();
     var btn = document.getElementById('bt-teams-btn');
