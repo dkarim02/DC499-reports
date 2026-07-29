@@ -581,7 +581,7 @@
 
       <div class="page-sidebar">
         <div id="hourly-card" style="display:none;">
-          <div class="card-title" id="hourly-title">Units / Hour</div>
+          <div class="card-title" id="hourly-title">Bridge</div>
           <div class="card-sub" id="hourly-sub">today &middot; order lines received per hour</div>
           <div id="hourly-bars"></div>
         </div>
@@ -1851,6 +1851,21 @@ function exportEodEmail() {
     });
     html+='<tr style="background:#f8f8f8;"><td style="'+td+'font-weight:700;">Total</td><td style="'+tdR+'color:#3b82f6;">'+fmtN(totR)+'</td><td style="'+tdR+'color:#f59e0b;">'+fmtN(totA)+'</td><td style="'+tdR+'color:#0e9e8e;">'+fmtN(totP)+'</td><td style="'+tdR+'">'+fmtN(totO)+'</td><td style="'+tdM+'">'+fmtN(totS)+'</td></tr>';
     html += '</tbody></table></td></tr>';
+  }
+
+  // bridge (units / hour)
+  var hourly=(bl.hourly||[]).filter(function(r){return r.lines>0;});
+  if (hourly.length) {
+    var totalLines=hourly.reduce(function(s,r){return s+(r.lines||0);},0);
+    var avgUph=hourly.length>0?Math.round(totalLines/hourly.length):0;
+    html+='<tr><td colspan="6" style="'+sec+F+'">Bridge &nbsp;<span style="font-weight:400;color:#888;">'+avgUph.toLocaleString()+' avg units/hr</span></td></tr>';
+    html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
+    html+='<thead><tr><th style="'+th+'">Hour</th><th style="'+thR+'">Units</th></tr></thead><tbody>';
+    hourly.forEach(function(r){
+      html+='<tr><td style="'+td+'">'+fmtHourRange(r.hour)+'</td><td style="'+tdR+'">'+fmtN(r.lines)+'</td></tr>';
+    });
+    html+='<tr style="background:#f8f8f8;"><td style="'+td+'font-weight:700;">Avg / hr</td><td style="'+tdR+'color:#0e9e8e;">'+avgUph.toLocaleString()+'</td></tr>';
+    html+='</tbody></table></td></tr>';
   }
 
   // waves
