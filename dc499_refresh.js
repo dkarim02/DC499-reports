@@ -1250,8 +1250,7 @@ async function notifyNewCleared(batchStatusData) {
   }
 }
 
-async function notifyAuthExpired(localIp, port) {
-  const authUrl = `http://${localIp}:${port}/auth?pin=${AUTH_PIN}`;
+async function notifyAuthExpired() {
   const tsPdt = new Date(new Date().getTime() - 7 * 3600000);
   const tsStr = (tsPdt.getUTCHours() % 12 || 12) + ':' +
                 String(tsPdt.getUTCMinutes()).padStart(2,'0') + ' ' +
@@ -1270,11 +1269,8 @@ async function notifyAuthExpired(localIp, port) {
           ]}]},
           { type: 'Container', spacing: 'Medium', items: [
             { type: 'TextBlock', text: 'Auth token expired', weight: 'Bolder', size: 'Large', color: 'Attention' },
-            { type: 'TextBlock', text: 'The live server cannot query MAWM until re-authenticated. Tap the button below — the PC will open a browser and SSO will log in automatically.', wrap: true, spacing: 'Small', isSubtle: true },
+            { type: 'TextBlock', text: 'The live server cannot query MAWM. Re-authentication is required — run dc499.bat on the server PC.', wrap: true, spacing: 'Small', isSubtle: true },
           ]},
-        ],
-        actions: [
-          { type: 'Action.OpenUrl', title: 'Re-Authenticate Now', url: authUrl, style: 'positive' },
         ],
       },
     }],
@@ -1404,7 +1400,7 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
           }
           if (!authNotified) {
             authNotified = true;
-            notifyAuthExpired(localIp, port).catch(() => {});
+            notifyAuthExpired().catch(() => {});
           }
           return; // skip this cycle, retry next interval
         }
