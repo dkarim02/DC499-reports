@@ -1269,7 +1269,10 @@ async function notifyAuthExpired() {
           ]}]},
           { type: 'Container', spacing: 'Medium', items: [
             { type: 'TextBlock', text: 'Auth token expired', weight: 'Bolder', size: 'Large', color: 'Attention' },
-            { type: 'TextBlock', text: 'The live server cannot query MAWM. Re-authentication is required — run dc499.bat on the server PC.', wrap: true, spacing: 'Small', isSubtle: true },
+            { type: 'TextBlock', text: 'The live server cannot query MAWM. To restore:', wrap: true, spacing: 'Small', isSubtle: true },
+            { type: 'TextBlock', text: '1. On the server PC, switch user (do not log out Dean)', wrap: true, spacing: 'Small', isSubtle: true },
+            { type: 'TextBlock', text: '2. Open Chrome and go to: localhost:3001/auth?pin=020405', wrap: true, spacing: 'Small', isSubtle: true, fontType: 'Monospace' },
+            { type: 'TextBlock', text: '3. Page will close automatically — done.', wrap: true, spacing: 'Small', isSubtle: true },
           ]},
         ],
       },
