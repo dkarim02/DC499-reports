@@ -1156,7 +1156,7 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
 
 // ── Teams: cleared batch notifier ─────────────────────────────────────────────
 const AUTH_PIN = '020405';
-const TEAMS_WEBHOOK_AUTH_ALERT = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0e449f9414294d19b288a01f095e5111/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=x-C0Zl6eoNR4viJ77KiFb-J9Y94mLkVZBq6gxX0N27A';
+const TEAMS_WEBHOOK_AUTH_ALERT = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/db4396647efa46f783e0ed9a5d09e32f/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=cc2r54fuKyh7imNXiOuF9NmPNVpqWF5j8s6ojHAEVxI';
 
 const TEAMS_WEBHOOKS_BATCHES = {
   '1st': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/a26c40b1c9ee4739abd0269aedbef04b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=mkz_8DUX8eAfH1clRiMjPNXFz-zCT0bwAJeEMxkZwHY',
