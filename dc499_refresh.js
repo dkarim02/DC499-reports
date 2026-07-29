@@ -1464,14 +1464,36 @@ async function main() {
   if (isAuth) {
     console.log('Starting auth flow...');
     accessToken = await doAuthFlow();
+  } else if (isServe) {
+    // In serve mode, never open a browser — try silent refresh up to 3 times,
+    // then start the server anyway so the loop can keep retrying every cycle.
+    console.log('Getting access token (silent)...');
+    let lastErr;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        accessToken = await getAccessTokenSilent();
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 3) {
+          console.warn(`  Attempt ${attempt} failed: ${e.message} — retrying in 10s`);
+          await new Promise(r => setTimeout(r, 10000));
+        }
+      }
+    }
+    if (!accessToken) {
+      console.error(`⚠  Token refresh failed at startup: ${lastErr.message}`);
+      console.error('   Server will start anyway and retry every cycle.');
+      console.error('   To fix: run dc499.bat → option 4 (auth).');
+    }
   } else {
     console.log('Getting access token...');
     accessToken = await getAccessToken();
   }
-  console.log('✓ Authenticated');
+  if (accessToken) console.log('✓ Authenticated');
 
   if (isServe) {
-    await serveMode(port, ivMin, accessToken, openArg);
+    await serveMode(port, ivMin, accessToken || null, openArg);
     return;
   }
 
