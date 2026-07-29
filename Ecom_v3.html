@@ -677,6 +677,30 @@ var FULL_METRIC = {
   picking: 'Quantity', packing: null, shipping: 'Quantity'
 };
 var FULL_COUNT_SKIP_ZERO = new Set(['packing']);
+// Dedup by Container ID within each employee for these types (prevents double-count when two TX IDs cover same box)
+var FULL_DEDUP_CONTAINER = new Set(['shipping']);
+function sumRows(rows, typ, empFilter) {
+  var metricKey = FULL_METRIC[typ];
+  var dedupByContainer = FULL_DEDUP_CONTAINER.has(typ);
+  var seenContainers = {}; // emp -> Set of container IDs
+  var totals = {};
+  rows.forEach(function(r) {
+    var e = (r['Employee']||'').trim();
+    if (!e) return;
+    if (empFilter && !empFilter(e)) return;
+    if (dedupByContainer) {
+      var cid = (r['Container ID']||'').trim();
+      if (cid) {
+        if (!seenContainers[e]) seenContainers[e] = new Set();
+        if (seenContainers[e].has(cid)) return;
+        seenContainers[e].add(cid);
+      }
+    }
+    var val = metricKey ? (parseFloat(r[metricKey])||0) : (FULL_COUNT_SKIP_ZERO.has(typ) && !(parseFloat(r['Quantity'])||0) ? 0 : 1);
+    totals[e] = (totals[e]||0) + val;
+  });
+  return totals;
+}
 
 var FIN_FCST_PPH = {
   replen:111.6, putaway:19.6, picking:93.1,
@@ -1196,16 +1220,12 @@ function renderSidePanel(typ) {
 
   // Find all employees in this dept from current data
   var txList = getTX()[typ];
-  var metricKey = FULL_METRIC[typ];
-  var empTotals = {};
-  fullReportRows.forEach(function(r) {
-    if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return;
-    if (typ === 'sorting' && (r['Criteria']||'').trim() !== SORT_CRITERIA) return;
-    var e = (r['Employee']||'').trim();
-    if (!e) return;
-    var val = metricKey ? (parseFloat(r[metricKey])||0) : (FULL_COUNT_SKIP_ZERO.has(typ) && !(parseFloat(r['Quantity'])||0) ? 0 : 1);
-    empTotals[e] = (empTotals[e]||0) + val;
+  var filtered = fullReportRows.filter(function(r) {
+    if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
+    if (typ === 'sorting' && (r['Criteria']||'').trim() !== SORT_CRITERIA) return false;
+    return true;
   });
+  var empTotals = sumRows(filtered, typ, null);
 
   var onRoster = [], offRoster = [];
   Object.keys(empTotals).forEach(function(emp) {
@@ -1438,8 +1458,7 @@ function renderFullReport() {
       html += '<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total" style="color:var(--text-hint);">No data</span></div><div class="full-empty" style="padding:1rem;">No '+label+' transactions found</div></div>';
       return;
     }
-    var totals = {};
-    filtered.forEach(function(r){var e=(r['Employee']||'').trim(),val=metricKey?(parseFloat(r[metricKey])||0):1;if(TEAM.has(e))totals[e]=(totals[e]||0)+val;});
+    var totals = sumRows(filtered, typ, function(e){ return TEAM.has(e); });
     var sorted = Object.entries(totals).sort(function(a,b){return b[1]-a[1];});
     var grand = sorted.reduce(function(s,v){return s+v[1];},0);
     if (!grand) return;
@@ -1544,16 +1563,14 @@ const TEAMS_WEBHOOKS = {
 function getDeptTotals() {
   var TEAM = getTeamSet(), totals = {};
   ['replen','putaway','picking','packing','shipping','sorting'].forEach(function(typ) {
-    var txList = getTX()[typ], metricKey = FULL_METRIC[typ];
-    totals[typ] = fullReportRows.filter(function(r) {
+    var txList = getTX()[typ];
+    var filtered = fullReportRows.filter(function(r) {
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
       if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
       return true;
-    }).reduce(function(s,r) {
-      var e = (r['Employee']||'').trim();
-      if (!TEAM.has(e)) return s;
-      return s + (metricKey ? (parseFloat(r[metricKey])||0) : (FULL_COUNT_SKIP_ZERO.has(typ) && !(parseFloat(r['Quantity'])||0) ? 0 : 1));
-    }, 0);
+    });
+    var empTotals = sumRows(filtered, typ, function(e){ return TEAM.has(e); });
+    totals[typ] = Object.values(empTotals).reduce(function(s,v){return s+v;},0);
   });
   return totals;
 }
