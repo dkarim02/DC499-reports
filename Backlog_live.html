@@ -1817,35 +1817,43 @@ function exportEodEmail() {
   var pdtStr = now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
   var shiftLabel = bt.shift_label || bl.shift_label || '2nd shift';
 
+  // solid theme palette (inline — email has no CSS variables)
+  var C = {
+    bg:'#13172b', surface:'#1b2035', surface2:'#232840', border:'#2e3650',
+    text:'#e4e8f4', muted:'#8090b0', hint:'#4a5570',
+    accent:'#5B9BD5', green:'#22c55e', amber:'#FFB74D', red:'#EF9A9A',
+    ready:'#22c55e', alloc:'#FFB74D', packed:'#5B9BD5',
+  };
   var F   = 'font-family:Arial,sans-serif;';
-  var hdr = 'background:#1a1a2e;color:#fff;padding:14px 18px;';
-  var sec = 'background:#f0f0f0;padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#555;border-bottom:1px solid #ddd;border-top:1px solid #ddd;';
   var tbl = 'width:100%;border-collapse:collapse;' + F;
-  var th  = 'background:#f0f0f0;font-size:11px;font-weight:700;color:#555;padding:7px 10px;border:1px solid #ddd;text-align:left;';
-  var thR = 'background:#f0f0f0;font-size:11px;font-weight:700;color:#555;padding:7px 10px;border:1px solid #ddd;text-align:right;';
-  var td  = 'padding:6px 10px;border:1px solid #ddd;font-size:12px;color:#222;';
-  var tdR = 'padding:6px 10px;border:1px solid #ddd;font-size:12px;color:#222;text-align:right;font-weight:600;';
-  var tdM = 'padding:6px 10px;border:1px solid #ddd;font-size:12px;color:#888;text-align:right;';
+  var hdr = 'background:'+C.bg+';color:'+C.text+';padding:14px 18px;';
+  var sec = 'background:'+C.surface2+';padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:'+C.muted+';border-bottom:1px solid '+C.border+';border-top:1px solid '+C.border+';';
+  var th  = 'background:'+C.surface2+';font-size:11px;font-weight:700;color:'+C.muted+';padding:7px 10px;border:1px solid '+C.border+';text-align:left;';
+  var thR = 'background:'+C.surface2+';font-size:11px;font-weight:700;color:'+C.muted+';padding:7px 10px;border:1px solid '+C.border+';text-align:right;';
+  var td  = 'background:'+C.surface+';padding:6px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';';
+  var tdR = 'background:'+C.surface+';padding:6px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';text-align:right;font-weight:600;';
+  var tdM = 'background:'+C.surface+';padding:6px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.muted+';text-align:right;';
+  var tdA = 'background:'+C.surface2+';padding:6px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';';  // alt row
   function fmtN(v) { return v != null ? Number(v).toLocaleString() : '—'; }
   function fmtT(v) { return v != null ? v + ' min' : '—'; }
 
-  var html = '<table style="' + tbl + 'max-width:680px;">';
+  var html = '<table style="' + tbl + '">';
 
   // header
   html += '<tr><td colspan="6" style="' + hdr + F + '">';
-  html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#8ee8de;">End of Day Report &nbsp;&middot;&nbsp; DC499 Nordstrom</div>';
-  html += '<div style="font-size:20px;font-weight:300;margin-top:4px;">' + pdtStr + '</div>';
-  html += '<div style="margin-top:6px;display:inline-block;font-size:10px;font-weight:700;letter-spacing:1px;color:#8ee8de;border:1px solid #8ee8de;border-radius:3px;padding:2px 8px;text-transform:uppercase;">' + shiftLabel + '</div>';
+  html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:'+C.accent+';">End of Day Report &nbsp;&middot;&nbsp; DC499 Nordstrom</div>';
+  html += '<div style="font-size:20px;font-weight:300;margin-top:4px;color:'+C.text+';">' + pdtStr + '</div>';
+  html += '<div style="margin-top:6px;display:inline-block;font-size:10px;font-weight:700;letter-spacing:1px;color:'+C.accent+';border:1px solid '+C.accent+';border-radius:3px;padding:2px 8px;text-transform:uppercase;">' + shiftLabel + '</div>';
   html += '</td></tr>';
 
   // backlog tiles
   var totR=0,totA=0,totP=0,totO=0,totS=0;
   (bl.dates||[]).forEach(function(d){ totR+=d.ready||0; totA+=d.allocated||0; totP+=d.packed||0; totO+=(d.ready||0)+(d.allocated||0)+(d.packed||0); totS+=d.shipped||0; });
   html += '<tr>';
-  html += '<td colspan="2" style="'+td+'text-align:center;border-top:3px solid #3b82f6;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Ready</div><div style="font-size:22px;font-weight:700;color:#3b82f6;">'+fmtN(totR)+'</div></td>';
-  html += '<td colspan="2" style="'+td+'text-align:center;border-top:3px solid #f59e0b;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Allocated</div><div style="font-size:22px;font-weight:700;color:#f59e0b;">'+fmtN(totA)+'</div></td>';
-  html += '<td style="'+td+'text-align:center;border-top:3px solid #0e9e8e;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Packed</div><div style="font-size:22px;font-weight:700;color:#0e9e8e;">'+fmtN(totP)+'</div></td>';
-  html += '<td style="'+td+'text-align:center;border-top:3px solid #aaa;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Total Open</div><div style="font-size:22px;font-weight:700;color:#333;">'+fmtN(totO)+'</div></td>';
+  html += '<td colspan="2" style="'+tdA+'text-align:center;border-top:3px solid '+C.ready+';"><div style="font-size:10px;color:'+C.muted+';text-transform:uppercase;letter-spacing:.5px;">Ready</div><div style="font-size:22px;font-weight:700;color:'+C.ready+';">'+fmtN(totR)+'</div></td>';
+  html += '<td colspan="2" style="'+tdA+'text-align:center;border-top:3px solid '+C.alloc+';"><div style="font-size:10px;color:'+C.muted+';text-transform:uppercase;letter-spacing:.5px;">Allocated</div><div style="font-size:22px;font-weight:700;color:'+C.alloc+';">'+fmtN(totA)+'</div></td>';
+  html += '<td style="'+tdA+'text-align:center;border-top:3px solid '+C.packed+';"><div style="font-size:10px;color:'+C.muted+';text-transform:uppercase;letter-spacing:.5px;">Packed</div><div style="font-size:22px;font-weight:700;color:'+C.packed+';">'+fmtN(totP)+'</div></td>';
+  html += '<td style="'+tdA+'text-align:center;border-top:3px solid '+C.muted+';"><div style="font-size:10px;color:'+C.muted+';text-transform:uppercase;letter-spacing:.5px;">Total Open</div><div style="font-size:22px;font-weight:700;color:'+C.text+';">'+fmtN(totO)+'</div></td>';
   html += '</tr>';
 
   // date breakdown
@@ -1853,26 +1861,39 @@ function exportEodEmail() {
     html += '<tr><td colspan="6" style="'+sec+F+'">Order Backlog by Date</td></tr>';
     html += '<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
     html += '<thead><tr><th style="'+th+'">Date</th><th style="'+thR+'">Ready</th><th style="'+thR+'">Allocated</th><th style="'+thR+'">Packed</th><th style="'+thR+'">Total</th><th style="'+thR+'">Shipped</th></tr></thead><tbody>';
-    bl.dates.forEach(function(d){
+    bl.dates.forEach(function(d,i){
       var rt=(d.ready||0)+(d.allocated||0)+(d.packed||0);
-      html+='<tr><td style="'+td+'">'+(d.date||'—')+'</td><td style="'+tdR+'color:#3b82f6;">'+fmtN(d.ready)+'</td><td style="'+tdR+'color:#f59e0b;">'+fmtN(d.allocated)+'</td><td style="'+tdR+'color:#0e9e8e;">'+fmtN(d.packed)+'</td><td style="'+tdR+'">'+fmtN(rt)+'</td><td style="'+tdM+'">'+fmtN(d.shipped)+'</td></tr>';
+      var row=i%2===0?td:tdA;
+      html+='<tr><td style="'+row+'">'+(d.date||'—')+'</td><td style="'+row+'text-align:right;font-weight:600;color:'+C.ready+';">'+fmtN(d.ready)+'</td><td style="'+row+'text-align:right;font-weight:600;color:'+C.alloc+';">'+fmtN(d.allocated)+'</td><td style="'+row+'text-align:right;font-weight:600;color:'+C.packed+';">'+fmtN(d.packed)+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(rt)+'</td><td style="'+row+'text-align:right;color:'+C.muted+';">'+fmtN(d.shipped)+'</td></tr>';
     });
-    html+='<tr style="background:#f8f8f8;"><td style="'+td+'font-weight:700;">Total</td><td style="'+tdR+'color:#3b82f6;">'+fmtN(totR)+'</td><td style="'+tdR+'color:#f59e0b;">'+fmtN(totA)+'</td><td style="'+tdR+'color:#0e9e8e;">'+fmtN(totP)+'</td><td style="'+tdR+'">'+fmtN(totO)+'</td><td style="'+tdM+'">'+fmtN(totS)+'</td></tr>';
+    html+='<tr><td style="'+tdA+'font-weight:700;">Total</td><td style="'+tdA+'text-align:right;font-weight:700;color:'+C.ready+';">'+fmtN(totR)+'</td><td style="'+tdA+'text-align:right;font-weight:700;color:'+C.alloc+';">'+fmtN(totA)+'</td><td style="'+tdA+'text-align:right;font-weight:700;color:'+C.packed+';">'+fmtN(totP)+'</td><td style="'+tdA+'text-align:right;font-weight:700;">'+fmtN(totO)+'</td><td style="'+tdA+'text-align:right;color:'+C.muted+';">'+fmtN(totS)+'</td></tr>';
     html += '</tbody></table></td></tr>';
   }
 
-  // bridge (units / hour)
+  // bridge — two-column layout
   var hourly=(bl.hourly||[]).filter(function(r){return r.lines>0;});
   if (hourly.length) {
     var totalLines=hourly.reduce(function(s,r){return s+(r.lines||0);},0);
-    var avgUph=hourly.length>0?Math.round(totalLines/hourly.length):0;
-    html+='<tr><td colspan="6" style="'+sec+F+'">Bridge &nbsp;<span style="font-weight:400;color:#888;">'+avgUph.toLocaleString()+' avg units/hr</span></td></tr>';
-    html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
+    var avgUph=Math.round(totalLines/hourly.length);
+    var maxLines=hourly.reduce(function(mx,r){return Math.max(mx,r.lines);},0);
+    html+='<tr><td colspan="6" style="'+sec+F+'">Bridge &nbsp;<span style="font-weight:400;color:'+C.muted+';">'+avgUph.toLocaleString()+' avg units/hr</span></td></tr>';
+    // split into two columns
+    var half=Math.ceil(hourly.length/2);
+    var col1=hourly.slice(0,half), col2=hourly.slice(half);
+    html+='<tr><td colspan="3" style="padding:0;vertical-align:top;"><table style="'+tbl+'">';
     html+='<thead><tr><th style="'+th+'">Hour</th><th style="'+thR+'">Units</th></tr></thead><tbody>';
-    hourly.forEach(function(r){
-      html+='<tr><td style="'+td+'">'+fmtHourRange(r.hour)+'</td><td style="'+tdR+'">'+fmtN(r.lines)+'</td></tr>';
+    col1.forEach(function(r,i){
+      var isPeak=r.lines===maxLines; var row=i%2===0?td:tdA;
+      html+='<tr><td style="'+row+(isPeak?'color:'+C.accent+';font-weight:700;':'')+'">'+fmtHourRange(r.hour)+'</td><td style="'+row+'text-align:right;font-weight:600;'+(isPeak?'color:'+C.accent+';':'')+'">'+fmtN(r.lines)+'</td></tr>';
     });
-    html+='<tr style="background:#f8f8f8;"><td style="'+td+'font-weight:700;">Avg / hr</td><td style="'+tdR+'color:#0e9e8e;">'+avgUph.toLocaleString()+'</td></tr>';
+    html+='</tbody></table></td>';
+    html+='<td colspan="3" style="padding:0;vertical-align:top;"><table style="'+tbl+'">';
+    html+='<thead><tr><th style="'+th+'">Hour</th><th style="'+thR+'">Units</th></tr></thead><tbody>';
+    col2.forEach(function(r,i){
+      var isPeak=r.lines===maxLines; var row=i%2===0?td:tdA;
+      html+='<tr><td style="'+row+(isPeak?'color:'+C.accent+';font-weight:700;':'')+'">'+fmtHourRange(r.hour)+'</td><td style="'+row+'text-align:right;font-weight:600;'+(isPeak?'color:'+C.accent+';':'')+'">'+fmtN(r.lines)+'</td></tr>';
+    });
+    html+='<tr><td style="'+tdA+'font-weight:700;color:'+C.accent+';">Avg / hr</td><td style="'+tdA+'text-align:right;font-weight:700;color:'+C.accent+';">'+avgUph.toLocaleString()+'</td></tr>';
     html+='</tbody></table></td></tr>';
   }
 
@@ -1881,10 +1902,10 @@ function exportEodEmail() {
   var waveTotal=(bl.waves||[]).find(function(w){return w.type==='Total';});
   if (waves.length) {
     var wt=waveTotal?waveTotal.count:waves.reduce(function(s,w){return s+w.count;},0);
-    html+='<tr><td colspan="6" style="'+sec+F+'">Waves Run This Shift &nbsp;<span style="font-weight:400;color:#888;">'+wt+' total</span></td></tr>';
+    html+='<tr><td colspan="6" style="'+sec+F+'">Waves Run This Shift &nbsp;<span style="font-weight:400;color:'+C.muted+';">'+wt+' total</span></td></tr>';
     html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
     html+='<thead><tr><th style="'+th+'">Wave Type</th><th style="'+thR+'">Count</th></tr></thead><tbody>';
-    waves.forEach(function(w){html+='<tr><td style="'+td+'">'+w.type+'</td><td style="'+tdR+'">'+fmtN(w.count)+'</td></tr>';});
+    waves.forEach(function(w,i){var row=i%2===0?td:tdA; html+='<tr><td style="'+row+'">'+w.type+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(w.count)+'</td></tr>';});
     html+='</tbody></table></td></tr>';
   }
 
@@ -1894,55 +1915,39 @@ function exportEodEmail() {
   if (bs.total_batches!=null||allBatches.length) {
     html+='<tr><td colspan="6" style="'+sec+F+'">Batch Summary</td></tr>';
     html+='<tr>';
-    html+='<td colspan="2" style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Total Batches</div><div style="font-size:20px;font-weight:700;color:#333;">'+fmtN(bs.total_batches)+'</div></td>';
-    html+='<td colspan="2" style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Cleared</div><div style="font-size:20px;font-weight:700;color:#059669;">'+fmtN(bs.cleared_batches)+'</div></td>';
-    html+='<td style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Avg Clear</div><div style="font-size:20px;font-weight:700;color:#333;">'+fmtT(bs.avg_mins_to_clear)+'</div></td>';
-    html+='<td style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Avg Interval</div><div style="font-size:20px;font-weight:700;color:#333;">'+fmtT(bs.avg_release_interval_mins)+'</div></td>';
+    html+='<td colspan="2" style="'+tdA+'text-align:center;"><div style="font-size:10px;color:'+C.muted+';text-transform:uppercase;letter-spacing:.5px;">Total Batches</div><div style="font-size:20px;font-weight:700;color:'+C.text+';">'+fmtN(bs.total_batches)+'</div></td>';
+    html+='<td colspan="2" style="'+tdA+'text-align:center;"><div style="font-size:10px;color:'+C.muted+';text-transform:uppercase;letter-spacing:.5px;">Cleared</div><div style="font-size:20px;font-weight:700;color:'+C.green+';">'+fmtN(bs.cleared_batches)+'</div></td>';
+    html+='<td style="'+tdA+'text-align:center;"><div style="font-size:10px;color:'+C.muted+';text-transform:uppercase;letter-spacing:.5px;">Avg Clear</div><div style="font-size:20px;font-weight:700;color:'+C.text+';">'+fmtT(bs.avg_mins_to_clear)+'</div></td>';
+    html+='<td style="'+tdA+'text-align:center;"><div style="font-size:10px;color:'+C.muted+';text-transform:uppercase;letter-spacing:.5px;">Avg Interval</div><div style="font-size:20px;font-weight:700;color:'+C.text+';">'+fmtT(bs.avg_release_interval_mins)+'</div></td>';
     html+='</tr>';
 
-    var batchTableHead='<thead><tr><th style="'+th+'">#</th><th style="'+th+'">Batch ID</th><th style="'+thR+'">Released</th><th style="'+thR+'">Status</th><th style="'+thR+'">Tasks Left</th><th style="'+thR+'">oLPNs</th></tr></thead>';
-    var clearedTableHead='<thead><tr><th style="'+th+'">#</th><th style="'+th+'">Batch ID</th><th style="'+thR+'">Released</th><th style="'+thR+'">Cleared</th><th style="'+thR+'">Time to Clear</th><th style="'+thR+'">oLPNs</th></tr></thead>';
+    var batchHead='<thead><tr><th style="'+th+'">#</th><th style="'+th+'">Batch ID</th><th style="'+thR+'">Released</th><th style="'+thR+'">Status</th><th style="'+thR+'">Tasks Left</th><th style="'+thR+'">oLPNs</th></tr></thead>';
+    var clearedHead='<thead><tr><th style="'+th+'">#</th><th style="'+th+'">Batch ID</th><th style="'+thR+'">Released</th><th style="'+thR+'">Cleared</th><th style="'+thR+'">Time to Clear</th><th style="'+thR+'">oLPNs</th></tr></thead>';
 
-    // active & queued
     var active=allBatches.filter(function(b){return !b.is_cleared;});
     if (active.length) {
-      html+='<tr><td colspan="6" style="background:#fff8e6;padding:6px 14px;font-size:11px;font-weight:700;color:#b45309;border-bottom:1px solid #ddd;'+F+'">Active &amp; Queued &nbsp;('+active.length+')</td></tr>';
-      html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
-      html+=batchTableHead+'<tbody>';
-      active.forEach(function(b){
+      html+='<tr><td colspan="6" style="background:#2a1f00;padding:6px 14px;font-size:11px;font-weight:700;color:'+C.amber+';border-bottom:1px solid '+C.border+';'+F+'">Active &amp; Queued &nbsp;('+active.length+')</td></tr>';
+      html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">'+batchHead+'<tbody>';
+      active.forEach(function(b,i){
         var openT=b.total_tasks!=null&&b.open_tasks!=null?b.open_tasks:null;
         var totT=b.total_tasks!=null?b.total_tasks:null;
         var tasksStr=openT!=null&&totT!=null?(openT+' / '+totT):(totT!=null?totT:'—');
-        var tasksColor=openT!=null&&totT!=null&&totT>0?(openT/totT>0.5?'#dc2626':openT>0?'#f59e0b':'#059669'):'#888';
-        var statusColor=b.status_label==='Active'?'#f59e0b':b.status_label==='Queued'?'#3b82f6':'#888';
-        html+='<tr style="background:#fffbf0;">';
-        html+='<td style="'+td+'color:#888;">'+(b.batch_num||'—')+'</td>';
-        html+='<td style="'+td+'font-family:monospace;font-size:11px;">'+(b.batch_id||'—')+'</td>';
-        html+='<td style="'+tdR+'">'+(b.released_pdt||'—')+'</td>';
-        html+='<td style="'+tdR+'color:'+statusColor+';font-weight:700;">'+(b.status_label||b.status_code||'—')+'</td>';
-        html+='<td style="'+tdR+'color:'+tasksColor+';">'+tasksStr+'</td>';
-        html+='<td style="'+tdM+'">'+fmtN(b.total_olpns)+'</td>';
-        html+='</tr>';
+        var tasksColor=openT!=null&&totT!=null&&totT>0?(openT/totT>0.5?C.red:openT>0?C.amber:C.green):C.muted;
+        var statusColor=b.status_label==='Active'?C.amber:b.status_label==='Queued'?C.accent:C.muted;
+        var row=i%2===0?td:tdA;
+        html+='<tr><td style="'+row+'color:'+C.muted+';">'+(b.batch_num||'—')+'</td><td style="'+row+'font-family:monospace;font-size:11px;">'+(b.batch_id||'—')+'</td><td style="'+row+'text-align:right;">'+(b.released_pdt||'—')+'</td><td style="'+row+'text-align:right;font-weight:700;color:'+statusColor+';">'+(b.status_label||b.status_code||'—')+'</td><td style="'+row+'text-align:right;color:'+tasksColor+';">'+tasksStr+'</td><td style="'+row+'text-align:right;color:'+C.muted+';">'+fmtN(b.total_olpns)+'</td></tr>';
       });
       html+='</tbody></table></td></tr>';
     }
 
-    // cleared
     var cleared=allBatches.filter(function(b){return b.is_cleared;});
     if (cleared.length) {
-      html+='<tr><td colspan="6" style="background:#f0faf5;padding:6px 14px;font-size:11px;font-weight:700;color:#059669;border-bottom:1px solid #ddd;'+F+'">Cleared &nbsp;('+cleared.length+')</td></tr>';
-      html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
-      html+=clearedTableHead+'<tbody>';
-      cleared.forEach(function(b){
-        var cc=b.mins_to_clear!=null?(b.mins_to_clear<=30?'#059669':b.mins_to_clear<=50?'#f59e0b':'#dc2626'):'#888';
-        html+='<tr>';
-        html+='<td style="'+td+'color:#888;">'+(b.batch_num||'—')+'</td>';
-        html+='<td style="'+td+'font-family:monospace;font-size:11px;">'+(b.batch_id||'—')+'</td>';
-        html+='<td style="'+tdR+'">'+(b.released_pdt||'—')+'</td>';
-        html+='<td style="'+tdR+'">'+(b.cleared_pdt||'—')+'</td>';
-        html+='<td style="'+tdR+'color:'+cc+';">'+fmtT(b.mins_to_clear)+'</td>';
-        html+='<td style="'+tdM+'">'+fmtN(b.total_olpns)+'</td>';
-        html+='</tr>';
+      html+='<tr><td colspan="6" style="background:#052e16;padding:6px 14px;font-size:11px;font-weight:700;color:'+C.green+';border-bottom:1px solid '+C.border+';'+F+'">Cleared &nbsp;('+cleared.length+')</td></tr>';
+      html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">'+clearedHead+'<tbody>';
+      cleared.forEach(function(b,i){
+        var cc=b.mins_to_clear!=null?(b.mins_to_clear<=30?C.green:b.mins_to_clear<=50?C.amber:C.red):C.muted;
+        var row=i%2===0?td:tdA;
+        html+='<tr><td style="'+row+'color:'+C.muted+';">'+(b.batch_num||'—')+'</td><td style="'+row+'font-family:monospace;font-size:11px;">'+(b.batch_id||'—')+'</td><td style="'+row+'text-align:right;">'+(b.released_pdt||'—')+'</td><td style="'+row+'text-align:right;">'+(b.cleared_pdt||'—')+'</td><td style="'+row+'text-align:right;color:'+cc+';">'+fmtT(b.mins_to_clear)+'</td><td style="'+row+'text-align:right;color:'+C.muted+';">'+fmtN(b.total_olpns)+'</td></tr>';
       });
       html+='</tbody></table></td></tr>';
     }
@@ -1951,21 +1956,22 @@ function exportEodEmail() {
   // retail replen
   var rrItems=rr.items||[];
   if (rrItems.length) {
-    html+='<tr><td colspan="6" style="'+sec+F+'">Retail Replen Watch &nbsp;<span style="font-weight:400;color:#dc2626;">'+rrItems.length+' item'+(rrItems.length!==1?'s':'')+' flagged</span></td></tr>';
+    html+='<tr><td colspan="6" style="'+sec+F+'">Retail Replen Watch &nbsp;<span style="font-weight:400;color:'+C.red+';">'+rrItems.length+' item'+(rrItems.length!==1?'s':'')+' flagged</span></td></tr>';
     html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
     html+='<thead><tr><th style="'+th+'">Item</th><th style="'+thR+'">Units Needed</th><th style="'+thR+'">Face Stock</th><th style="'+thR+'">Gap</th><th style="'+thR+'">Orders</th><th style="'+th+'">Task Status</th></tr></thead><tbody>';
-    rrItems.forEach(function(item){
-      var sc=item.age_severity==='red'?'#dc2626':item.age_severity==='amber'?'#f59e0b':'#888';
+    rrItems.forEach(function(item,i){
+      var sc=item.age_severity==='red'?C.red:item.age_severity==='amber'?C.amber:C.muted;
       var ts=item.tasks&&item.tasks.length?item.tasks.map(function(t){return t.status;}).join(', '):'No task';
-      html+='<tr><td style="'+td+'font-family:monospace;font-size:11px;">'+(item.item_id||'—')+'</td><td style="'+tdR+'">'+fmtN(item.units_needed)+'</td><td style="'+tdR+'">'+fmtN(item.face_stock)+'</td><td style="'+tdR+'color:'+sc+';font-weight:700;">'+fmtN(item.fill_gap)+'</td><td style="'+tdR+'">'+fmtN(item.order_count)+'</td><td style="'+td+'font-size:11px;color:#555;">'+ts+'</td></tr>';
+      var row=i%2===0?td:tdA;
+      html+='<tr><td style="'+row+'font-family:monospace;font-size:11px;">'+(item.item_id||'—')+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(item.units_needed)+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(item.face_stock)+'</td><td style="'+row+'text-align:right;font-weight:700;color:'+sc+';">'+fmtN(item.fill_gap)+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(item.order_count)+'</td><td style="'+row+'font-size:11px;color:'+C.muted+';">'+ts+'</td></tr>';
     });
     html+='</tbody></table></td></tr>';
   } else if (rr.summary) {
-    html+='<tr><td colspan="6" style="'+sec+F+'">Retail Replen Watch &nbsp;<span style="font-weight:400;color:#059669;">All clear</span></td></tr>';
+    html+='<tr><td colspan="6" style="'+sec+F+'">Retail Replen Watch &nbsp;<span style="font-weight:400;color:'+C.green+';">All clear</span></td></tr>';
   }
 
   // footer
-  html+='<tr><td colspan="6" style="'+td+'font-size:10px;color:#aaa;text-align:center;border-top:2px solid #eee;'+F+'">Generated '+pdtStr+' &nbsp;&middot;&nbsp; DC499 Nordstrom &nbsp;&middot;&nbsp; SCOUT Live</td></tr>';
+  html+='<tr><td colspan="6" style="background:'+C.surface2+';padding:8px 14px;font-size:10px;color:'+C.hint+';text-align:center;border-top:1px solid '+C.border+';'+F+'">Generated '+pdtStr+' &nbsp;&middot;&nbsp; DC499 Nordstrom &nbsp;&middot;&nbsp; SCOUT Live</td></tr>';
   html+='</table>';
 
   document.getElementById('eod-preview').innerHTML = html;
