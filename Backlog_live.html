@@ -1867,7 +1867,8 @@ function exportEodEmail() {
 
   // batch summary
   var bs=bt.summary||{};
-  if (bs.total_batches!=null) {
+  var allBatches=bt.batches||[];
+  if (bs.total_batches!=null||allBatches.length) {
     html+='<tr><td colspan="6" style="'+sec+F+'">Batch Summary</td></tr>';
     html+='<tr>';
     html+='<td colspan="2" style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Total Batches</div><div style="font-size:20px;font-weight:700;color:#333;">'+fmtN(bs.total_batches)+'</div></td>';
@@ -1875,13 +1876,50 @@ function exportEodEmail() {
     html+='<td style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Avg Clear</div><div style="font-size:20px;font-weight:700;color:#333;">'+fmtT(bs.avg_mins_to_clear)+'</div></td>';
     html+='<td style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Avg Interval</div><div style="font-size:20px;font-weight:700;color:#333;">'+fmtT(bs.avg_release_interval_mins)+'</div></td>';
     html+='</tr>';
-    var cleared=(bt.batches||[]).filter(function(b){return b.is_cleared;});
-    if (cleared.length) {
+
+    var batchTableHead='<thead><tr><th style="'+th+'">#</th><th style="'+th+'">Batch ID</th><th style="'+thR+'">Released</th><th style="'+thR+'">Status</th><th style="'+thR+'">Tasks Left</th><th style="'+thR+'">oLPNs</th></tr></thead>';
+    var clearedTableHead='<thead><tr><th style="'+th+'">#</th><th style="'+th+'">Batch ID</th><th style="'+thR+'">Released</th><th style="'+thR+'">Cleared</th><th style="'+thR+'">Time to Clear</th><th style="'+thR+'">oLPNs</th></tr></thead>';
+
+    // active & queued
+    var active=allBatches.filter(function(b){return !b.is_cleared;});
+    if (active.length) {
+      html+='<tr><td colspan="6" style="background:#fff8e6;padding:6px 14px;font-size:11px;font-weight:700;color:#b45309;border-bottom:1px solid #ddd;'+F+'">Active &amp; Queued &nbsp;('+active.length+')</td></tr>';
       html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
-      html+='<thead><tr><th style="'+th+'">#</th><th style="'+th+'">Batch ID</th><th style="'+thR+'">Released</th><th style="'+thR+'">Cleared</th><th style="'+thR+'">Time to Clear</th><th style="'+thR+'">oLPNs</th></tr></thead><tbody>';
+      html+=batchTableHead+'<tbody>';
+      active.forEach(function(b){
+        var openT=b.total_tasks!=null&&b.open_tasks!=null?b.open_tasks:null;
+        var totT=b.total_tasks!=null?b.total_tasks:null;
+        var tasksStr=openT!=null&&totT!=null?(openT+' / '+totT):(totT!=null?totT:'—');
+        var tasksColor=openT!=null&&totT!=null&&totT>0?(openT/totT>0.5?'#dc2626':openT>0?'#f59e0b':'#059669'):'#888';
+        var statusColor=b.status_label==='Active'?'#f59e0b':b.status_label==='Queued'?'#3b82f6':'#888';
+        html+='<tr style="background:#fffbf0;">';
+        html+='<td style="'+td+'color:#888;">'+(b.batch_num||'—')+'</td>';
+        html+='<td style="'+td+'font-family:monospace;font-size:11px;">'+(b.batch_id||'—')+'</td>';
+        html+='<td style="'+tdR+'">'+(b.released_pdt||'—')+'</td>';
+        html+='<td style="'+tdR+'color:'+statusColor+';font-weight:700;">'+(b.status_label||b.status_code||'—')+'</td>';
+        html+='<td style="'+tdR+'color:'+tasksColor+';">'+tasksStr+'</td>';
+        html+='<td style="'+tdM+'">'+fmtN(b.total_olpns)+'</td>';
+        html+='</tr>';
+      });
+      html+='</tbody></table></td></tr>';
+    }
+
+    // cleared
+    var cleared=allBatches.filter(function(b){return b.is_cleared;});
+    if (cleared.length) {
+      html+='<tr><td colspan="6" style="background:#f0faf5;padding:6px 14px;font-size:11px;font-weight:700;color:#059669;border-bottom:1px solid #ddd;'+F+'">Cleared &nbsp;('+cleared.length+')</td></tr>';
+      html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
+      html+=clearedTableHead+'<tbody>';
       cleared.forEach(function(b){
         var cc=b.mins_to_clear!=null?(b.mins_to_clear<=30?'#059669':b.mins_to_clear<=50?'#f59e0b':'#dc2626'):'#888';
-        html+='<tr><td style="'+td+'color:#888;">'+(b.batch_num||'—')+'</td><td style="'+td+'font-family:monospace;font-size:11px;">'+(b.batch_id||'—')+'</td><td style="'+tdR+'">'+(b.released_pdt||'—')+'</td><td style="'+tdR+'">'+(b.cleared_pdt||'—')+'</td><td style="'+tdR+'color:'+cc+';">'+fmtT(b.mins_to_clear)+'</td><td style="'+tdM+'">'+fmtN(b.total_olpns)+'</td></tr>';
+        html+='<tr>';
+        html+='<td style="'+td+'color:#888;">'+(b.batch_num||'—')+'</td>';
+        html+='<td style="'+td+'font-family:monospace;font-size:11px;">'+(b.batch_id||'—')+'</td>';
+        html+='<td style="'+tdR+'">'+(b.released_pdt||'—')+'</td>';
+        html+='<td style="'+tdR+'">'+(b.cleared_pdt||'—')+'</td>';
+        html+='<td style="'+tdR+'color:'+cc+';">'+fmtT(b.mins_to_clear)+'</td>';
+        html+='<td style="'+tdM+'">'+fmtN(b.total_olpns)+'</td>';
+        html+='</tr>';
       });
       html+='</tbody></table></td></tr>';
     }
