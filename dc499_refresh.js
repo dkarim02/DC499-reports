@@ -36,9 +36,17 @@ function b64url(buf) {
   return buf.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
 function loadToken() {
-  try { return JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8')); } catch { return null; }
+  // Try primary, fall back to backup
+  for (const f of [TOKEN_FILE, TOKEN_FILE + '.bak']) {
+    try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+  }
+  return null;
 }
-function saveToken(t) { fs.writeFileSync(TOKEN_FILE, JSON.stringify(t, null, 2)); }
+function saveToken(t) {
+  // Atomic write: backup existing, write new — so a mid-write crash never loses both
+  try { if (fs.existsSync(TOKEN_FILE)) fs.copyFileSync(TOKEN_FILE, TOKEN_FILE + '.bak'); } catch {}
+  fs.writeFileSync(TOKEN_FILE, JSON.stringify(t, null, 2));
+}
 
 async function refreshAccessToken(rt) {
   return jsonPost(`${MCP_BASE}/token`, new URLSearchParams({
@@ -106,13 +114,21 @@ class AuthError extends Error {}
 async function getAccessTokenSilent() {
   const stored = loadToken();
   if (!stored?.refresh_token) throw new AuthError('No refresh token — run --auth first');
+  // Try primary refresh token first, then backup if primary fails (handles rotation edge case)
+  const candidates = [stored.refresh_token];
   try {
-    const fresh = await refreshAccessToken(stored.refresh_token);
-    saveToken({ ...stored, ...fresh });
-    return fresh.access_token;
-  } catch (e) {
-    throw new AuthError('Token refresh failed: ' + e.message);
+    const bak = JSON.parse(fs.readFileSync(TOKEN_FILE + '.bak', 'utf8'));
+    if (bak?.refresh_token && bak.refresh_token !== stored.refresh_token) candidates.push(bak.refresh_token);
+  } catch {}
+  let lastErr;
+  for (const rt of candidates) {
+    try {
+      const fresh = await refreshAccessToken(rt);
+      saveToken({ ...stored, ...fresh });
+      return fresh.access_token;
+    } catch (e) { lastErr = e; }
   }
+  throw new AuthError('Token refresh failed: ' + lastErr.message);
 }
 
 // ── HTTP helpers ───────────────────────────────────────────────────────────────
@@ -1307,26 +1323,33 @@ async function queryAndWrite(accessToken) {
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
 async function serveMode(port, intervalMin, accessToken, openPage) {
-  let cache        = null;
-  let authNeeded   = false;
-  let lastAuthWarn = 0;
+  let cache          = null;
+  let authNeeded     = false;
+  let reauthing      = false;
 
   async function refresh() {
     try {
-      // Try a silent token refresh every cycle — never opens a browser
+      // Try silent token refresh first; if it fails, auto-launch browser re-auth
       try {
         accessToken = await getAccessTokenSilent();
         authNeeded  = false;
       } catch (e) {
         if (e instanceof AuthError) {
           authNeeded = true;
-          const now = Date.now();
-          // Only print the warning once per 5 minutes so it doesn't spam
-          if (now - lastAuthWarn > 5 * 60 * 1000) {
-            lastAuthWarn = now;
-            console.error(`\n[${ts()}] ⚠  TOKEN EXPIRED — run: node dc499_refresh.js --auth\n`);
+          if (!reauthing) {
+            reauthing = true;
+            console.log(`\n[${ts()}] Token expired — opening browser for re-auth (SSO auto-login)...`);
+            doAuthFlow().then(tok => {
+              accessToken = tok;
+              authNeeded  = false;
+              reauthing   = false;
+              console.log(`[${ts()}] ✓ Re-authenticated`);
+            }).catch(err => {
+              reauthing = false;
+              console.error(`[${ts()}] Re-auth failed: ${err.message}`);
+            });
           }
-          return; // skip this cycle, keep old cache, retry next interval
+          return; // skip this cycle, retry next interval
         }
         throw e;
       }
