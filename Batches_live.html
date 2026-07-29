@@ -66,8 +66,9 @@
   .theme-btn:hover{background:var(--surface2);}
   .theme-btn-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
   .theme-picker.open .theme-btn-chevron{transform:rotate(180deg);}
-  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow-y:auto;overflow-x:hidden;max-height:144px;min-width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:200;}
-  .theme-menu::-webkit-scrollbar{width:4px;}.theme-menu::-webkit-scrollbar-track{background:transparent;}.theme-menu::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;min-width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:200;}
+  .theme-options-scroll{overflow-y:auto;overflow-x:hidden;max-height:144px;}
+  .theme-options-scroll::-webkit-scrollbar{width:4px;}.theme-options-scroll::-webkit-scrollbar-track{background:transparent;}.theme-options-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
   .theme-picker.open .theme-menu{display:block;}
   .theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
   .theme-option:hover{background:var(--surface2);color:var(--text);}
@@ -209,12 +210,14 @@
         <span class="theme-btn-chevron">&#9660;</span>
       </button>
       <div class="theme-menu" id="theme-menu">
-        <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
-        <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
-        <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
-        <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
-        <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
-        <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Rem 🧙</div>
+        <div class="theme-options-scroll">
+          <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
+          <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
+          <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
+          <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
+          <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
+          <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Rem 🧙</div>
+        </div>
       </div>
     </div>
   </div>
