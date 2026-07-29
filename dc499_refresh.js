@@ -1155,6 +1155,9 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
 }
 
 // ── Teams: cleared batch notifier ─────────────────────────────────────────────
+const AUTH_PIN = '020405';
+const TEAMS_WEBHOOK_AUTH_ALERT = 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/0e449f9414294d19b288a01f095e5111/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=x-C0Zl6eoNR4viJ77KiFb-J9Y94mLkVZBq6gxX0N27A';
+
 const TEAMS_WEBHOOKS_BATCHES = {
   '1st': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/a26c40b1c9ee4739abd0269aedbef04b/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=mkz_8DUX8eAfH1clRiMjPNXFz-zCT0bwAJeEMxkZwHY',
   '2nd': 'https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d4415440c8004523a34336a1a21e6dae/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=3rc4Q7Kri1_ckmNi8w2a0-l-vdH6Culds71BHgP8Pvk',
@@ -1247,6 +1250,43 @@ async function notifyNewCleared(batchStatusData) {
   }
 }
 
+async function notifyAuthExpired(localIp, port) {
+  const authUrl = `http://${localIp}:${port}/auth?pin=${AUTH_PIN}`;
+  const tsPdt = new Date(new Date().getTime() - 7 * 3600000);
+  const tsStr = (tsPdt.getUTCHours() % 12 || 12) + ':' +
+                String(tsPdt.getUTCMinutes()).padStart(2,'0') + ' ' +
+                (tsPdt.getUTCHours() >= 12 ? 'PM' : 'AM');
+  const card = {
+    type: 'message',
+    attachments: [{
+      contentType: 'application/vnd.microsoft.card.adaptive',
+      content: {
+        $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+        type: 'AdaptiveCard', version: '1.4',
+        body: [
+          { type: 'Container', style: 'attention', items: [{ type: 'ColumnSet', columns: [
+            { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: 'DC499 · Live Server', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
+            { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: tsStr, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
+          ]}]},
+          { type: 'Container', spacing: 'Medium', items: [
+            { type: 'TextBlock', text: 'Auth token expired', weight: 'Bolder', size: 'Large', color: 'Attention' },
+            { type: 'TextBlock', text: 'The live server cannot query MAWM until re-authenticated. Tap the button below — the PC will open a browser and SSO will log in automatically.', wrap: true, spacing: 'Small', isSubtle: true },
+          ]},
+        ],
+        actions: [
+          { type: 'Action.OpenUrl', title: 'Re-Authenticate Now', url: authUrl, style: 'positive' },
+        ],
+      },
+    }],
+  };
+  try {
+    await jsonPost(TEAMS_WEBHOOK_AUTH_ALERT, JSON.stringify(card), { 'Content-Type': 'application/json' });
+    console.log(`[${ts()}] ✓ Teams — auth-expired notification sent`);
+  } catch (e) {
+    console.warn(`[${ts()}]   Teams auth notify failed: ${e.message}`);
+  }
+}
+
 // ── git push ───────────────────────────────────────────────────────────────────
 function gitPush() {
   const stamp = new Date().toLocaleString('en-US', {
@@ -1323,9 +1363,21 @@ async function queryAndWrite(accessToken) {
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
 async function serveMode(port, intervalMin, accessToken, openPage) {
+  // Detect local IP once at startup for use in auth notifications
+  let localIp = 'localhost';
+  try {
+    const { networkInterfaces } = require('os');
+    for (const ifaces of Object.values(networkInterfaces())) {
+      for (const i of ifaces) {
+        if (i.family === 'IPv4' && !i.internal) { localIp = i.address; break; }
+      }
+    }
+  } catch {}
+
   let cache          = null;
   let authNeeded     = false;
   let reauthing      = false;
+  let authNotified   = false;
 
   async function refresh() {
     try {
@@ -1340,14 +1392,19 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
             reauthing = true;
             console.log(`\n[${ts()}] Token expired — opening browser for re-auth (SSO auto-login)...`);
             doAuthFlow().then(tok => {
-              accessToken = tok;
-              authNeeded  = false;
-              reauthing   = false;
+              accessToken  = tok;
+              authNeeded   = false;
+              reauthing    = false;
+              authNotified = false;
               console.log(`[${ts()}] ✓ Re-authenticated`);
             }).catch(err => {
               reauthing = false;
               console.error(`[${ts()}] Re-auth failed: ${err.message}`);
             });
+          }
+          if (!authNotified) {
+            authNotified = true;
+            notifyAuthExpired(localIp, port).catch(() => {});
           }
           return; // skip this cycle, retry next interval
         }
@@ -1385,6 +1442,35 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
       res.writeHead(202, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'refreshing' }));
       refresh();
+      return;
+    }
+
+    if (url.pathname === '/auth') {
+      if (url.searchParams.get('pin') !== AUTH_PIN) {
+        res.writeHead(403, { 'Content-Type': 'text/html' });
+        res.end('<h2>403 Forbidden</h2>');
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>DC499 Re-Auth</title>
+<style>body{font-family:sans-serif;background:#111;color:#eee;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
+h2{color:#8ee8de}p{color:#aaa}</style></head>
+<body><div><h2>Re-authenticating...</h2><p>Browser will open on the server PC.<br>This tab will close automatically.</p>
+<script>setTimeout(()=>window.close(),4000)</script></div></body></html>`);
+      if (!reauthing) {
+        reauthing = true;
+        console.log(`\n[${ts()}] /auth triggered remotely — opening browser for re-auth...`);
+        doAuthFlow().then(tok => {
+          accessToken  = tok;
+          authNeeded   = false;
+          reauthing    = false;
+          authNotified = false;
+          console.log(`[${ts()}] ✓ Re-authenticated via /auth endpoint`);
+        }).catch(err => {
+          reauthing = false;
+          console.error(`[${ts()}] /auth re-auth failed: ${err.message}`);
+        });
+      }
       return;
     }
 
@@ -1447,13 +1533,6 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
   });
 
   server.listen(port, () => {
-    const { networkInterfaces } = require('os');
-    let localIp = 'your-ip';
-    for (const ifaces of Object.values(networkInterfaces())) {
-      for (const i of ifaces) {
-        if (i.family === 'IPv4' && !i.internal) { localIp = i.address; break; }
-      }
-    }
     console.log(`\n┌────────────────────────────────────────────────────────┐`);
     console.log(`│  DC499 Reporter Live Server                            │`);
     console.log(`│                                                        │`);
