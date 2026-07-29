@@ -1,13 +1,13 @@
 {
-    "generated": "2026-07-29T20:02:26",
+    "generated": "2026-07-29T20:04:26",
     "facility": "499",
     "today": "2026-07-29",
     "dates": [
         {
             "date": "2026-07-29",
-            "ready": 42,
-            "allocated": 1166,
-            "packed": 727,
+            "ready": 57,
+            "allocated": 1153,
+            "packed": 740,
             "shipped": 1034,
             "orders": [
                 {
@@ -1044,15 +1044,15 @@
                 },
                 {
                     "order_id": "1053493079-50000",
-                    "status": "READY",
-                    "line_count": 1,
-                    "oldest_line_utc": "2026-07-29T19:50:52.572000"
-                },
-                {
-                    "order_id": "1053493079-50000",
                     "status": "PACKED",
                     "line_count": 2,
                     "oldest_line_utc": "2026-07-29T15:00:27.807000"
+                },
+                {
+                    "order_id": "1053493079-50000",
+                    "status": "ALLOCATING",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-07-29T19:50:52.572000"
                 },
                 {
                     "order_id": "1053493201-50000",
@@ -1866,7 +1866,7 @@
                 },
                 {
                     "order_id": "1053507377-50001",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 6,
                     "oldest_line_utc": "2026-07-29T17:25:18.358000"
                 },
@@ -2172,7 +2172,7 @@
                 },
                 {
                     "order_id": "1053512498-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 2,
                     "oldest_line_utc": "2026-07-29T16:40:27.987000"
                 },
@@ -2424,7 +2424,7 @@
                 },
                 {
                     "order_id": "1053515075-50001",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 2,
                     "oldest_line_utc": "2026-07-29T16:53:30.724000"
                 },
@@ -2724,7 +2724,7 @@
                 },
                 {
                     "order_id": "1053518184-50001",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-07-29T18:20:05.247000"
                 },
@@ -2850,7 +2850,7 @@
                 },
                 {
                     "order_id": "1053519508-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-07-29T18:25:25.943000"
                 },
@@ -4440,7 +4440,7 @@
                 },
                 {
                     "order_id": "1053532899-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-07-29T18:20:51.322000"
                 },
@@ -5051,6 +5051,12 @@
                     "oldest_line_utc": "2026-07-29T20:01:27.760000"
                 },
                 {
+                    "order_id": "1053539714-50000",
+                    "status": "READY",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-07-29T20:04:17.909000"
+                },
+                {
                     "order_id": "1053539751-50000",
                     "status": "ALLOCATED",
                     "line_count": 1,
@@ -5061,6 +5067,18 @@
                     "status": "PACKED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-07-29T18:53:35.676000"
+                },
+                {
+                    "order_id": "1053540058-50000",
+                    "status": "READY",
+                    "line_count": 2,
+                    "oldest_line_utc": "2026-07-29T20:04:13.966000"
+                },
+                {
+                    "order_id": "1053540097-50000",
+                    "status": "READY",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-07-29T20:04:10.819000"
                 },
                 {
                     "order_id": "1053540168-50001",
@@ -5805,6 +5823,30 @@
                     "status": "READY",
                     "line_count": 1,
                     "oldest_line_utc": "2026-07-29T20:01:35.238000"
+                },
+                {
+                    "order_id": "1053554986-50002",
+                    "status": "READY",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-07-29T20:02:28.281000"
+                },
+                {
+                    "order_id": "1053555014-50000",
+                    "status": "READY",
+                    "line_count": 8,
+                    "oldest_line_utc": "2026-07-29T20:02:30.267000"
+                },
+                {
+                    "order_id": "1053555278-50001",
+                    "status": "READY",
+                    "line_count": 2,
+                    "oldest_line_utc": "2026-07-29T20:03:36.742000"
+                },
+                {
+                    "order_id": "1053555297-50000",
+                    "status": "READY",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-07-29T20:03:36.750000"
                 }
             ]
         },
@@ -6353,7 +6395,7 @@
         },
         {
             "hour": 13,
-            "lines": 29
+            "lines": 45
         }
     ],
     "waves": [
@@ -6371,7 +6413,7 @@
         },
         {
             "type": "Multi Chase",
-            "count": 5
+            "count": 6
         },
         {
             "type": "Fill/Kill",
@@ -6379,7 +6421,7 @@
         },
         {
             "type": "Total",
-            "count": 52
+            "count": 53
         }
     ],
     "shift_label": "2nd shift"
