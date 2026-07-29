@@ -476,8 +476,13 @@
           <button id="vt-orders"                onclick="setView('orders')">Orders</button>
         </div>
         <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
-        <button class="teams-btn" id="send-teams-btn" onclick="sendToTeams(this)">&#x1F4E8; Send to Teams</button>
-        <button class="teams-btn" onclick="exportEodEmail()" style="background:var(--accent-bg);color:var(--accent);border-color:var(--accent);">&#x2709; EOD Email</button>
+        <div class="theme-picker" id="send-picker">
+          <button class="teams-btn" onclick="document.getElementById('send-picker').classList.toggle('open')" style="display:flex;align-items:center;gap:5px;">&#x2191; Send <span class="theme-btn-chevron" style="font-size:9px;">&#9660;</span></button>
+          <div class="theme-menu" style="min-width:150px;">
+            <div class="theme-option" id="send-teams-btn" onclick="document.getElementById('send-picker').classList.remove('open');sendToTeams(this)">&#x1F4E8; Send to Teams</div>
+            <div class="theme-option" onclick="document.getElementById('send-picker').classList.remove('open');exportEodEmail()">&#x2709; EOD Email</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -782,7 +787,10 @@ function applyTheme(t) {
 }
 function toggleThemeMenu() { document.getElementById('theme-picker').classList.toggle('open'); }
 function pickTheme(t) { applyTheme(t); document.getElementById('theme-picker').classList.remove('open'); }
-document.addEventListener('click', function(e){ var p=document.getElementById('theme-picker'); if(p&&!p.contains(e.target)) p.classList.remove('open'); });
+document.addEventListener('click', function(e){
+  var p=document.getElementById('theme-picker'); if(p&&!p.contains(e.target)) p.classList.remove('open');
+  var s=document.getElementById('send-picker');  if(s&&!s.contains(e.target))  s.classList.remove('open');
+});
 
 var REMI_KEY = 'dc499_remi_enabled_v1';
 var remiEnabled = true;
@@ -1418,7 +1426,7 @@ async function sendToTeams(btn) {
   var shift = getShift();
   var webhook = TEAMS_WEBHOOKS[shift] || TEAMS_WEBHOOKS['2nd'];
   if (!webhook) { alert('No Teams webhook configured.'); return; }
-  var orig = btn.textContent; btn.textContent = '⏳ Sending…'; btn.disabled = true;
+  var orig = btn.textContent; btn.textContent = '⏳ Sending…'; if (btn.disabled !== undefined) btn.disabled = true;
   var ready=0, allocated=0, packed=0, shipped=0;
   (lastBlData.dates||[]).forEach(function(d){ ready+=d.ready||0; allocated+=d.allocated||0; packed+=d.packed||0; shipped+=d.shipped||0; });
   var totalOpen = ready+allocated+packed;
@@ -1470,7 +1478,7 @@ async function sendToTeams(btn) {
   try {
     var res = await fetch(webhook,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(card)});
     if (res.status >= 200 && res.status < 300) {
-      btn.textContent='✓ Sent!'; setTimeout(function(){ btn.textContent=orig; btn.disabled=false; },3000);
+      btn.textContent='✓ Sent!'; setTimeout(function(){ btn.textContent=orig; if(btn.disabled!==undefined)btn.disabled=false; },3000);
     } else {
       var body = ''; try { body = await res.text(); } catch(_) {}
       throw new Error('HTTP ' + res.status + (body ? ': ' + body.slice(0,120) : ''));
@@ -1478,7 +1486,7 @@ async function sendToTeams(btn) {
   } catch(e) {
     console.error('Teams send failed:', e.message);
     btn.textContent='⚠ Failed'; btn.style.borderColor='#C0392B'; btn.style.color='#C0392B';
-    setTimeout(function(){ btn.textContent=orig; btn.disabled=false; btn.style.borderColor=''; btn.style.color=''; },4000);
+    setTimeout(function(){ btn.textContent=orig; if(btn.disabled!==undefined)btn.disabled=false; btn.style.borderColor=''; btn.style.color=''; },4000);
     alert('Teams send failed: ' + e.message);
   }
 }
