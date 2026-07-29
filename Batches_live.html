@@ -189,6 +189,7 @@
     mix-blend-mode:multiply;
     clip-path:inset(4px 6px 6px 6px);
   }
+  [data-theme="dark"] #remi,[data-theme="solid"] #remi,[data-theme="pastel"] #remi,[data-theme="remi"] #remi{mix-blend-mode:screen;}
 </style>
 </head>
 <body>
@@ -211,7 +212,7 @@
         <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
         <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
         <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
-        <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Remi 🧙</div>
+        <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Rem 🧙</div>
         <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
       </div>
     </div>
@@ -338,7 +339,7 @@ var countdownTimer = null;
 var nextRefreshAt  = null;
 
 var THEME_VALS_BT = ['dark','solid','pastel','starr','remi','light'];
-var THEME_NAMES_BT = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',remi:'Remi 🧙',light:'Light'};
+var THEME_NAMES_BT = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',remi:'Rem 🧙',light:'Light'};
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES_BT[t] || t;

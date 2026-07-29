@@ -412,6 +412,7 @@
   .bt-teams-btn:hover{background:#6264A7;color:#fff;}
   .bt-teams-btn.sent{border-color:var(--green);color:var(--green);}
   #bl-remi{position:fixed;width:48px;height:42px;pointer-events:none;z-index:900;display:none;transform-origin:center center;mix-blend-mode:multiply;clip-path:inset(4px 6px 6px 6px);}
+  [data-theme="dark"] #bl-remi,[data-theme="solid"] #bl-remi,[data-theme="pastel"] #bl-remi,[data-theme="remi"] #bl-remi{mix-blend-mode:screen;}
 </style>
 </head>
 <body>
@@ -434,7 +435,7 @@
         <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
         <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
         <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
-        <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Remi 🧙</div>
+        <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Rem 🧙</div>
         <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
         <div class="theme-divider"></div>
         <div class="theme-toggle-row" onclick="toggleRemi()">
@@ -750,7 +751,7 @@ var lastAvgUph = null;
 
 // -- Theme --------------------------------------------------------------------
 var THEME_VALS_BL = ['dark','solid','pastel','starr','remi','light'];
-var THEME_NAMES_BL = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',remi:'Remi 🧙',light:'Light'};
+var THEME_NAMES_BL = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',remi:'Rem 🧙',light:'Light'};
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES_BL[t] || t;
