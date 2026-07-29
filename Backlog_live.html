@@ -477,6 +477,7 @@
         </div>
         <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
         <button class="teams-btn" id="send-teams-btn" onclick="sendToTeams(this)">&#x1F4E8; Send to Teams</button>
+        <button class="teams-btn" onclick="exportEodEmail()" style="background:var(--accent-bg);color:var(--accent);border-color:var(--accent);">&#x2709; EOD Email</button>
       </div>
     </div>
 
@@ -732,6 +733,24 @@
     </div>
   </div>
 
+  <!-- EOD Email modal -->
+  <div class="bp-overlay" id="eod-overlay" onclick="if(event.target===this)closeEodModal()" style="display:none;">
+    <div class="bp-modal" style="width:min(680px,96vw);max-height:90vh;">
+      <div class="bp-header">
+        <div class="bp-title">EOD Email — Copy &amp; Paste into Outlook</div>
+        <button class="bp-close" onclick="closeEodModal()">&#x2715;</button>
+      </div>
+      <div class="bp-body" style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="bp-send" id="eod-copy-btn" onclick="copyEodHtml()" style="min-width:120px;">Copy HTML</button>
+          <span id="eod-copy-msg" style="font-size:12px;color:var(--green);display:none;">&#10003; Copied!</span>
+          <span style="font-size:11px;color:var(--text-muted);margin-left:auto;">Paste into Outlook — formatting is preserved</span>
+        </div>
+        <div id="eod-preview" style="background:#fff;border-radius:8px;border:1px solid var(--border);padding:14px;overflow:auto;max-height:60vh;"></div>
+      </div>
+    </div>
+  </div>
+
   <p class="nordstrom-tag">Nordstrom &middot; Ecom Backlog Live &middot; DC499 &middot; <span id="footer-date"></span></p>
   <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
 </div>
@@ -745,7 +764,7 @@ var BL_INTERVAL_MS = 2 * 60 * 1000;
 var BT_INTERVAL_MS = 2 * 60 * 1000;
 var activeTab      = 'orders';
 
-var lastBlData = null, lastBtData = null;
+var lastBlData = null, lastBtData = null, lastRrData = null;
 var blTimer = null, blCountdown = null, blNextAt = null;
 var btTimer = null, btCountdown = null, btNextAt = null;
 var viewMode = 'lines';
@@ -1518,7 +1537,7 @@ function bpUpdateFooter() {
 }
 function closeBatchPicker() { document.getElementById('bp-overlay').classList.remove('open'); bpSelected.clear(); }
 function bpOverlayClick(e) { if (e.target === document.getElementById('bp-overlay')) closeBatchPicker(); }
-document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeBatchPicker(); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { closeBatchPicker(); closeEodModal(); } });
 
 function sendSelectedBatches() {
   if (!bpSelected.size) return;
@@ -1653,6 +1672,7 @@ function fetchRrData() {
 }
 
 function renderRrWidget(data) {
+  lastRrData = data;
   var widget = document.getElementById('rr-widget');
   var items  = data.items || [];
   var s      = data.summary || {};
@@ -1756,6 +1776,140 @@ fetchBacklogData();
 fetchRrData();
 setInterval(fetchRrData, 2 * 60 * 1000);
 scheduleBlRefresh();
+
+// ── EOD Email Export ──────────────────────────────────────────────────────────
+function closeEodModal() {
+  document.getElementById('eod-overlay').style.display = 'none';
+}
+function copyEodHtml() {
+  var preview = document.getElementById('eod-preview');
+  var html = preview.innerHTML;
+  var btn = document.getElementById('eod-copy-btn');
+  var msg = document.getElementById('eod-copy-msg');
+  try {
+    var blob = new Blob([html], { type: 'text/html' });
+    var item = new ClipboardItem({ 'text/html': blob });
+    navigator.clipboard.write([item]).then(function() {
+      btn.textContent = '✓ Copied!'; msg.style.display = 'inline';
+      setTimeout(function(){ btn.textContent = 'Copy HTML'; msg.style.display = 'none'; }, 3000);
+    });
+  } catch(e) {
+    navigator.clipboard.writeText(html);
+    btn.textContent = '✓ Copied!'; msg.style.display = 'inline';
+    setTimeout(function(){ btn.textContent = 'Copy HTML'; msg.style.display = 'none'; }, 3000);
+  }
+}
+
+function exportEodEmail() {
+  if (!lastBlData && !lastBtData) { alert('No data loaded yet.'); return; }
+  var bl  = lastBlData  || {};
+  var bt  = lastBtData  || {};
+  var rr  = lastRrData  || {};
+  var now = new Date();
+  var pdtStr = now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  var shiftLabel = bt.shift_label || bl.shift_label || '2nd shift';
+
+  var F   = 'font-family:Arial,sans-serif;';
+  var hdr = 'background:#1a1a2e;color:#fff;padding:14px 18px;';
+  var sec = 'background:#f0f0f0;padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#555;border-bottom:1px solid #ddd;border-top:1px solid #ddd;';
+  var tbl = 'width:100%;border-collapse:collapse;' + F;
+  var th  = 'background:#f0f0f0;font-size:11px;font-weight:700;color:#555;padding:7px 10px;border:1px solid #ddd;text-align:left;';
+  var thR = 'background:#f0f0f0;font-size:11px;font-weight:700;color:#555;padding:7px 10px;border:1px solid #ddd;text-align:right;';
+  var td  = 'padding:6px 10px;border:1px solid #ddd;font-size:12px;color:#222;';
+  var tdR = 'padding:6px 10px;border:1px solid #ddd;font-size:12px;color:#222;text-align:right;font-weight:600;';
+  var tdM = 'padding:6px 10px;border:1px solid #ddd;font-size:12px;color:#888;text-align:right;';
+  function fmtN(v) { return v != null ? Number(v).toLocaleString() : '—'; }
+  function fmtT(v) { return v != null ? v + ' min' : '—'; }
+
+  var html = '<table style="' + tbl + 'max-width:680px;">';
+
+  // header
+  html += '<tr><td colspan="6" style="' + hdr + F + '">';
+  html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#8ee8de;">End of Day Report &nbsp;&middot;&nbsp; DC499 Nordstrom</div>';
+  html += '<div style="font-size:20px;font-weight:300;margin-top:4px;">' + pdtStr + '</div>';
+  html += '<div style="margin-top:6px;display:inline-block;font-size:10px;font-weight:700;letter-spacing:1px;color:#8ee8de;border:1px solid #8ee8de;border-radius:3px;padding:2px 8px;text-transform:uppercase;">' + shiftLabel + '</div>';
+  html += '</td></tr>';
+
+  // backlog tiles
+  var totR=0,totA=0,totP=0,totO=0,totS=0;
+  (bl.dates||[]).forEach(function(d){ totR+=d.ready||0; totA+=d.allocated||0; totP+=d.packed||0; totO+=(d.ready||0)+(d.allocated||0)+(d.packed||0); totS+=d.shipped||0; });
+  html += '<tr>';
+  html += '<td colspan="2" style="'+td+'text-align:center;border-top:3px solid #3b82f6;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Ready</div><div style="font-size:22px;font-weight:700;color:#3b82f6;">'+fmtN(totR)+'</div></td>';
+  html += '<td colspan="2" style="'+td+'text-align:center;border-top:3px solid #f59e0b;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Allocated</div><div style="font-size:22px;font-weight:700;color:#f59e0b;">'+fmtN(totA)+'</div></td>';
+  html += '<td style="'+td+'text-align:center;border-top:3px solid #0e9e8e;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Packed</div><div style="font-size:22px;font-weight:700;color:#0e9e8e;">'+fmtN(totP)+'</div></td>';
+  html += '<td style="'+td+'text-align:center;border-top:3px solid #aaa;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Total Open</div><div style="font-size:22px;font-weight:700;color:#333;">'+fmtN(totO)+'</div></td>';
+  html += '</tr>';
+
+  // date breakdown
+  if ((bl.dates||[]).length) {
+    html += '<tr><td colspan="6" style="'+sec+F+'">Order Backlog by Date</td></tr>';
+    html += '<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
+    html += '<thead><tr><th style="'+th+'">Date</th><th style="'+thR+'">Ready</th><th style="'+thR+'">Allocated</th><th style="'+thR+'">Packed</th><th style="'+thR+'">Total</th><th style="'+thR+'">Shipped</th></tr></thead><tbody>';
+    bl.dates.forEach(function(d){
+      var rt=(d.ready||0)+(d.allocated||0)+(d.packed||0);
+      html+='<tr><td style="'+td+'">'+(d.date||'—')+'</td><td style="'+tdR+'color:#3b82f6;">'+fmtN(d.ready)+'</td><td style="'+tdR+'color:#f59e0b;">'+fmtN(d.allocated)+'</td><td style="'+tdR+'color:#0e9e8e;">'+fmtN(d.packed)+'</td><td style="'+tdR+'">'+fmtN(rt)+'</td><td style="'+tdM+'">'+fmtN(d.shipped)+'</td></tr>';
+    });
+    html+='<tr style="background:#f8f8f8;"><td style="'+td+'font-weight:700;">Total</td><td style="'+tdR+'color:#3b82f6;">'+fmtN(totR)+'</td><td style="'+tdR+'color:#f59e0b;">'+fmtN(totA)+'</td><td style="'+tdR+'color:#0e9e8e;">'+fmtN(totP)+'</td><td style="'+tdR+'">'+fmtN(totO)+'</td><td style="'+tdM+'">'+fmtN(totS)+'</td></tr>';
+    html += '</tbody></table></td></tr>';
+  }
+
+  // waves
+  var waves=(bl.waves||[]).filter(function(w){return w.type!=='Total'&&(w.count||0)>0;});
+  var waveTotal=(bl.waves||[]).find(function(w){return w.type==='Total';});
+  if (waves.length) {
+    var wt=waveTotal?waveTotal.count:waves.reduce(function(s,w){return s+w.count;},0);
+    html+='<tr><td colspan="6" style="'+sec+F+'">Waves Run This Shift &nbsp;<span style="font-weight:400;color:#888;">'+wt+' total</span></td></tr>';
+    html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
+    html+='<thead><tr><th style="'+th+'">Wave Type</th><th style="'+thR+'">Count</th></tr></thead><tbody>';
+    waves.forEach(function(w){html+='<tr><td style="'+td+'">'+w.type+'</td><td style="'+tdR+'">'+fmtN(w.count)+'</td></tr>';});
+    html+='</tbody></table></td></tr>';
+  }
+
+  // batch summary
+  var bs=bt.summary||{};
+  if (bs.total_batches!=null) {
+    html+='<tr><td colspan="6" style="'+sec+F+'">Batch Summary</td></tr>';
+    html+='<tr>';
+    html+='<td colspan="2" style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Total Batches</div><div style="font-size:20px;font-weight:700;color:#333;">'+fmtN(bs.total_batches)+'</div></td>';
+    html+='<td colspan="2" style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Cleared</div><div style="font-size:20px;font-weight:700;color:#059669;">'+fmtN(bs.cleared_batches)+'</div></td>';
+    html+='<td style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Avg Clear</div><div style="font-size:20px;font-weight:700;color:#333;">'+fmtT(bs.avg_mins_to_clear)+'</div></td>';
+    html+='<td style="'+td+'text-align:center;"><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.5px;">Avg Interval</div><div style="font-size:20px;font-weight:700;color:#333;">'+fmtT(bs.avg_release_interval_mins)+'</div></td>';
+    html+='</tr>';
+    var cleared=(bt.batches||[]).filter(function(b){return b.is_cleared;});
+    if (cleared.length) {
+      html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
+      html+='<thead><tr><th style="'+th+'">#</th><th style="'+th+'">Batch ID</th><th style="'+thR+'">Released</th><th style="'+thR+'">Cleared</th><th style="'+thR+'">Time to Clear</th><th style="'+thR+'">oLPNs</th></tr></thead><tbody>';
+      cleared.forEach(function(b){
+        var cc=b.mins_to_clear!=null?(b.mins_to_clear<=30?'#059669':b.mins_to_clear<=50?'#f59e0b':'#dc2626'):'#888';
+        html+='<tr><td style="'+td+'color:#888;">'+(b.batch_num||'—')+'</td><td style="'+td+'font-family:monospace;font-size:11px;">'+(b.batch_id||'—')+'</td><td style="'+tdR+'">'+(b.released_pdt||'—')+'</td><td style="'+tdR+'">'+(b.cleared_pdt||'—')+'</td><td style="'+tdR+'color:'+cc+';">'+fmtT(b.mins_to_clear)+'</td><td style="'+tdM+'">'+fmtN(b.total_olpns)+'</td></tr>';
+      });
+      html+='</tbody></table></td></tr>';
+    }
+  }
+
+  // retail replen
+  var rrItems=rr.items||[];
+  if (rrItems.length) {
+    html+='<tr><td colspan="6" style="'+sec+F+'">Retail Replen Watch &nbsp;<span style="font-weight:400;color:#dc2626;">'+rrItems.length+' item'+(rrItems.length!==1?'s':'')+' flagged</span></td></tr>';
+    html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">';
+    html+='<thead><tr><th style="'+th+'">Item</th><th style="'+thR+'">Units Needed</th><th style="'+thR+'">Face Stock</th><th style="'+thR+'">Gap</th><th style="'+thR+'">Orders</th><th style="'+th+'">Task Status</th></tr></thead><tbody>';
+    rrItems.forEach(function(item){
+      var sc=item.age_severity==='red'?'#dc2626':item.age_severity==='amber'?'#f59e0b':'#888';
+      var ts=item.tasks&&item.tasks.length?item.tasks.map(function(t){return t.status;}).join(', '):'No task';
+      html+='<tr><td style="'+td+'font-family:monospace;font-size:11px;">'+(item.item_id||'—')+'</td><td style="'+tdR+'">'+fmtN(item.units_needed)+'</td><td style="'+tdR+'">'+fmtN(item.face_stock)+'</td><td style="'+tdR+'color:'+sc+';font-weight:700;">'+fmtN(item.fill_gap)+'</td><td style="'+tdR+'">'+fmtN(item.order_count)+'</td><td style="'+td+'font-size:11px;color:#555;">'+ts+'</td></tr>';
+    });
+    html+='</tbody></table></td></tr>';
+  } else if (rr.summary) {
+    html+='<tr><td colspan="6" style="'+sec+F+'">Retail Replen Watch &nbsp;<span style="font-weight:400;color:#059669;">All clear</span></td></tr>';
+  }
+
+  // footer
+  html+='<tr><td colspan="6" style="'+td+'font-size:10px;color:#aaa;text-align:center;border-top:2px solid #eee;'+F+'">Generated '+pdtStr+' &nbsp;&middot;&nbsp; DC499 Nordstrom &nbsp;&middot;&nbsp; SCOUT Live</td></tr>';
+  html+='</table>';
+
+  document.getElementById('eod-preview').innerHTML = html;
+  document.getElementById('eod-overlay').style.display = 'flex';
+}
 
 // ── Remi sprite (next-batch bar) ─────────────────────────────────────────────
 (function() {
