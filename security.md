@@ -57,6 +57,6 @@ Only the latest version of each app is actively maintained and supported.
 
 If you identify a security issue — including unintended data exposure, XSS vulnerabilities, or insecure data handling — please report it directly to the repository owner rather than opening a public issue.
 
-**Contact:** Reach out through internal Nordstrom channels to the DC499 operations team.
+**Contact:** Reach out to Dean directly via Teams or email.
 
 Do not include sensitive operational data, associate names, or system credentials in any public issue or pull request.
