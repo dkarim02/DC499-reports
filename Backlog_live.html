@@ -414,44 +414,6 @@
   .bt-teams-btn:hover{background:#6264A7;color:#fff;}
   .bt-teams-btn.sent{border-color:var(--green);color:var(--green);}
   #bl-remi{position:fixed;width:48px;height:42px;pointer-events:none;z-index:900;display:none;transform-origin:center center;mix-blend-mode:multiply;clip-path:inset(4px 6px 6px 6px);}
-
-  /* ── Condition Codes tab ────────────────────────────────────────────────── */
-  .cc-code-block { margin-bottom: 1.25rem; }
-  .cc-code-header { display:flex; align-items:center; gap:10px; padding:8px 4px 6px; border-bottom: 0.5px solid var(--border); margin-bottom:0; font-weight:600; font-size:13px; cursor:pointer; user-select:none; border-radius:6px 6px 0 0; }
-  .cc-code-header:hover { background:var(--surface2); }
-  .cc-block-chevron { font-size:12px; color:var(--text-hint); transition:transform 0.15s; margin-left:2px; }
-  .cc-block-chevron.open { transform:rotate(90deg); }
-  .cc-loc-scroll { overflow-y:auto; max-height:320px; border:0.5px solid var(--border); border-top:none; border-radius:0 0 6px 6px; }
-  .cc-loc-scroll.collapsed { display:none; }
-  .cc-code-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; letter-spacing:0.05em; }
-  .cc-badge-ex { background:var(--red-bg,#2d0a0a); color:var(--red); }
-  .cc-badge-ql { background:var(--accent-bg); color:var(--accent); }
-  .cc-badge-fa { background:var(--alloc-bg); color:var(--alloc); }
-  .cc-badge-pp { background:var(--accent-bg); color:var(--accent-muted); }
-  .cc-badge-qa { background:var(--green-bg); color:var(--green); }
-  .cc-badge-default { background:var(--surface2); color:var(--text-muted); }
-  .cc-loc-grid { display:grid; grid-template-columns:1fr; }
-  .cc-two-col { display:flex; gap:16px; align-items:flex-start; }
-  .cc-two-col > .card { flex:1; min-width:0; margin-bottom:0; }
-  @media(max-width:700px){ .cc-two-col { flex-direction:column; } }
-  .cc-loc-row { border-top: 0.5px solid var(--border-light); }
-  .cc-loc-header { display:flex; align-items:flex-start; gap:8px; padding:6px 4px; cursor:pointer; user-select:none; font-size:13px; }
-  .cc-loc-header:hover { background:var(--surface2); border-radius:6px; }
-  .cc-loc-main { display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
-  .cc-loc-id { font-family:monospace; font-weight:600; color:var(--text); white-space:nowrap; }
-  .cc-loc-units { font-size:12px; color:var(--text-muted); white-space:nowrap; }
-  .cc-loc-skus { font-size:11px; color:var(--text-hint); margin-top:2px; line-height:1.4; word-break:break-word; }
-  .cc-flag { font-size:11px; font-weight:700; color:#fff; background:var(--red); padding:2px 7px; border-radius:8px; white-space:nowrap; flex-shrink:0; }
-  .cc-chevron { font-size:11px; color:var(--text-hint); transition:transform 0.15s; flex-shrink:0; margin-top:2px; }
-  .cc-chevron.open { transform:rotate(90deg); }
-  .cc-ilpn-list { display:none; padding:4px 8px 8px 16px; }
-  .cc-ilpn-list.open { display:block; }
-  .cc-ilpn-row { display:flex; gap:12px; align-items:center; padding:3px 0; font-size:12px; border-top:0.5px solid var(--border-light); }
-  .cc-ilpn-id { font-family:monospace; color:var(--text-muted); font-size:11px; flex:1; }
-  .cc-ilpn-sku { font-weight:600; color:var(--text); }
-  .cc-ilpn-units { color:var(--text-hint); white-space:nowrap; }
-  .cc-section-summary { font-size:12px; color:var(--text-muted); margin-bottom:1rem; }
-  .cc-section-summary .cc-flag-inline { font-size:11px; font-weight:700; color:var(--red); }
 </style>
 </head>
 <body>
@@ -492,7 +454,6 @@
   <div class="tab-bar" style="align-items:center;">
     <button class="tab-btn active" id="tb-orders" onclick="setTab('orders')">Order Backlog</button>
     <button class="tab-btn"        id="tb-batches" onclick="setTab('batches')">Batches</button>
-    <button class="tab-btn"        id="tb-condcodes" onclick="setTab('condcodes')">Condition Codes</button>
     <div style="flex:1;"></div>
     <a href="https://nrdrp.sce.manh.com/udc/dm-config/screen/dcorder/OrderPlanningStrategy" target="_blank"
        style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-muted);text-decoration:none;white-space:nowrap;margin-right:4px;transition:background 0.12s,color 0.12s,border-color 0.12s;"
@@ -759,39 +720,6 @@
     </div>
   </div><!-- /#tab-batches -->
 
-  <!-- ── Tab: Condition Codes ────────────────────────────────────────────────── -->
-  <div class="tab-pane" id="tab-condcodes">
-    <div class="header-row">
-      <div>
-        <div style="font-size:16px;font-weight:500;color:var(--text);margin-bottom:2px;">Condition Codes</div>
-        <div class="run-time" id="cc-run-time">Loading...</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="refresh-btn" onclick="fetchCondCodes()">&#x21BA; Refresh</button>
-      </div>
-    </div>
-
-    <div id="cc-empty-state" style="display:none;text-align:center;padding:3rem;color:var(--text-hint);">No data loaded.</div>
-    <div id="cc-content" style="display:none;">
-      <div class="cc-two-col">
-
-        <!-- Active Locations -->
-        <div class="card">
-          <div class="card-title">Active Locations <span style="font-size:11px;font-weight:400;color:var(--text-hint);">F1A &middot; F1B &middot; F2C &middot; P1C &middot; F1D</span></div>
-          <div class="cc-section-summary" id="cc-active-summary"></div>
-          <div id="cc-active-body"></div>
-        </div>
-
-        <!-- Reserve Locations -->
-        <div class="card">
-          <div class="card-title">Reserve Locations <span style="font-size:11px;font-weight:400;color:var(--text-hint);">R1B &middot; R1C &middot; R1D &middot; R1E &middot; R1F</span></div>
-          <div class="cc-section-summary" id="cc-reserve-summary"></div>
-          <div id="cc-reserve-body"></div>
-        </div>
-
-      </div>
-    </div>
-  </div><!-- /#tab-condcodes -->
 
   <!-- Batch picker modal -->
   <div class="bp-overlay" id="bp-overlay" onclick="bpOverlayClick(event)">
@@ -891,13 +819,10 @@ function setTab(tab) {
   activeTab = tab;
   document.getElementById('tb-orders').classList.toggle('active',    tab === 'orders');
   document.getElementById('tb-batches').classList.toggle('active',   tab === 'batches');
-  document.getElementById('tb-condcodes').classList.toggle('active', tab === 'condcodes');
   document.getElementById('tab-orders').classList.toggle('active',    tab === 'orders');
   document.getElementById('tab-batches').classList.toggle('active',   tab === 'batches');
-  document.getElementById('tab-condcodes').classList.toggle('active', tab === 'condcodes');
   document.getElementById('stale-banner').style.display = 'none';
-  if (tab === 'batches'   && !lastBtData)   fetchBatchData();
-  if (tab === 'condcodes' && !lastCcData)   fetchCondCodes();
+  if (tab === 'batches' && !lastBtData) fetchBatchData();
 }
 
 // -- Shared helpers -----------------------------------------------------------
@@ -931,7 +856,6 @@ function escHtml(s) {
 }
 function manualRefresh() {
   if (activeTab === 'orders')    fetchBacklogData(true);
-  else if (activeTab === 'condcodes') fetchCondCodes();
   else fetchBatchData(true);
 }
 
@@ -1854,123 +1778,6 @@ function renderRrWidget(data) {
   }
 }
 
-// ── CONDITION CODES TAB ───────────────────────────────────────────────────────
-var lastCcData = null;
-var ccTimer = null;
-var CC_INTERVAL_MS = 2 * 60 * 1000;
-
-function fetchCondCodes() {
-  var rtEl = document.getElementById('cc-run-time');
-  if (rtEl) rtEl.textContent = 'Loading...';
-  fetch(getBase() + '/condition_codes.json?t=' + Date.now())
-    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(data) {
-      lastCcData = data;
-      renderCondCodes(data);
-      if (ccTimer) clearTimeout(ccTimer);
-      ccTimer = setTimeout(fetchCondCodes, CC_INTERVAL_MS);
-      try {
-        var raw = data.generated || '';
-        var d = new Date(raw.endsWith('Z') ? raw : raw + 'Z');
-        if (rtEl) rtEl.textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-      } catch(e) {}
-    })
-    .catch(function(err) {
-      if (rtEl) rtEl.textContent = 'Failed: ' + err.message;
-      if (ccTimer) clearTimeout(ccTimer);
-      ccTimer = setTimeout(fetchCondCodes, CC_INTERVAL_MS);
-    });
-}
-
-var CC_LABELS = { EX:'Expired Product', QL:'Quality Audit Location', PP:'Pending Putaway', QA:'Inbound Item Prep/Audit' };
-var CC_BADGE_CLASS = { EX:'cc-badge-ex', QL:'cc-badge-ql', PP:'cc-badge-pp', QA:'cc-badge-qa' };
-
-function renderCondCodes(data) {
-  var emptyEl   = document.getElementById('cc-empty-state');
-  var contentEl = document.getElementById('cc-content');
-  if (!data || (!data.active && !data.reserve)) { emptyEl.style.display='block'; contentEl.style.display='none'; return; }
-  emptyEl.style.display   = 'none';
-  contentEl.style.display = 'block';
-  renderCcSection(data.active,  'cc-active-body',  'cc-active-summary');
-  renderCcSection(data.reserve, 'cc-reserve-body', 'cc-reserve-summary');
-}
-
-function renderCcSection(section, bodyId, summaryId) {
-  var sectionKey = bodyId; // unique namespace per section
-  var bodyEl = document.getElementById(bodyId);
-  var sumEl  = document.getElementById(summaryId);
-  if (!section || !section.codes || !section.codes.length) {
-    bodyEl.innerHTML = '<div style="color:var(--text-hint);font-size:13px;padding:1rem 0;">No flagged inventory.</div>';
-    if (sumEl) sumEl.innerHTML = '';
-    return;
-  }
-  var flagCount = section.flagged_locations || 0;
-  if (sumEl) sumEl.innerHTML = section.total_units + ' units across ' + section.codes.length + ' condition code' + (section.codes.length===1?'':'s') +
-    (flagCount > 0 ? ' &nbsp;<span class="cc-flag-inline">&#x26A0; ' + flagCount + ' location' + (flagCount===1?'':'s') + ' with active tasks</span>' : '');
-  var html = '';
-  section.codes.forEach(function(codeObj) {
-    var badgeCls = CC_BADGE_CLASS[codeObj.code] || 'cc-badge-default';
-    var label    = CC_LABELS[codeObj.code] || codeObj.code;
-    var autoCollapse = true;
-    var blockKey = 'ccblock_' + sectionKey + '_' + codeObj.code;
-    html += '<div class="cc-code-block">';
-    html += '<div class="cc-code-header" onclick="toggleCcBlock(\'' + blockKey + '\')">';
-    html += '<span class="cc-block-chevron' + (autoCollapse ? '' : ' open') + '" id="bchev_' + blockKey + '">&#9656;</span>';
-    html += '<span class="cc-code-badge ' + badgeCls + '">' + codeObj.code + '</span>';
-    html += '<span>' + label + '</span>';
-    html += '<span style="margin-left:auto;font-size:12px;font-weight:400;color:var(--text-muted);">' + codeObj.total_units + ' units &middot; ' + codeObj.locations.length + ' location' + (codeObj.locations.length===1?'':'s') + '</span>';
-    if (codeObj.flagged_locations > 0) html += '<span class="cc-flag">&#x26A0; ' + codeObj.flagged_locations + ' active task' + (codeObj.flagged_locations===1?'':'s') + '</span>';
-    html += '</div>';
-    html += '<div class="cc-loc-scroll' + (autoCollapse ? ' collapsed' : '') + '" id="' + blockKey + '">';
-    html += '<div class="cc-loc-grid">';
-    codeObj.locations.forEach(function(loc, li) {
-      var locKey = sectionKey + '_' + codeObj.code + '_' + li;
-      // unique SKUs for the collapsed preview — dedupe, show first 3 then "+N more"
-      var seenSkus = {}, skuList = [];
-      loc.items.forEach(function(item) { if (!seenSkus[item.item_id]) { seenSkus[item.item_id]=1; skuList.push(item.item_id); } });
-      var skuPreview = skuList.slice(0,3).join(', ') + (skuList.length > 3 ? ' +' + (skuList.length-3) + ' more' : '');
-      html += '<div class="cc-loc-row">';
-      html += '<div class="cc-loc-header" onclick="toggleCcLoc(\'' + locKey + '\')">';
-      html += '<span class="cc-chevron" id="chev_' + locKey + '">&#9656;</span>';
-      html += '<div style="flex:1;min-width:0;">';
-      var isReserve = sectionKey.indexOf('reserve') !== -1;
-      html += '<div class="cc-loc-main"><span class="cc-loc-id">' + loc.location_id + '</span><span class="cc-loc-units">' + loc.total_units + ' units' + (isReserve ? ' &middot; ' + loc.items.length + ' LPN' + (loc.items.length===1?'':'s') : '') + '</span></div>';
-      html += '<div class="cc-loc-skus">' + skuPreview + '</div>';
-      html += '</div>';
-      if (loc.has_active_task) html += '<span class="cc-flag">&#x26A0; Active Task</span>';
-      html += '</div>';
-      html += '<div class="cc-ilpn-list" id="ilpns_' + locKey + '">';
-      loc.items.forEach(function(item) {
-        html += '<div class="cc-ilpn-row">';
-        html += '<span class="cc-ilpn-id">' + item.ilpn_id + '</span>';
-        html += '<span class="cc-ilpn-sku">SKU ' + item.item_id + '</span>';
-        html += '<span class="cc-ilpn-units">' + item.units + ' units</span>';
-        html += '</div>';
-      });
-      html += '</div></div>';
-    });
-    html += '</div>';   // close cc-loc-grid
-    html += '</div>';   // close cc-loc-scroll
-    html += '</div>';   // close cc-code-block
-  });
-  bodyEl.innerHTML = html;
-}
-
-function toggleCcLoc(key) {
-  var list = document.getElementById('ilpns_' + key);
-  var chev = document.getElementById('chev_' + key);
-  if (!list) return;
-  var open = list.classList.toggle('open');
-  if (chev) chev.classList.toggle('open', open);
-}
-
-function toggleCcBlock(key) {
-  var scroll = document.getElementById(key);
-  var chev   = document.getElementById('bchev_' + key);
-  if (!scroll) return;
-  var collapsed = scroll.classList.toggle('collapsed');
-  if (chev) chev.classList.toggle('open', !collapsed);
-}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
