@@ -1009,7 +1009,7 @@ JOIN default_dcinventory.DCI_INVENTORY i
   ON cc.INVENTORY_CONTAINER_ID = i.INVENTORY_CONTAINER_ID
   AND cc.FACILITY_ID = i.FACILITY_ID
 WHERE cc.FACILITY_ID = '${FACILITY}'
-  AND cc.CONDITION_CODE IN ('QL','EX','FA','PP','QA')
+  AND cc.CONDITION_CODE IN ('QL','EX','PP','QA')
   AND (
     i.LOCATION_ID LIKE 'F1A%' OR i.LOCATION_ID LIKE 'F1B%'
     OR i.LOCATION_ID LIKE 'F2C%' OR i.LOCATION_ID LIKE 'P1C%'
@@ -1052,7 +1052,7 @@ WHERE t.FACILITY_ID = '${FACILITY}'
   const ACTIVE_PREFIXES  = ['F1A', 'F1B', 'F2C', 'P1C', 'F1D'];
   const RESERVE_PREFIXES = ['R1B', 'R1C', 'R1D', 'R1E', 'R1F'];
   const ACTIVE_CODES     = ['EX', 'QL'];
-  const RESERVE_CODES    = ['FA', 'QL', 'EX', 'PP', 'QA'];
+  const RESERVE_CODES    = ['EX', 'PP', 'QA'];
 
   function getSection(locId) {
     for (const p of ACTIVE_PREFIXES)  if (locId.startsWith(p)) return 'active';

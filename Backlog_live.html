@@ -430,8 +430,10 @@
   .cc-badge-pp { background:var(--accent-bg); color:var(--accent-muted); }
   .cc-badge-qa { background:var(--green-bg); color:var(--green); }
   .cc-badge-default { background:var(--surface2); color:var(--text-muted); }
-  .cc-loc-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
-  @media(max-width:600px){ .cc-loc-grid { grid-template-columns:1fr; } }
+  .cc-loc-grid { display:grid; grid-template-columns:1fr; }
+  .cc-two-col { display:flex; gap:16px; align-items:flex-start; }
+  .cc-two-col > .card { flex:1; min-width:0; margin-bottom:0; }
+  @media(max-width:700px){ .cc-two-col { flex-direction:column; } }
   .cc-loc-row { border-top: 0.5px solid var(--border-light); }
   .cc-loc-header { display:flex; align-items:flex-start; gap:8px; padding:6px 4px; cursor:pointer; user-select:none; font-size:13px; }
   .cc-loc-header:hover { background:var(--surface2); border-radius:6px; }
@@ -771,21 +773,23 @@
 
     <div id="cc-empty-state" style="display:none;text-align:center;padding:3rem;color:var(--text-hint);">No data loaded.</div>
     <div id="cc-content" style="display:none;">
+      <div class="cc-two-col">
 
-      <!-- Active Locations -->
-      <div class="card" style="margin-bottom:1.5rem;">
-        <div class="card-title">Active Locations <span style="font-size:11px;font-weight:400;color:var(--text-hint);">F1A &middot; F1B &middot; F2C &middot; P1C &middot; F1D</span></div>
-        <div class="cc-section-summary" id="cc-active-summary"></div>
-        <div id="cc-active-body"></div>
+        <!-- Active Locations -->
+        <div class="card">
+          <div class="card-title">Active Locations <span style="font-size:11px;font-weight:400;color:var(--text-hint);">F1A &middot; F1B &middot; F2C &middot; P1C &middot; F1D</span></div>
+          <div class="cc-section-summary" id="cc-active-summary"></div>
+          <div id="cc-active-body"></div>
+        </div>
+
+        <!-- Reserve Locations -->
+        <div class="card">
+          <div class="card-title">Reserve Locations <span style="font-size:11px;font-weight:400;color:var(--text-hint);">R1B &middot; R1C &middot; R1D &middot; R1E &middot; R1F</span></div>
+          <div class="cc-section-summary" id="cc-reserve-summary"></div>
+          <div id="cc-reserve-body"></div>
+        </div>
+
       </div>
-
-      <!-- Reserve Locations -->
-      <div class="card">
-        <div class="card-title">Reserve Locations <span style="font-size:11px;font-weight:400;color:var(--text-hint);">R1B &middot; R1C &middot; R1D &middot; R1E &middot; R1F</span></div>
-        <div class="cc-section-summary" id="cc-reserve-summary"></div>
-        <div id="cc-reserve-body"></div>
-      </div>
-
     </div>
   </div><!-- /#tab-condcodes -->
 
@@ -1878,8 +1882,8 @@ function fetchCondCodes() {
     });
 }
 
-var CC_LABELS = { EX:'Expired Product', QL:'Quality Audit Location', FA:'Failed Audit', PP:'Pending Putaway', QA:'Inbound Item Prep/Audit' };
-var CC_BADGE_CLASS = { EX:'cc-badge-ex', QL:'cc-badge-ql', FA:'cc-badge-fa', PP:'cc-badge-pp', QA:'cc-badge-qa' };
+var CC_LABELS = { EX:'Expired Product', QL:'Quality Audit Location', PP:'Pending Putaway', QA:'Inbound Item Prep/Audit' };
+var CC_BADGE_CLASS = { EX:'cc-badge-ex', QL:'cc-badge-ql', PP:'cc-badge-pp', QA:'cc-badge-qa' };
 
 function renderCondCodes(data) {
   var emptyEl   = document.getElementById('cc-empty-state');
@@ -1892,6 +1896,7 @@ function renderCondCodes(data) {
 }
 
 function renderCcSection(section, bodyId, summaryId) {
+  var sectionKey = bodyId; // unique namespace per section
   var bodyEl = document.getElementById(bodyId);
   var sumEl  = document.getElementById(summaryId);
   if (!section || !section.codes || !section.codes.length) {
@@ -1906,8 +1911,8 @@ function renderCcSection(section, bodyId, summaryId) {
   section.codes.forEach(function(codeObj) {
     var badgeCls = CC_BADGE_CLASS[codeObj.code] || 'cc-badge-default';
     var label    = CC_LABELS[codeObj.code] || codeObj.code;
-    var autoCollapse = codeObj.locations.length > 8;
-    var blockKey = 'ccblock_' + codeObj.code;
+    var autoCollapse = true;
+    var blockKey = 'ccblock_' + sectionKey + '_' + codeObj.code;
     html += '<div class="cc-code-block">';
     html += '<div class="cc-code-header" onclick="toggleCcBlock(\'' + blockKey + '\')">';
     html += '<span class="cc-block-chevron' + (autoCollapse ? '' : ' open') + '" id="bchev_' + blockKey + '">&#9656;</span>';
@@ -1919,7 +1924,7 @@ function renderCcSection(section, bodyId, summaryId) {
     html += '<div class="cc-loc-scroll' + (autoCollapse ? ' collapsed' : '') + '" id="' + blockKey + '">';
     html += '<div class="cc-loc-grid">';
     codeObj.locations.forEach(function(loc, li) {
-      var locKey = codeObj.code + '_' + li;
+      var locKey = sectionKey + '_' + codeObj.code + '_' + li;
       // unique SKUs for the collapsed preview — dedupe, show first 3 then "+N more"
       var seenSkus = {}, skuList = [];
       loc.items.forEach(function(item) { if (!seenSkus[item.item_id]) { seenSkus[item.item_id]=1; skuList.push(item.item_id); } });
@@ -1928,7 +1933,8 @@ function renderCcSection(section, bodyId, summaryId) {
       html += '<div class="cc-loc-header" onclick="toggleCcLoc(\'' + locKey + '\')">';
       html += '<span class="cc-chevron" id="chev_' + locKey + '">&#9656;</span>';
       html += '<div style="flex:1;min-width:0;">';
-      html += '<div class="cc-loc-main"><span class="cc-loc-id">' + loc.location_id + '</span><span class="cc-loc-units">' + loc.total_units + ' units &middot; ' + loc.items.length + ' LPN' + (loc.items.length===1?'':'s') + '</span></div>';
+      var isReserve = sectionKey.indexOf('reserve') !== -1;
+      html += '<div class="cc-loc-main"><span class="cc-loc-id">' + loc.location_id + '</span><span class="cc-loc-units">' + loc.total_units + ' units' + (isReserve ? ' &middot; ' + loc.items.length + ' LPN' + (loc.items.length===1?'':'s') : '') + '</span></div>';
       html += '<div class="cc-loc-skus">' + skuPreview + '</div>';
       html += '</div>';
       if (loc.has_active_task) html += '<span class="cc-flag">&#x26A0; Active Task</span>';
