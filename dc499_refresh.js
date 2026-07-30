@@ -654,21 +654,8 @@ async function fetchBacklog(accessToken) {
 
   // DATE_FORMAT used instead of DATE() — the MCP connector serializes DATE() as a JS Date
   // object, so .slice(0,10) produces garbage. DATE_FORMAT guarantees a plain YYYY-MM-DD string.
-  const sqlCounts = `
-SELECT
-  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
-  STATUS,
-  COUNT(*) AS line_count
-FROM default_dcorder.DCO_ORDER_LINE
-WHERE FACILITY_ID = '${FACILITY}'
-  AND ORDER_TYPE  = 'ECOM'
-  AND CANCELLED   = 0
-  AND STATUS     NOT IN ('SHIPPED')
-  AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
-  AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
-GROUP BY line_date, STATUS`.trim();
 
-  // Query 2: open order detail for drill-down
+  // Query 1: open order detail for drill-down (bucket totals derived from this in Node, not SQL)
   const sqlOrders = `
 SELECT
   DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
@@ -686,7 +673,7 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY line_date, ORDER_ID, STATUS
 ORDER BY line_date DESC, ORDER_ID`.trim();
 
-  // Query 3: new order lines created by PDT hour — rate at which backlog builds each hour
+  // Query 2: new order lines created by PDT hour — rate at which backlog builds each hour
   const sqlHourly = `
 SELECT
   HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS hour_pdt,
@@ -700,7 +687,7 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY hour_pdt
 ORDER BY hour_pdt`.trim();
 
-  // Query 4: wave runs this shift
+  // Query 3: wave runs this shift
   // 2nd shift starts 1:40 PM PDT = 20:40 UTC, 1st shift starts 3:00 AM PDT = 10:00 UTC
   const nowUtc       = new Date();
   const nowUtcHour   = nowUtc.getUTCHours();
@@ -728,12 +715,26 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY PLANNING_STRATEGY_ID, CHASE_MODE
 ORDER BY wave_runs DESC`.trim();
 
-  const [respCounts, respOrders, respHourly, respWaves] = await Promise.all([
-    mcpQuery(accessToken, sqlCounts),
+  const [respOrders, respHourly, respWaves] = await Promise.all([
     mcpQuery(accessToken, sqlOrders),
     mcpQuery(accessToken, sqlHourly),
     mcpQuery(accessToken, sqlWaves),
   ]);
+
+  // Build a map of ORDER_ID → earliest line_date across open (non-packed, non-shipped) lines.
+  // This pools all READY/RELEASED/ALLOCATED lines for the same order under its oldest date.
+  const OPEN_STATUSES = new Set(['READY', 'RELEASED', 'ALLOCATED']);
+  const minDateByOrder = {};
+  for (const r of (respOrders.rows || [])) {
+    const status  = (r.STATUS || '').toUpperCase();
+    if (!OPEN_STATUSES.has(status)) continue;
+    const dateStr = String(r.line_date || '').slice(0, 10);
+    if (dateStr.length < 10) continue;
+    const orderId = r.ORDER_ID;
+    if (!minDateByOrder[orderId] || dateStr < minDateByOrder[orderId]) {
+      minDateByOrder[orderId] = dateStr;
+    }
+  }
 
   // Build buckets dynamically from whatever dates the DB returns — no hardcoded date list.
   const buckets = {};
@@ -742,30 +743,32 @@ ORDER BY wave_runs DESC`.trim();
     return buckets[dateStr];
   }
 
-  for (const r of (respCounts.rows || [])) {
-    const dateStr = String(r.line_date || '').slice(0, 10);
-    if (dateStr.length < 10) continue;
-    const b = ensureBucket(dateStr);
-    const n = Number(r.line_count);
-    switch ((r.STATUS || '').toUpperCase()) {
-      case 'READY':
-      case 'RELEASED':  b.ready     += n; break;
-      case 'ALLOCATED': b.allocated += n; break;
-      case 'PACKED':    b.packed    += n; break;
-      case 'SHIPPED':   b.shipped   += n; break;
-    }
-  }
-
   for (const r of (respOrders.rows || [])) {
-    const dateStr = String(r.line_date || '').slice(0, 10);
-    if (dateStr.length < 10) continue;
+    const rawDate = String(r.line_date || '').slice(0, 10);
+    if (rawDate.length < 10) continue;
+    const status  = (r.STATUS || '').toUpperCase();
+    // Open lines pool to the order's earliest date; packed/shipped keep their own date.
+    const dateStr = OPEN_STATUSES.has(status) ? (minDateByOrder[r.ORDER_ID] || rawDate) : rawDate;
     const b = ensureBucket(dateStr);
     b.orders.push({
       order_id:        r.ORDER_ID,
-      status:          (r.STATUS || '').toUpperCase(),
+      status,
       line_count:      Number(r.line_count),
       oldest_line_utc: r.oldest_line_utc || null,
     });
+  }
+
+  // Derive bucket totals from the pooled orders array (replaces the separate sqlCounts query).
+  for (const b of Object.values(buckets)) {
+    for (const o of b.orders) {
+      switch (o.status) {
+        case 'READY':
+        case 'RELEASED':  b.ready     += o.line_count; break;
+        case 'ALLOCATED': b.allocated += o.line_count; break;
+        case 'PACKED':    b.packed    += o.line_count; break;
+        case 'SHIPPED':   b.shipped   += o.line_count; break;
+      }
+    }
   }
 
   const hourly = (respHourly.rows || []).map(r => ({

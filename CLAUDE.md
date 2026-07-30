@@ -519,13 +519,7 @@ DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS li
 
 ### Batch/Backlog pages — remaining
 - [ ] Putwall column in batch display — join verified but needs multi-PW shift to confirm RESOURCE_GROUP_ID is populated correctly. See "Putwall → batch mapping research" section above.
-- [ ] **Backlog order-date pooling** — open lines on the same order should all bucket under the oldest line date, not be split across dates. Rationale: one oLPN = one pick event, so all open lines on an order are done together. Pooling only applies to open lines (READY/ALLOCATED) — shipped/packed lines keep their own date and are already filtered out anyway.
-
-  **Implementation plan (read `fetchBacklog()` in dc499_refresh.js first to confirm SQL structure before touching):**
-  1. Confirm the SQL returns one row per ORDER_LINE_ID with its ORDER_ID and line_date — if it currently aggregates in SQL before Node sees it, restructure to line-level first
-  2. In Node.js post-processing, after collecting all rows: build a `minDateByOrder` map — `{ [ORDER_ID]: earliest line_date across all open lines for that order }`
-  3. When bucketing, use `minDateByOrder[r.ORDER_ID] || r.line_date` instead of `r.line_date` as the bucket key
-  4. Test: an order with lines on 7/27 and 7/29 should show ALL its open lines under 7/27
+- [x] **Backlog order-date pooling** — DONE 2026-07-30. READY/RELEASED/ALLOCATED lines pool to order's earliest date; PACKED/SHIPPED keep their own date. sqlCounts query removed; totals now derived from pooled orders array.
 
 ### EOD Email — remaining
 - [ ] Verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass) — confirm colors match screen
