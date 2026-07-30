@@ -26,6 +26,7 @@ const TOTES_FILE    = path.join(REPORT_DIR, 'totes_live.json');
 const BACKLOG_FILE  = path.join(REPORT_DIR, 'backlog_live.json');
 const BATCH_STATUS_FILE = path.join(REPORT_DIR, 'batch_status.json');
 const RETAIL_REPLEN_FILE = path.join(REPORT_DIR, 'retail_replen.json');
+const ACTIVE_TASKS_FILE  = path.join(REPORT_DIR, 'active_tasks.json');
 const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3118;
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
@@ -987,6 +988,98 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
 }
 
 
+// ── active tasks query ─────────────────────────────────────────────────────────
+async function fetchActiveTasks(accessToken) {
+  const sqlTasks = `
+SELECT
+  t.TASK_ID,
+  t.TYPE_ID,
+  t.STATUS,
+  t.SOURCE_LOCATION_ID,
+  t.TRANSACTION_ID,
+  t.DESCRIPTION,
+  t.CURRENT_USER_ID,
+  t.PICK_CART_NUMBER,
+  t.WORK_RELEASE_BATCH_ID,
+  t.CREATED_TIMESTAMP
+FROM default_task.TSK_TASK t
+WHERE t.FACILITY_ID = '${FACILITY}'
+  AND t.STATUS IN ('3000','5000','7000')
+  AND t.TYPE_ID IN ('PICK/PACK','REPLENISHMENT','SINGLES_PICK')
+  AND (
+    t.SOURCE_LOCATION_ID LIKE 'F1A%' OR t.SOURCE_LOCATION_ID LIKE 'F1B%'
+    OR t.SOURCE_LOCATION_ID LIKE 'F2C%' OR t.SOURCE_LOCATION_ID LIKE 'P1C%'
+    OR t.SOURCE_LOCATION_ID LIKE 'F1D%'
+    OR t.SOURCE_LOCATION_ID LIKE 'R1B%' OR t.SOURCE_LOCATION_ID LIKE 'R1C%'
+    OR t.SOURCE_LOCATION_ID LIKE 'R1D%' OR t.SOURCE_LOCATION_ID LIKE 'R1E%'
+    OR t.SOURCE_LOCATION_ID LIKE 'R1F%'
+  )
+ORDER BY t.TYPE_ID, t.STATUS, t.TASK_ID`.trim();
+
+  const sqlDetails = `
+SELECT
+  td.TASK_ID,
+  COUNT(*) AS detail_count
+FROM default_task.TSK_TASK_DETAIL td
+WHERE td.FACILITY_ID = '${FACILITY}'
+  AND td.TASK_ID IN (
+    SELECT t2.TASK_ID FROM default_task.TSK_TASK t2
+    WHERE t2.FACILITY_ID = '${FACILITY}'
+      AND t2.STATUS IN ('3000','5000','7000')
+      AND t2.TYPE_ID IN ('PICK/PACK','REPLENISHMENT','SINGLES_PICK')
+      AND (
+        t2.SOURCE_LOCATION_ID LIKE 'F1A%' OR t2.SOURCE_LOCATION_ID LIKE 'F1B%'
+        OR t2.SOURCE_LOCATION_ID LIKE 'F2C%' OR t2.SOURCE_LOCATION_ID LIKE 'P1C%'
+        OR t2.SOURCE_LOCATION_ID LIKE 'F1D%'
+        OR t2.SOURCE_LOCATION_ID LIKE 'R1B%' OR t2.SOURCE_LOCATION_ID LIKE 'R1C%'
+        OR t2.SOURCE_LOCATION_ID LIKE 'R1D%' OR t2.SOURCE_LOCATION_ID LIKE 'R1E%'
+        OR t2.SOURCE_LOCATION_ID LIKE 'R1F%'
+      )
+  )
+GROUP BY td.TASK_ID`.trim();
+
+  const [respTasks, respDetails] = await Promise.all([
+    mcpQuery(accessToken, sqlTasks),
+    mcpQuery(accessToken, sqlDetails).catch(() => ({ rows: [] })),
+  ]);
+
+  const detailMap = {};
+  for (const r of (respDetails.rows || [])) {
+    detailMap[r.TASK_ID] = Number(r.detail_count) || 0;
+  }
+
+  const pdtOffset = -7 * 60;
+  function toPdt(utcStr) {
+    if (!utcStr) return null;
+    try {
+      const d = new Date(utcStr.endsWith('Z') ? utcStr : utcStr + 'Z');
+      const pdt = new Date(d.getTime() + pdtOffset * 60000);
+      return pdt.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
+    } catch(e) { return null; }
+  }
+
+  const tasks = (respTasks.rows || []).map(r => ({
+    task_id:            r.TASK_ID,
+    type_id:            r.TYPE_ID,
+    status:             String(r.STATUS),
+    source_location:    r.SOURCE_LOCATION_ID,
+    transaction_id:     r.TRANSACTION_ID || null,
+    description:        r.DESCRIPTION || null,
+    assigned_user:      r.CURRENT_USER_ID || null,
+    pick_cart:          r.PICK_CART_NUMBER || null,
+    work_release_batch: r.WORK_RELEASE_BATCH_ID || null,
+    created_pdt:        toPdt(r.CREATED_TIMESTAMP),
+    detail_count:       detailMap[r.TASK_ID] || 0,
+  }));
+
+  return {
+    generated: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    facility:  FACILITY,
+    total:     tasks.length,
+    tasks,
+  };
+}
+
 // ── batch status query ─────────────────────────────────────────────────────────
 // Status codes: 5000=Released, 5200=Released(picking assigned),
 //               5400=Picking Completed, 5600=Work Started, 5800=Cleared
@@ -1329,12 +1422,13 @@ async function queryAndWrite(accessToken) {
   // fetchBatchStatus runs TWO sequential MCP queries (WR_BATCH then DCO_ORDER).
   // Running it inside Promise.all with 5 other concurrent queries causes the second
   // query to time out. Run it after the parallel group instead.
-  const [recvData, dockData, totesData, backlogData, retailReplenData] = await Promise.all([
+  const [recvData, dockData, totesData, backlogData, retailReplenData, activeTasksData] = await Promise.all([
     fetchReceiving(accessToken),
     fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
     fetchBacklog(accessToken).catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; }),
     fetchRetailReplen(accessToken).catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
+    fetchActiveTasks(accessToken).catch(e => { console.warn(`  Active tasks query failed: ${e.message}`); return null; }),
   ]);
   const batchStatusData = await fetchBatchStatus(accessToken)
     .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; });
@@ -1370,8 +1464,13 @@ async function queryAndWrite(accessToken) {
     console.log(`[${ts()}] ✓ retail_replen.json — ${retailReplenData.summary.flagged_items} items flagged, ${retailReplenData.summary.orders_at_risk} orders at risk`);
   }
 
+  if (activeTasksData) {
+    fs.writeFileSync(ACTIVE_TASKS_FILE, JSON.stringify(activeTasksData, null, 4));
+    console.log(`[${ts()}] ✓ active_tasks.json — ${activeTasksData.total} open tasks`);
+  }
+
   gitPush();
-  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData };
+  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData, activeTasksData };
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
@@ -1516,6 +1615,11 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
     if (url.pathname === '/retail_replen.json') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify(cache?.retailReplenData || {}));
+      return;
+    }
+    if (url.pathname === '/active_tasks.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(cache?.activeTasksData || {}));
       return;
     }
 

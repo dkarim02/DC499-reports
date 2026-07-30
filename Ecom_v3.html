@@ -226,6 +226,34 @@
 
 
   .tab.active-full { color: #185FA5; border-bottom-color: #185FA5; font-weight: 500; }
+  .tab.active-tasks { color: #E65100; border-bottom-color: #E65100; font-weight: 500; }
+
+  /* ── Tasks tab ── */
+  .tasks-cols { display:flex; gap:16px; align-items:flex-start; }
+  .tasks-col { flex:1; min-width:0; }
+  .tasks-col-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; padding-bottom:6px; border-bottom:2px solid var(--border); display:flex; align-items:center; gap:8px; }
+  .tasks-col-badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; background:var(--surface2); color:var(--text-muted); }
+  .tasks-col-scroll { max-height:520px; overflow-y:auto; }
+  .task-row { border:1px solid var(--border); border-radius:6px; margin-bottom:6px; overflow:hidden; }
+  .task-row-header { display:flex; align-items:center; gap:8px; padding:7px 10px; cursor:pointer; user-select:none; font-size:12px; background:var(--surface2); }
+  .task-row-header:hover { filter:brightness(0.97); }
+  .task-chevron { font-size:10px; color:var(--text-hint); transition:transform 0.15s; flex-shrink:0; }
+  .task-chevron.open { transform:rotate(90deg); }
+  .task-id { font-family:monospace; font-weight:600; color:var(--text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .task-loc { font-size:11px; color:var(--text-muted); white-space:nowrap; }
+  .task-details-count { font-size:11px; color:var(--text-hint); white-space:nowrap; }
+  .task-status-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:8px; white-space:nowrap; flex-shrink:0; }
+  .ts-queued   { background:#e8f0fb; color:#185FA5; }
+  .ts-assigned { background:#FFF3E0; color:#E65100; }
+  .ts-inprog   { background:#E8F5E9; color:#2E7D32; }
+  .task-body { display:none; padding:8px 10px; font-size:12px; background:var(--surface); border-top:1px solid var(--border); }
+  .task-body.open { display:block; }
+  .task-body-row { display:flex; gap:6px; margin-bottom:4px; color:var(--text-muted); }
+  .task-body-row span:first-child { width:110px; flex-shrink:0; color:var(--text-hint); }
+  .task-body-row span:last-child { color:var(--text); font-weight:500; word-break:break-word; }
+  .tasks-empty { text-align:center; padding:2rem; color:var(--text-hint); font-size:13px; }
+  .tasks-run-time { font-size:11px; color:var(--text-hint); margin-bottom:1rem; }
+  @media(max-width:700px){ .tasks-cols { flex-direction:column; } }
   .full-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1rem; }
   .full-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; }
   .full-card-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
@@ -362,6 +390,7 @@
   <div class="tabs">
     <div class="tabs-left">
       <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
+      <button class="tab" id="tab-tasks" onclick="switchTab('tasks')">&#x1F4CB; Tasks</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -379,6 +408,34 @@
     <div id="full-files-loaded" style="display:none;font-size:12px;color:var(--text-hint);margin-bottom:0.75rem;"></div>
     <div id="full-content">
       <div class="full-empty">No data yet — upload a CSV above to populate the Full Report.</div>
+    </div>
+  </div>
+
+  <!-- TASKS TAB -->
+  <div class="tab-panel" id="panel-tasks">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);">Open Tasks</div>
+        <div class="tasks-run-time" id="tasks-run-time">Not loaded</div>
+      </div>
+      <button class="tab-settings" style="border-left:none;" onclick="fetchTasksData()">&#x21BA; Refresh</button>
+    </div>
+    <div id="tasks-empty" class="tasks-empty" style="display:none;">No open tasks found.</div>
+    <div id="tasks-content" style="display:none;">
+      <div class="tasks-cols">
+        <div class="tasks-col">
+          <div class="tasks-col-title">Picking <span class="tasks-col-badge" id="tasks-badge-pick">0</span></div>
+          <div class="tasks-col-scroll" id="tasks-col-pick"></div>
+        </div>
+        <div class="tasks-col">
+          <div class="tasks-col-title">Replenishment <span class="tasks-col-badge" id="tasks-badge-replen">0</span></div>
+          <div class="tasks-col-scroll" id="tasks-col-replen"></div>
+        </div>
+        <div class="tasks-col">
+          <div class="tasks-col-title">Singles Pick <span class="tasks-col-badge" id="tasks-badge-singles">0</span></div>
+          <div class="tasks-col-scroll" id="tasks-col-singles"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -484,12 +541,14 @@ document.addEventListener('click', function(e){ var p=document.getElementById('t
 // ── TABS ───────────────────────────────────────────────
 function switchTab(tab) {
   document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
+  document.getElementById('tab-tasks').className = 'tab' + (tab === 'tasks' ? ' active-tasks' : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['full','settings'].forEach(function(t) {
+  ['full','tasks','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
   if (tab === 'settings') { renderRoster(); renderHeadcountCard(); }
   if (tab === 'full') { renderFullReport(); }
+  if (tab === 'tasks' && !lastTasksData) fetchTasksData();
 }
 
 // ── SHIFT ──────────────────────────────────────────────
@@ -1840,6 +1899,93 @@ setShift(getShift());
 renderRoster();
 renderHeadcountCard();
 fetchBacklogStrip();
+
+// ── TASKS TAB ─────────────────────────────────────────────────────────────────
+var lastTasksData = null;
+
+function getTasksBase() {
+  return window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io' ? null : '');
+}
+
+function fetchTasksData() {
+  var base = getTasksBase();
+  if (base === null) {
+    document.getElementById('tasks-run-time').textContent = 'Live data not available on GitHub Pages — run dc499.bat';
+    return;
+  }
+  document.getElementById('tasks-run-time').textContent = 'Loading...';
+  fetch(base + '/active_tasks.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      lastTasksData = data;
+      renderTasksTab(data);
+      try {
+        var d = new Date((data.generated || '').replace(' ','T') + 'Z');
+        document.getElementById('tasks-run-time').textContent = 'Updated ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      } catch(e) {}
+    })
+    .catch(function(err) {
+      document.getElementById('tasks-run-time').textContent = 'Failed: ' + err.message;
+    });
+}
+
+var TASK_STATUS_LABELS = { '3000':'Queued', '5000':'Assigned', '7000':'In Progress' };
+var TASK_STATUS_CLASS  = { '3000':'ts-queued', '5000':'ts-assigned', '7000':'ts-inprog' };
+
+function renderTasksTab(data) {
+  var cols = {
+    'PICK/PACK':     { el: document.getElementById('tasks-col-pick'),    badge: document.getElementById('tasks-badge-pick') },
+    'REPLENISHMENT': { el: document.getElementById('tasks-col-replen'),  badge: document.getElementById('tasks-badge-replen') },
+    'SINGLES_PICK':  { el: document.getElementById('tasks-col-singles'), badge: document.getElementById('tasks-badge-singles') },
+  };
+  var tasks = data.tasks || [];
+  var hasAny = false;
+
+  Object.keys(cols).forEach(function(type) {
+    var group = tasks.filter(function(t) { return t.type_id === type; });
+    var col = cols[type];
+    col.badge.textContent = group.length;
+    if (!group.length) { col.el.innerHTML = '<div style="color:var(--text-hint);font-size:12px;padding:8px 0;">No open tasks.</div>'; return; }
+    hasAny = true;
+    var html = '';
+    group.forEach(function(t, i) {
+      var key = 'task_' + type + '_' + i;
+      var statusCls = TASK_STATUS_CLASS[t.status] || 'ts-queued';
+      var statusLbl = TASK_STATUS_LABELS[t.status] || t.status;
+      html += '<div class="task-row">';
+      html += '<div class="task-row-header" onclick="toggleTaskRow(\'' + key + '\')">';
+      html += '<span class="task-chevron" id="tchev_' + key + '">&#9656;</span>';
+      html += '<span class="task-id">' + t.task_id + '</span>';
+      html += '<span class="task-loc">' + (t.source_location || '') + '</span>';
+      html += '<span class="task-details-count">' + t.detail_count + ' det</span>';
+      html += '<span class="task-status-badge ' + statusCls + '">' + statusLbl + '</span>';
+      html += '</div>';
+      html += '<div class="task-body" id="tbody_' + key + '">';
+      if (t.description)     html += '<div class="task-body-row"><span>Description</span><span>' + t.description + '</span></div>';
+      if (t.transaction_id)  html += '<div class="task-body-row"><span>Transaction</span><span>' + t.transaction_id + '</span></div>';
+      if (t.assigned_user)   html += '<div class="task-body-row"><span>Assigned To</span><span>' + t.assigned_user + '</span></div>';
+      if (t.pick_cart)       html += '<div class="task-body-row"><span>Pick Cart</span><span>' + t.pick_cart + '</span></div>';
+      if (t.work_release_batch) html += '<div class="task-body-row"><span>Wave</span><span>' + t.work_release_batch + '</span></div>';
+      if (t.created_pdt)     html += '<div class="task-body-row"><span>Created</span><span>' + t.created_pdt + '</span></div>';
+      html += '</div>';
+      html += '</div>';
+    });
+    col.el.innerHTML = html;
+  });
+
+  document.getElementById('tasks-empty').style.display   = hasAny ? 'none' : 'block';
+  document.getElementById('tasks-content').style.display = hasAny ? 'block' : 'none';
+}
+
+function toggleTaskRow(key) {
+  var body = document.getElementById('tbody_' + key);
+  var chev = document.getElementById('tchev_' + key);
+  if (!body) return;
+  var open = body.classList.toggle('open');
+  if (chev) chev.classList.toggle('open', open);
+}
 </script>
 </body>
 </html>
