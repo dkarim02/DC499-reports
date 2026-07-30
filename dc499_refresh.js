@@ -26,6 +26,7 @@ const TOTES_FILE    = path.join(REPORT_DIR, 'totes_live.json');
 const BACKLOG_FILE  = path.join(REPORT_DIR, 'backlog_live.json');
 const BATCH_STATUS_FILE = path.join(REPORT_DIR, 'batch_status.json');
 const RETAIL_REPLEN_FILE = path.join(REPORT_DIR, 'retail_replen.json');
+const CONDITION_CODES_FILE = path.join(REPORT_DIR, 'condition_codes.json');
 const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3118;
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
@@ -986,6 +987,157 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
   };
 }
 
+// ── condition codes query ──────────────────────────────────────────────────────
+const CC_LABELS = {
+  QA: 'Inbound Item Prep/Audit',
+  QL: 'Quality Audit Location',
+  EX: 'Expired Product',
+  FA: 'Failed Audit',
+  PP: 'Pending Putaway',
+};
+
+async function fetchConditionCodes(accessToken) {
+  const sqlInv = `
+SELECT
+  cc.CONDITION_CODE,
+  i.LOCATION_ID,
+  i.ITEM_ID,
+  i.INVENTORY_CONTAINER_ID AS ilpn_id,
+  CAST(i.ON_HAND AS DECIMAL(10,0)) AS units
+FROM default_dcinventory.DCI_CONTAINER_CONDITION cc
+JOIN default_dcinventory.DCI_INVENTORY i
+  ON cc.INVENTORY_CONTAINER_ID = i.INVENTORY_CONTAINER_ID
+  AND cc.FACILITY_ID = i.FACILITY_ID
+WHERE cc.FACILITY_ID = '${FACILITY}'
+  AND cc.CONDITION_CODE IN ('QL','EX','FA','PP','QA')
+  AND (
+    i.LOCATION_ID LIKE 'F1A%' OR i.LOCATION_ID LIKE 'F1B%'
+    OR i.LOCATION_ID LIKE 'F2C%' OR i.LOCATION_ID LIKE 'P1C%'
+    OR i.LOCATION_ID LIKE 'F1D%'
+    OR i.LOCATION_ID LIKE 'R1B%' OR i.LOCATION_ID LIKE 'R1C%'
+    OR i.LOCATION_ID LIKE 'R1D%' OR i.LOCATION_ID LIKE 'R1E%'
+    OR i.LOCATION_ID LIKE 'R1F%'
+  )`.trim();
+
+  const sqlTasks = `
+SELECT DISTINCT
+  t.SOURCE_LOCATION_ID AS location_id,
+  t.TYPE_ID,
+  t.STATUS AS task_status
+FROM default_task.TSK_TASK t
+WHERE t.FACILITY_ID = '${FACILITY}'
+  AND t.STATUS IN ('3000','5000','7000')
+  AND t.TYPE_ID IN ('PICK/PACK','SINGLES_PICK','REPLENISHMENT')
+  AND (
+    t.SOURCE_LOCATION_ID LIKE 'F1A%' OR t.SOURCE_LOCATION_ID LIKE 'F1B%'
+    OR t.SOURCE_LOCATION_ID LIKE 'F2C%' OR t.SOURCE_LOCATION_ID LIKE 'P1C%'
+    OR t.SOURCE_LOCATION_ID LIKE 'F1D%'
+    OR t.SOURCE_LOCATION_ID LIKE 'R1B%' OR t.SOURCE_LOCATION_ID LIKE 'R1C%'
+    OR t.SOURCE_LOCATION_ID LIKE 'R1D%' OR t.SOURCE_LOCATION_ID LIKE 'R1E%'
+    OR t.SOURCE_LOCATION_ID LIKE 'R1F%'
+  )`.trim();
+
+  const [respInv, respTasks] = await Promise.all([
+    mcpQuery(accessToken, sqlInv),
+    mcpQuery(accessToken, sqlTasks),
+  ]);
+
+  // Build set of locations with active tasks
+  const taskLocations = new Set();
+  for (const r of (respTasks.rows || [])) {
+    if (r.location_id) taskLocations.add(r.location_id);
+  }
+
+  // Section classification
+  const ACTIVE_PREFIXES  = ['F1A', 'F1B', 'F2C', 'P1C', 'F1D'];
+  const RESERVE_PREFIXES = ['R1B', 'R1C', 'R1D', 'R1E', 'R1F'];
+  const ACTIVE_CODES     = ['EX', 'QL'];
+  const RESERVE_CODES    = ['FA', 'QL', 'EX', 'PP', 'QA'];
+
+  function getSection(locId) {
+    for (const p of ACTIVE_PREFIXES)  if (locId.startsWith(p)) return 'active';
+    for (const p of RESERVE_PREFIXES) if (locId.startsWith(p)) return 'reserve';
+    return null;
+  }
+
+  // Group: section → code → location → items
+  const grouped = { active: {}, reserve: {} };
+
+  for (const r of (respInv.rows || [])) {
+    const locId = r.LOCATION_ID;
+    const code  = r.CONDITION_CODE;
+    const section = getSection(locId);
+    if (!section) continue;
+
+    const allowedCodes = section === 'active' ? ACTIVE_CODES : RESERVE_CODES;
+    if (!allowedCodes.includes(code)) continue;
+
+    if (!grouped[section][code]) grouped[section][code] = {};
+    if (!grouped[section][code][locId]) grouped[section][code][locId] = { items: [] };
+
+    grouped[section][code][locId].items.push({
+      ilpn_id: r.ilpn_id,
+      item_id:  r.ITEM_ID,
+      units:    Number(r.units) || 0,
+    });
+  }
+
+  // Build output for each section
+  function buildSection(sectionKey, codeOrder) {
+    const sectionCodes = grouped[sectionKey];
+    let totalUnits = 0;
+    let flaggedLocations = 0;
+    const codes = [];
+
+    for (const code of codeOrder) {
+      if (!sectionCodes[code]) continue;
+      const locations = [];
+      let codeTotalUnits = 0;
+      let codeFlagged = 0;
+
+      const sortedLocs = Object.keys(sectionCodes[code]).sort();
+      for (const locId of sortedLocs) {
+        const { items } = sectionCodes[code][locId];
+        const locTotal  = items.reduce((s, i) => s + i.units, 0);
+        const hasTask   = taskLocations.has(locId);
+        codeTotalUnits += locTotal;
+        if (hasTask) codeFlagged++;
+        locations.push({
+          location_id: locId,
+          items,
+          total_units: locTotal,
+          has_active_task: hasTask,
+        });
+      }
+      if (!locations.length) continue;
+      totalUnits      += codeTotalUnits;
+      flaggedLocations += codeFlagged;
+      codes.push({
+        code,
+        label:             CC_LABELS[code] || code,
+        locations,
+        total_units:       codeTotalUnits,
+        flagged_locations: codeFlagged,
+      });
+    }
+
+    return { total_units: totalUnits, flagged_locations: flaggedLocations, codes };
+  }
+
+  const active  = buildSection('active',  ['EX', 'QL']);
+  const reserve = buildSection('reserve', ['FA', 'QL', 'EX', 'PP', 'QA']);
+
+  const totalFlagged = active.flagged_locations + reserve.flagged_locations;
+
+  return {
+    generated: new Date().toISOString().slice(0, 19),
+    facility:  FACILITY,
+    active,
+    reserve,
+    _totalFlagged: totalFlagged,
+  };
+}
+
 // ── batch status query ─────────────────────────────────────────────────────────
 // Status codes: 5000=Released, 5200=Released(picking assigned),
 //               5400=Picking Completed, 5600=Work Started, 5800=Cleared
@@ -1306,7 +1458,7 @@ function gitPush() {
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
   try {
-    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json condition_codes.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync(`git commit -m "Live update -- ${stamp}"`,             { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git fetch origin main',                               { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git rebase --autostash origin/main',                  { cwd: REPORT_DIR, stdio: 'pipe' });
@@ -1328,12 +1480,13 @@ async function queryAndWrite(accessToken) {
   // fetchBatchStatus runs TWO sequential MCP queries (WR_BATCH then DCO_ORDER).
   // Running it inside Promise.all with 5 other concurrent queries causes the second
   // query to time out. Run it after the parallel group instead.
-  const [recvData, dockData, totesData, backlogData, retailReplenData] = await Promise.all([
+  const [recvData, dockData, totesData, backlogData, retailReplenData, conditionCodesData] = await Promise.all([
     fetchReceiving(accessToken),
     fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
     fetchBacklog(accessToken).catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; }),
     fetchRetailReplen(accessToken).catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
+    fetchConditionCodes(accessToken).catch(e => { console.warn(`  Condition codes query failed: ${e.message}`); return null; }),
   ]);
   const batchStatusData = await fetchBatchStatus(accessToken)
     .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; });
@@ -1369,8 +1522,13 @@ async function queryAndWrite(accessToken) {
     console.log(`[${ts()}] ✓ retail_replen.json — ${retailReplenData.summary.flagged_items} items flagged, ${retailReplenData.summary.orders_at_risk} orders at risk`);
   }
 
+  if (conditionCodesData) {
+    fs.writeFileSync(CONDITION_CODES_FILE, JSON.stringify(conditionCodesData, null, 4));
+    console.log(`[${ts()}] ✓ condition_codes.json — ${conditionCodesData._totalFlagged} flagged locations`);
+  }
+
   gitPush();
-  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData };
+  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData, conditionCodesData };
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
@@ -1515,6 +1673,11 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
     if (url.pathname === '/retail_replen.json') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify(cache?.retailReplenData || {}));
+      return;
+    }
+    if (url.pathname === '/condition_codes.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(cache?.conditionCodesData || {}));
       return;
     }
 
