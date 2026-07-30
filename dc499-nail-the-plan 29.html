@@ -25,6 +25,33 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.48;-webkit-font-smoothing:antialiased}
+body.dark{
+  --paper:#0F1318; --card:#171B21; --line:#2B333D; --line-2:#232A32;
+  --ink:#EAECEF; --muted:#8B93A0; --muted-2:#6C7480;
+  --make-bg:#0E2A1A; --near-bg:#2A1E08; --behind-bg:#2A100D; --na-bg:#1C2128;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+}
+body.dark input.f,body.dark textarea.noteta,body.dark input.hcd-f{background:#1C2128;border-color:var(--line);color:var(--ink);}
+body.dark input.f:hover,body.dark textarea.noteta:hover{border-color:#3C4650;}
+body.dark .cp{background:#171B21;}
+body.dark .nav{background:#0F1318;}
+body.dark .navbtn:hover{background:#1C2128;}
+body.dark .summary{background:linear-gradient(180deg,#171B21,#0F1318);}
+body.dark .eodsum{background:#1C2128;}
+body.dark .bshift .auto{background:#1C2128;}
+body.dark .btn.ghost{background:#1C2128;border-color:var(--line);color:var(--ink);}
+body.dark .btn.ghost:hover{background:#232A32;}
+body.dark .track .rail{background:#232A32;border-color:var(--line);}
+
+/* ── Dark mode toggle ── */
+.dm-toggle{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.dm-toggle .dm-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7E8794}
+.dm-switch{position:relative;width:34px;height:18px;flex-shrink:0}
+.dm-switch input{opacity:0;width:0;height:0;position:absolute}
+.dm-slider{position:absolute;inset:0;background:#3C4650;border-radius:18px;cursor:pointer;transition:background .2s}
+.dm-slider::before{content:"";position:absolute;width:12px;height:12px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s}
+.dm-switch input:checked+.dm-slider{background:var(--accent)}
+.dm-switch input:checked+.dm-slider::before{transform:translateX(16px)}
 button{font-family:inherit;cursor:pointer}
 input,textarea{font-family:inherit;color:var(--ink)}
 input:focus-visible,textarea:focus-visible,button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -139,6 +166,10 @@ h1,h2,h3{font-family:var(--disp);margin:0;font-weight:600}
 .cpgrid .glbl.fin{color:var(--accent-ink)} .cpgrid .glbl.hc{color:#5A6472}
 .fieldwrap{position:relative}
 input.f{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:14.5px;font-variant-numeric:tabular-nums;text-align:right;background:#fff;transition:border-color .15s,box-shadow .15s}
+
+/* ── Total hours input (replaces per-person dropdown) ── */
+.hc-wrap{position:relative;display:flex;gap:4px;align-items:center}
+.hc-wrap .fieldwrap{flex:1;min-width:0}
 input.f:hover{border-color:#CFCBC1}
 input.f::placeholder{color:#C4C8CE}
 textarea.noteta{align-self:stretch;width:100%;height:100%;min-height:112px;resize:vertical;
@@ -171,10 +202,13 @@ textarea.noteta::placeholder{color:#C4C8CE}
 .cprecirc .glbl.rc{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink)}
 .cprecirc .rcstat{font-family:var(--mono);font-size:12px;font-weight:500}
 .cprecirc .rcstat.make{color:var(--make)} .cprecirc .rcstat.behind{color:var(--behind)} .cprecirc .rcstat.na{color:var(--muted)}
-.shhours{margin-left:auto;display:inline-flex;align-items:center;gap:7px;text-transform:none;letter-spacing:0}
+.shhours{margin-left:auto;display:inline-flex;flex-direction:column;align-items:flex-end;gap:4px;text-transform:none;letter-spacing:0}
+.shrow{display:flex;align-items:center;gap:5px}
 .shhours .shhlbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 input.f.shh{width:66px;padding:4px 7px;font-size:12px;text-align:right}
-.cppph{display:grid;grid-template-columns:74px auto auto 1fr;gap:7px 10px;align-items:baseline;margin-top:8px;padding-top:9px;border-top:1px dashed var(--line-2)}
+.cppph{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;margin-top:8px;padding-top:9px;border-top:1px dashed var(--line-2)}
+.cppph .pphdivider{font-family:var(--mono);font-size:15px;color:var(--line-2);line-height:1;align-self:center;padding:0 2px}
+.cppph .pphactlbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
 .pphflag{font-family:var(--mono);font-size:11.5px;font-weight:500;padding:2px 9px;border-radius:20px;white-space:nowrap;justify-self:start}
 .pphflag.make{background:var(--make-bg);color:var(--make)} .pphflag.behind{background:var(--behind-bg);color:var(--behind)}
 .cppph .glbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink)}
@@ -271,6 +305,10 @@ body.view-2nd .bshift.shift1{display:none}
     <button class="shift-tog-btn sh1" id="togShift1">1st</button>
     <button class="shift-tog-btn sh2" id="togShift2">2nd</button>
     <button class="shift-tog-btn" id="togShiftBoth" style="color:#9AA1AB">Both</button>
+  </div>
+  <div class="dm-toggle">
+    <span class="dm-lbl">Dark</span>
+    <label class="dm-switch"><input type="checkbox" id="dmToggle"><span class="dm-slider"></span></label>
   </div>
   <div class="spacer"></div>
   <div class="tools">
@@ -409,19 +447,35 @@ function save(silent){
   if(!silent) toast("Saved");
 }
 function todayISO(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+/* Plan day = PST date, but before 3:00 AM PST still counts as previous day */
+function planDayISO(){
+  const pst=new Date(new Date().toLocaleString("en-US",{timeZone:"America/Los_Angeles"}));
+  if(pst.getHours()<3){ pst.setDate(pst.getDate()-1); }
+  return `${pst.getFullYear()}-${String(pst.getMonth()+1).padStart(2,"0")}-${String(pst.getDate()).padStart(2,"0")}`;
+}
+function resetPersonHoursIfNewDay(){
+  const today=planDayISO();
+  if(STATE.meta.lastResetDate===today) return;
+  for(const a in STATE.data) for(const p in STATE.data[a]) for(const key in STATE.data[a][p]){
+    const r=STATE.data[a][p][key]; r.totalHours=null;
+  }
+  STATE.meta.lastResetDate=today;
+}
 let STATE=reconcile(load());
 if(STATE.notes){for(const _a in STATE.notes){if(typeof STATE.notes[_a]==="string")STATE.notes[_a]={"1st":STATE.notes[_a],"2nd":""};}}
-let current=AREAS[0];
+let current=AREAS.includes(STATE.meta.lastArea)?STATE.meta.lastArea:AREAS[0];
 
 /* ── helpers ── */
 const $=s=>document.querySelector(s);
 function el(t,c,txt){const e=document.createElement(t); if(c)e.className=c; if(txt!=null)e.textContent=txt; return e;}
 function fmt(n){return n==null||isNaN(n)?"—":Math.round(n).toLocaleString("en-US");}
 function fmt1(n){ if(n==null||isNaN(n)) return "—"; return (Math.round(n*10)/10).toLocaleString("en-US"); }
-function shiftLen(area,proc,sh){ const eod=(STATE.data[area][proc]||{})[sh+"|EOD"]||{}; return eod.shiftHours==null?null:eod.shiftHours; }
+function shiftLen(area,proc,sh){ const eod=(STATE.data[area][proc]||{})[sh+"|"+"EOD"]||{}; return eod.shiftHours==null?null:eod.shiftHours; }
 function effHours(area,proc,sh,cp){ const sl=shiftLen(area,proc,sh); if(sl==null) return null; return cp==="Midday"?sl/2:sl; }
-function totalHours(area,proc,sh,cp){ const eh=effHours(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(eh==null||rec.act_hc==null) return null; return eh*rec.act_hc; }
-function pph(area,proc,sh,cp){ const th=totalHours(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(th==null||th===0||rec.act_u==null) return null; return rec.act_u/th; }
+function totalHoursHC(area,proc,sh,cp){ const eh=effHours(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(eh==null||rec.act_hc==null) return null; return eh*rec.act_hc; }
+function pph(area,proc,sh,cp){ const th=totalHoursHC(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(th==null||th===0||rec.act_u==null) return null; return rec.act_u/th; }
+function totalHoursVal(area,proc,sh,cp){ const r=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; return r.totalHours==null?null:r.totalHours; }
+function pphFin(area,proc,sh,cp){ const th=totalHoursVal(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(th==null||th===0||rec.act_f==null) return null; return rec.act_f/th; }
 function paceStatus(area,proc,sh,cp){
   const eod=(STATE.data[area][proc]||{})[sh+"|EOD"]||{};
   const eodPlan=(eod.plan_u!=null&&eod.plan_u!==0)?eod.plan_u:null;
@@ -433,10 +487,16 @@ function paceStatus(area,proc,sh,cp){
   const label=(cp==="Midday")?(ok?"on pace (\u226550% EOD)":"behind pace"):(ok?"at/above plan":"behind plan");
   return {cls:ok?"make":"behind",label:label};
 }
-function pphHTML(area,proc,sh,cp){ const th=totalHours(area,proc,sh,cp), p=pph(area,proc,sh,cp), eh=effHours(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{};
+function pphHTML(area,proc,sh,cp){
+  const th=totalHoursHC(area,proc,sh,cp), p=pph(area,proc,sh,cp), eh=effHours(area,proc,sh,cp);
+  const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{};
   const sub = th==null ? "enter shift hrs + actual HC" : ("total hrs "+fmt1(th)+" = "+fmt1(eh)+" hrs × "+fmt(rec.act_hc)+" HC");
   const pace=paceStatus(area,proc,sh,cp); const flag = pace.cls==="na"?"":`<span class="pphflag ${pace.cls}">${pace.label}</span>`;
-  return `<span class="glbl">PPH</span><span class="pphval mono">${p==null?"—":fmt1(p)}</span>${flag}<span class="pphsub">${sub}</span>`; }
+  const thF=totalHoursVal(area,proc,sh,cp), pF=pphFin(area,proc,sh,cp);
+  const subF = thF==null ? "enter total hrs" : ("fin ÷ "+fmt1(thF)+" total hrs");
+  const finPart = `<span class="pphdivider">│</span><span class="glbl">Fin PPH</span><span class="pphval mono">${pF==null?"—":fmt1(pF)}</span><span class="pphsub">${subF}</span>`;
+  return `<span class="glbl">PPH</span><span class="pphval mono">${p==null?"—":fmt1(p)}</span>${flag}<span class="pphsub">${sub}</span>${finPart}`;
+}
 function pphLine(area,proc,key){ const parts=key.split("|"); const wrap=el("div","cppph"); wrap.dataset.proc=proc; wrap.dataset.sh=parts[0]; wrap.dataset.cp=parts[1]; wrap.innerHTML=pphHTML(area,proc,parts[0],parts[1]); return wrap; }
 function statusOf(plan,act){
   if(plan==null||plan===0) return {cls:"na",pct:null,label:"No plan"};
@@ -487,7 +547,7 @@ function renderNav(){
     const r=rollArea(a);
     const b=el("button","navbtn"+(a===current?" active":""));
     b.innerHTML=`<span class="dot ${r.cls}"></span>${a}<span class="navpct num">${pctTxt(r.pct)}</span>`;
-    b.onclick=()=>{current=a; renderNav(); renderMain();};
+    b.onclick=()=>{current=a; STATE.meta.lastArea=a; scheduleSave(); renderNav(); renderMain();};
     nav.appendChild(b);
   }
 }
@@ -534,11 +594,29 @@ function processCard(area,proc,pdata){
   for(const sh of SHIFTS){
     const sb=el("div","shiftblock shift"+(sh==="1st"?"1":"2"));
     const shHead=el("div","sh"); shHead.innerHTML=`<span class="shdot"></span><span>${sh} Shift</span>`;
-    const eodR=pdata[sh+"|EOD"]||(pdata[sh+"|EOD"]={plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,recirc:null,shiftHours:null});
-    const hw=el("span","shhours"); hw.innerHTML=`<span class="shhlbl">Shift hrs</span>`;
+    const eodR=pdata[sh+"|EOD"]||(pdata[sh+"|EOD"]={plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,recirc:null,shiftHours:null,totalHours:null});
+    const midR=pdata[sh+"|Midday"]||(pdata[sh+"|Midday"]={plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,recirc:null,totalHours:null});
+    const hw=el("span","shhours");
+
+    // Row 1: Shift hrs
+    const row1=el("span","shrow"); row1.innerHTML=`<span class="shhlbl">Shift hrs</span>`;
     const hi=el("input","f num shh"); hi.type="number"; hi.step="0.5"; hi.min="0"; hi.placeholder="\u2014"; if(eodR.shiftHours!=null) hi.value=eodR.shiftHours;
     hi.oninput=()=>{ const v=hi.value===""?null:parseFloat(hi.value); STATE.data[area][proc][sh+"|EOD"].shiftHours=isNaN(v)?null:v; liveUpdate(); };
-    hw.appendChild(hi); shHead.appendChild(hw); sb.appendChild(shHead);
+    row1.appendChild(hi); hw.appendChild(row1);
+
+    // Row 2: Total hrs (Mid)
+    const row2=el("span","shrow"); row2.innerHTML=`<span class="shhlbl">Total hrs (Mid)</span>`;
+    const hm=el("input","f num shh"); hm.type="number"; hm.step="0.5"; hm.min="0"; hm.placeholder="\u2014"; if(midR.totalHours!=null) hm.value=midR.totalHours;
+    hm.oninput=()=>{ const v=hm.value===""?null:parseFloat(hm.value); STATE.data[area][proc][sh+"|Midday"].totalHours=isNaN(v)?null:v; liveUpdate(); };
+    row2.appendChild(hm); hw.appendChild(row2);
+
+    // Row 3: Total hrs (EOD)
+    const row3=el("span","shrow"); row3.innerHTML=`<span class="shhlbl">Total hrs (EOD)</span>`;
+    const he=el("input","f num shh"); he.type="number"; he.step="0.5"; he.min="0"; he.placeholder="\u2014"; if(eodR.totalHours!=null) he.value=eodR.totalHours;
+    he.oninput=()=>{ const v=he.value===""?null:parseFloat(he.value); STATE.data[area][proc][sh+"|EOD"].totalHours=isNaN(v)?null:v; liveUpdate(); };
+    row3.appendChild(he); hw.appendChild(row3);
+
+    shHead.appendChild(hw); sb.appendChild(shHead);
     for(const cp of CPS){
       const key=sh+"|"+cp;
       const rec=pdata[key]||(pdata[key]={plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,recirc:null,shiftHours:null});
@@ -571,6 +649,11 @@ function numInput(area,proc,key,field,val){
   w.appendChild(i); return w;
 }
 function place(n,a){n.style.gridArea=a;return n;}
+
+function hcActualInput(area,proc,key,rec){
+  return numInput(area,proc,key,"act_hc",rec.act_hc);
+}
+
 function cpBlock(area,proc,key,rec){
   const st=statusOf(rec.plan_u,rec.act_u);
   const wrap=el("div","cp");
@@ -588,7 +671,7 @@ function cpBlock(area,proc,key,rec){
   g.appendChild(place(numInput(area,proc,key,"act_u",rec.act_u),"ua"));
   g.appendChild(place(el("span","glbl hc","HC"),"hcl"));
   g.appendChild(place(numInput(area,proc,key,"plan_hc",rec.plan_hc),"hcp"));
-  g.appendChild(place(numInput(area,proc,key,"act_hc",rec.act_hc),"hca"));
+  g.appendChild(place(hcActualInput(area,proc,key,rec),"hca"));
   g.appendChild(place(el("span","glbl fin","Financial $"),"fl"));
   g.appendChild(place(numInput(area,proc,key,"plan_f",rec.plan_f),"fp"));
   g.appendChild(place(numInput(area,proc,key,"act_f",rec.act_f),"fa"));
@@ -630,10 +713,15 @@ function eodParts(area,proc,sh){
   }
   const pMid=pph(area,proc,sh,"Midday"), pEod=pph(area,proc,sh,"EOD");
   const paceMid=paceStatus(area,proc,sh,"Midday"), paceEod=paceStatus(area,proc,sh,"EOD");
-  if(pMid!=null) out.push(["PPH (Mid-day)",`${fmt1(pMid)}${paceMid.cls!=="na"?" \u2014 "+paceMid.label:""}`]);
-  if(pEod!=null) out.push(["PPH (EOD)",`${fmt1(pEod)}${paceEod.cls!=="na"?" \u2014 "+paceEod.label:""}`]);
+  const thHCMid=totalHoursHC(area,proc,sh,"Midday"), thHCEod=totalHoursHC(area,proc,sh,"EOD");
+  if(pMid!=null) out.push(["PPH (Mid-day)",`${fmt1(pMid)}${paceMid.cls!=="na"?" \u2014 "+paceMid.label:""}  (total hrs ${fmt1(thHCMid)})`]);
+  if(pEod!=null) out.push(["PPH (EOD)",`${fmt1(pEod)}${paceEod.cls!=="na"?" \u2014 "+paceEod.label:""}  (total hrs ${fmt1(thHCEod)})`]);
   if(pMid==null&&paceMid.cls!=="na") out.push(["Pace (Mid-day)",paceMid.label]);
   if(pEod==null&&paceEod.cls!=="na") out.push(["Pace (EOD)",paceEod.label]);
+  const pFMid=pphFin(area,proc,sh,"Midday"), pFEod=pphFin(area,proc,sh,"EOD");
+  const thFMid=totalHoursVal(area,proc,sh,"Midday"), thFEod=totalHoursVal(area,proc,sh,"EOD");
+  if(pFMid!=null) out.push(["Fin PPH (Mid-day)",`${fmt1(pFMid)} (${fmt1(thFMid)} total hrs)`]);
+  if(pFEod!=null) out.push(["Fin PPH (EOD)",`${fmt1(pFEod)} (${fmt1(thFEod)} total hrs)`]);
   const midN=(mid.note_u||"").trim(), eodN=(eod.note_u||"").trim();
   if(midN) out.push(["Mid-day",midN]);
   if(eodN) out.push(["EOD",eodN]);
@@ -808,7 +896,7 @@ function exportCsv(){
   for(const a of AREAS)for(const p in STATE.data[a])for(const sh of SHIFTS)for(const cp of CPS){
     const r=STATE.data[a][p][sh+"|"+cp]||{}; const st=statusOf(r.plan_u,r.act_u);
     const gap=(r.plan_u!=null&&r.act_u!=null)?r.plan_u-r.act_u:"";
-    const _th=totalHours(a,p,sh,cp), _pph=pph(a,p,sh,cp);
+    const _th=totalHoursHC(a,p,sh,cp), _pph=pph(a,p,sh,cp);
     rows.push([STATE.meta.date,a,p,sh,cp,r.plan_hc??"",r.act_hc??"",processUOM(a,p)==="cases"?"Cases":"Units",r.plan_u??"",r.act_u??"",st.pct==null?"":Math.round(st.pct*100)+"%",gap,r.plan_f??"",r.act_f??"",r.recirc??"",_th==null?"":Math.round(_th*10)/10,_pph==null?"":Math.round(_pph*10)/10,(r.note_u||"").replace(/\n/g," / ")]);
   }
   const csv=rows.map(r=>r.map(c=>{c=String(c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c;}).join(",")).join("\n");
@@ -828,7 +916,7 @@ function clearArea(area){
   if(!confirm("Clear ALL entered data for "+scope+"?\n\nThis wipes planned/actual volume, financial, HC, recirc, shift hours, PPH inputs and every note (both shifts, Mid-Day + EOD). This can't be undone.")) return;
   for(const p in procs){ for(const key in procs[p]){ const r=procs[p][key];
     r.plan_u=null; r.act_u=null; r.note_u=""; r.plan_f=null; r.act_f=null; r.note_f="";
-    r.plan_hc=null; r.act_hc=null; r.recirc=null; r.shiftHours=null; } }
+    r.plan_hc=null; r.act_hc=null; r.recirc=null; r.shiftHours=null; r.totalHours=null; } }
   if(STATE.notes && STATE.notes[area]) STATE.notes[area]={"1st":"","2nd":""};
   save(true); renderAll(); toast(area+" data cleared — ready for new entry");
 }
@@ -975,9 +1063,13 @@ function cpBlocks(area, proc, sh, cp){
   // PPH
   var p=pph(area,proc,sh,cp);
   var pace=paceStatus(area,proc,sh,cp);
-  if(p!=null||pace.cls!=="na"){
+  var thHC=totalHoursHC(area,proc,sh,cp);
+  var pF=pphFin(area,proc,sh,cp);
+  var thF=totalHoursVal(area,proc,sh,cp);
+  if(p!=null||pF!=null||pace.cls!=="na"){
     var pphBadge=statusEmoji(pace.cls);
-    var pphTxt=(p!=null?"PPH: **"+fmt1(p)+"**":"")+(pphBadge?" · "+pphBadge:"")+(pace.label?" "+pace.label:"");
+    var pphTxt=(p!=null?"PPH: **"+fmt1(p)+"**"+(thHC!=null?" ("+fmt1(thHC)+" total hrs)":""):"")+(pphBadge?" · "+pphBadge:"")+(pace.label?" "+pace.label:"");
+    if(pF!=null) pphTxt+=(pphTxt?" | ":"")+"Fin PPH: **"+fmt1(pF)+"**"+(thF!=null?" ("+fmt1(thF)+" total hrs)":"");
     blocks.push({type:"TextBlock",spacing:"Small",text:pphTxt,color:statusColor(pace.cls),wrap:true});
   }
 
@@ -1267,11 +1359,12 @@ function sendReport(){
 }
 
 function renderAll(){renderSummary();renderNav();renderMain();renderUpdated();}
-STATE.meta.date=todayISO();
+resetPersonHoursIfNewDay();
+STATE.meta.date=planDayISO();
 $("#planDate").value=STATE.meta.date;
 $("#planDate").onchange=e=>{STATE.meta.date=e.target.value;save(true);renderMain();};
 $("#btnSave").onclick=()=>save(false);
-$("#btnToday").onclick=()=>{STATE.meta.date=todayISO();$("#planDate").value=STATE.meta.date;save(false);toast("Plan date set to today");};
+$("#btnToday").onclick=()=>{STATE.meta.date=planDayISO();$("#planDate").value=STATE.meta.date;save(false);toast("Plan date set to today");};
 $("#btnExportJson").onclick=exportJson;
 $("#btnExportCsv").onclick=exportCsv;
 $("#fabPostBtn").onclick=function(e){ e.stopPropagation(); document.getElementById("fabMenu").classList.toggle("open"); };
@@ -1291,6 +1384,16 @@ window.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key==="s"){e.
 document.getElementById("togShift1").onclick=function(){ applyShiftView("1st"); };
 document.getElementById("togShift2").onclick=function(){ applyShiftView("2nd"); };
 document.getElementById("togShiftBoth").onclick=function(){ applyShiftView("both"); };
+/* ── Dark mode ── */
+function applyDark(on){
+  document.body.classList.toggle("dark",on);
+  document.getElementById("dmToggle").checked=on;
+  STATE.meta.darkMode=on;
+}
+document.getElementById("dmToggle").onchange=function(){
+  applyDark(this.checked); scheduleSave();
+};
+applyDark(!!STATE.meta.darkMode);
 renderAll();
 applyShiftView(activeShift());
 </script>

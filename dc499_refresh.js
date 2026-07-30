@@ -639,37 +639,39 @@ async function fetchBacklog(accessToken) {
   const pdt = nowPdt();
 
   // Date strings in PDT (YYYY-MM-DD)
-  const todayDate    = new Date(pdt); todayDate.setHours(0, 0, 0, 0);
-  const yestDate     = new Date(todayDate); yestDate.setDate(yestDate.getDate() - 1);
-  const tomorrowDate = new Date(todayDate); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const todayStr    = todayDate.toLocaleDateString('en-CA');
-  const yestStr     = yestDate.toLocaleDateString('en-CA');
-  const tomorrowStr = tomorrowDate.toLocaleDateString('en-CA');
+  const todayDate       = new Date(pdt); todayDate.setHours(0, 0, 0, 0);
+  const tomorrowDate    = new Date(todayDate); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const sevenDaysAgoDate = new Date(todayDate); sevenDaysAgoDate.setDate(sevenDaysAgoDate.getDate() - 7);
+  const todayStr        = todayDate.toLocaleDateString('en-CA');
+  const tomorrowStr     = tomorrowDate.toLocaleDateString('en-CA');
+  const sevenDaysAgoStr = sevenDaysAgoDate.toLocaleDateString('en-CA');
 
   // PDT midnight = UTC 07:00 — build bounds directly from date strings,
   // no setHours() so local machine timezone never interferes.
-  const yestUtcStart  = `${yestStr} 07:00:00`;
-  const todayUtcStart = `${todayStr} 07:00:00`;
-  const todayUtcEnd   = `${tomorrowStr} 07:00:00`;
+  const lookbackUtcStart = `${sevenDaysAgoStr} 07:00:00`;
+  const todayUtcStart    = `${todayStr} 07:00:00`;
+  const todayUtcEnd      = `${tomorrowStr} 07:00:00`;
 
-  // Query 1: summary counts — both days in one pass
+  // DATE_FORMAT used instead of DATE() — the MCP connector serializes DATE() as a JS Date
+  // object, so .slice(0,10) produces garbage. DATE_FORMAT guarantees a plain YYYY-MM-DD string.
   const sqlCounts = `
 SELECT
-  CASE WHEN CREATED_TIMESTAMP >= '${todayUtcStart}' THEN '${todayStr}' ELSE '${yestStr}' END AS line_date,
+  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
   STATUS,
   COUNT(*) AS line_count
 FROM default_dcorder.DCO_ORDER_LINE
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE  = 'ECOM'
   AND CANCELLED   = 0
-  AND CREATED_TIMESTAMP >= '${yestUtcStart}'
+  AND STATUS     NOT IN ('SHIPPED')
+  AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
   AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
 GROUP BY line_date, STATUS`.trim();
 
-  // Query 2: open order detail for drill-down (shipped lines excluded to keep payload small)
+  // Query 2: open order detail for drill-down
   const sqlOrders = `
 SELECT
-  CASE WHEN CREATED_TIMESTAMP >= '${todayUtcStart}' THEN '${todayStr}' ELSE '${yestStr}' END AS line_date,
+  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
   ORDER_ID,
   STATUS,
   COUNT(*) AS line_count,
@@ -678,11 +680,11 @@ FROM default_dcorder.DCO_ORDER_LINE
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE  = 'ECOM'
   AND CANCELLED   = 0
-  AND STATUS     != 'SHIPPED'
-  AND CREATED_TIMESTAMP >= '${yestUtcStart}'
+  AND STATUS     NOT IN ('SHIPPED')
+  AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
   AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
 GROUP BY line_date, ORDER_ID, STATUS
-ORDER BY ORDER_ID`.trim();
+ORDER BY line_date DESC, ORDER_ID`.trim();
 
   // Query 3: new order lines created by PDT hour — rate at which backlog builds each hour
   const sqlHourly = `
@@ -733,17 +735,21 @@ ORDER BY wave_runs DESC`.trim();
     mcpQuery(accessToken, sqlWaves),
   ]);
 
-  const buckets = {
-    [todayStr]: { date: todayStr, ready: 0, allocated: 0, packed: 0, shipped: 0, orders: [] },
-    [yestStr]:  { date: yestStr,  ready: 0, allocated: 0, packed: 0, shipped: 0, orders: [] },
-  };
+  // Build buckets dynamically from whatever dates the DB returns — no hardcoded date list.
+  const buckets = {};
+  function ensureBucket(dateStr) {
+    if (!buckets[dateStr]) buckets[dateStr] = { date: dateStr, ready: 0, allocated: 0, packed: 0, shipped: 0, orders: [] };
+    return buckets[dateStr];
+  }
 
   for (const r of (respCounts.rows || [])) {
-    const b = buckets[r.line_date];
-    if (!b) continue;
+    const dateStr = String(r.line_date || '').slice(0, 10);
+    if (dateStr.length < 10) continue;
+    const b = ensureBucket(dateStr);
     const n = Number(r.line_count);
     switch ((r.STATUS || '').toUpperCase()) {
-      case 'READY':     b.ready     += n; break;
+      case 'READY':
+      case 'RELEASED':  b.ready     += n; break;
       case 'ALLOCATED': b.allocated += n; break;
       case 'PACKED':    b.packed    += n; break;
       case 'SHIPPED':   b.shipped   += n; break;
@@ -751,12 +757,13 @@ ORDER BY wave_runs DESC`.trim();
   }
 
   for (const r of (respOrders.rows || [])) {
-    const b = buckets[r.line_date];
-    if (!b) continue;
+    const dateStr = String(r.line_date || '').slice(0, 10);
+    if (dateStr.length < 10) continue;
+    const b = ensureBucket(dateStr);
     b.orders.push({
-      order_id:       r.ORDER_ID,
-      status:         (r.STATUS || '').toUpperCase(),
-      line_count:     Number(r.line_count),
+      order_id:        r.ORDER_ID,
+      status:          (r.STATUS || '').toUpperCase(),
+      line_count:      Number(r.line_count),
       oldest_line_utc: r.oldest_line_utc || null,
     });
   }
@@ -792,11 +799,17 @@ ORDER BY wave_runs DESC`.trim();
   const waveTotal = Object.values(waveCounts).reduce((a,b) => a+b, 0);
   if (waveTotal > 0) waves.push({ type: 'Total', count: waveTotal });
 
+  // Keep dates that have at least one non-shipped open line, sorted newest-first.
+  // Always include today even if empty so the page always has a "today" row.
+  const datesArr = Object.values(buckets)
+    .filter(b => b.date === todayStr || (b.ready + b.allocated + b.packed) > 0)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
   return {
-    generated: new Date().toISOString().slice(0, 19),
-    facility:  FACILITY,
-    today:     todayStr,
-    dates:     [buckets[todayStr], buckets[yestStr]],
+    generated:   new Date().toISOString().slice(0, 19),
+    facility:    FACILITY,
+    today:       todayStr,
+    dates:       datesArr,
     hourly,
     waves,
     shift_label: is1st ? '1st shift' : '2nd shift',

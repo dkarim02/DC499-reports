@@ -1101,14 +1101,14 @@ function renderBacklogData(data) {
     tb.appendChild(tr);
   });
 
-  document.getElementById('ft-ready').textContent  = fmt(totR);
-  document.getElementById('ft-alloc').textContent  = fmt(totA);
-  document.getElementById('ft-packed').textContent = fmt(totP);
-  document.getElementById('ft-total').textContent  = fmt(totO);
-  document.getElementById('ft-shipped').textContent= fmt(totS);
-  document.getElementById('m-ready').textContent   = fmt(totR);
-  document.getElementById('m-alloc').textContent   = fmt(totA);
-  document.getElementById('m-packed').textContent  = fmt(totP);
+  document.getElementById('ft-ready').textContent   = fmt(totR);
+  document.getElementById('ft-alloc').textContent   = fmt(totA);
+  document.getElementById('ft-packed').textContent  = fmt(totP);
+  document.getElementById('ft-total').textContent   = fmt(totO);
+  document.getElementById('ft-shipped').textContent = fmt(totS);
+  document.getElementById('m-ready').textContent    = fmt(totR);
+  document.getElementById('m-alloc').textContent    = fmt(totA);
+  document.getElementById('m-packed').textContent   = fmt(totP);
   document.getElementById('m-total').textContent   = fmt(totO);
   document.getElementById('m-date').textContent    = 'All dates';
 
@@ -1817,7 +1817,7 @@ function exportEodEmail() {
   var pdtStr = now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
   var shiftLabel = bt.shift_label || bl.shift_label || '2nd shift';
 
-  // solid theme palette (inline — email has no CSS variables)
+  // Dark palette — matches the screen look
   var C = {
     bg:'#13172b', surface:'#1b2035', surface2:'#232840', border:'#2e3650',
     text:'#e4e8f4', muted:'#8090b0', hint:'#4a5570',
@@ -1825,19 +1825,27 @@ function exportEodEmail() {
     ready:'#22c55e', alloc:'#FFB74D', packed:'#5B9BD5',
   };
   var F   = 'font-family:Arial,sans-serif;';
-  var tbl = 'width:100%;border-collapse:collapse;' + F;
+  // Pure CSS style strings — bgcolor attr added by addBgcolor() post-pass
   var hdr = 'background:'+C.bg+';color:'+C.text+';padding:14px 18px;';
-  var sec = 'background:'+C.surface2+';padding:8px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:'+C.muted+';border-bottom:1px solid '+C.border+';border-top:1px solid '+C.border+';';
-  var th  = 'background:'+C.surface2+';font-size:11px;font-weight:700;color:'+C.muted+';padding:7px 10px;border:1px solid '+C.border+';text-align:left;';
-  var thR = 'background:'+C.surface2+';font-size:11px;font-weight:700;color:'+C.muted+';padding:7px 10px;border:1px solid '+C.border+';text-align:right;';
-  var td  = 'background:'+C.surface+';padding:6px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';';
-  var tdR = 'background:'+C.surface+';padding:6px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';text-align:right;font-weight:600;';
-  var tdM = 'background:'+C.surface+';padding:6px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.muted+';text-align:right;';
-  var tdA = 'background:'+C.surface2+';padding:6px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';';  // alt row
+  var sec = 'background:'+C.surface2+';padding:7px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:'+C.muted+';border-bottom:1px solid '+C.border+';border-top:1px solid '+C.border+';';
+  var th  = 'background:'+C.surface2+';font-size:11px;font-weight:700;color:'+C.muted+';padding:6px 10px;border:1px solid '+C.border+';text-align:left;';
+  var thR = 'background:'+C.surface2+';font-size:11px;font-weight:700;color:'+C.muted+';padding:6px 10px;border:1px solid '+C.border+';text-align:right;';
+  var td  = 'background:'+C.surface+';padding:5px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';';
+  var tdA = 'background:'+C.surface2+';padding:5px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';';
+  var tdM = 'background:'+C.surface+';padding:5px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.muted+';text-align:right;';
   function fmtN(v) { return v != null ? Number(v).toLocaleString() : '—'; }
   function fmtT(v) { return v != null ? v + ' min' : '—'; }
+  // Post-pass: add bgcolor= HTML attr on every <td>/<th> so Outlook dark mode can't invert them
+  function addBgcolor(h) {
+    return h.replace(/<(td|th)(\b[^>]*)>/gi, function(tag, el, attrs) {
+      if (/bgcolor\s*=/i.test(attrs)) return tag;
+      var m = attrs.match(/background:\s*(#[0-9a-fA-F]{3,6})/i);
+      return m ? '<' + el + attrs + ' bgcolor="' + m[1] + '">' : tag;
+    });
+  }
 
-  var html = '<table style="' + tbl + '">';
+  // width="600" HTML attr — Outlook ignores CSS max-width entirely
+  var html = '<table width="600" bgcolor="'+C.bg+'" style="width:600px;border-collapse:collapse;'+F+'">';
 
   // header
   html += '<tr><td colspan="6" style="' + hdr + F + '">';
@@ -1926,7 +1934,7 @@ function exportEodEmail() {
 
     var active=allBatches.filter(function(b){return !b.is_cleared;});
     if (active.length) {
-      html+='<tr><td colspan="6" style="background:#2a1f00;padding:6px 14px;font-size:11px;font-weight:700;color:'+C.amber+';border-bottom:1px solid '+C.border+';'+F+'">Active &amp; Queued &nbsp;('+active.length+')</td></tr>';
+      html+='<tr><td colspan="6" style="'+sec+F+'">Active &amp; Queued &nbsp;<span style="color:'+C.amber+';font-weight:700;">('+active.length+')</span></td></tr>';
       html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">'+batchHead+'<tbody>';
       active.forEach(function(b,i){
         var openT=b.total_tasks!=null&&b.open_tasks!=null?b.open_tasks:null;
@@ -1942,7 +1950,7 @@ function exportEodEmail() {
 
     var cleared=allBatches.filter(function(b){return b.is_cleared;});
     if (cleared.length) {
-      html+='<tr><td colspan="6" style="background:#052e16;padding:6px 14px;font-size:11px;font-weight:700;color:'+C.green+';border-bottom:1px solid '+C.border+';'+F+'">Cleared &nbsp;('+cleared.length+')</td></tr>';
+      html+='<tr><td colspan="6" style="'+sec+F+'">Cleared &nbsp;<span style="color:'+C.green+';font-weight:700;">('+cleared.length+')</span></td></tr>';
       html+='<tr><td colspan="6" style="padding:0;"><table style="'+tbl+'">'+clearedHead+'<tbody>';
       cleared.forEach(function(b,i){
         var cc=b.mins_to_clear!=null?(b.mins_to_clear<=30?C.green:b.mins_to_clear<=50?C.amber:C.red):C.muted;
@@ -1973,6 +1981,7 @@ function exportEodEmail() {
   // footer
   html+='<tr><td colspan="6" style="background:'+C.surface2+';padding:8px 14px;font-size:10px;color:'+C.hint+';text-align:center;border-top:1px solid '+C.border+';'+F+'">Generated '+pdtStr+' &nbsp;&middot;&nbsp; DC499 Nordstrom &nbsp;&middot;&nbsp; SCOUT Live</td></tr>';
   html+='</table>';
+  html = addBgcolor(html);
 
   document.getElementById('eod-preview').innerHTML = html;
   document.getElementById('eod-overlay').style.display = 'flex';
