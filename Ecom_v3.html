@@ -1959,7 +1959,7 @@ function renderTasksTab(data) {
       html += '<span class="task-chevron" id="tchev_' + key + '">&#9656;</span>';
       html += '<span class="task-id">' + t.task_id + '</span>';
       html += '<span class="task-loc">' + (t.source_location || '') + '</span>';
-      html += '<span class="task-details-count">' + t.detail_count + ' det</span>';
+      if (t.detail_count) html += '<span class="task-details-count">' + t.detail_count + ' det</span>';
       html += '<span class="task-status-badge ' + statusCls + '">' + statusLbl + '</span>';
       html += '</div>';
       html += '<div class="task-body" id="tbody_' + key + '">';

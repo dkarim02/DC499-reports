@@ -1016,37 +1016,8 @@ WHERE t.FACILITY_ID = '${FACILITY}'
   )
 ORDER BY t.TYPE_ID, t.STATUS, t.TASK_ID`.trim();
 
-  const sqlDetails = `
-SELECT
-  td.TASK_ID,
-  COUNT(*) AS detail_count
-FROM default_task.TSK_TASK_DETAIL td
-WHERE td.FACILITY_ID = '${FACILITY}'
-  AND td.TASK_ID IN (
-    SELECT t2.TASK_ID FROM default_task.TSK_TASK t2
-    WHERE t2.FACILITY_ID = '${FACILITY}'
-      AND t2.STATUS IN ('3000','5000','7000')
-      AND t2.TYPE_ID IN ('PICK/PACK','REPLENISHMENT','SINGLES_PICK')
-      AND (
-        t2.SOURCE_LOCATION_ID LIKE 'F1A%' OR t2.SOURCE_LOCATION_ID LIKE 'F1B%'
-        OR t2.SOURCE_LOCATION_ID LIKE 'F2C%' OR t2.SOURCE_LOCATION_ID LIKE 'P1C%'
-        OR t2.SOURCE_LOCATION_ID LIKE 'F1D%'
-        OR t2.SOURCE_LOCATION_ID LIKE 'R1B%' OR t2.SOURCE_LOCATION_ID LIKE 'R1C%'
-        OR t2.SOURCE_LOCATION_ID LIKE 'R1D%' OR t2.SOURCE_LOCATION_ID LIKE 'R1E%'
-        OR t2.SOURCE_LOCATION_ID LIKE 'R1F%'
-      )
-  )
-GROUP BY td.TASK_ID`.trim();
-
-  const [respTasks, respDetails] = await Promise.all([
-    mcpQuery(accessToken, sqlTasks),
-    mcpQuery(accessToken, sqlDetails).catch(() => ({ rows: [] })),
-  ]);
-
+  const respTasks = await mcpQuery(accessToken, sqlTasks);
   const detailMap = {};
-  for (const r of (respDetails.rows || [])) {
-    detailMap[r.TASK_ID] = Number(r.detail_count) || 0;
-  }
 
   const pdtOffset = -7 * 60;
   function toPdt(utcStr) {
