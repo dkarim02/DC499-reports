@@ -744,12 +744,22 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY PLANNING_STRATEGY_ID, CHASE_MODE
 ORDER BY wave_runs DESC`.trim();
 
-  const [respOrders, respShipped, respDailyTotals, respHourly, respWaves] = await Promise.all([
+  // Query 6: units currently located at D1-SN-01 (picked, staged, ready to pack)
+  const sqlRfp = `
+SELECT SUM(ON_HAND) AS units
+FROM default_dcinventory.DCI_INVENTORY
+WHERE FACILITY_ID = '${FACILITY}'
+  AND LOCATION_ID  = 'D1-SN-01'
+  AND ON_HAND > 0
+  AND ALLOCATED > 0`.trim();
+
+  const [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respRfp] = await Promise.all([
     mcpQuery(accessToken, sqlOrders),
     mcpQuery(accessToken, sqlShipped),
     mcpQuery(accessToken, sqlDailyTotals),
     mcpQuery(accessToken, sqlHourly),
     mcpQuery(accessToken, sqlWaves),
+    mcpQuery(accessToken, sqlRfp),
   ]);
 
   // Build a map of ORDER_ID → earliest line_date across open (non-packed, non-shipped) lines.
@@ -858,6 +868,8 @@ ORDER BY wave_runs DESC`.trim();
     .filter(b => b.date === todayStr || (b.ready + b.allocated + b.packed) > 0)
     .sort((a, b) => b.date.localeCompare(a.date));
 
+  const rfpUnits = Number((respRfp.rows || [])[0]?.units || 0);
+
   return {
     generated:   new Date().toISOString().slice(0, 19),
     facility:    FACILITY,
@@ -865,6 +877,7 @@ ORDER BY wave_runs DESC`.trim();
     dates:       datesArr,
     hourly,
     waves,
+    rfp_units:   rfpUnits,
     shift_label: is1st ? '1st shift' : '2nd shift',
   };
 }
