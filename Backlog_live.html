@@ -521,6 +521,7 @@
               <th class="r">Packed</th>
               <th class="r">Total Open</th>
               <th class="r">Shipped</th>
+              <th class="r">Total</th>
             </tr></thead>
             <tbody id="tb-dates"></tbody>
             <tfoot><tr>
@@ -530,6 +531,7 @@
               <td class="r" id="ft-packed"></td>
               <td class="r" id="ft-total"></td>
               <td class="r" id="ft-shipped"></td>
+              <td class="r" id="ft-grand"></td>
             </tr></tfoot>
           </table>
         </div>
@@ -1017,6 +1019,7 @@ function renderHourly(hourly) {
       '</div>';
   });
   html += '<div class="hourly-row" style="border-top:0.5px solid var(--border-mid);margin-top:4px;padding-top:8px;"><span class="hourly-range" style="font-weight:500;color:var(--text);">Avg / hr</span><span class="hourly-count" style="color:var(--accent);">' + lastAvgUph.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
+  html += '<div class="hourly-row"><span class="hourly-range" style="font-weight:500;color:var(--text);">Total</span><span class="hourly-count" style="color:var(--text);">' + total.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
   barsEl.innerHTML = html;
   card.style.display = 'block';
 }
@@ -1070,7 +1073,7 @@ function renderBacklogData(data) {
 
   data.dates.forEach(function(row) {
     var r=getCount(row,'READY'), a=getCount(row,'ALLOCATED'), p=getCount(row,'PACKED'), s=getCount(row,'SHIPPED');
-    var open=r+a+p;
+    var open=r+a+p, grand=open+s;
     totR+=r; totA+=a; totP+=p; totO+=open; totS+=s;
     var tr = document.createElement('tr');
 
@@ -1093,12 +1096,14 @@ function renderBacklogData(data) {
     dateTd.innerHTML=fmtDate(row.date)+(row.date===data.today?' <span style="font-size:10px;color:var(--text-hint);">today</span>':'');
     var openTd=document.createElement('td'); openTd.className='r'; openTd.style.fontWeight='500'; openTd.textContent=fmt(open);
     var shipTd=document.createElement('td'); shipTd.className='r'; shipTd.style.color='var(--text-hint)'; shipTd.textContent=fmt(s);
+    var grandTd=document.createElement('td'); grandTd.className='r'; grandTd.style.fontWeight='600'; grandTd.textContent=fmt(grand);
     tr.appendChild(dateTd);
     tr.appendChild(pillCell('READY',r,'pill-ready'));
     tr.appendChild(pillCell('ALLOCATED',a,'pill-alloc'));
     tr.appendChild(pillCell('PACKED',p,'pill-packed'));
     tr.appendChild(openTd);
     tr.appendChild(shipTd);
+    tr.appendChild(grandTd);
     tb.appendChild(tr);
   });
 
@@ -1107,6 +1112,7 @@ function renderBacklogData(data) {
   document.getElementById('ft-packed').textContent  = fmt(totP);
   document.getElementById('ft-total').textContent   = fmt(totO);
   document.getElementById('ft-shipped').textContent = fmt(totS);
+  document.getElementById('ft-grand').textContent   = fmt(totO+totS);
   document.getElementById('m-ready').textContent    = fmt(totR);
   document.getElementById('m-alloc').textContent    = fmt(totA);
   document.getElementById('m-packed').textContent   = fmt(totP);
@@ -1904,6 +1910,7 @@ function exportEodEmail() {
       html+='<tr><td style="'+row+(isPeak?'color:'+C.accent+';font-weight:700;':'')+'">'+fmtHourRange(r.hour)+'</td><td style="'+row+'text-align:right;font-weight:600;'+(isPeak?'color:'+C.accent+';':'')+'">'+fmtN(r.lines)+'</td></tr>';
     });
     html+='<tr><td style="'+tdA+'font-weight:700;color:'+C.accent+';">Avg / hr</td><td style="'+tdA+'text-align:right;font-weight:700;color:'+C.accent+';">'+avgUph.toLocaleString()+'</td></tr>';
+    html+='<tr><td style="'+tdA+'font-weight:700;color:'+C.text+';">Total</td><td style="'+tdA+'text-align:right;font-weight:700;color:'+C.text+';">'+totalLines.toLocaleString()+'</td></tr>';
     html+='</tbody></table></td></tr>';
   }
 
