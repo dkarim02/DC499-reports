@@ -1073,7 +1073,7 @@ function renderBacklogData(data) {
 
   data.dates.forEach(function(row) {
     var r=getCount(row,'READY'), a=getCount(row,'ALLOCATED'), p=getCount(row,'PACKED'), s=getCount(row,'SHIPPED');
-    var open=r+a+p, grand=open+s;
+    var open=r+a+p, grand=row.daily_total||0;
     totR+=r; totA+=a; totP+=p; totO+=open; totS+=s;
     var tr = document.createElement('tr');
 
@@ -1112,7 +1112,8 @@ function renderBacklogData(data) {
   document.getElementById('ft-packed').textContent  = fmt(totP);
   document.getElementById('ft-total').textContent   = fmt(totO);
   document.getElementById('ft-shipped').textContent = fmt(totS);
-  document.getElementById('ft-grand').textContent   = fmt(totO+totS);
+  var totGrand = (data.dates||[]).reduce(function(s,d){return s+(d.daily_total||0);},0);
+  document.getElementById('ft-grand').textContent   = fmt(totGrand);
   document.getElementById('m-ready').textContent    = fmt(totR);
   document.getElementById('m-alloc').textContent    = fmt(totA);
   document.getElementById('m-packed').textContent   = fmt(totP);
