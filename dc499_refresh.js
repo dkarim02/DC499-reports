@@ -827,10 +827,10 @@ ORDER BY wave_runs DESC`.trim();
   const waveTotal = Object.values(waveCounts).reduce((a,b) => a+b, 0);
   if (waveTotal > 0) waves.push({ type: 'Total', count: waveTotal });
 
-  // Keep dates that have any lines at all, sorted newest-first.
+  // Only show dates with open work (ready/allocated/packed) — shipped-only dates are clear.
   // Always include today even if empty so the page always has a "today" row.
   const datesArr = Object.values(buckets)
-    .filter(b => b.date === todayStr || (b.ready + b.allocated + b.packed + b.shipped) > 0)
+    .filter(b => b.date === todayStr || (b.ready + b.allocated + b.packed) > 0)
     .sort((a, b) => b.date.localeCompare(a.date));
 
   return {
