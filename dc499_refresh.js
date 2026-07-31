@@ -667,7 +667,6 @@ FROM default_dcorder.DCO_ORDER_LINE
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE  = 'ECOM'
   AND CANCELLED   = 0
-  AND STATUS     NOT IN ('SHIPPED')
   AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
   AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
 GROUP BY line_date, ORDER_ID, STATUS
@@ -802,10 +801,10 @@ ORDER BY wave_runs DESC`.trim();
   const waveTotal = Object.values(waveCounts).reduce((a,b) => a+b, 0);
   if (waveTotal > 0) waves.push({ type: 'Total', count: waveTotal });
 
-  // Keep dates that have at least one non-shipped open line, sorted newest-first.
+  // Keep dates that have any lines at all, sorted newest-first.
   // Always include today even if empty so the page always has a "today" row.
   const datesArr = Object.values(buckets)
-    .filter(b => b.date === todayStr || (b.ready + b.allocated + b.packed) > 0)
+    .filter(b => b.date === todayStr || (b.ready + b.allocated + b.packed + b.shipped) > 0)
     .sort((a, b) => b.date.localeCompare(a.date));
 
   return {
