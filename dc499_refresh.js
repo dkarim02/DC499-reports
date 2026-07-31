@@ -744,14 +744,13 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY PLANNING_STRATEGY_ID, CHASE_MODE
 ORDER BY wave_runs DESC`.trim();
 
-  // Query 6: units currently located at D1-SN-01 (picked, staged, ready to pack)
+  // Query 6: allocated iLPNs at D1-SN-01 (picked, staged, ready to pack). STATUS 5000 = allocated/active.
   const sqlRfp = `
-SELECT SUM(ON_HAND) AS units
-FROM default_dcinventory.DCI_INVENTORY
+SELECT COUNT(*) AS lpn_count
+FROM default_dcinventory.DCI_ILPN
 WHERE FACILITY_ID = '${FACILITY}'
-  AND LOCATION_ID  = 'D1-SN-01'
-  AND ON_HAND > 0
-  AND ALLOCATED > 0`.trim();
+  AND CURRENT_LOCATION_ID = 'D1-SN-01'
+  AND STATUS = '5000'`.trim();
 
   const [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respRfp] = await Promise.all([
     mcpQuery(accessToken, sqlOrders),
@@ -868,7 +867,7 @@ WHERE FACILITY_ID = '${FACILITY}'
     .filter(b => b.date === todayStr || (b.ready + b.allocated + b.packed) > 0)
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const rfpUnits = Number((respRfp.rows || [])[0]?.units || 0);
+  const rfpUnits = Number((respRfp.rows || [])[0]?.lpn_count || 0);
 
   return {
     generated:   new Date().toISOString().slice(0, 19),
