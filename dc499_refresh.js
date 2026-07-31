@@ -667,12 +667,28 @@ FROM default_dcorder.DCO_ORDER_LINE
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE  = 'ECOM'
   AND CANCELLED   = 0
+  AND STATUS NOT IN ('SHIPPED')
   AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
   AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
 GROUP BY line_date, ORDER_ID, STATUS
 ORDER BY line_date DESC, ORDER_ID`.trim();
 
-  // Query 2: raw total lines per date (all statuses, by creation date — used for daily Total column, unaffected by pooling)
+  // Query 2: shipped lines per date — kept separate so sqlOrders stays small and 7-day rows aren't cut off by row limit
+  const sqlShipped = `
+SELECT
+  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
+  COUNT(*) AS line_count
+FROM default_dcorder.DCO_ORDER_LINE
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_TYPE  = 'ECOM'
+  AND CANCELLED   = 0
+  AND STATUS      = 'SHIPPED'
+  AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
+  AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
+GROUP BY line_date
+ORDER BY line_date DESC`.trim();
+
+  // Query 4: raw total lines per date (all statuses, by creation date — used for daily Total column, unaffected by pooling)
   const sqlDailyTotals = `
 SELECT
   DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
@@ -700,7 +716,7 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY hour_pdt
 ORDER BY hour_pdt`.trim();
 
-  // Query 4: wave runs this shift
+  // Query 5: wave runs this shift
   // 2nd shift starts 1:40 PM PDT = 20:40 UTC, 1st shift starts 3:00 AM PDT = 10:00 UTC
   const nowUtc       = new Date();
   const nowUtcHour   = nowUtc.getUTCHours();
@@ -728,8 +744,9 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY PLANNING_STRATEGY_ID, CHASE_MODE
 ORDER BY wave_runs DESC`.trim();
 
-  const [respOrders, respDailyTotals, respHourly, respWaves] = await Promise.all([
+  const [respOrders, respShipped, respDailyTotals, respHourly, respWaves] = await Promise.all([
     mcpQuery(accessToken, sqlOrders),
+    mcpQuery(accessToken, sqlShipped),
     mcpQuery(accessToken, sqlDailyTotals),
     mcpQuery(accessToken, sqlHourly),
     mcpQuery(accessToken, sqlWaves),
@@ -783,6 +800,14 @@ ORDER BY wave_runs DESC`.trim();
         case 'SHIPPED':   b.shipped   += o.line_count; break;
       }
     }
+  }
+
+  // Inject shipped counts from dedicated shipped query (by creation date, not pooled)
+  for (const r of (respShipped.rows || [])) {
+    const dateStr = String(r.line_date || '').slice(0, 10);
+    if (dateStr.length < 10) continue;
+    const b = ensureBucket(dateStr);
+    b.shipped = Number(r.line_count);
   }
 
   // Build date → total map from raw daily totals query (unaffected by pooling)
