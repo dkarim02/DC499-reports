@@ -468,6 +468,31 @@ DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS li
 
 ---
 
+## Ready for Pack tile — Backlog_live.html (2026-07-30, COMPLETE)
+
+**Tile:** Amber/teal metric tile between Allocated and Packed in the Backlog metrics row.
+**Label:** "Ready for Pack" | Sub-label: "Units at D1-SN-01"
+**Color:** `--rfp` CSS variable (teal, distinct from Allocated's orange `--alloc`) — defined per theme.
+
+**Data source:** `default_dcinventory.DCI_ILPN` joined to `default_dcinventory.DCI_INVENTORY`
+```sql
+SELECT SUM(inv.ON_HAND) AS unit_count
+FROM default_dcinventory.DCI_ILPN ilpn
+JOIN default_dcinventory.DCI_INVENTORY inv ON inv.ILPN_ID = ilpn.ILPN_ID AND inv.FACILITY_ID = ilpn.FACILITY_ID
+WHERE ilpn.FACILITY_ID = '499'
+  AND ilpn.CURRENT_LOCATION_ID = 'D1-SN-01'
+  AND ilpn.STATUS = '5000'
+```
+
+**Key findings from research:**
+- D1-SN-01 = staging/induction location where picked carts are staged before pack station
+- `DCI_ILPN.STATUS = '5000'` = "Allocated" in MA's UI (fully allocated). STATUS 3000 = Not Allocated, 4000 = Partially Allocated
+- `DCI_INVENTORY` has multiple rows per iLPN — never use `SUM(ON_HAND)` directly on it without joining to DCI_ILPN first, or you get overcounting. Always join and filter by iLPN status.
+- `COUNT(*)` on DCI_ILPN gives LPN count (~295); `SUM(inv.ON_HAND)` via join gives unit count (~1,151)
+- `rfp_units` field written to `backlog_live.json` by `fetchBacklog()` in dc499_refresh.js
+
+---
+
 ## TSK_TASK_DETAIL — query limitation (2026-07-30)
 
 **Finding:** Any query on `default_task.TSK_TASK_DETAIL` that uses a subquery or broad filter times out after 30 seconds. Even filtering by `SOURCE_LOCATION_ID LIKE 'F1%'` times out. The table is too large to query without a very specific TASK_ID filter.
@@ -520,6 +545,9 @@ DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS li
 ### Batch/Backlog pages — remaining
 - [ ] Putwall column in batch display — join verified but needs multi-PW shift to confirm RESOURCE_GROUP_ID is populated correctly. See "Putwall → batch mapping research" section above.
 - [x] **Backlog order-date pooling** — DONE 2026-07-30. READY/RELEASED/ALLOCATED lines pool to order's earliest date; PACKED/SHIPPED keep their own date. sqlCounts query removed; totals now derived from pooled orders array.
+- [x] **Bridge Total row** — DONE 2026-07-30. Total row added below Avg/hr in both live widget and EOD email export.
+- [x] **Total column in Order Lines by Date** — DONE 2026-07-30. True full-day line count per date (all statuses, both shifts) via dedicated sqlDailyTotals query. Shown as rightmost column; footer sums it.
+- [x] **Ready for Pack tile** — DONE 2026-07-30. Teal tile between Allocated and Packed. Shows units (not LPN count) at D1-SN-01 from DCI_ILPN STATUS=5000 joined to DCI_INVENTORY. Color: `--rfp` CSS var, distinct from `--alloc`.
 
 ### EOD Email — remaining
 - [ ] Verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass) — confirm colors match screen
