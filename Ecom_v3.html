@@ -612,26 +612,33 @@ function renderLiveReport(d) {
       html += '<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total" style="color:var(--text-hint);">No data</span></div><div class="full-empty" style="padding:1rem;">No '+label+' transactions found</div></div>';
       return;
     }
-    var totals = sumRows(filtered, typ, function(e){ return TEAM.has(e); });
-    var sorted = Object.entries(totals).sort(function(a,b){return b[1]-a[1];});
-    var grand  = sorted.reduce(function(s,v){return s+v[1];},0);
-    if (!grand) return;
+    // Compute totals for ALL associates (no roster filter) so disabled ones still appear
+    var allTotals  = sumRows(filtered, typ, null);
+    var activeTotals = sumRows(filtered, typ, function(e){ return TEAM.has(e); });
+    // Sort: enabled first by value desc, then disabled by value desc
+    var roster = loadRoster();
+    var allSorted = Object.entries(allTotals).sort(function(a,b){return b[1]-a[1];});
+    var grand = Object.values(activeTotals).reduce(function(s,v){return s+v;},0);
+    if (!Object.keys(allTotals).length) return;
     html += '<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total">'+grand.toLocaleString()+'</span></div>';
     html += '<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th><th></th></tr></thead><tbody>';
-    sorted.forEach(function(entry, idx) {
-      var emp = entry[0], val = entry[1], pct = grand > 0 ? Math.round((val/grand)*100) : 0;
-      var short = emp.split('@')[0], trophy = idx===0 && sorted.length>1 ? ' &#x1F3C6;' : '';
-      var empKey = emp.replace(/[^a-z0-9]/gi,'_')+'_live_'+typ;
-      var roster = loadRoster();
+    var enabledIdx = 0;
+    allSorted.forEach(function(entry) {
+      var emp = entry[0], val = entry[1];
       var member = roster.find(function(m){ return m.email === emp; });
-      var isOn   = member ? member.enabled : true;
+      var isOn = member ? member.enabled : true;
+      var pct  = grand > 0 && isOn ? Math.round((val/grand)*100) : 0;
+      var short = emp.split('@')[0];
+      var trophy = isOn && enabledIdx === 0 && grand > 0 ? ' &#x1F3C6;' : '';
+      if (isOn) enabledIdx++;
       var btnLabel = isOn ? 'Disable' : 'Enable';
-      html += '<tr>';
-      html += '<td style="'+(isOn?'':'color:var(--text-hint);"')+'">'+short+trophy+'</td>';
-      html += '<td style="text-align:right;font-weight:500;">'+val.toLocaleString()+'</td>';
+      var mutedStyle = isOn ? '' : 'opacity:0.45;';
+      html += '<tr style="'+mutedStyle+'">';
+      html += '<td>'+short+trophy+'</td>';
+      html += '<td style="text-align:right;font-weight:500;">'+(isOn ? val.toLocaleString() : '<span style="color:var(--text-hint);">'+val.toLocaleString()+'</span>')+'</td>';
       html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill '+barClass+'" style="width:'+pct+'%"></div></div>';
-      html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+pct+'%</span></div></td>';
-      html += '<td><button class="full-side-disable-btn" data-emp="'+emp+'" data-typ="'+typ+'" onclick="toggleTMFromLive(this.dataset.emp)">'+btnLabel+'</button></td>';
+      html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+(isOn ? pct+'%' : '—')+'</span></div></td>';
+      html += '<td><button class="full-side-disable-btn" data-emp="'+emp+'" onclick="toggleTMFromLive(this.dataset.emp)">'+btnLabel+'</button></td>';
       html += '</tr>';
     });
     html += '</tbody><tfoot><tr><td>Total</td><td style="text-align:right;">'+grand.toLocaleString()+'</td><td></td><td></td></tr></tfoot></table></div>';
