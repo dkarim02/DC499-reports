@@ -214,14 +214,15 @@ function ts() {
 function shiftStartUtc() {
   const nowUtc = new Date();
   const h = nowUtc.getUTCHours();
-  // 2nd shift: starts 21:15 UTC (2:15 PM PDT). 1st shift: starts 13:00 UTC (6:00 AM PDT).
-  const is1st = h >= 13 && h < 21;
+  // 1st shift: 3:00 AM–2:00 PM PDT = 10:00–21:00 UTC
+  // 2nd shift: 2:15 PM–2:00 AM PDT = 21:15 UTC (next UTC day before 10:00)
+  const is1st = h >= 10 && h < 21;
   const start = new Date(nowUtc);
   if (is1st) {
-    start.setUTCHours(13, 0, 0, 0);
+    start.setUTCHours(10, 0, 0, 0);
   } else {
     start.setUTCHours(21, 15, 0, 0);
-    if (h < 21) start.setUTCDate(start.getUTCDate() - 1);
+    if (h < 10) start.setUTCDate(start.getUTCDate() - 1);
   }
   return {
     utc: start.toISOString().replace('T', ' ').slice(0, 19),
