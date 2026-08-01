@@ -565,7 +565,7 @@ function loadLiveData() {
 }
 
 function renderLiveReport(d) {
-  var meta  = document.getElementById('live-meta');
+  var meta    = document.getElementById('live-meta');
   var content = document.getElementById('live-content');
   if (!d || !d.rows || !d.rows.length) {
     if (content) content.innerHTML = '<div class="full-empty">No data in ecom_live.json — run Option 5 in dc499.bat to populate.</div>';
@@ -576,63 +576,78 @@ function renderLiveReport(d) {
   var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
   if (meta) meta.textContent = d.shift + ' shift · ' + d.row_count + ' events · updated ' + gen;
 
-  var TEAM = getTeamSet();
+  var TEAM  = getTeamSet();
+  var types = ['replen','putaway','picking','packing','shipping','sorting'];
 
-  // Compute dept totals directly using the same rules as processData()
-  var totals = { replen:0, putaway:0, picking:0, packing:0, shipping:0, sorting:0 };
-  var TYPES = {
-    replen:  ['iLPN Replen Fill','Retail iLPN Replen Pull','iLPN Replen Pull','iLPN Replen Fill Large','iLPN Replen Pull Large'],
-    putaway: ['System Directed Putaway','User Directed Putaway'],
-    picking: ['Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart'],
-    packing: ['NRDR CORE PACK FOR ECOM PACK STATION'],
-    shipping: getShift() === '1st' ? ['OB Putaway By Ship Via','NRDR Load Parcel Packages'] : ['OB Putaway By Ship Via'],
-    sorting: ['OB Sort To Putwall Cubby'],
-  };
-  var METRIC = { replen:'Completed Quantity', putaway:null, picking:'Quantity', packing:null, shipping:'Quantity', sorting:'Quantity' };
-
-  var seenShip = {};
-  d.rows.forEach(function(r) {
-    var emp = (r['Employee']||'').trim();
-    if (!TEAM.has(emp)) return;
-    var txId = (r['Transaction ID']||'').trim();
-    var qty  = parseFloat(r['Quantity'])||0;
-    var cqty = parseFloat(r['Completed Quantity'])||0;
-    var cid  = (r['Container ID']||'').trim();
-
-    Object.keys(TYPES).forEach(function(typ) {
-      if (TYPES[typ].indexOf(txId) === -1) return;
-      if (typ === 'sorting' && (r['Criteria']||'').trim() && r['Criteria'].trim() !== 'NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA') return;
-      if (typ === 'shipping') {
-        if (!cid) return;
-        var key = emp + '|' + cid;
-        if (seenShip[key]) return;
-        seenShip[key] = true;
-        totals.shipping += qty;
-        return;
-      }
-      var metricKey = METRIC[typ];
-      var val = metricKey === 'Completed Quantity' ? cqty : metricKey === 'Quantity' ? qty : 1;
-      totals[typ] += val;
+  // ── Summary tiles ──────────────────────────────────────────────────────────
+  var html = '<div class="card" style="margin-bottom:1rem;">';
+  html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary — Live</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+  types.forEach(function(typ) {
+    var txList = getTX()[typ], metricKey = FULL_METRIC[typ], color = FULL_COLORS[typ];
+    var filtered = d.rows.filter(function(r) {
+      if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
+      if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
+      return true;
     });
-  });
-
-  var LABELS = { replen:'Replenishment', putaway:'Putaway', picking:'Picking', packing:'Packing', shipping:'Shipping', sorting:'Sorting' };
-  var COLORS = { replen:'#185FA5', putaway:'#0F6E56', picking:'#9B4DCA', packing:'#E67E22', shipping:'#0E9E8E', sorting:'#C0392B' };
-
-  var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem;">';
-  Object.keys(totals).forEach(function(typ) {
-    var c = COLORS[typ];
-    html += '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;">';
-    html += '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">' + LABELS[typ] + '</div>';
-    html += '<div style="font-size:28px;font-weight:700;color:' + c + ';">' + totals[typ].toLocaleString() + '</div>';
+    var grand = sumRows(filtered, typ, function(e){ return TEAM.has(e); });
+    grand = Object.values(grand).reduce(function(s,v){return s+v;},0);
+    html += '<div class="full-tile" style="color:'+color+';">';
+    html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">'+FULL_LABELS[typ]+'</div>';
+    html += '<div style="font-size:18px;font-weight:500;color:var(--text);">'+grand.toLocaleString()+'</div>';
     html += '</div>';
+  });
+  html += '</div></div>';
+
+  // ── Per-dept associate tables ───────────────────────────────────────────────
+  html += '<div class="full-grid">';
+  types.forEach(function(typ) {
+    var txList = getTX()[typ], color = FULL_COLORS[typ], label = FULL_LABELS[typ], barClass = 'full-bar-'+typ;
+    var filtered = d.rows.filter(function(r) {
+      if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
+      if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
+      return true;
+    });
+    if (!filtered.length) {
+      html += '<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total" style="color:var(--text-hint);">No data</span></div><div class="full-empty" style="padding:1rem;">No '+label+' transactions found</div></div>';
+      return;
+    }
+    var totals = sumRows(filtered, typ, function(e){ return TEAM.has(e); });
+    var sorted = Object.entries(totals).sort(function(a,b){return b[1]-a[1];});
+    var grand  = sorted.reduce(function(s,v){return s+v[1];},0);
+    if (!grand) return;
+    html += '<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total">'+grand.toLocaleString()+'</span></div>';
+    html += '<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th><th></th></tr></thead><tbody>';
+    sorted.forEach(function(entry, idx) {
+      var emp = entry[0], val = entry[1], pct = grand > 0 ? Math.round((val/grand)*100) : 0;
+      var short = emp.split('@')[0], trophy = idx===0 && sorted.length>1 ? ' &#x1F3C6;' : '';
+      var empKey = emp.replace(/[^a-z0-9]/gi,'_')+'_live_'+typ;
+      var roster = loadRoster();
+      var member = roster.find(function(m){ return m.email === emp; });
+      var isOn   = member ? member.enabled : true;
+      var btnLabel = isOn ? 'Disable' : 'Enable';
+      html += '<tr>';
+      html += '<td style="'+(isOn?'':'color:var(--text-hint);"')+'">'+short+trophy+'</td>';
+      html += '<td style="text-align:right;font-weight:500;">'+val.toLocaleString()+'</td>';
+      html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill '+barClass+'" style="width:'+pct+'%"></div></div>';
+      html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+pct+'%</span></div></td>';
+      html += '<td><button class="full-side-disable-btn" data-emp="'+emp+'" data-typ="'+typ+'" onclick="toggleTMFromLive(this.dataset.emp)">'+btnLabel+'</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody><tfoot><tr><td>Total</td><td style="text-align:right;">'+grand.toLocaleString()+'</td><td></td><td></td></tr></tfoot></table></div>';
   });
   html += '</div>';
 
-  html += '<div style="font-size:12px;color:var(--text-hint);margin-bottom:0.5rem;">Dept totals · roster-filtered · <strong>' + (function(){ var n=0; d.rows.forEach(function(r){ if(TEAM.has((r['Employee']||'').trim())) n++; }); return n; })() + '</strong> of ' + d.row_count + ' events included</div>';
-  html += '<div style="font-size:11px;color:var(--text-hint);">Location filter for shared TX IDs not available in live mode — all putaway rows count as Ecom.</div>';
-
   if (content) content.innerHTML = html;
+}
+
+function toggleTMFromLive(emp) {
+  var roster = loadRoster();
+  var idx = roster.findIndex(function(m){ return m.email === emp; });
+  if (idx === -1) return;
+  roster[idx].enabled = !roster[idx].enabled;
+  saveRoster(roster);
+  if (liveData) renderLiveReport(liveData);
 }
 
 // ── SHIFT ──────────────────────────────────────────────
@@ -1436,6 +1451,7 @@ function toggleTMFromPanel(emp, typ) {
   saveRoster(roster);
   renderFullReport();
   if (_activeTile) setTimeout(function(){ renderSidePanel(_activeTile); }, 50);
+  if (liveData && document.getElementById('panel-live').className.includes('active')) renderLiveReport(liveData);
 }
 
 function setFullChartMode(mode) {
