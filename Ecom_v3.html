@@ -442,24 +442,8 @@
       <p class="roster-notice" style="margin-top:8px;">Switching shifts changes the active team roster and chart time window.</p>
     </div>
 
-    <!-- Roster -->
-    <div class="card">
-      <div class="roster-header">
-        <div class="roster-title">Team members <span id="shift-roster-label" style="font-size:12px;color:var(--text-hint);margin-left:4px;"></span> <span class="saved-badge" id="saved-badge">Saved &#x2713;</span></div>
-        <div class="roster-count" id="roster-count"></div>
-      </div>
-      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Changes save automatically and apply to reports instantly.</p>
-      <input type="text" class="roster-search" id="roster-search" placeholder="&#x1F50D; Search to toggle..." oninput="filterRoster(this.value)" />
-      <div class="roster-scroll"><div id="roster-list"></div><div class="roster-no-results" id="roster-no-results">No matches found</div></div>
-      <div class="add-row">
-        <input type="text" id="new-email" placeholder="associate@nordstrom.com" />
-        <button class="add-btn" onclick="addMember()">+ Add</button>
-      </div>
-      <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
-    </div>
-
     <!-- Dept Headcount -->
-    <div class="card" style="margin-top:1rem;">
+    <div class="card" style="margin-bottom:1rem;">
       <div class="roster-header">
         <div class="roster-title">Dept Headcount</div>
         <button class="add-btn" onclick="resetHeadcountToDetected()" style="font-size:11px;padding:4px 10px;">Reset to detected</button>
@@ -488,6 +472,22 @@
         </div>
         <button class="add-btn" onclick="resetPPHToDefaults()" style="width:100%;text-align:center;margin-top:8px;font-size:11px;padding:5px 10px;">Reset to defaults</button>
       </div>
+    </div>
+
+    <!-- Roster -->
+    <div class="card">
+      <div class="roster-header">
+        <div class="roster-title">Team members <span id="shift-roster-label" style="font-size:12px;color:var(--text-hint);margin-left:4px;"></span> <span class="saved-badge" id="saved-badge">Saved &#x2713;</span></div>
+        <div class="roster-count" id="roster-count"></div>
+      </div>
+      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Changes save automatically and apply to reports instantly.</p>
+      <input type="text" class="roster-search" id="roster-search" placeholder="&#x1F50D; Search to toggle..." oninput="filterRoster(this.value)" />
+      <div class="roster-scroll"><div id="roster-list"></div><div class="roster-no-results" id="roster-no-results">No matches found</div></div>
+      <div class="add-row">
+        <input type="text" id="new-email" placeholder="associate@nordstrom.com" />
+        <button class="add-btn" onclick="addMember()">+ Add</button>
+      </div>
+      <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
     </div>
 
     <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.0</p>
