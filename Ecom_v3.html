@@ -529,6 +529,7 @@ document.addEventListener('click', function(e){ var p=document.getElementById('t
 })();
 
 // ── TABS ───────────────────────────────────────────────
+var ACTIVE_TAB_KEY = 'ecom_active_tab_v1';
 function switchTab(tab) {
   document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
   document.getElementById('tab-live').className = 'tab' + (tab === 'live' ? ' active-full' : '');
@@ -536,6 +537,7 @@ function switchTab(tab) {
   ['full','live','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
+  try { localStorage.setItem(ACTIVE_TAB_KEY, tab); } catch(e) {}
   if (tab === 'settings') { renderRoster(); renderHeadcountCard(); }
   if (tab === 'full') { renderFullReport(); }
   if (tab === 'live') { loadLiveData(); }
@@ -2195,6 +2197,10 @@ function restoreTabOrder() {
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
 restoreTabOrder();
+(function() {
+  var saved; try { saved = localStorage.getItem(ACTIVE_TAB_KEY); } catch(e) {}
+  switchTab(saved && ['full','live','settings'].indexOf(saved) !== -1 ? saved : 'full');
+})();
 setShift(getShift());
 renderRoster();
 renderHeadcountCard();
