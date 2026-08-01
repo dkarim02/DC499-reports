@@ -26,7 +26,7 @@ SCOUT is a browser-based reporting suite deployed on GitHub Pages. It processes 
 | File | Version |
 |---|---|
 | Menu_v1.6.html | v1.7 |
-| Ecom_v3.html | v3.0 |
+| Ecom_v3.html | v3.0 (Live tab active) |
 | Reserve_v1_7.html | v1.7 |
 | ItemPrep_v2.0.html | v2.0 |
 | Receiving_v2.0.html | v2.0 |
@@ -39,6 +39,8 @@ SCOUT is a browser-based reporting suite deployed on GitHub Pages. It processes 
 | eos_agent.js | current |
 | eos.bat | current |
 | dc499.bat | current |
+| scout_ecom_agent.js | current |
+| ecom_live.json | written by scout_ecom_agent.js |
 | dc499_refresh.js | current |
 | dc499_watchdog.ps1 | current |
 | dc499_watchdog_setup.bat | current |
@@ -151,6 +153,9 @@ git push origin main
 2. Start live server on :3001
 3. Start live server + open Receiving Live
 4. First-time auth / re-auth
+5. Ecom Live — one-shot refresh (runs scout_ecom_agent.js)
+6. Ecom Live — auto-refresh every 5 min (--serve --interval=5)
+7. Ecom Live — auth
 
 **Auth / token expiry handling:**
 - `AUTH_PIN = '020405'` — anyone can hit `localhost:3001/auth?pin=020405` to trigger re-auth without the server PC password
@@ -537,6 +542,92 @@ WHERE ilpn.FACILITY_ID = '499'
 
 ---
 
+## Ecom Live tab (scout_ecom_agent.js)
+
+**What it is:** A second tab in Ecom_v3.html backed by MAWM direct queries instead of CSV uploads. Supplement to the Full Report — eventually a replacement.
+
+**Agent:** `scout_ecom_agent.js` — Node.js, same OAuth pattern as dc499_refresh.js. ALWAYS launch via dc499.bat options 5/6/7, never node directly.
+
+**Output:** `ecom_live.json` — written locally and pushed to GitHub each cycle.
+
+**ecom_live.json structure:**
+```json
+{
+  "generated": "ISO timestamp",
+  "shift": "1st" | "2nd",
+  "shift_start": "UTC datetime",
+  "facility": "499",
+  "row_count": 12492,
+  "truncated": false,
+  "rows": [ { CSV-compatible column names } ]
+}
+```
+
+**Row columns (aliased to CSV names):** Employee, Transaction ID, Activity Datetime, Quantity, Completed Quantity, CP Trace Id, Container ID, Current Location, Previous Location, Criteria
+
+**Query table:** `default_task.TSK_ACTIVITY_TRACKING` — scan-level, one row per item scan. CREATED_TIMESTAMP is indexed (use for WHERE); ACTIVITY_DATE_TIME is not.
+
+**Three query groups (to stay under MCP ~10k row cap):**
+- Group A: replen + putaway (iLPN Replen Fill/Pull variants, System/User Directed Putaway)
+- Group B: picking + shipping + sorting (Ecom Mezz/Non-Mezz Pick, OB Putaway By Ship Via, NRDR Load Parcel Packages, OB Sort To Putwall Cubby)
+- Group C: packing alone (NRDR CORE PACK FOR ECOM PACK STATION) — split out because packing alone generates ~2,700 rows
+
+**Truncation warning:** `truncated: true` written to JSON if any group hits 9,500 rows. Live tab meta line turns amber. If a group needs further splitting, add a Group D.
+
+**Shift start times (UTC):**
+- 2nd shift: 21:10 UTC (2:10 PM PDT)
+- 1st shift: 10:00 UTC (3:00 AM PDT)
+- Boundary: `is1st = h >= 10 && h < 21`
+
+**Missing TX type found 2026-07-31:** `Returns System Directed Putaway` — 43 rows, not in any group yet. Decision pending: does it count toward Putaway or excluded?
+
+**Live tab features:**
+- Summary tiles — clickable, expand per-dept associate table below
+- PPH pace bars on each tile — same `getTilePace()` as Full Report, reads Settings headcount + PPH targets
+- Enabled/Inactive separator in associate tables — only roster members shown; non-roster omitted
+- Send to Teams button — same Adaptive Card as Full Report, includes data timestamp
+- NAIL button — writes to same `ntp_dc499_v1` localStorage key as Full Report NAIL
+- Refresh button — re-fetches ecom_live.json from GitHub Pages or localhost:3001
+- Tab order — draggable, persisted to `ecom_tab_order_v1` localStorage
+- Active tab — persisted to `ecom_active_tab_v1` localStorage, restored on page load
+
+**Dedup behavior (Live vs Full Report):**
+- Full Report: cross-file-only dedup — within-file duplicates kept (legitimate same-second scans)
+- Live: no dedup needed — MAWM TSK_ACTIVITY_TRACKING stores one row per scan; no within-file duplicates
+- Live row counts will be slightly higher than CSV late in shift (CSV exported mid-shift misses later scans)
+
+**Accuracy notes verified 2026-07-31:**
+- Packing: MAWM 2,658 rows vs CSV 2,543 — gap is mid-shift CSV export, not a bug
+- Shipping: MAWM 1,701 rows / 2,539 qty vs CSV 1,570 / 2,337 — same reason
+- No pre-shift rows found (CREATED_TIMESTAMP filter at 21:10 UTC is clean for packing)
+
+---
+
+## Lost Tote Lookup — brainstorm (2026-07-31, NOT YET BUILT)
+
+**Problem:** When a tote is lost, supervisor must look up: tote ID → order/destination → items → where to repick each item.
+
+**Requires PC server (Path A):** On-demand query from browser — type tote ID, get back order + items + floor locations in ~2s. Best architecture. Key IT talking point.
+
+**Tables to explore:**
+- `default_pickpack.PPK_OLPN` — tote record, status, last known location, order ID
+- `PPK_OLPN_DETAIL` or order line table — items/SKUs in tote (needs verification)
+- `default_dcinventory.DCI_ILPN` + `DCI_INVENTORY` — floor locations with available inventory for repick
+
+**Status:** MAWM table structure not yet verified for this use case. Next step: probe PPK_OLPN_DETAIL schema and confirm repick location join.
+
+---
+
+## PWA / iPad app — brainstorm (2026-07-31, NOT YET BUILT)
+
+**Easiest path:** PWA (Progressive Web App) — add manifest.json + service worker to existing pages. On iPad: Safari → Share → Add to Home Screen → launches full-screen like native app. No App Store, no Apple Developer account, no rewrite. ~30 min build.
+
+**Live data on iPad:** Pages served from GitHub Pages already work on iPad. Backlog/Batches/Totes (localhost:3001) need `getLiveBase()` updated to use LAN IP (e.g. 192.168.x.x:3001) instead of localhost.
+
+**Not worth it:** Native iOS (Swift rewrite + $99/yr Apple Developer) or Capacitor (still needs Mac + Apple account).
+
+---
+
 ## Pending work
 
 ### EOS system — remaining fixes
@@ -560,11 +651,25 @@ WHERE ilpn.FACILITY_ID = '499'
 ### Condition codes — blocked
 - Cannot build — condition code data visible in MA's Location Inventory screen is not accessible via MCP connector. See "Condition codes research" section above.
 
+### Ecom Live — remaining
+- [ ] `Returns System Directed Putaway` — decide whether to add to Group A (putaway) or exclude
+- [ ] Per-dept pace indicator on tiles already done — consider adding active TM count + shift progress bar
+- [ ] Eventually replace Full Report CSV tab entirely with Live tab
+
+### Lost Tote Lookup — new
+- [ ] Verify PPK_OLPN_DETAIL schema and repick location join via MAWM MCP
+- [ ] Build requires PC server (localhost endpoint) — good IT talking point
+
+### PWA / iPad — new
+- [ ] Add manifest.json + service worker to key pages
+- [ ] Update getLiveBase() to accept LAN IP for iPad → localhost:3001 routing
+
 ### Other pending
 - [ ] changelog.json update — after full go-live
 - [ ] Wave progress report — default_dcorder.DCO_WAVE_AGGREGATE_ORDER
 - [ ] Timeclock report — default_timeclock
 - [ ] GitHub Pro ($4/month) for private repo + Pages
+- [ ] IT conversation re: server hosting — use PC vs server comparison in memory + lost tote lookup as demo
 
 ---
 
