@@ -390,7 +390,11 @@
         <div style="font-size:15px;font-weight:600;color:var(--text);">&#x26A1; Ecom Live</div>
         <div style="font-size:12px;color:var(--text-hint);margin-top:2px;" id="live-meta">Loading...</div>
       </div>
-      <button onclick="loadLiveData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="sendLiveToTeams(this)" style="font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #6264A7;border-radius:6px;background:#f0f0fa;color:#6264A7;cursor:pointer;">&#x1F4E8; Send to Teams</button>
+        <button onclick="nailFromLive(this)" style="font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #1a6b2f;border-radius:6px;background:#e6f4eb;color:#1a6b2f;cursor:pointer;font-weight:600;">&#x1F4CC; NAIL</button>
+        <button onclick="loadLiveData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
+      </div>
     </div>
     <div id="live-content">
       <div class="full-empty">Loading live data...</div>
@@ -675,6 +679,112 @@ function toggleTMFromLive(emp) {
   roster[idx].enabled = !roster[idx].enabled;
   saveRoster(roster);
   if (liveData) renderLiveReport(liveData);
+}
+
+function getLiveDeptTotals() {
+  if (!liveData || !liveData.rows) return null;
+  var TEAM = getTeamSet(), totals = {};
+  ['replen','putaway','picking','packing','shipping','sorting'].forEach(function(typ) {
+    var txList = getTX()[typ];
+    var filtered = liveData.rows.filter(function(r) {
+      if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
+      if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
+      return true;
+    });
+    var empTotals = sumRows(filtered, typ, function(e){ return TEAM.has(e); });
+    totals[typ] = Object.values(empTotals).reduce(function(s,v){return s+v;},0);
+  });
+  return totals;
+}
+
+async function sendLiveToTeams(btn) {
+  if (!liveData || !liveData.rows || !liveData.rows.length) { alert('No live data — run Option 5 in dc499.bat first.'); return; }
+  var currentShift = getShift();
+  var webhook = TEAMS_WEBHOOKS[currentShift];
+  if (!webhook || webhook.startsWith('PASTE_')) { alert('No Teams webhook configured for ' + currentShift + ' shift.'); return; }
+  var orig = btn.textContent;
+  btn.textContent = '⏳ Sending…';
+  btn.disabled = true;
+  var totals = getLiveDeptTotals();
+  var ts = new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  var shift = currentShift + ' shift';
+  var gen = liveData.generated ? ' · data from ' + new Date(liveData.generated).toLocaleTimeString('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit'}) : '';
+  var card = {
+    "type": "message",
+    "attachments": [{
+      "contentType": "application/vnd.microsoft.card.adaptive",
+      "content": {
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "type": "AdaptiveCard",
+        "version": "1.4",
+        "body": [
+          {
+            "type": "Container", "style": "emphasis",
+            "items": [{"type":"ColumnSet","columns":[
+              {"type":"Column","width":"auto","items":[{"type":"TextBlock","text":"DC499 · Ecom Live","weight":"Bolder","size":"Medium","color":"Light"}]},
+              {"type":"Column","width":"stretch","items":[{"type":"TextBlock","text":shift + " · " + ts + gen,"color":"Light","isSubtle":true,"horizontalAlignment":"Right"}]}
+            ]}]
+          },
+          {"type":"TextBlock","text":"SHIFT SUMMARY","size":"Small","weight":"Bolder","color":"Accent","spacing":"Medium"},
+          {"type":"ColumnSet","columns":[
+            {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"REPLEN","size":"Small","weight":"Bolder","color":"Accent"},{"type":"TextBlock","text":totals.replen.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}]},
+            {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"PUTAWAY","size":"Small","weight":"Bolder","color":"Good"},{"type":"TextBlock","text":totals.putaway.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}]},
+            {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"PICKING","size":"Small","weight":"Bolder","color":"Warning"},{"type":"TextBlock","text":totals.picking.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}]}
+          ]},
+          {"type":"ColumnSet","columns":[
+            {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"PACKING","size":"Small","weight":"Bolder","color":"Warning"},{"type":"TextBlock","text":totals.packing.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}]},
+            {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"SHIPPING","size":"Small","weight":"Bolder","color":"Good"},{"type":"TextBlock","text":totals.shipping.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}]},
+            {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"SORTING","size":"Small","weight":"Bolder","color":"Attention"},{"type":"TextBlock","text":totals.sorting.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"}]}
+          ]},
+          {"type":"TextBlock","text":"Throughput only · not for performance evaluation · DC499 Reporter","size":"Small","isSubtle":true,"wrap":true,"spacing":"Medium"}
+        ]
+      }
+    }]
+  };
+  try {
+    var res = await fetch(webhook, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(card) });
+    if (res.ok || res.status === 202) {
+      btn.textContent = '✓ Sent!';
+      setTimeout(function(){ btn.textContent = orig; btn.disabled = false; }, 3000);
+    } else { throw new Error('HTTP ' + res.status); }
+  } catch(e) {
+    btn.textContent = '⚠ Failed';
+    btn.style.color = '#C0392B';
+    setTimeout(function(){ btn.textContent = orig; btn.disabled = false; btn.style.color = ''; }, 4000);
+  }
+}
+
+function nailFromLive(btn) {
+  if (!liveData || !liveData.rows || !liveData.rows.length) { alert('No live data — run Option 5 in dc499.bat first.'); return; }
+  var block = ntpCurrentBlock();
+  if (!block) { alert('Outside shift hours — no active Nail the Plan checkpoint right now.'); return; }
+  var totals   = getLiveDeptTotals();
+  var hc       = loadHeadcount().counts;
+  var pph      = loadPPH();
+  var shiftHrs = getShiftHours();
+  var cpKey    = block.shift + '|' + block.cp;
+  var state;
+  try { state = JSON.parse(localStorage.getItem(NTP_KEY) || 'null'); } catch(e) { state = null; }
+  if (!state) state = {};
+  if (!state.data) state.data = {};
+  if (!state.meta) state.meta = { date: new Date().toLocaleDateString('en-CA'), updatedAt: null };
+  if (!state.data['Ecom']) state.data['Ecom'] = {};
+  ['replen','putaway','picking','packing','shipping','sorting'].forEach(function(dept) {
+    var proc = NTP_PROC[dept];
+    if (!state.data['Ecom'][proc]) state.data['Ecom'][proc] = {};
+    var rec = state.data['Ecom'][proc][cpKey] || {};
+    rec.act_u      = totals[dept] || 0;
+    rec.act_f      = totals[dept] || 0;
+    rec.act_hc     = hc[dept]     || 0;
+    rec.shiftHours = shiftHrs;
+    state.data['Ecom'][proc][cpKey] = rec;
+  });
+  state.meta.updatedAt = new Date().toISOString();
+  try { localStorage.setItem(NTP_KEY, JSON.stringify(state)); } catch(e) { alert('Could not write to localStorage.'); return; }
+  var label = block.shift + ' Shift ' + block.cp;
+  if (btn) { btn.textContent = '✓ Nailed'; btn.disabled = true; setTimeout(function(){ btn.textContent = '📌 NAIL'; btn.disabled = false; }, 3000); }
+  var base = window.location.href.replace(/\/[^\/]*$/, '/');
+  window.open(base + NTP_FILE, '_blank');
 }
 
 // ── SHIFT ──────────────────────────────────────────────

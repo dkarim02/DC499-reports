@@ -63,8 +63,8 @@ if "%choice%"=="5" (
 )
 if "%choice%"=="6" (
     echo.
-    echo Starting Ecom Live auto-refresh every 30 min...
-    "%NODE_EXE%" "%~dp0scout_ecom_agent.js" --serve
+    echo Starting Ecom Live auto-refresh every 5 min...
+    "%NODE_EXE%" "%~dp0scout_ecom_agent.js" --serve --interval=5
     pause
     exit /b
 )
