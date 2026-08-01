@@ -36,7 +36,10 @@ const INTERVAL   = (() => {
   return f ? parseInt(f.split('=')[1]) * 60 * 1000 : 30 * 60 * 1000; // default 30 min
 })();
 
-// ── Ecom transaction IDs — split into two groups to stay under MCP ~10k row cap ─
+// ── Ecom transaction IDs — three groups to stay under MCP ~10k row cap ──────────
+// Group A: replen + putaway        (~2k rows typical)
+// Group B: picking + shipping + sorting  (~6k rows typical)
+// Group C: packing alone           (~3k rows typical — was blowing up Group B)
 const ECOM_TX_A = [
   'iLPN Replen Fill',
   'Retail iLPN Replen Pull',
@@ -49,10 +52,12 @@ const ECOM_TX_A = [
 const ECOM_TX_B = [
   'Ecom Mezz Pick To Putwall Cart',
   'Ecom Non-Mezz Pick To Putwall Cart',
-  'NRDR CORE PACK FOR ECOM PACK STATION',
   'OB Putaway By Ship Via',
   'NRDR Load Parcel Packages',
   'OB Sort To Putwall Cubby',
+];
+const ECOM_TX_C = [
+  'NRDR CORE PACK FOR ECOM PACK STATION',
 ];
 
 // ── OAuth (copied from dc499_refresh.js) ───────────────────────────────────────
@@ -257,20 +262,26 @@ ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 async function fetchEcomLive(accessToken) {
   const { utc: shiftStart, label: shift } = shiftStartUtc();
 
-  console.log(`[${ts()}] Querying Ecom group A (replen/putaway) since ${shiftStart}...`);
+  console.log(`[${ts()}] Querying Group A (replen/putaway) since ${shiftStart}...`);
   const respA = await mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_A));
   const rowsA = respA.rows || [];
   console.log(`[${ts()}] Group A: ${rowsA.length} rows`);
-  if (rowsA.length >= 9500) console.warn(`[${ts()}] ⚠ Group A hit row cap — replen/putaway data may be truncated`);
+  if (rowsA.length >= 9500) console.warn(`[${ts()}] ⚠ Group A hit row cap — replen/putaway may be truncated`);
 
-  console.log(`[${ts()}] Querying Ecom group B (picking/packing/shipping/sorting)...`);
+  console.log(`[${ts()}] Querying Group B (picking/shipping/sorting)...`);
   const respB = await mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_B));
   const rowsB = respB.rows || [];
   console.log(`[${ts()}] Group B: ${rowsB.length} rows`);
-  if (rowsB.length >= 9500) console.warn(`[${ts()}] ⚠ Group B hit row cap — picking/packing/shipping/sorting data may be truncated`);
+  if (rowsB.length >= 9500) console.warn(`[${ts()}] ⚠ Group B hit row cap — picking/shipping/sorting may be truncated`);
 
-  const rows = rowsA.concat(rowsB);
-  const truncated = rowsA.length >= 9500 || rowsB.length >= 9500;
+  console.log(`[${ts()}] Querying Group C (packing)...`);
+  const respC = await mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_C));
+  const rowsC = respC.rows || [];
+  console.log(`[${ts()}] Group C: ${rowsC.length} rows`);
+  if (rowsC.length >= 9500) console.warn(`[${ts()}] ⚠ Group C hit row cap — packing may be truncated`);
+
+  const rows = rowsA.concat(rowsB, rowsC);
+  const truncated = rowsA.length >= 9500 || rowsB.length >= 9500 || rowsC.length >= 9500;
   console.log(`[${ts()}] Total: ${rows.length} rows combined${truncated ? ' ⚠ (truncated)' : ''}`);
 
   const output = {
