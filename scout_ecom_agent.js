@@ -36,9 +36,8 @@ const INTERVAL   = (() => {
   return f ? parseInt(f.split('=')[1]) * 60 * 1000 : 30 * 60 * 1000; // default 30 min
 })();
 
-// ── Ecom transaction IDs (matches CLAUDE.md) ───────────────────────────────────
-// All transaction types we query — aliased to CSV Transaction ID names in SQL
-const ECOM_TX = [
+// ── Ecom transaction IDs — split into two groups to stay under MCP ~10k row cap ─
+const ECOM_TX_A = [
   'iLPN Replen Fill',
   'Retail iLPN Replen Pull',
   'iLPN Replen Pull',
@@ -46,6 +45,8 @@ const ECOM_TX = [
   'iLPN Replen Pull Large',
   'System Directed Putaway',
   'User Directed Putaway',
+];
+const ECOM_TX_B = [
   'Ecom Mezz Pick To Putwall Cart',
   'Ecom Non-Mezz Pick To Putwall Cart',
   'NRDR CORE PACK FOR ECOM PACK STATION',
@@ -230,17 +231,10 @@ function shiftStartUtc() {
   };
 }
 
-// ── main fetch ─────────────────────────────────────────────────────────────────
-async function fetchEcomLive(accessToken) {
-  const { utc: shiftStart, label: shift } = shiftStartUtc();
-
-  // Build quoted list for SQL IN clause
-  const txList = ECOM_TX.map(t => `'${t.replace(/'/g, "''")}'`).join(',');
-
-  // Source: default_task.TSK_ACTIVITY_TRACKING — scan-level records, one row per item scan,
-  // matching the CSV exactly. CREATED_TIMESTAMP is indexed; ACTIVITY_DATE_TIME is not.
-  // Columns aliased to CSV names so processData() in Ecom_v3.html works without changes.
-  const sql = `
+// ── SQL builder ────────────────────────────────────────────────────────────────
+function buildSql(shiftStart, txGroup) {
+  const txList = txGroup.map(t => `'${t.replace(/'/g, "''")}'`).join(',');
+  return `
 SELECT
   t.USER_ID                                              AS \`Employee\`,
   t.TRANSACTION_ID                                       AS \`Transaction ID\`,
@@ -257,18 +251,27 @@ WHERE t.FACILITY_ID = '${FACILITY}'
   AND t.CREATED_TIMESTAMP >= '${shiftStart}'
   AND t.TRANSACTION_ID IN (${txList})
 ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
+}
 
-  console.log(`[${ts()}] Querying Ecom transactions since ${shiftStart}...`);
-  const resp = await mcpQuery(accessToken, sql);
-  const rows = resp.rows || [];
-  console.log(`[${ts()}] ${rows.length} rows returned`);
-  if (rows.length >= 9500) {
-    console.warn(`[${ts()}] ⚠ WARNING: ${rows.length} rows — approaching MCP row cap (~10,000). Data may be truncated. Consider splitting into two queries by TX group.`);
-  }
+// ── main fetch ─────────────────────────────────────────────────────────────────
+async function fetchEcomLive(accessToken) {
+  const { utc: shiftStart, label: shift } = shiftStartUtc();
 
-  // Location filter note: SOURCE_LOCATION_ID mapped to 'Current Location'.
-  // The browser's isEcomRow() zone filter (Zone H = Reserve) will now work correctly
-  // for shared TX IDs (System/User Directed Putaway, iLPN Replen Fill/Pull variants).
+  console.log(`[${ts()}] Querying Ecom group A (replen/putaway) since ${shiftStart}...`);
+  const respA = await mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_A));
+  const rowsA = respA.rows || [];
+  console.log(`[${ts()}] Group A: ${rowsA.length} rows`);
+  if (rowsA.length >= 9500) console.warn(`[${ts()}] ⚠ Group A hit row cap — replen/putaway data may be truncated`);
+
+  console.log(`[${ts()}] Querying Ecom group B (picking/packing/shipping/sorting)...`);
+  const respB = await mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_B));
+  const rowsB = respB.rows || [];
+  console.log(`[${ts()}] Group B: ${rowsB.length} rows`);
+  if (rowsB.length >= 9500) console.warn(`[${ts()}] ⚠ Group B hit row cap — picking/packing/shipping/sorting data may be truncated`);
+
+  const rows = rowsA.concat(rowsB);
+  const truncated = rowsA.length >= 9500 || rowsB.length >= 9500;
+  console.log(`[${ts()}] Total: ${rows.length} rows combined${truncated ? ' ⚠ (truncated)' : ''}`);
 
   const output = {
     generated:   new Date().toISOString(),
@@ -276,7 +279,7 @@ ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
     shift_start:  shiftStart,
     facility:     FACILITY,
     row_count:    rows.length,
-    truncated:    rows.length >= 9500,
+    truncated:    truncated,
     rows:         rows,
   };
 
