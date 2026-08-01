@@ -360,9 +360,9 @@
 
   <!-- TABS -->
   <div class="tabs">
-    <div class="tabs-left">
-      <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
-      <button class="tab" id="tab-live" onclick="switchTab('live')" style="color:var(--text-muted);">&#x26A1; Live</button>
+    <div class="tabs-left" id="tabs-left">
+      <button class="tab active-full" id="tab-full" draggable="true" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
+      <button class="tab" id="tab-live" draggable="true" onclick="switchTab('live')" style="color:var(--text-muted);">&#x26A1; Live</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -2142,8 +2142,59 @@ function fetchBacklogStrip() {
     .catch(function() {}); // fail silently
 }
 
+// ── TAB DRAG REORDER ───────────────────────────────────
+var TAB_ORDER_KEY = 'ecom_tab_order_v1';
+var _dragSrcTab = null;
+
+function saveTabOrder() {
+  var order = Array.from(document.querySelectorAll('#tabs-left .tab')).map(function(b){ return b.id; });
+  try { localStorage.setItem(TAB_ORDER_KEY, JSON.stringify(order)); } catch(e) {}
+}
+
+function restoreTabOrder() {
+  try {
+    var order = JSON.parse(localStorage.getItem(TAB_ORDER_KEY) || 'null');
+    if (!order || !Array.isArray(order)) return;
+    var container = document.getElementById('tabs-left');
+    order.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) container.appendChild(el);
+    });
+  } catch(e) {}
+}
+
+(function() {
+  var container = document.getElementById('tabs-left');
+  container.addEventListener('dragstart', function(e) {
+    var tab = e.target.closest('.tab');
+    if (!tab) return;
+    _dragSrcTab = tab;
+    tab.style.opacity = '0.4';
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  container.addEventListener('dragend', function(e) {
+    var tab = e.target.closest('.tab');
+    if (tab) tab.style.opacity = '';
+    _dragSrcTab = null;
+  });
+  container.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    var tab = e.target.closest('.tab');
+    if (!tab || tab === _dragSrcTab) return;
+    var rect = tab.getBoundingClientRect();
+    var after = e.clientX > rect.left + rect.width / 2;
+    container.insertBefore(_dragSrcTab, after ? tab.nextSibling : tab);
+  });
+  container.addEventListener('drop', function(e) {
+    e.preventDefault();
+    saveTabOrder();
+  });
+})();
+
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
+restoreTabOrder();
 setShift(getShift());
 renderRoster();
 renderHeadcountCard();
