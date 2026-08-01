@@ -584,7 +584,11 @@ function renderLiveReport(d) {
   }
 
   var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
-  if (meta) meta.textContent = d.shift + ' shift · ' + d.row_count + ' events · updated ' + gen;
+  var truncWarn = d.truncated ? ' · ⚠ row cap hit — data may be incomplete' : '';
+  if (meta) {
+    meta.textContent = d.shift + ' shift · ' + d.row_count + ' events · updated ' + gen + truncWarn;
+    meta.style.color = d.truncated ? '#b45309' : '';
+  }
 
   var TEAM  = getTeamSet();
   var types = ['replen','putaway','picking','packing','shipping','sorting'];

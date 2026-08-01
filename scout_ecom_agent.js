@@ -214,13 +214,13 @@ function ts() {
 function shiftStartUtc() {
   const nowUtc = new Date();
   const h = nowUtc.getUTCHours();
-  // 2nd shift: starts 21:00 UTC (2:00 PM PDT). 1st shift: starts 13:00 UTC (6:00 AM PDT).
+  // 2nd shift: starts 21:15 UTC (2:15 PM PDT). 1st shift: starts 13:00 UTC (6:00 AM PDT).
   const is1st = h >= 13 && h < 21;
   const start = new Date(nowUtc);
   if (is1st) {
     start.setUTCHours(13, 0, 0, 0);
   } else {
-    start.setUTCHours(21, 0, 0, 0);
+    start.setUTCHours(21, 15, 0, 0);
     if (h < 21) start.setUTCDate(start.getUTCDate() - 1);
   }
   return {
@@ -236,39 +236,38 @@ async function fetchEcomLive(accessToken) {
   // Build quoted list for SQL IN clause
   const txList = ECOM_TX.map(t => `'${t.replace(/'/g, "''")}'`).join(',');
 
-  // Single query — all Ecom transactions this shift.
-  // Columns aliased to match CSV column names that processData() in Ecom_v3.html expects.
-  // TASK_ID used as dedup key (equivalent to Transaction ID + Activity Datetime in CSV).
-  // START_DATETIME is UTC ISO — parseDT() in the browser handles it fine.
+  // Source: default_task.TSK_ACTIVITY_TRACKING — scan-level records, one row per item scan,
+  // matching the CSV exactly. CREATED_TIMESTAMP is indexed; ACTIVITY_DATE_TIME is not.
+  // Columns aliased to CSV names so processData() in Ecom_v3.html works without changes.
   const sql = `
 SELECT
-  h.USER_ID                                        AS \`Employee\`,
-  h.TRANSACTION_ID                                 AS \`Transaction ID\`,
-  CONVERT_TZ(h.START_DATETIME, '+00:00', '-07:00') AS \`Activity Datetime\`,
-  h.QUANTITY                                       AS \`Quantity\`,
-  h.QUANTITY                                       AS \`Completed Quantity\`,
-  h.TASK_ID                                        AS \`CP Trace Id\`,
-  h.TASK_ID                                        AS \`Container ID\`,
-  ''                                               AS \`Current Location\`,
-  ''                                               AS \`Previous Location\`,
-  ''                                               AS \`Criteria\`
-FROM default_lmcore.LMC_EVENT_SUMMARY_HEADER h
-WHERE h.FACILITY_ID = '${FACILITY}'
-  AND h.START_DATETIME >= '${shiftStart}'
-  AND h.TRANSACTION_ID IN (${txList})
-ORDER BY h.START_DATETIME ASC`.trim();
+  t.USER_ID                                              AS \`Employee\`,
+  t.TRANSACTION_ID                                       AS \`Transaction ID\`,
+  CONVERT_TZ(t.ACTIVITY_DATE_TIME, '+00:00', '-07:00')   AS \`Activity Datetime\`,
+  t.QUANTITY                                             AS \`Quantity\`,
+  t.COMPLETED_QUANTITY                                   AS \`Completed Quantity\`,
+  t.TRACE_ID                                             AS \`CP Trace Id\`,
+  t.CONTAINER_ID                                         AS \`Container ID\`,
+  t.SOURCE_LOCATION_ID                                   AS \`Current Location\`,
+  ''                                                     AS \`Previous Location\`,
+  t.CRITERIA_ID                                          AS \`Criteria\`
+FROM default_task.TSK_ACTIVITY_TRACKING t
+WHERE t.FACILITY_ID = '${FACILITY}'
+  AND t.CREATED_TIMESTAMP >= '${shiftStart}'
+  AND t.TRANSACTION_ID IN (${txList})
+ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 
   console.log(`[${ts()}] Querying Ecom transactions since ${shiftStart}...`);
   const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
   console.log(`[${ts()}] ${rows.length} rows returned`);
+  if (rows.length >= 9500) {
+    console.warn(`[${ts()}] ⚠ WARNING: ${rows.length} rows — approaching MCP row cap (~10,000). Data may be truncated. Consider splitting into two queries by TX group.`);
+  }
 
-  // NOTE: Location filter for shared TX IDs (Zone H = Reserve) cannot be applied here
-  // because LMC_EVENT_SUMMARY_HEADER does not store location at the row level.
-  // The browser's isEcomRow() function needs Current/Previous Location to be non-empty
-  // to apply the zone filter. Since those fields are blank here, the browser will default
-  // to Ecom for all rows — which is correct for this live feed (Reserve has its own agent).
-  // Shipping dedup uses TASK_ID as Container ID — one unique TASK_ID per outbound box scan.
+  // Location filter note: SOURCE_LOCATION_ID mapped to 'Current Location'.
+  // The browser's isEcomRow() zone filter (Zone H = Reserve) will now work correctly
+  // for shared TX IDs (System/User Directed Putaway, iLPN Replen Fill/Pull variants).
 
   const output = {
     generated:   new Date().toISOString(),
@@ -276,6 +275,7 @@ ORDER BY h.START_DATETIME ASC`.trim();
     shift_start:  shiftStart,
     facility:     FACILITY,
     row_count:    rows.length,
+    truncated:    rows.length >= 9500,
     rows:         rows,
   };
 
