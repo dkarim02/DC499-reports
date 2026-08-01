@@ -539,6 +539,12 @@ function switchTab(tab) {
 
 // ── LIVE TAB ───────────────────────────────────────────────────────────────────
 var liveData = null;
+var _activeLiveTile = null;
+
+function clickLiveTile(typ) {
+  _activeLiveTile = (_activeLiveTile === typ) ? null : typ;
+  if (liveData) renderLiveReport(liveData);
+}
 
 function getLiveBase() {
   return window.location.protocol === 'file:'
@@ -579,69 +585,68 @@ function renderLiveReport(d) {
   var TEAM  = getTeamSet();
   var types = ['replen','putaway','picking','packing','shipping','sorting'];
 
-  // ── Summary tiles ──────────────────────────────────────────────────────────
+  // ── Summary tiles (clickable — toggles the dept card below) ──────────────────
   var html = '<div class="card" style="margin-bottom:1rem;">';
-  html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary — Live</div>';
+  html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary — Live <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">· click a tile to see associates</span></div>';
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
   types.forEach(function(typ) {
-    var txList = getTX()[typ], metricKey = FULL_METRIC[typ], color = FULL_COLORS[typ];
+    var txList = getTX()[typ], color = FULL_COLORS[typ];
     var filtered = d.rows.filter(function(r) {
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
       if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
       return true;
     });
-    var grand = sumRows(filtered, typ, function(e){ return TEAM.has(e); });
-    grand = Object.values(grand).reduce(function(s,v){return s+v;},0);
-    html += '<div class="full-tile" style="color:'+color+';">';
+    var grand = Object.values(sumRows(filtered, typ, function(e){ return TEAM.has(e); })).reduce(function(s,v){return s+v;},0);
+    var isActive = _activeLiveTile === typ;
+    html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="'+typ+'" onclick="clickLiveTile(this.dataset.livtyp)" style="color:'+color+';cursor:pointer;">';
     html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">'+FULL_LABELS[typ]+'</div>';
     html += '<div style="font-size:18px;font-weight:500;color:var(--text);">'+grand.toLocaleString()+'</div>';
     html += '</div>';
   });
   html += '</div></div>';
 
-  // ── Per-dept associate tables ───────────────────────────────────────────────
-  html += '<div class="full-grid">';
+  // ── Per-dept associate cards (hidden unless their tile is active) ───────────
+  html += '<div>';
   types.forEach(function(typ) {
     var txList = getTX()[typ], color = FULL_COLORS[typ], label = FULL_LABELS[typ], barClass = 'full-bar-'+typ;
+    var isActive = _activeLiveTile === typ;
     var filtered = d.rows.filter(function(r) {
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
       if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
       return true;
     });
-    if (!filtered.length) {
-      html += '<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total" style="color:var(--text-hint);">No data</span></div><div class="full-empty" style="padding:1rem;">No '+label+' transactions found</div></div>';
-      return;
-    }
-    // Compute totals for ALL associates (no roster filter) so disabled ones still appear
-    var allTotals  = sumRows(filtered, typ, null);
+    var allTotals    = sumRows(filtered, typ, null);
     var activeTotals = sumRows(filtered, typ, function(e){ return TEAM.has(e); });
-    // Sort: enabled first by value desc, then disabled by value desc
-    var roster = loadRoster();
-    var allSorted = Object.entries(allTotals).sort(function(a,b){return b[1]-a[1];});
-    var grand = Object.values(activeTotals).reduce(function(s,v){return s+v;},0);
-    if (!Object.keys(allTotals).length) return;
+    var roster       = loadRoster();
+    var allSorted    = Object.entries(allTotals).sort(function(a,b){return b[1]-a[1];});
+    var grand        = Object.values(activeTotals).reduce(function(s,v){return s+v;},0);
+    html += '<div id="live-card-'+typ+'" style="'+(isActive?'':'display:none;')+' margin-bottom:1rem;">';
     html += '<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total">'+grand.toLocaleString()+'</span></div>';
-    html += '<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th><th></th></tr></thead><tbody>';
-    var enabledIdx = 0;
-    allSorted.forEach(function(entry) {
-      var emp = entry[0], val = entry[1];
-      var member = roster.find(function(m){ return m.email === emp; });
-      var isOn = member ? member.enabled : true;
-      var pct  = grand > 0 && isOn ? Math.round((val/grand)*100) : 0;
-      var short = emp.split('@')[0];
-      var trophy = isOn && enabledIdx === 0 && grand > 0 ? ' &#x1F3C6;' : '';
-      if (isOn) enabledIdx++;
-      var btnLabel = isOn ? 'Disable' : 'Enable';
-      var mutedStyle = isOn ? '' : 'opacity:0.45;';
-      html += '<tr style="'+mutedStyle+'">';
-      html += '<td>'+short+trophy+'</td>';
-      html += '<td style="text-align:right;font-weight:500;">'+(isOn ? val.toLocaleString() : '<span style="color:var(--text-hint);">'+val.toLocaleString()+'</span>')+'</td>';
-      html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill '+barClass+'" style="width:'+pct+'%"></div></div>';
-      html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+(isOn ? pct+'%' : '—')+'</span></div></td>';
-      html += '<td><button class="full-side-disable-btn" data-emp="'+emp+'" onclick="toggleTMFromLive(this.dataset.emp)">'+btnLabel+'</button></td>';
-      html += '</tr>';
-    });
-    html += '</tbody><tfoot><tr><td>Total</td><td style="text-align:right;">'+grand.toLocaleString()+'</td><td></td><td></td></tr></tfoot></table></div>';
+    if (!allSorted.length) {
+      html += '<div class="full-empty" style="padding:1rem;">No '+label+' transactions found</div>';
+    } else {
+      html += '<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th><th></th></tr></thead><tbody>';
+      var enabledIdx = 0;
+      allSorted.forEach(function(entry) {
+        var emp = entry[0], val = entry[1];
+        var member = roster.find(function(m){ return m.email === emp; });
+        var isOn = member ? member.enabled : true;
+        var pct  = grand > 0 && isOn ? Math.round((val/grand)*100) : 0;
+        var short = emp.split('@')[0];
+        var trophy = isOn && enabledIdx === 0 && grand > 0 ? ' &#x1F3C6;' : '';
+        if (isOn) enabledIdx++;
+        var btnLabel = isOn ? 'Disable' : 'Enable';
+        html += '<tr style="'+(isOn ? '' : 'opacity:0.45;')+'">';
+        html += '<td>'+short+trophy+'</td>';
+        html += '<td style="text-align:right;font-weight:500;">'+(isOn ? val.toLocaleString() : '<span style="color:var(--text-hint);">'+val.toLocaleString()+'</span>')+'</td>';
+        html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill '+barClass+'" style="width:'+pct+'%"></div></div>';
+        html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+(isOn ? pct+'%' : '—')+'</span></div></td>';
+        html += '<td><button class="full-side-disable-btn" data-emp="'+emp+'" onclick="toggleTMFromLive(this.dataset.emp)">'+btnLabel+'</button></td>';
+        html += '</tr>';
+      });
+      html += '</tbody><tfoot><tr><td>Total</td><td style="text-align:right;">'+grand.toLocaleString()+'</td><td></td><td></td></tr></tfoot></table>';
+    }
+    html += '</div></div>';
   });
   html += '</div>';
 
