@@ -20,6 +20,10 @@ echo  2  Start live server
 echo  3  Start live server + open Receiving Live
 echo  4  First-time auth
 echo ──────────────────────────────
+echo  5  Ecom Live - one-shot refresh
+echo  6  Ecom Live - start auto-refresh (every 30 min)
+echo  7  Ecom Live - auth
+echo ──────────────────────────────
 set /p choice="Select: "
 
 if "%choice%"=="1" (
@@ -47,6 +51,27 @@ if "%choice%"=="4" (
     echo.
     echo Starting auth flow...
     "%NODE_EXE%" "%~dp0dc499_refresh.js" --auth
+    pause
+    exit /b
+)
+if "%choice%"=="5" (
+    echo.
+    echo Running Ecom Live one-shot refresh...
+    "%NODE_EXE%" "%~dp0scout_ecom_agent.js"
+    pause
+    exit /b
+)
+if "%choice%"=="6" (
+    echo.
+    echo Starting Ecom Live auto-refresh every 30 min...
+    "%NODE_EXE%" "%~dp0scout_ecom_agent.js" --serve
+    pause
+    exit /b
+)
+if "%choice%"=="7" (
+    echo.
+    echo Starting Ecom Live auth flow...
+    "%NODE_EXE%" "%~dp0scout_ecom_agent.js" --auth
     pause
     exit /b
 )

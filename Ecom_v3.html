@@ -362,6 +362,7 @@
   <div class="tabs">
     <div class="tabs-left">
       <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
+      <button class="tab" id="tab-live" onclick="switchTab('live')" style="color:var(--text-muted);">&#x26A1; Live</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -379,6 +380,20 @@
     <div id="full-files-loaded" style="display:none;font-size:12px;color:var(--text-hint);margin-bottom:0.75rem;"></div>
     <div id="full-content">
       <div class="full-empty">No data yet — upload a CSV above to populate the Full Report.</div>
+    </div>
+  </div>
+
+  <!-- LIVE TAB -->
+  <div class="tab-panel" id="panel-live">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);">&#x26A1; Ecom Live</div>
+        <div style="font-size:12px;color:var(--text-hint);margin-top:2px;" id="live-meta">Loading...</div>
+      </div>
+      <button onclick="loadLiveData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
+    </div>
+    <div id="live-content">
+      <div class="full-empty">Loading live data...</div>
     </div>
   </div>
 
@@ -512,12 +527,108 @@ document.addEventListener('click', function(e){ var p=document.getElementById('t
 // ── TABS ───────────────────────────────────────────────
 function switchTab(tab) {
   document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
+  document.getElementById('tab-live').className = 'tab' + (tab === 'live' ? ' active-full' : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['full','settings'].forEach(function(t) {
+  ['full','live','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
   if (tab === 'settings') { renderRoster(); renderHeadcountCard(); }
   if (tab === 'full') { renderFullReport(); }
+  if (tab === 'live') { loadLiveData(); }
+}
+
+// ── LIVE TAB ───────────────────────────────────────────────────────────────────
+var liveData = null;
+
+function loadLiveData() {
+  var meta = document.getElementById('live-meta');
+  var content = document.getElementById('live-content');
+  if (meta) meta.textContent = 'Fetching...';
+  fetch('ecom_live.json?_=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(d) {
+      liveData = d;
+      renderLiveReport(d);
+    })
+    .catch(function(e) {
+      if (content) content.innerHTML = '<div class="full-empty">Could not load ecom_live.json — run Option 5 in dc499.bat first.<br><small style="color:var(--text-hint);">' + e.message + '</small></div>';
+      if (meta) meta.textContent = 'Error loading data';
+    });
+}
+
+function renderLiveReport(d) {
+  var meta  = document.getElementById('live-meta');
+  var content = document.getElementById('live-content');
+  if (!d || !d.rows || !d.rows.length) {
+    if (content) content.innerHTML = '<div class="full-empty">No data in ecom_live.json — run Option 5 in dc499.bat to populate.</div>';
+    if (meta) meta.textContent = 'No data';
+    return;
+  }
+
+  var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
+  if (meta) meta.textContent = d.shift + ' shift · ' + d.row_count + ' events · updated ' + gen;
+
+  // Reuse existing processData() logic — feed liveData rows through it as if they were CSV rows
+  var saved = allRows;
+  allRows = d.rows;
+  var TEAM = getTeamSet();
+  allRows = saved;
+
+  // Compute dept totals directly using the same rules as processData()
+  var totals = { replen:0, putaway:0, picking:0, packing:0, shipping:0, sorting:0 };
+  var TYPES = {
+    replen:  ['iLPN Replen Fill','Retail iLPN Replen Pull','iLPN Replen Pull','iLPN Replen Fill Large','iLPN Replen Pull Large'],
+    putaway: ['System Directed Putaway','User Directed Putaway'],
+    picking: ['Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart'],
+    packing: ['NRDR CORE PACK FOR ECOM PACK STATION'],
+    shipping: getShift() === '1st' ? ['OB Putaway By Ship Via','NRDR Load Parcel Packages'] : ['OB Putaway By Ship Via'],
+    sorting: ['OB Sort To Putwall Cubby'],
+  };
+  var METRIC = { replen:'Completed Quantity', putaway:null, picking:'Quantity', packing:null, shipping:'Quantity', sorting:'Quantity' };
+
+  var seenShip = {};
+  d.rows.forEach(function(r) {
+    var emp = (r['Employee']||'').trim();
+    if (!TEAM.has(emp)) return;
+    var txId = (r['Transaction ID']||'').trim();
+    var qty  = parseFloat(r['Quantity'])||0;
+    var cqty = parseFloat(r['Completed Quantity'])||0;
+    var cid  = (r['Container ID']||'').trim();
+
+    Object.keys(TYPES).forEach(function(typ) {
+      if (TYPES[typ].indexOf(txId) === -1) return;
+      if (typ === 'sorting' && (r['Criteria']||'').trim() && r['Criteria'].trim() !== 'NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA') return;
+      if (typ === 'shipping') {
+        if (!cid) return;
+        var key = emp + '|' + cid;
+        if (seenShip[key]) return;
+        seenShip[key] = true;
+        totals.shipping += qty;
+        return;
+      }
+      var metricKey = METRIC[typ];
+      var val = metricKey === 'Completed Quantity' ? cqty : metricKey === 'Quantity' ? qty : 1;
+      totals[typ] += val;
+    });
+  });
+
+  var LABELS = { replen:'Replenishment', putaway:'Putaway', picking:'Picking', packing:'Packing', shipping:'Shipping', sorting:'Sorting' };
+  var COLORS = { replen:'#185FA5', putaway:'#0F6E56', picking:'#9B4DCA', packing:'#E67E22', shipping:'#0E9E8E', sorting:'#C0392B' };
+
+  var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem;">';
+  Object.keys(totals).forEach(function(typ) {
+    var c = COLORS[typ];
+    html += '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:10px;padding:14px 16px;">';
+    html += '<div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">' + LABELS[typ] + '</div>';
+    html += '<div style="font-size:28px;font-weight:700;color:' + c + ';">' + totals[typ].toLocaleString() + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  html += '<div style="font-size:12px;color:var(--text-hint);margin-bottom:0.5rem;">Dept totals · roster-filtered · <strong>' + (function(){ var n=0; d.rows.forEach(function(r){ if(TEAM.has((r['Employee']||'').trim())) n++; }); return n; })() + '</strong> of ' + d.row_count + ' events included</div>';
+  html += '<div style="font-size:11px;color:var(--text-hint);">Location filter for shared TX IDs not available in live mode — all putaway rows count as Ecom.</div>';
+
+  if (content) content.innerHTML = html;
 }
 
 // ── SHIFT ──────────────────────────────────────────────
