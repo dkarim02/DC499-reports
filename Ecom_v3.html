@@ -625,25 +625,40 @@ function renderLiveReport(d) {
     if (!allSorted.length) {
       html += '<div class="full-empty" style="padding:1rem;">No '+label+' transactions found</div>';
     } else {
+      var enabledRows  = allSorted.filter(function(e){ var m=roster.find(function(r){return r.email===e[0];}); return m ? m.enabled : false; });
+      var disabledRows = allSorted.filter(function(e){ var m=roster.find(function(r){return r.email===e[0];}); return m && !m.enabled; });
       html += '<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th><th></th></tr></thead><tbody>';
       var enabledIdx = 0;
-      allSorted.forEach(function(entry) {
+      enabledRows.forEach(function(entry) {
         var emp = entry[0], val = entry[1];
-        var member = roster.find(function(m){ return m.email === emp; });
-        var isOn = member ? member.enabled : true;
-        var pct  = grand > 0 && isOn ? Math.round((val/grand)*100) : 0;
+        var pct  = grand > 0 ? Math.round((val/grand)*100) : 0;
         var short = emp.split('@')[0];
-        var trophy = isOn && enabledIdx === 0 && grand > 0 ? ' &#x1F3C6;' : '';
-        if (isOn) enabledIdx++;
-        var btnLabel = isOn ? 'Disable' : 'Enable';
-        html += '<tr style="'+(isOn ? '' : 'opacity:0.45;')+'">';
+        var trophy = enabledIdx === 0 && grand > 0 ? ' &#x1F3C6;' : '';
+        enabledIdx++;
+        var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        html += '<tr>';
         html += '<td>'+short+trophy+'</td>';
-        html += '<td style="text-align:right;font-weight:500;">'+(isOn ? val.toLocaleString() : '<span style="color:var(--text-hint);">'+val.toLocaleString()+'</span>')+'</td>';
+        html += '<td style="text-align:right;font-weight:500;">'+val.toLocaleString()+'</td>';
         html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill '+barClass+'" style="width:'+pct+'%"></div></div>';
-        html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+(isOn ? pct+'%' : '—')+'</span></div></td>';
-        html += '<td><button class="full-side-disable-btn" data-emp="'+emp+'" onclick="toggleTMFromLive(this.dataset.emp)">'+btnLabel+'</button></td>';
+        html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+pct+'%</span></div></td>';
+        html += '<td><button class="full-side-disable-btn" onclick="toggleTMFromLive(\''+safeEmp+'\')">Disable</button></td>';
         html += '</tr>';
       });
+      if (disabledRows.length) {
+        html += '<tr><td colspan="4" style="padding:6px 8px 3px;font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.05em;border-top:0.5px solid var(--border-mid);">Inactive</td></tr>';
+        disabledRows.forEach(function(entry) {
+          var emp = entry[0], val = entry[1];
+          var short = emp.split('@')[0];
+          var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          html += '<tr style="opacity:0.45;">';
+          html += '<td>'+short+'</td>';
+          html += '<td style="text-align:right;font-weight:500;"><span style="color:var(--text-hint);">'+val.toLocaleString()+'</span></td>';
+          html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"></div>';
+          html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">—</span></div></td>';
+          html += '<td><button class="full-side-disable-btn" onclick="toggleTMFromLive(\''+safeEmp+'\')">Enable</button></td>';
+          html += '</tr>';
+        });
+      }
       html += '</tbody><tfoot><tr><td>Total</td><td style="text-align:right;">'+grand.toLocaleString()+'</td><td></td><td></td></tr></tfoot></table>';
     }
     html += '</div></div>';
