@@ -540,11 +540,19 @@ function switchTab(tab) {
 // ── LIVE TAB ───────────────────────────────────────────────────────────────────
 var liveData = null;
 
+function getLiveBase() {
+  return window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
+}
+
 function loadLiveData() {
   var meta = document.getElementById('live-meta');
   var content = document.getElementById('live-content');
   if (meta) meta.textContent = 'Fetching...';
-  fetch('ecom_live.json?_=' + Date.now())
+  fetch(getLiveBase() + '/ecom_live.json?_=' + Date.now())
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(d) {
       liveData = d;
@@ -568,11 +576,7 @@ function renderLiveReport(d) {
   var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
   if (meta) meta.textContent = d.shift + ' shift · ' + d.row_count + ' events · updated ' + gen;
 
-  // Reuse existing processData() logic — feed liveData rows through it as if they were CSV rows
-  var saved = allRows;
-  allRows = d.rows;
   var TEAM = getTeamSet();
-  allRows = saved;
 
   // Compute dept totals directly using the same rules as processData()
   var totals = { replen:0, putaway:0, picking:0, packing:0, shipping:0, sorting:0 };
