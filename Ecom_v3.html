@@ -605,10 +605,18 @@ function renderLiveReport(d) {
       return true;
     });
     var grand = Object.values(sumRows(filtered, typ, function(e){ return TEAM.has(e); })).reduce(function(s,v){return s+v;},0);
+    var pace = getTilePace(typ, grand, filtered, TEAM);
     var isActive = _activeLiveTile === typ;
     html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="'+typ+'" onclick="clickLiveTile(this.dataset.livtyp)" style="color:'+color+';cursor:pointer;">';
     html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">'+FULL_LABELS[typ]+'</div>';
     html += '<div style="font-size:18px;font-weight:500;color:var(--text);">'+grand.toLocaleString()+'</div>';
+    if (pace) {
+      html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
+      html += '<span style="font-size:9px;color:'+pace.color+';font-weight:500;">'+pace.label+'</span>';
+      html += '<span style="font-size:9px;color:var(--text-hint);">'+pace.pctOfFull+'% of '+pace.projFull.toLocaleString()+'</span>';
+      html += '</div>';
+    }
     html += '</div>';
   });
   html += '</div></div>';
