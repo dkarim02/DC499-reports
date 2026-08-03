@@ -1078,8 +1078,8 @@ async function fetchBatchStatus(accessToken) {
   if (!is1stShift && nowUtcHour < shiftHourUtc) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
   const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
 
-  // Lookback covers 1st-shift releases: any batch created within 14h is a candidate
-  const lookbackStart = new Date(nowUtc.getTime() - 14 * 3600000)
+  // Lookback: 72h covers Friday-afternoon batches still open on Sunday-morning 1st shift
+  const lookbackStart = new Date(nowUtc.getTime() - 72 * 3600000)
     .toISOString().replace('T',' ').slice(0,19);
 
   // One row per BATCH_ID — that is the friendly batch name (B_000...)

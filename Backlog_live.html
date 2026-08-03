@@ -1056,7 +1056,8 @@ function renderBacklogData(data) {
   if (activeTab === 'orders') {
     if (isStale(data.generated, 45)) {
       staleEl.style.display = 'block';
-      var mins = Math.round((Date.now() - new Date(data.generated).getTime()) / 60000);
+      var _bg = data.generated; var _bgTs = new Date(_bg.endsWith('Z') ? _bg : _bg+'Z').getTime();
+      var mins = Math.round((Date.now() - _bgTs) / 60000);
       staleEl.textContent = '⚠ Data is ' + mins + ' min old — dc499_refresh.js may not be running';
     } else { staleEl.style.display = 'none'; }
   }
@@ -1070,7 +1071,7 @@ function renderBacklogData(data) {
   if (!data.dates || !data.dates.length) { emptyEl.style.display = 'block'; return; }
 
   function getCount(row, status) {
-    if (viewMode === 'orders') return (row.orders||[]).filter(function(o) { return o.status.toUpperCase()===status; }).length;
+    if (viewMode === 'orders') return (row.orders||[]).filter(function(o) { return (o.status||'').toUpperCase()===status; }).length;
     if (status==='READY')     return row.ready    || 0;
     if (status==='ALLOCATED') return row.allocated|| 0;
     if (status==='PACKED')    return row.packed   || 0;
@@ -1320,7 +1321,8 @@ function renderBatchData(data) {
   if (activeTab === 'batches') {
     if (isStale(data.generated, 90)) {
       staleEl.style.display = 'block';
-      var mins = Math.round((Date.now() - new Date(data.generated+'Z').getTime()) / 60000);
+      var _sg = data.generated; var _sgTs = new Date(_sg.endsWith('Z') ? _sg : _sg+'Z').getTime();
+      var mins = Math.round((Date.now() - _sgTs) / 60000);
       staleEl.textContent = '⚠ Data is '+mins+' min old — dc499_refresh.js may not be running';
     } else { staleEl.style.display = 'none'; }
   }
@@ -1694,9 +1696,7 @@ function toggleRrRow(idx) {
 }
 
 function fetchRrData() {
-  var isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
-    || /^192\.168\./.test(location.hostname) || /^10\./.test(location.hostname);
-  var url = (isLocal ? '/' : '') + 'retail_replen.json?t=' + Date.now();
+  var url = getBase() + '/retail_replen.json?t=' + Date.now();
   fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(data) { renderRrWidget(data); })
@@ -1808,7 +1808,6 @@ document.getElementById('footer-date').textContent = new Date().toLocaleDateStri
 fetchBacklogData();
 fetchRrData();
 setInterval(fetchRrData, 2 * 60 * 1000);
-scheduleBlRefresh();
 
 // ── EOD Email Export ──────────────────────────────────────────────────────────
 function closeEodModal() {
@@ -1858,6 +1857,7 @@ function exportEodEmail() {
   var td  = 'background:'+C.surface+';padding:5px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';';
   var tdA = 'background:'+C.surface2+';padding:5px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.text+';';
   var tdM = 'background:'+C.surface+';padding:5px 10px;border:1px solid '+C.border+';font-size:12px;color:'+C.muted+';text-align:right;';
+  var tbl = 'width:100%;border-collapse:collapse;'+F;
   function fmtN(v) { return v != null ? Number(v).toLocaleString() : '—'; }
   function fmtT(v) { return v != null ? v + ' min' : '—'; }
   // Post-pass: add bgcolor= HTML attr on every <td>/<th> so Outlook dark mode can't invert them
@@ -1997,7 +1997,7 @@ function exportEodEmail() {
       var sc=item.age_severity==='red'?C.red:item.age_severity==='amber'?C.amber:C.muted;
       var ts=item.tasks&&item.tasks.length?item.tasks.map(function(t){return t.status;}).join(', '):'No task';
       var row=i%2===0?td:tdA;
-      html+='<tr><td style="'+row+'font-family:monospace;font-size:11px;">'+(item.item_id||'—')+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(item.units_needed)+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(item.face_stock)+'</td><td style="'+row+'text-align:right;font-weight:700;color:'+sc+';">'+fmtN(item.fill_gap)+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(item.order_count)+'</td><td style="'+row+'font-size:11px;color:'+C.muted+';">'+ts+'</td></tr>';
+      html+='<tr><td style="'+row+'font-family:monospace;font-size:11px;">'+(item.item_id||'—')+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(item.units_needed)+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(item.face_stock)+'</td><td style="'+row+'text-align:right;font-weight:700;color:'+sc+';">'+fmtN(item.gap)+'</td><td style="'+row+'text-align:right;font-weight:600;">'+fmtN(item.order_count)+'</td><td style="'+row+'font-size:11px;color:'+C.muted+';">'+ts+'</td></tr>';
     });
     html+='</tbody></table></td></tr>';
   } else if (rr.summary) {
