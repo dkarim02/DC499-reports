@@ -26,6 +26,7 @@ const TOTES_FILE    = path.join(REPORT_DIR, 'totes_live.json');
 const BACKLOG_FILE  = path.join(REPORT_DIR, 'backlog_live.json');
 const BATCH_STATUS_FILE = path.join(REPORT_DIR, 'batch_status.json');
 const RETAIL_REPLEN_FILE = path.join(REPORT_DIR, 'retail_replen.json');
+const TASKS_FILE         = path.join(REPORT_DIR, 'tasks_live.json');
 const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3118;
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
@@ -1390,18 +1391,105 @@ function gitPush() {
   }
 }
 
+// ── ecom tasks query ───────────────────────────────────────────────────────────
+async function fetchTaskData(accessToken) {
+  const nowUtc = new Date();
+  const nowUtcHour = nowUtc.getUTCHours();
+  const is1st = nowUtcHour >= 10 && nowUtcHour < 21;
+  const shiftLabel = is1st ? '1st' : '2nd';
+  let shiftStart = new Date(nowUtc);
+  shiftStart.setUTCHours(is1st ? 10 : 21, 0, 0, 0);
+  if (!is1st && nowUtcHour < 21) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
+  const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
+
+  // Single query: ecom picking + ecom replen tasks, all non-cancelled statuses
+  const sql = `
+SELECT
+  t.TASK_ID,
+  t.TRANSACTION_ID,
+  t.LABOR_ACTIVITY_ID,
+  t.STATUS,
+  t.SOURCE_LOCATION_ID,
+  t.TARGET_LOCATION_ID,
+  t.ASSIGNED_USER_ID,
+  CONVERT_TZ(t.CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt,
+  CONVERT_TZ(t.ACTUAL_START_TIME, '+00:00', '-07:00') AS started_pdt
+FROM default_task.TSK_TASK t
+WHERE t.FACILITY_ID = '${FACILITY}'
+  AND t.STATUS != '9000'
+  AND t.CREATED_TIMESTAMP >= '${startStr}'
+  AND (
+    (t.TYPE_ID = 'PICK/PACK'       AND t.LABOR_ACTIVITY_ID IN ('ECOM MEZZ CART','ECOM NON MEZZ CART'))
+    OR
+    (t.TYPE_ID = 'REPLENISHMENT'   AND LEFT(t.SOURCE_LOCATION_ID, 3) IN ('R1B','R1C','R1D','R1E','R1F'))
+  )
+ORDER BY t.CREATED_TIMESTAMP ASC`.trim();
+
+  const resp = await mcpQuery(accessToken, sql);
+  const rows = resp.rows || [];
+
+  const STATUS_LABEL = { '3000':'Queued', '5000':'Assigned', '7000':'In Progress', '8000':'Completed' };
+  function statusLabel(s) { return STATUS_LABEL[String(s)] || String(s); }
+  function formatUser(u) {
+    if (!u) return null;
+    const local = u.split('@')[0];
+    return local.charAt(0).toUpperCase() + local.slice(1);
+  }
+
+  const pickTasks   = [];
+  const replenTasks = [];
+
+  for (const r of rows) {
+    const task = {
+      task_id:    r.TASK_ID,
+      subtype:    r.LABOR_ACTIVITY_ID === 'ECOM MEZZ CART' ? 'MEZZ' :
+                  r.LABOR_ACTIVITY_ID === 'ECOM NON MEZZ CART' ? 'NON MEZZ' : 'REPLEN',
+      status:     String(r.STATUS),
+      status_label: statusLabel(r.STATUS),
+      source:     r.SOURCE_LOCATION_ID || null,
+      target:     r.TARGET_LOCATION_ID || null,
+      assigned_to: formatUser(r.ASSIGNED_USER_ID),
+      created_pdt: r.created_pdt || null,
+      started_pdt: r.started_pdt || null,
+    };
+    const isPick = r.LABOR_ACTIVITY_ID === 'ECOM MEZZ CART' || r.LABOR_ACTIVITY_ID === 'ECOM NON MEZZ CART';
+    if (isPick) pickTasks.push(task);
+    else        replenTasks.push(task);
+  }
+
+  function summarize(tasks) {
+    const counts = { queued:0, in_progress:0, completed:0, total_open:0 };
+    for (const t of tasks) {
+      if (t.status === '8000')       counts.completed++;
+      else if (t.status === '7000')  { counts.in_progress++; counts.total_open++; }
+      else                           { counts.queued++;       counts.total_open++; }
+    }
+    return counts;
+  }
+
+  return {
+    generated:   new Date().toISOString(),
+    shift:       shiftLabel,
+    shift_start: startStr,
+    facility:    FACILITY,
+    picking:  { ...summarize(pickTasks),   tasks: pickTasks   },
+    replen:   { ...summarize(replenTasks), tasks: replenTasks },
+  };
+}
+
 // ── core: query + write ────────────────────────────────────────────────────────
 async function queryAndWrite(accessToken) {
   console.log(`[${ts()}] Querying...`);
   // fetchBatchStatus runs TWO sequential MCP queries (WR_BATCH then DCO_ORDER).
   // Running it inside Promise.all with 5 other concurrent queries causes the second
   // query to time out. Run it after the parallel group instead.
-  const [recvData, dockData, totesData, backlogData, retailReplenData] = await Promise.all([
+  const [recvData, dockData, totesData, backlogData, retailReplenData, tasksData] = await Promise.all([
     fetchReceiving(accessToken),
     fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
     fetchBacklog(accessToken).catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; }),
     fetchRetailReplen(accessToken).catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
+    fetchTaskData(accessToken).catch(e => { console.warn(`  Tasks query failed: ${e.message}`); return null; }),
   ]);
   const batchStatusData = await fetchBatchStatus(accessToken)
     .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; });
@@ -1437,8 +1525,14 @@ async function queryAndWrite(accessToken) {
     console.log(`[${ts()}] ✓ retail_replen.json — ${retailReplenData.summary.flagged_items} items flagged, ${retailReplenData.summary.orders_at_risk} orders at risk`);
   }
 
+  if (tasksData) {
+    fs.writeFileSync(TASKS_FILE, JSON.stringify(tasksData, null, 4));
+    const pOpen = tasksData.picking.total_open, rOpen = tasksData.replen.total_open;
+    console.log(`[${ts()}] ✓ tasks_live.json — pick open:${pOpen} replen open:${rOpen}`);
+  }
+
   gitPush();
-  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData };
+  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData, tasksData };
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
@@ -1585,6 +1679,11 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       res.end(JSON.stringify(cache?.retailReplenData || {}));
       return;
     }
+    if (url.pathname === '/tasks_live.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(cache?.tasksData || {}));
+      return;
+    }
 
     // serve HTML files
     const fileMap = {
@@ -1593,7 +1692,7 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       '/Receiving_live.html': 'Receiving_live.html',
       '/Totes_live.html':     'Totes_live.html',
       '/Backlog_live.html':   'Backlog_live.html',
-      '/Batches_live.html':    'Batches_live.html',
+      '/Batches_live.html':   'Batches_live.html',
       '/RetailReplen_live.html': 'RetailReplen_live.html',
       '/MegaDash_v1.2.html':  'MegaDash_v1.2.html',
       '/Menu_v1.6.html':      'Menu_v1.6.html',

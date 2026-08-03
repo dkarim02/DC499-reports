@@ -462,6 +462,7 @@
   <div class="tab-bar" style="align-items:center;">
     <button class="tab-btn active" id="tb-orders" onclick="setTab('orders')">Order Backlog</button>
     <button class="tab-btn"        id="tb-batches" onclick="setTab('batches')">Batches</button>
+    <button class="tab-btn"        id="tb-tasks"   onclick="setTab('tasks')">Tasks</button>
     <div style="flex:1;"></div>
     <a href="https://nrdrp.sce.manh.com/udc/dm-config/screen/dcorder/OrderPlanningStrategy" target="_blank"
        style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-muted);text-decoration:none;white-space:nowrap;margin-right:4px;transition:background 0.12s,color 0.12s,border-color 0.12s;"
@@ -735,6 +736,103 @@
     </div>
   </div><!-- /#tab-batches -->
 
+  <!-- ── Tab: Tasks ──────────────────────────────────────────────────────────── -->
+  <div class="tab-pane" id="tab-tasks">
+    <div class="header-row">
+      <div>
+        <div id="tk-run-time" class="run-time">Loading...</div>
+        <div id="tk-shift-label" class="run-time" style="margin-top:2px;"></div>
+      </div>
+      <div class="header-btns">
+        <button class="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
+      </div>
+    </div>
+
+    <!-- Health-check tiles -->
+    <div class="summary-tiles" id="tk-summary-tiles" style="display:none;">
+      <div class="tile">
+        <div class="tile-label">Pick — Open</div>
+        <div class="tile-value accent" id="tk-pick-open">--</div>
+        <div class="tile-sub" id="tk-pick-sub">-- queued &nbsp;|&nbsp; -- in progress</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Pick — Completed</div>
+        <div class="tile-value green" id="tk-pick-done">--</div>
+        <div class="tile-sub">this shift</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Replen — Open</div>
+        <div class="tile-value amber" id="tk-replen-open">--</div>
+        <div class="tile-sub" id="tk-replen-sub">-- queued &nbsp;|&nbsp; -- in progress</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Replen — Completed</div>
+        <div class="tile-value green" id="tk-replen-done">--</div>
+        <div class="tile-sub">this shift</div>
+      </div>
+    </div>
+
+    <!-- Picking tasks table -->
+    <div class="card" id="tk-pick-card" style="display:none;margin-top:16px;">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Ecom Picking Tasks</span>
+        <label style="font-size:12px;font-weight:400;color:var(--text-muted);cursor:pointer;">
+          <input type="checkbox" id="tk-pick-show-done" onchange="renderTaskTable('picking')" style="margin-right:4px;">
+          Show completed
+        </label>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr>
+              <th class="r">#</th>
+              <th>Task ID</th>
+              <th>Type</th>
+              <th>Source</th>
+              <th class="r">Status</th>
+              <th>Assigned To</th>
+              <th>Released</th>
+            </tr>
+          </thead>
+          <tbody id="tk-pick-tbody"></tbody>
+        </table>
+      </div>
+      <div id="tk-pick-empty" style="display:none;text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">No open picking tasks</div>
+    </div>
+
+    <!-- Replen tasks table -->
+    <div class="card" id="tk-replen-card" style="display:none;margin-top:16px;">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Ecom Replen Tasks</span>
+        <label style="font-size:12px;font-weight:400;color:var(--text-muted);cursor:pointer;">
+          <input type="checkbox" id="tk-replen-show-done" onchange="renderTaskTable('replen')" style="margin-right:4px;">
+          Show completed
+        </label>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr>
+              <th class="r">#</th>
+              <th>Task ID</th>
+              <th>Source</th>
+              <th>Target</th>
+              <th class="r">Status</th>
+              <th>Assigned To</th>
+              <th>Released</th>
+            </tr>
+          </thead>
+          <tbody id="tk-replen-tbody"></tbody>
+        </table>
+      </div>
+      <div id="tk-replen-empty" style="display:none;text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">No open replen tasks</div>
+    </div>
+
+    <div class="empty-state" id="tk-empty-state" style="display:none;">
+      <div style="font-size:32px;margin-bottom:10px;">&#x2714;</div>
+      No task data yet — data refreshes every 2 minutes.
+    </div>
+  </div><!-- /#tab-tasks -->
 
   <!-- Batch picker modal -->
   <div class="bp-overlay" id="bp-overlay" onclick="bpOverlayClick(event)">
@@ -785,7 +883,7 @@ var BL_INTERVAL_MS = 2 * 60 * 1000;
 var BT_INTERVAL_MS = 2 * 60 * 1000;
 var activeTab      = 'orders';
 
-var lastBlData = null, lastBtData = null, lastRrData = null, lastRfpUnits = null;
+var lastBlData = null, lastBtData = null, lastRrData = null, lastRfpUnits = null, lastTkData = null;
 var blTimer = null, blCountdown = null, blNextAt = null;
 var btTimer = null, btCountdown = null, btNextAt = null;
 var viewMode = 'lines';
@@ -832,12 +930,15 @@ applyRemiToggle();
 // -- Tab switching ------------------------------------------------------------
 function setTab(tab) {
   activeTab = tab;
-  document.getElementById('tb-orders').classList.toggle('active',    tab === 'orders');
-  document.getElementById('tb-batches').classList.toggle('active',   tab === 'batches');
-  document.getElementById('tab-orders').classList.toggle('active',    tab === 'orders');
-  document.getElementById('tab-batches').classList.toggle('active',   tab === 'batches');
+  document.getElementById('tb-orders').classList.toggle('active',  tab === 'orders');
+  document.getElementById('tb-batches').classList.toggle('active', tab === 'batches');
+  document.getElementById('tb-tasks').classList.toggle('active',   tab === 'tasks');
+  document.getElementById('tab-orders').classList.toggle('active',  tab === 'orders');
+  document.getElementById('tab-batches').classList.toggle('active', tab === 'batches');
+  document.getElementById('tab-tasks').classList.toggle('active',   tab === 'tasks');
   document.getElementById('stale-banner').style.display = 'none';
   if (tab === 'batches' && !lastBtData) fetchBatchData();
+  if (tab === 'tasks'   && !lastTkData) fetchTasksData();
 }
 
 // -- Shared helpers -----------------------------------------------------------
@@ -1801,6 +1902,122 @@ function renderRrWidget(data) {
   }
 }
 
+
+// ── Tasks tab ─────────────────────────────────────────────────────────────────
+var tkTimer = null;
+
+function fetchTasksData() {
+  var url = getBase() + '/tasks_live.json?t=' + Date.now();
+  fetch(url)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      lastTkData = data;
+      renderTasksData(data);
+      if (tkTimer) clearTimeout(tkTimer);
+      tkTimer = setTimeout(fetchTasksData, BT_INTERVAL_MS);
+    })
+    .catch(function() {
+      if (tkTimer) clearTimeout(tkTimer);
+      tkTimer = setTimeout(fetchTasksData, BT_INTERVAL_MS);
+    });
+}
+
+function renderTasksData(data) {
+  if (!data || (!data.picking && !data.replen)) {
+    document.getElementById('tk-empty-state').style.display = 'block';
+    document.getElementById('tk-summary-tiles').style.display = 'none';
+    document.getElementById('tk-pick-card').style.display = 'none';
+    document.getElementById('tk-replen-card').style.display = 'none';
+    return;
+  }
+  document.getElementById('tk-empty-state').style.display = 'none';
+
+  var gen = data.generated || '';
+  var genTs = new Date(gen.endsWith('Z') ? gen : gen + 'Z');
+  var mins = Math.round((Date.now() - genTs.getTime()) / 60000);
+  document.getElementById('tk-run-time').textContent = 'Updated ' + mins + ' min ago';
+  document.getElementById('tk-shift-label').textContent = (data.shift || '') + ' shift — since ' + (data.shift_start ? data.shift_start.slice(11,16) + ' UTC' : '');
+
+  var p = data.picking  || { total_open:0, queued:0, in_progress:0, completed:0, tasks:[] };
+  var r = data.replen   || { total_open:0, queued:0, in_progress:0, completed:0, tasks:[] };
+
+  document.getElementById('tk-pick-open').textContent   = p.total_open.toLocaleString();
+  document.getElementById('tk-pick-sub').textContent    = p.queued + ' queued  |  ' + p.in_progress + ' in progress';
+  document.getElementById('tk-pick-done').textContent   = p.completed.toLocaleString();
+  document.getElementById('tk-replen-open').textContent = r.total_open.toLocaleString();
+  document.getElementById('tk-replen-sub').textContent  = r.queued + ' queued  |  ' + r.in_progress + ' in progress';
+  document.getElementById('tk-replen-done').textContent = r.completed.toLocaleString();
+
+  document.getElementById('tk-summary-tiles').style.display = '';
+  document.getElementById('tk-pick-card').style.display   = '';
+  document.getElementById('tk-replen-card').style.display = '';
+
+  renderTaskTable('picking');
+  renderTaskTable('replen');
+}
+
+function renderTaskTable(type) {
+  var isPick     = type === 'picking';
+  var tbodyId    = isPick ? 'tk-pick-tbody'      : 'tk-replen-tbody';
+  var emptyId    = isPick ? 'tk-pick-empty'      : 'tk-replen-empty';
+  var showDoneId = isPick ? 'tk-pick-show-done'  : 'tk-replen-show-done';
+  var dataKey    = isPick ? 'picking'             : 'replen';
+  var tasks      = (lastTkData && lastTkData[dataKey] && lastTkData[dataKey].tasks) || [];
+  var showDone   = !!(document.getElementById(showDoneId) && document.getElementById(showDoneId).checked);
+
+  var filtered = tasks.filter(function(t) { return showDone || t.status !== '8000'; });
+
+  filtered.sort(function(a, b) {
+    var order = { '7000':0, '5000':1, '3000':2, '8000':3 };
+    var ao = order[a.status] !== undefined ? order[a.status] : 2;
+    var bo = order[b.status] !== undefined ? order[b.status] : 2;
+    return ao - bo;
+  });
+
+  var tbody = document.getElementById(tbodyId);
+  var empty = document.getElementById(emptyId);
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  var STATUS_COLOR = { '7000':'var(--amber)', '5000':'var(--accent)', '3000':'var(--text-muted)', '8000':'var(--green)' };
+  var tr_s = 'border-bottom:1px solid var(--border-light);';
+  var td   = 'padding:6px 8px;vertical-align:middle;';
+  var tdm  = td + 'color:var(--text-muted);font-size:12px;';
+
+  var rows = '';
+  for (var i = 0; i < filtered.length; i++) {
+    var t = filtered[i];
+    var sc = STATUS_COLOR[t.status] || 'var(--text-muted)';
+    var released = t.created_pdt ? String(t.created_pdt).slice(11,16) : '—';
+    if (isPick) {
+      var badge = '<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:var(--accent-bg);color:var(--accent);">' + (t.subtype || '') + '</span>';
+      rows += '<tr style="' + tr_s + '">'
+        + '<td style="' + tdm + 'text-align:right;">' + (i+1) + '</td>'
+        + '<td style="' + td  + 'font-family:monospace;font-size:12px;">' + (t.task_id || '—') + '</td>'
+        + '<td style="' + td  + '">' + badge + '</td>'
+        + '<td style="' + tdm + '">' + (t.source || '—') + '</td>'
+        + '<td style="' + td  + 'text-align:right;font-weight:600;color:' + sc + ';">' + (t.status_label || '—') + '</td>'
+        + '<td style="' + tdm + '">' + (t.assigned_to || '—') + '</td>'
+        + '<td style="' + tdm + '">' + released + '</td>'
+        + '</tr>';
+    } else {
+      rows += '<tr style="' + tr_s + '">'
+        + '<td style="' + tdm + 'text-align:right;">' + (i+1) + '</td>'
+        + '<td style="' + td  + 'font-family:monospace;font-size:12px;">' + (t.task_id || '—') + '</td>'
+        + '<td style="' + tdm + '">' + (t.source || '—') + '</td>'
+        + '<td style="' + tdm + '">' + (t.target || '—') + '</td>'
+        + '<td style="' + td  + 'text-align:right;font-weight:600;color:' + sc + ';">' + (t.status_label || '—') + '</td>'
+        + '<td style="' + tdm + '">' + (t.assigned_to || '—') + '</td>'
+        + '<td style="' + tdm + '">' + released + '</td>'
+        + '</tr>';
+    }
+  }
+  tbody.innerHTML = rows;
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
