@@ -271,8 +271,9 @@
   .tk-table-wrap::-webkit-scrollbar{width:4px;}.tk-table-wrap::-webkit-scrollbar-track{background:transparent;}.tk-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
   .tk-table-wrap table{table-layout:fixed;width:100%;}
   .tk-table-wrap td,.tk-table-wrap th{white-space:normal;word-break:break-word;}
-  .tk-table-wrap td{padding:8px 6px;vertical-align:top;line-height:1.4;}
+  .tk-table-wrap td{padding:7px 6px 0;vertical-align:top;line-height:1.4;}
   .tk-table-wrap th{white-space:nowrap;}
+  .tk-table-wrap tbody tr:nth-child(even) td{border-bottom:0.5px solid var(--border-light);}
 
   /* Batch status badges */
   .status-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.03em;text-transform:uppercase;}
@@ -822,8 +823,6 @@
                 <th>Type</th>
                 <th>Source</th>
                 <th class="r">Status</th>
-                <th class="r">Age</th>
-                <th>Released</th>
               </tr>
             </thead>
             <tbody id="tk-pick-tbody"></tbody>
@@ -850,8 +849,6 @@
                 <th>Source</th>
                 <th>Target</th>
                 <th class="r">Status</th>
-                <th class="r">Age</th>
-                <th>Released</th>
               </tr>
             </thead>
             <tbody id="tk-replen-tbody"></tbody>
@@ -2061,27 +2058,31 @@ function renderTaskTable(type) {
       var rh = rd.getHours(), rm = rd.getMinutes();
       released = (rh % 12 || 12) + ':' + (rm < 10 ? '0' : '') + rm + (rh < 12 ? ' AM' : ' PM');
     }
+    var subRow = '<tr>'
+      + '<td></td>'
+      + '<td colspan="4" style="padding:0 0 7px 0;font-size:11px;color:var(--text-hint);">'
+      + 'Released ' + released
+      + ' &nbsp;·&nbsp; <span style="' + ageColor + '">Age ' + age + '</span>'
+      + '</td></tr>';
     if (isPick) {
       var badge = '<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:var(--accent-bg);color:var(--accent);">' + (t.subtype || '') + '</span>';
-      rows += '<tr style="' + tr_s + '">'
-        + '<td style="' + tdm + 'text-align:right;">' + (i+1) + '</td>'
-        + '<td style="' + td  + 'font-family:monospace;font-size:12px;">' + (t.task_id || '—') + '</td>'
-        + '<td style="' + td  + '">' + badge + '</td>'
-        + '<td style="' + tdm + '">' + (t.source || '—') + '</td>'
-        + '<td style="' + td  + 'text-align:right;font-weight:600;color:' + sc + ';">' + (t.status_label || '—') + '</td>'
-        + '<td style="' + tdm + 'text-align:right;' + ageColor + '">' + age + '</td>'
-        + '<td style="' + tdm + '">' + released + '</td>'
-        + '</tr>';
+      rows += '<tr style="border-bottom:none;">'
+        + '<td style="' + tdm + 'text-align:right;padding-bottom:2px;">' + (i+1) + '</td>'
+        + '<td style="' + td  + 'font-family:monospace;font-size:12px;padding-bottom:2px;">' + (t.task_id || '—') + '</td>'
+        + '<td style="' + td  + 'padding-bottom:2px;">' + badge + '</td>'
+        + '<td style="' + tdm + 'padding-bottom:2px;">' + (t.source || '—') + '</td>'
+        + '<td style="' + td  + 'text-align:right;font-weight:600;color:' + sc + ';padding-bottom:2px;">' + (t.status_label || '—') + '</td>'
+        + '</tr>'
+        + subRow;
     } else {
-      rows += '<tr style="' + tr_s + '">'
-        + '<td style="' + tdm + 'text-align:right;">' + (i+1) + '</td>'
-        + '<td style="' + td  + 'font-family:monospace;font-size:12px;">' + (t.task_id || '—') + '</td>'
-        + '<td style="' + tdm + '">' + (t.source || '—') + '</td>'
-        + '<td style="' + tdm + '">' + (t.target || '—') + '</td>'
-        + '<td style="' + td  + 'text-align:right;font-weight:600;color:' + sc + ';">' + (t.status_label || '—') + '</td>'
-        + '<td style="' + tdm + 'text-align:right;' + ageColor + '">' + age + '</td>'
-        + '<td style="' + tdm + '">' + released + '</td>'
-        + '</tr>';
+      rows += '<tr style="border-bottom:none;">'
+        + '<td style="' + tdm + 'text-align:right;padding-bottom:2px;">' + (i+1) + '</td>'
+        + '<td style="' + td  + 'font-family:monospace;font-size:12px;padding-bottom:2px;">' + (t.task_id || '—') + '</td>'
+        + '<td style="' + tdm + 'padding-bottom:2px;">' + (t.source || '—') + '</td>'
+        + '<td style="' + tdm + 'padding-bottom:2px;">' + (t.target || '—') + '</td>'
+        + '<td style="' + td  + 'text-align:right;font-weight:600;color:' + sc + ';padding-bottom:2px;">' + (t.status_label || '—') + '</td>'
+        + '</tr>'
+        + subRow;
     }
   }
   tbody.innerHTML = rows;
