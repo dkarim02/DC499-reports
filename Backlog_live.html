@@ -1950,6 +1950,7 @@ function fetchTasksData() {
       tkTimer = setTimeout(fetchTasksData, BT_INTERVAL_MS);
     })
     .catch(function() {
+      document.getElementById('tk-run-time').textContent = 'Could not load tasks_live.json — is dc499_refresh.js running?';
       if (tkTimer) clearTimeout(tkTimer);
       tkTimer = setTimeout(fetchTasksData, BT_INTERVAL_MS);
     });
