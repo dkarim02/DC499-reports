@@ -1414,7 +1414,11 @@ SELECT
 FROM default_pickpack.PPK_OLPN
 WHERE FACILITY_ID = '${FACILITY}'
   AND STATUS IN ('7800', '8000')
-  AND CREATED_TIMESTAMP >= '${shiftStartStr}'`.trim();
+  AND CREATED_TIMESTAMP >= '${shiftStartStr}'
+  AND (
+    SHIPPED_DATE_TIME >= '${shiftStartStr}'
+    OR (SHIPPED_DATE_TIME IS NULL AND UPDATED_TIMESTAMP >= '${shiftStartStr}')
+  )`.trim();
 
   const resp = await mcpQuery(accessToken, sql);
   const row  = (resp.rows || [])[0] || {};
