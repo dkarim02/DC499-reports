@@ -635,10 +635,23 @@ WHERE ilpn.FACILITY_ID = '499'
 
 ### Batch/Backlog pages — remaining
 - [ ] Putwall column in batch display — join verified but needs multi-PW shift to confirm RESOURCE_GROUP_ID is populated correctly. See "Putwall → batch mapping research" section above.
+- [x] **Shipped oLPNs card** — DONE 2026-08-03. Green "Shipped" tile in Backlog header row. Shows oLPN count (main value) + orders count (sub-label). fetchShipped() in dc499_refresh.js queries PPK_OLPN STATUS IN ('7800','8000') using CREATED_TIMESTAMP. Writes shipped_live.json, served at /shipped_live.json. Page fetches on load + every 5 min independently of backlog refresh.
 - [x] **Backlog order-date pooling** — DONE 2026-07-30. READY/RELEASED/ALLOCATED lines pool to order's earliest date; PACKED/SHIPPED keep their own date. sqlCounts query removed; totals now derived from pooled orders array.
 - [x] **Bridge Total row** — DONE 2026-07-30. Total row added below Avg/hr in both live widget and EOD email export.
 - [x] **Total column in Order Lines by Date** — DONE 2026-07-30. True full-day line count per date (all statuses, both shifts) via dedicated sqlDailyTotals query. Shown as rightmost column; footer sums it.
 - [x] **Ready for Pack tile** — DONE 2026-07-30. Teal tile between Allocated and Packed. Shows units (not LPN count) at D1-SN-01 from DCI_ILPN STATUS=5000 joined to DCI_INVENTORY. Color: `--rfp` CSS var, distinct from `--alloc`.
+
+### Tasks tab — Backlog_live.html (BUILT 2026-08-03, BROKEN)
+- Tab exists in Backlog_live.html with health-check tiles and task tables — but never shows data
+- **Root cause:** `default_task.TSK_TASK` only has a usable index on `FACILITY_ID + CREATED_TIMESTAMP`. Any filter beyond that (TYPE_ID, LABOR_ACTIVITY_ID, STATUS, TRANSACTION_ID) causes operation failures. Even a bare 5-minute CREATED_TIMESTAMP window fails intermittently — the table is unreliable through this MCP connector.
+- The one query pattern that worked early in the session (bare 5-min window, no extra filters) returned data inconsistently and now fails consistently.
+- `fetchTaskData()` in dc499_refresh.js uses `LABOR_ACTIVITY_ID IN (...)` + `LEFT(SOURCE_LOCATION_ID,3) IN (...)` filters — both fail. tasks_live.json is never written.
+- **Options to fix:**
+  1. **CSV drop approach** — user exports Task screen from MA manually, page reads local CSV. Gives full open task list (Ready/Assigned/In Progress) with no MAWM query issues.
+  2. **TSK_ACTIVITY_TRACKING** — reframe tab as "work done this shift" (completed picks/replen by person). Proven reliable at shift scale, already used by Ecom Live. No open task counts.
+  3. **Wait and retry** — TSK_TASK sometimes works. Could add retry logic with very narrow windows.
+- **Decision needed:** pick an approach before rebuilding.
+- **Confirmed filters (for when table works):** Ecom picking = `LABOR_ACTIVITY_ID IN ('ECOM MEZZ CART','ECOM NON MEZZ CART')`. Ecom replen = `LEFT(SOURCE_LOCATION_ID,3) IN ('R1B','R1C','R1D','R1E','R1F')`. Both verified against live CSV exports.
 
 ### EOD Email — remaining
 - [ ] Verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass) — confirm colors match screen

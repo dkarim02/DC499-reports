@@ -27,6 +27,7 @@ const BACKLOG_FILE  = path.join(REPORT_DIR, 'backlog_live.json');
 const BATCH_STATUS_FILE = path.join(REPORT_DIR, 'batch_status.json');
 const RETAIL_REPLEN_FILE = path.join(REPORT_DIR, 'retail_replen.json');
 const TASKS_FILE         = path.join(REPORT_DIR, 'tasks_live.json');
+const SHIPPED_FILE       = path.join(REPORT_DIR, 'shipped_live.json');
 const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3118;
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
@@ -1375,7 +1376,7 @@ function gitPush() {
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
   try {
-    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync(`git commit -m "Live update -- ${stamp}"`,             { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git fetch origin main',                               { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git rebase --autostash origin/main',                  { cwd: REPORT_DIR, stdio: 'pipe' });
@@ -1389,6 +1390,42 @@ function gitPush() {
       console.warn(`[${ts()}]   Git push failed: ${msg.slice(0, 200)}`);
     }
   }
+}
+
+// ── shipped oLPNs query ────────────────────────────────────────────────────────
+async function fetchShipped(accessToken) {
+  const nowUtc     = new Date();
+  const nowUtcHour = nowUtc.getUTCHours();
+  const nowUtcMin  = nowUtc.getUTCMinutes();
+  const is1st      = (nowUtcHour > 10 || (nowUtcHour === 10 && nowUtcMin >= 0)) && nowUtcHour < 21;
+  const shiftStart = new Date(nowUtc);
+  if (is1st) {
+    shiftStart.setUTCHours(13, 0, 0, 0); // 1st shift 6 AM PDT = 13:00 UTC
+  } else {
+    shiftStart.setUTCHours(21, 0, 0, 0); // 2nd shift 2 PM PDT = 21:00 UTC
+    if (nowUtcHour < 21) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
+  }
+  const shiftStartStr = shiftStart.toISOString().replace('T', ' ').slice(0, 19);
+
+  const sql = `
+SELECT
+  COUNT(*)                    AS shipped_olpns,
+  COUNT(DISTINCT ORDER_ID)    AS shipped_orders
+FROM default_pickpack.PPK_OLPN
+WHERE FACILITY_ID = '${FACILITY}'
+  AND STATUS IN ('7800', '8000')
+  AND CREATED_TIMESTAMP >= '${shiftStartStr}'`.trim();
+
+  const resp = await mcpQuery(accessToken, sql);
+  const row  = (resp.rows || [])[0] || {};
+  return {
+    generated:      new Date().toISOString().slice(0, 19),
+    facility:       FACILITY,
+    shift:          is1st ? '1st' : '2nd',
+    shift_start:    shiftStartStr,
+    shipped_olpns:  Number(row.shipped_olpns  || 0),
+    shipped_orders: Number(row.shipped_orders || 0),
+  };
 }
 
 // ── ecom tasks query ───────────────────────────────────────────────────────────
@@ -1483,13 +1520,14 @@ async function queryAndWrite(accessToken) {
   // fetchBatchStatus runs TWO sequential MCP queries (WR_BATCH then DCO_ORDER).
   // Running it inside Promise.all with 5 other concurrent queries causes the second
   // query to time out. Run it after the parallel group instead.
-  const [recvData, dockData, totesData, backlogData, retailReplenData, tasksData] = await Promise.all([
+  const [recvData, dockData, totesData, backlogData, retailReplenData, tasksData, shippedData] = await Promise.all([
     fetchReceiving(accessToken),
     fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
     fetchBacklog(accessToken).catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; }),
     fetchRetailReplen(accessToken).catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
     fetchTaskData(accessToken).catch(e => { console.warn(`  Tasks query failed: ${e.message}`); return null; }),
+    fetchShipped(accessToken).catch(e => { console.warn(`  Shipped query failed: ${e.message}`); return null; }),
   ]);
   const batchStatusData = await fetchBatchStatus(accessToken)
     .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; });
@@ -1531,8 +1569,13 @@ async function queryAndWrite(accessToken) {
     console.log(`[${ts()}] ✓ tasks_live.json — pick open:${pOpen} replen open:${rOpen}`);
   }
 
+  if (shippedData) {
+    fs.writeFileSync(SHIPPED_FILE, JSON.stringify(shippedData, null, 4));
+    console.log(`[${ts()}] ✓ shipped_live.json — ${shippedData.shipped_olpns} oLPNs, ${shippedData.shipped_orders} orders`);
+  }
+
   gitPush();
-  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData, tasksData };
+  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData, tasksData, shippedData };
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
@@ -1682,6 +1725,11 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
     if (url.pathname === '/tasks_live.json') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify(cache?.tasksData || {}));
+      return;
+    }
+    if (url.pathname === '/shipped_live.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(cache?.shippedData || {}));
       return;
     }
 
