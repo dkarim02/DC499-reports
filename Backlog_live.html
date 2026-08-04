@@ -797,60 +797,65 @@
       </div>
     </div>
 
-    <!-- Picking tasks table -->
-    <div class="card" id="tk-pick-card" style="display:none;margin-top:16px;">
-      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>Ecom Picking Tasks</span>
-        <label style="font-size:12px;font-weight:400;color:var(--text-muted);cursor:pointer;">
-          <input type="checkbox" id="tk-pick-show-done" onchange="renderTaskTable('picking')" style="margin-right:4px;">
-          Show completed
-        </label>
-      </div>
-      <div class="tk-table-wrap">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead>
-            <tr>
-              <th class="r">#</th>
-              <th>Task ID</th>
-              <th>Type</th>
-              <th>Source</th>
-              <th class="r">Status</th>
-              <th class="r">Age</th>
-              <th>Released</th>
-            </tr>
-          </thead>
-          <tbody id="tk-pick-tbody"></tbody>
-        </table>
-      </div>
-      <div id="tk-pick-empty" style="display:none;text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">No open picking tasks</div>
-    </div>
+    <!-- Picking + Replen side by side -->
+    <div id="tk-cards-grid" style="display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
 
-    <!-- Replen tasks table -->
-    <div class="card" id="tk-replen-card" style="display:none;margin-top:16px;">
-      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>Ecom Replen Tasks</span>
-        <label style="font-size:12px;font-weight:400;color:var(--text-muted);cursor:pointer;">
-          <input type="checkbox" id="tk-replen-show-done" onchange="renderTaskTable('replen')" style="margin-right:4px;">
-          Show completed
-        </label>
+      <!-- Picking tasks -->
+      <div class="card" id="tk-pick-card" style="margin-top:0;">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Ecom Picking</span>
+          <label style="font-size:12px;font-weight:400;color:var(--text-muted);cursor:pointer;">
+            <input type="checkbox" id="tk-pick-show-done" onchange="renderTaskTable('picking')" style="margin-right:4px;">
+            Show completed
+          </label>
+        </div>
+        <div class="tk-table-wrap">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr>
+                <th class="r">#</th>
+                <th>Task ID</th>
+                <th>Type</th>
+                <th>Source</th>
+                <th class="r">Status</th>
+                <th class="r">Age</th>
+                <th>Released</th>
+              </tr>
+            </thead>
+            <tbody id="tk-pick-tbody"></tbody>
+          </table>
+        </div>
+        <div id="tk-pick-empty" style="display:none;text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">No open picking tasks</div>
       </div>
-      <div class="tk-table-wrap">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <thead>
-            <tr>
-              <th class="r">#</th>
-              <th>Task ID</th>
-              <th>Source</th>
-              <th>Target</th>
-              <th class="r">Status</th>
-              <th class="r">Age</th>
-              <th>Released</th>
-            </tr>
-          </thead>
-          <tbody id="tk-replen-tbody"></tbody>
-        </table>
+
+      <!-- Replen tasks -->
+      <div class="card" id="tk-replen-card" style="margin-top:0;">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Ecom Replen</span>
+          <label style="font-size:12px;font-weight:400;color:var(--text-muted);cursor:pointer;">
+            <input type="checkbox" id="tk-replen-show-done" onchange="renderTaskTable('replen')" style="margin-right:4px;">
+            Show completed
+          </label>
+        </div>
+        <div class="tk-table-wrap">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr>
+                <th class="r">#</th>
+                <th>Task ID</th>
+                <th>Source</th>
+                <th>Target</th>
+                <th class="r">Status</th>
+                <th class="r">Age</th>
+                <th>Released</th>
+              </tr>
+            </thead>
+            <tbody id="tk-replen-tbody"></tbody>
+          </table>
+        </div>
+        <div id="tk-replen-empty" style="display:none;text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">No open replen tasks</div>
       </div>
-      <div id="tk-replen-empty" style="display:none;text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">No open replen tasks</div>
+
     </div>
 
     <div class="empty-state" id="tk-empty-state" style="display:none;">
@@ -1971,8 +1976,7 @@ function renderTasksData(data) {
   if (!data || (!data.picking && !data.replen)) {
     document.getElementById('tk-empty-state').style.display = 'block';
     document.getElementById('tk-summary-tiles').style.display = 'none';
-    document.getElementById('tk-pick-card').style.display = 'none';
-    document.getElementById('tk-replen-card').style.display = 'none';
+    document.getElementById('tk-cards-grid').style.display = 'none';
     return;
   }
   document.getElementById('tk-empty-state').style.display = 'none';
@@ -1994,8 +1998,7 @@ function renderTasksData(data) {
   document.getElementById('tk-replen-done').textContent = r.completed.toLocaleString();
 
   document.getElementById('tk-summary-tiles').style.display = '';
-  document.getElementById('tk-pick-card').style.display   = '';
-  document.getElementById('tk-replen-card').style.display = '';
+  document.getElementById('tk-cards-grid').style.display   = 'grid';
 
   renderTaskTable('picking');
   renderTaskTable('replen');
