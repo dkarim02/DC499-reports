@@ -249,18 +249,24 @@
   .nb-ready{font-size:11px;font-weight:700;color:var(--green);}
 
   /* Batch summary tiles */
-  .summary-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
+  .summary-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
   @media(max-width:680px){.summary-tiles{grid-template-columns:repeat(2,1fr);}}
-  .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px 14px 12px;text-align:center;border-top:3px solid var(--border-mid);}
-  .tile.t-accent{border-top-color:var(--accent);}
-  .tile.t-green {border-top-color:var(--green);}
-  .tile.t-amber {border-top-color:var(--amber);}
-  .tile-label{font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;}
-  .tile-value{font-size:28px;font-weight:600;color:var(--text);line-height:1;}
+  .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:8px;padding:9px 10px;text-align:center;}
+  .tile-label{font-size:9px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;}
+  .tile-value{font-size:19px;font-weight:600;color:var(--text);}
   .tile-value.accent{color:var(--accent);}
   .tile-value.green {color:var(--green);}
   .tile-value.amber {color:var(--amber);}
-  .tile-sub{font-size:10px;color:var(--text-hint);margin-top:5px;line-height:1.5;}
+  .tile-sub{font-size:10px;color:var(--text-hint);margin-top:2px;}
+  /* Tasks tab tile overrides — scoped so Batches is unchanged */
+  #tk-summary-tiles{grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
+  #tk-summary-tiles .tile{border-radius:10px;padding:14px 14px 12px;border-top:3px solid var(--border-mid);}
+  #tk-summary-tiles .tile.t-accent{border-top-color:var(--accent);}
+  #tk-summary-tiles .tile.t-green {border-top-color:var(--green);}
+  #tk-summary-tiles .tile.t-amber {border-top-color:var(--amber);}
+  #tk-summary-tiles .tile-label{font-size:10px;letter-spacing:0.06em;margin-bottom:6px;}
+  #tk-summary-tiles .tile-value{font-size:28px;line-height:1;}
+  #tk-summary-tiles .tile-sub{margin-top:5px;line-height:1.5;}
   .tk-table-wrap{overflow-y:auto;max-height:320px;}
   .tk-table-wrap::-webkit-scrollbar{width:4px;}.tk-table-wrap::-webkit-scrollbar-track{background:transparent;}.tk-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 
