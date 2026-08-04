@@ -1445,14 +1445,16 @@ async function fetchTaskData(accessToken) {
   const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
 
   // Two separate queries — ASSIGNED_USER_ID and PLANNED_START_TIME crash the connector (likely PII gate)
-  // Safe columns only: TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID, CREATED_TIMESTAMP
+  // Safe columns only: TASK_ID, STATUS, TRANSACTION_ID, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID, CREATED_TIMESTAMP
+  // Filter on TRANSACTION_ID not LABOR_ACTIVITY_ID — many tasks have 'Default Picking Activity' in LABOR_ACTIVITY_ID
+  // but always have the correct ecom pick transaction name in TRANSACTION_ID
   const sqlPick = `
-SELECT TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID,
+SELECT TASK_ID, STATUS, TRANSACTION_ID, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID,
   CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt
 FROM default_task.TSK_TASK
 WHERE FACILITY_ID = '${FACILITY}'
   AND STATUS != '9000'
-  AND LABOR_ACTIVITY_ID IN ('ECOM MEZZ CART','ECOM NON MEZZ CART')
+  AND TRANSACTION_ID IN ('Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart')
   AND (
     CREATED_TIMESTAMP >= '${startStr}'
     OR (STATUS IN ('3000','5000','7000') AND CREATED_TIMESTAMP >= NOW() - INTERVAL 2 DAY)
@@ -1483,8 +1485,8 @@ ORDER BY CREATED_TIMESTAMP ASC`.trim();
   function mapTask(r, type) {
     return {
       task_id:      r.TASK_ID,
-      subtype:      r.LABOR_ACTIVITY_ID === 'ECOM MEZZ CART' ? 'MEZZ' :
-                    r.LABOR_ACTIVITY_ID === 'ECOM NON MEZZ CART' ? 'NON MEZZ' : r.LABOR_ACTIVITY_ID || 'REPLEN',
+      subtype:      r.TRANSACTION_ID === 'Ecom Mezz Pick To Putwall Cart' ? 'MEZZ' :
+                    r.TRANSACTION_ID === 'Ecom Non-Mezz Pick To Putwall Cart' ? 'NON MEZZ' : r.LABOR_ACTIVITY_ID || 'REPLEN',
       status:       String(r.STATUS),
       status_label: statusLabel(r.STATUS),
       source:       r.SOURCE_LOCATION_ID || null,
