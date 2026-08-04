@@ -772,7 +772,7 @@
       <div class="tile t-accent">
         <div class="tile-label">Pick — Open</div>
         <div class="tile-value accent" id="tk-pick-open">--</div>
-        <div class="tile-sub" id="tk-pick-sub">-- queued &nbsp;|&nbsp; -- assigned &nbsp;|&nbsp; -- in progress</div>
+        <div class="tile-sub" id="tk-pick-sub">-- ready &nbsp;|&nbsp; -- assigned &nbsp;|&nbsp; -- in progress</div>
       </div>
       <div class="tile t-green">
         <div class="tile-label">Pick — Done</div>
@@ -782,7 +782,7 @@
       <div class="tile t-amber">
         <div class="tile-label">Replen — Open</div>
         <div class="tile-value amber" id="tk-replen-open">--</div>
-        <div class="tile-sub" id="tk-replen-sub">-- queued &nbsp;|&nbsp; -- assigned &nbsp;|&nbsp; -- in progress</div>
+        <div class="tile-sub" id="tk-replen-sub">-- ready &nbsp;|&nbsp; -- assigned &nbsp;|&nbsp; -- in progress</div>
       </div>
       <div class="tile t-green">
         <div class="tile-label">Replen — Done</div>
@@ -1981,10 +1981,10 @@ function renderTasksData(data) {
   var r = data.replen   || { total_open:0, queued:0, in_progress:0, completed:0, tasks:[] };
 
   document.getElementById('tk-pick-open').textContent   = p.total_open.toLocaleString();
-  document.getElementById('tk-pick-sub').textContent    = p.queued + ' queued  |  ' + (p.assigned||0) + ' assigned  |  ' + p.in_progress + ' in progress';
+  document.getElementById('tk-pick-sub').textContent    = p.queued + ' ready  |  ' + (p.assigned||0) + ' assigned  |  ' + p.in_progress + ' in progress';
   document.getElementById('tk-pick-done').textContent   = p.completed.toLocaleString();
   document.getElementById('tk-replen-open').textContent = r.total_open.toLocaleString();
-  document.getElementById('tk-replen-sub').textContent  = r.queued + ' queued  |  ' + (r.assigned||0) + ' assigned  |  ' + r.in_progress + ' in progress';
+  document.getElementById('tk-replen-sub').textContent  = r.queued + ' ready  |  ' + (r.assigned||0) + ' assigned  |  ' + r.in_progress + ' in progress';
   document.getElementById('tk-replen-done').textContent = r.completed.toLocaleString();
 
   document.getElementById('tk-summary-tiles').style.display = '';

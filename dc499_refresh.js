@@ -1471,7 +1471,7 @@ ORDER BY CREATED_TIMESTAMP ASC`.trim();
     mcpQuery(accessToken, sqlReplen),
   ]);
 
-  const STATUS_LABEL = { '3000':'Queued', '5000':'Assigned', '7000':'In Progress', '8000':'Completed' };
+  const STATUS_LABEL = { '3000':'Ready for Assign', '5000':'Assigned', '7000':'In Progress', '8000':'Completed' };
   function statusLabel(s) { return STATUS_LABEL[String(s)] || String(s); }
 
   function mapTask(r, type) {
