@@ -225,7 +225,10 @@
 
   <div class="header-row">
     <div>
-      <div id="run-time" class="run-time">Loading...</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div id="run-time" class="run-time">Loading...</div>
+        <span id="lan-badge" style="display:none;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:#16a34a;color:#fff;letter-spacing:.3px;">⚡ LAN</span>
+      </div>
       <div id="shift-start" class="run-time" style="margin-top:2px;"></div>
     </div>
     <div class="header-btns">
@@ -405,6 +408,8 @@ function initLiveBase(cb) {
     .catch(function() { return null; })
     .then(function(base) {
       sessionStorage.setItem('dc499_lan_base', base || ghBase);
+      var badge = document.getElementById('lan-badge');
+      if (badge) badge.style.display = base ? 'inline' : 'none';
       if (base) console.log('[SCOUT] LAN server detected — using ' + base);
       if (cb) cb();
     });
@@ -828,6 +833,13 @@ function sendSelectedBatches() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
+(function() {
+  var cached = sessionStorage.getItem('dc499_lan_base');
+  if (cached && cached.indexOf('github') === -1) {
+    var b = document.getElementById('lan-badge');
+    if (b) b.style.display = 'inline';
+  }
+})();
 initLiveBase(function() {
   fetchData(false);
   scheduleAutoRefresh();

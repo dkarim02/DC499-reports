@@ -506,7 +506,10 @@
   <div class="tab-pane active" id="tab-orders">
     <div class="header-row">
       <div>
-        <div id="bl-run-time" class="run-time">Loading...</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div id="bl-run-time" class="run-time">Loading...</div>
+          <span id="lan-badge" style="display:none;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:#16a34a;color:#fff;letter-spacing:.3px;">⚡ LAN</span>
+        </div>
         <div id="bl-next-refresh" class="run-time" style="margin-top:2px;"></div>
       </div>
       <div class="header-btns">
@@ -1011,6 +1014,8 @@ function initLiveBase(cb) {
     .then(function(base) {
       _liveBase = base || ghBase;
       sessionStorage.setItem('dc499_lan_base', _liveBase);
+      var badge = document.getElementById('lan-badge');
+      if (badge) badge.style.display = base ? 'inline' : 'none';
       if (base) console.log('[SCOUT] LAN server detected — using ' + base);
       _liveBaseCallbacks.forEach(function(fn) { fn(); });
       _liveBaseCallbacks = [];
@@ -2136,6 +2141,14 @@ function renderTaskTable(type) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 (function(){ var v; try { v = localStorage.getItem('dc499_bt_view_v1'); } catch(e){} if (v === 'compact') setBtView('compact'); })();
+// Show LAN badge immediately if already cached
+(function() {
+  var cached = sessionStorage.getItem('dc499_lan_base');
+  if (cached && cached.indexOf('github') === -1) {
+    var b = document.getElementById('lan-badge');
+    if (b) b.style.display = 'inline';
+  }
+})();
 initLiveBase(function() {
   fetchBacklogData();
   fetchRrData();
