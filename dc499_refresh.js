@@ -1631,6 +1631,21 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
     }
   }
 
+  // Write server_info.json so GitHub Pages clients can discover the LAN server
+  const SERVER_INFO_FILE = path.join(REPORT_DIR, 'server_info.json');
+  try {
+    fs.writeFileSync(SERVER_INFO_FILE, JSON.stringify({ ip: localIp, port, ts: new Date().toISOString() }, null, 2));
+    execSync('git stash',                      { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git pull --rebase origin main',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git stash pop',                  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add server_info.json',       { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync(`git commit -m "server online -- ${localIp}:${port}"`, { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git push origin main',           { cwd: REPORT_DIR, stdio: 'pipe' });
+    console.log(`[${ts()}] ✓ server_info.json pushed (${localIp}:${port})`);
+  } catch (e) {
+    console.warn(`[${ts()}] Could not push server_info.json: ${e.message}`);
+  }
+
   console.log(`[${ts()}] Starting initial query...`);
   await refresh();
 
@@ -1640,6 +1655,12 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://localhost:${port}`);
+
+    if (url.pathname === '/ping') {
+      res.writeHead(200, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+      res.end('ok');
+      return;
+    }
 
     if (url.pathname === '/api/status') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });

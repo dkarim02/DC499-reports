@@ -380,15 +380,40 @@ function scheduleAutoRefresh() {
 
 function manualRefresh() { fetchData(true); }
 
+function getBase() {
+  if (window.location.protocol === 'file:') return 'http://localhost:3001';
+  var cached = sessionStorage.getItem('dc499_lan_base');
+  if (cached) return cached;
+  return window.location.hostname === 'dkarim02.github.io'
+    ? 'https://dkarim02.github.io/DC499-reports' : '';
+}
+
+function initLiveBase(cb) {
+  var ghBase = 'https://dkarim02.github.io/DC499-reports';
+  if (window.location.protocol === 'file:') { if (cb) cb(); return; }
+  if (window.location.hostname !== 'dkarim02.github.io') { if (cb) cb(); return; }
+  var cached = sessionStorage.getItem('dc499_lan_base');
+  if (cached) { if (cb) cb(); return; }
+  fetch(ghBase + '/server_info.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(info) {
+      var lanUrl = 'http://' + info.ip + ':' + (info.port || 3001);
+      return fetch(lanUrl + '/ping', { signal: AbortSignal.timeout(1500) })
+        .then(function(r) { return r.ok ? lanUrl : null; })
+        .catch(function() { return null; });
+    })
+    .catch(function() { return null; })
+    .then(function(base) {
+      sessionStorage.setItem('dc499_lan_base', base || ghBase);
+      if (base) console.log('[SCOUT] LAN server detected — using ' + base);
+      if (cb) cb();
+    });
+}
+
 function fetchData(isManual) {
   var rtEl = document.getElementById('run-time');
   if (rtEl) rtEl.textContent = 'Loading...';
-  var base = window.location.protocol === 'file:'
-    ? 'http://localhost:3001'
-    : (window.location.hostname === 'dkarim02.github.io'
-        ? 'https://dkarim02.github.io/DC499-reports'
-        : '');
-  fetch(base + '/batch_status.json?t=' + Date.now())
+  fetch(getBase() + '/batch_status.json?t=' + Date.now())
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data) {
       lastData = data;
@@ -803,8 +828,10 @@ function sendSelectedBatches() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
-fetchData(false);
-scheduleAutoRefresh();
+initLiveBase(function() {
+  fetchData(false);
+  scheduleAutoRefresh();
+});
 
 // ── Remi sprite ───────────────────────────────────────────────────────────────
 (function() {

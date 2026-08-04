@@ -552,12 +552,44 @@ function clickLiveTile(typ) {
   if (liveData) renderLiveReport(liveData);
 }
 
+var _liveBase = null;
+var _liveBaseReady = false;
+var _liveBaseCallbacks = [];
+
 function getLiveBase() {
-  return window.location.protocol === 'file:'
-    ? 'http://localhost:3001'
-    : (window.location.hostname === 'dkarim02.github.io'
-        ? 'https://dkarim02.github.io/DC499-reports'
-        : '');
+  if (_liveBase !== null) return _liveBase;
+  if (window.location.protocol === 'file:') return 'http://localhost:3001';
+  var cached = sessionStorage.getItem('dc499_lan_base');
+  if (cached) return cached;
+  return window.location.hostname === 'dkarim02.github.io'
+    ? 'https://dkarim02.github.io/DC499-reports' : '';
+}
+
+function initLiveBase(cb) {
+  var ghBase = 'https://dkarim02.github.io/DC499-reports';
+  if (window.location.protocol === 'file:') { _liveBase = 'http://localhost:3001'; if (cb) cb(); return; }
+  if (window.location.hostname !== 'dkarim02.github.io') { _liveBase = ''; if (cb) cb(); return; }
+  var cached = sessionStorage.getItem('dc499_lan_base');
+  if (cached) { _liveBase = cached; if (cb) cb(); return; }
+  if (cb) _liveBaseCallbacks.push(cb);
+  if (_liveBaseReady) return;
+  _liveBaseReady = true;
+  fetch(ghBase + '/server_info.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(info) {
+      var lanUrl = 'http://' + info.ip + ':' + (info.port || 3001);
+      return fetch(lanUrl + '/ping', { signal: AbortSignal.timeout(1500) })
+        .then(function(r) { return r.ok ? lanUrl : null; })
+        .catch(function() { return null; });
+    })
+    .catch(function() { return null; })
+    .then(function(base) {
+      _liveBase = base || ghBase;
+      sessionStorage.setItem('dc499_lan_base', _liveBase);
+      if (base) console.log('[SCOUT] LAN server detected — using ' + base);
+      _liveBaseCallbacks.forEach(function(fn) { fn(); });
+      _liveBaseCallbacks = [];
+    });
 }
 
 function loadLiveData() {
@@ -2197,14 +2229,16 @@ function restoreTabOrder() {
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
 restoreTabOrder();
-(function() {
-  var saved; try { saved = localStorage.getItem(ACTIVE_TAB_KEY); } catch(e) {}
-  switchTab(saved && ['full','live','settings'].indexOf(saved) !== -1 ? saved : 'full');
-})();
 setShift(getShift());
 renderRoster();
 renderHeadcountCard();
-fetchBacklogStrip();
+initLiveBase(function() {
+  (function() {
+    var saved; try { saved = localStorage.getItem(ACTIVE_TAB_KEY); } catch(e) {}
+    switchTab(saved && ['full','live','settings'].indexOf(saved) !== -1 ? saved : 'full');
+  })();
+  fetchBacklogStrip();
+});
 </script>
 </body>
 </html>

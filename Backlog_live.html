@@ -978,12 +978,43 @@ function setTab(tab) {
 }
 
 // -- Shared helpers -----------------------------------------------------------
+var _liveBase = null; // resolved after initLiveBase()
+var _liveBaseReady = false;
+var _liveBaseCallbacks = [];
+
 function getBase() {
-  return window.location.protocol === 'file:'
-    ? 'http://localhost:3001'
-    : (window.location.hostname === 'dkarim02.github.io'
-        ? 'https://dkarim02.github.io/DC499-reports'
-        : '');
+  if (_liveBase !== null) return _liveBase;
+  if (window.location.protocol === 'file:') return 'http://localhost:3001';
+  if (window.location.hostname !== 'dkarim02.github.io') return '';
+  return 'https://dkarim02.github.io/DC499-reports';
+}
+
+// Probe LAN server once per session; all fetches use LAN if reachable
+function initLiveBase(cb) {
+  var ghBase = 'https://dkarim02.github.io/DC499-reports';
+  if (window.location.protocol === 'file:') { _liveBase = 'http://localhost:3001'; if (cb) cb(); return; }
+  if (window.location.hostname !== 'dkarim02.github.io') { _liveBase = ''; if (cb) cb(); return; }
+  var cached = sessionStorage.getItem('dc499_lan_base');
+  if (cached) { _liveBase = cached; if (cb) cb(); return; }
+  if (cb) _liveBaseCallbacks.push(cb);
+  if (_liveBaseReady) return; // probe already running
+  _liveBaseReady = true;
+  fetch(ghBase + '/server_info.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function(r) { return r.json(); })
+    .then(function(info) {
+      var lanUrl = 'http://' + info.ip + ':' + (info.port || 3001);
+      return fetch(lanUrl + '/ping', { signal: AbortSignal.timeout(1500) })
+        .then(function(r) { return r.ok ? lanUrl : null; })
+        .catch(function() { return null; });
+    })
+    .catch(function() { return null; })
+    .then(function(base) {
+      _liveBase = base || ghBase;
+      sessionStorage.setItem('dc499_lan_base', _liveBase);
+      if (base) console.log('[SCOUT] LAN server detected — using ' + base);
+      _liveBaseCallbacks.forEach(function(fn) { fn(); });
+      _liveBaseCallbacks = [];
+    });
 }
 function isStale(generated, threshMin) {
   if (!generated) return false;
@@ -2105,11 +2136,13 @@ function renderTaskTable(type) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 (function(){ var v; try { v = localStorage.getItem('dc499_bt_view_v1'); } catch(e){} if (v === 'compact') setBtView('compact'); })();
-fetchBacklogData();
-fetchRrData();
-fetchShippedData();
-setTimeout(fetchBatchData,  800);
-setTimeout(fetchTasksData, 1600);
+initLiveBase(function() {
+  fetchBacklogData();
+  fetchRrData();
+  fetchShippedData();
+  setTimeout(fetchBatchData,  800);
+  setTimeout(fetchTasksData, 1600);
+});
 setInterval(fetchRrData, 2 * 60 * 1000);
 setInterval(fetchShippedData, 5 * 60 * 1000);
 
