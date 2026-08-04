@@ -44,7 +44,7 @@ SCOUT is a browser-based reporting suite deployed on GitHub Pages. It processes 
 | dc499_refresh.js | current |
 | dc499_watchdog.ps1 | current |
 | dc499_watchdog_setup.bat | current |
-| dc499-nail-the-plan 29.html | v29 |
+| dc499-nail-the-plan 31.html | v31 |
 
 ---
 
