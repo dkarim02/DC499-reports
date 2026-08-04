@@ -249,15 +249,20 @@
   .nb-ready{font-size:11px;font-weight:700;color:var(--green);}
 
   /* Batch summary tiles */
-  .summary-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
+  .summary-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
   @media(max-width:680px){.summary-tiles{grid-template-columns:repeat(2,1fr);}}
-  .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:8px;padding:9px 10px;text-align:center;}
-  .tile-label{font-size:9px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;}
-  .tile-value{font-size:19px;font-weight:600;color:var(--text);}
+  .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px 14px 12px;text-align:center;border-top:3px solid var(--border-mid);}
+  .tile.t-accent{border-top-color:var(--accent);}
+  .tile.t-green {border-top-color:var(--green);}
+  .tile.t-amber {border-top-color:var(--amber);}
+  .tile-label{font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;}
+  .tile-value{font-size:28px;font-weight:600;color:var(--text);line-height:1;}
   .tile-value.accent{color:var(--accent);}
   .tile-value.green {color:var(--green);}
   .tile-value.amber {color:var(--amber);}
-  .tile-sub{font-size:10px;color:var(--text-hint);margin-top:2px;}
+  .tile-sub{font-size:10px;color:var(--text-hint);margin-top:5px;line-height:1.5;}
+  .tk-table-wrap{overflow-y:auto;max-height:320px;}
+  .tk-table-wrap::-webkit-scrollbar{width:4px;}.tk-table-wrap::-webkit-scrollbar-track{background:transparent;}.tk-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 
   /* Batch status badges */
   .status-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.03em;text-transform:uppercase;}
@@ -764,23 +769,23 @@
 
     <!-- Health-check tiles -->
     <div class="summary-tiles" id="tk-summary-tiles" style="display:none;">
-      <div class="tile">
+      <div class="tile t-accent">
         <div class="tile-label">Pick — Open</div>
         <div class="tile-value accent" id="tk-pick-open">--</div>
         <div class="tile-sub" id="tk-pick-sub">-- queued &nbsp;|&nbsp; -- assigned &nbsp;|&nbsp; -- in progress</div>
       </div>
-      <div class="tile">
-        <div class="tile-label">Pick — Completed</div>
+      <div class="tile t-green">
+        <div class="tile-label">Pick — Done</div>
         <div class="tile-value green" id="tk-pick-done">--</div>
         <div class="tile-sub">this shift</div>
       </div>
-      <div class="tile">
+      <div class="tile t-amber">
         <div class="tile-label">Replen — Open</div>
         <div class="tile-value amber" id="tk-replen-open">--</div>
         <div class="tile-sub" id="tk-replen-sub">-- queued &nbsp;|&nbsp; -- assigned &nbsp;|&nbsp; -- in progress</div>
       </div>
-      <div class="tile">
-        <div class="tile-label">Replen — Completed</div>
+      <div class="tile t-green">
+        <div class="tile-label">Replen — Done</div>
         <div class="tile-value green" id="tk-replen-done">--</div>
         <div class="tile-sub">this shift</div>
       </div>
@@ -795,7 +800,7 @@
           Show completed
         </label>
       </div>
-      <div style="overflow-x:auto;">
+      <div class="tk-table-wrap">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr>
@@ -823,7 +828,7 @@
           Show completed
         </label>
       </div>
-      <div style="overflow-x:auto;">
+      <div class="tk-table-wrap">
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead>
             <tr>
@@ -2037,7 +2042,12 @@ function renderTaskTable(type) {
     var sc  = STATUS_COLOR[t.status] || 'var(--text-muted)';
     var age = taskAge(t.created_pdt);
     var ageColor = t.status === '3000' && age.indexOf('h') !== -1 ? 'color:var(--red);font-weight:600;' : '';
-    var released = t.created_pdt ? String(t.created_pdt).slice(11,16) : '—';
+    var released = '—';
+    if (t.created_pdt) {
+      var rd = new Date(String(t.created_pdt).replace('T',' ').slice(0,19) + '-07:00');
+      var rh = rd.getHours(), rm = rd.getMinutes();
+      released = (rh % 12 || 12) + ':' + (rm < 10 ? '0' : '') + rm + (rh < 12 ? ' AM' : ' PM');
+    }
     if (isPick) {
       var badge = '<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:var(--accent-bg);color:var(--accent);">' + (t.subtype || '') + '</span>';
       rows += '<tr style="' + tr_s + '">'
