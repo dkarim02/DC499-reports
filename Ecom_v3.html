@@ -964,7 +964,7 @@ var FULL_TX = {
   shipping: ['OB Putaway By Ship Via'],
   sorting: ['OB Sort To Putwall Cubby']
 };
-var FULL_TX_1ST_OVERRIDES = { shipping: ['OB Putaway By Ship Via', 'NRDR Load Parcel Packages'] };
+var FULL_TX_1ST_OVERRIDES = { shipping: ['NRDR Load Parcel Packages'] };
 function getTX() {
   if (getShift() !== '1st') return FULL_TX;
   var tx = {}; Object.keys(FULL_TX).forEach(function(k){ tx[k] = FULL_TX_1ST_OVERRIDES[k] || FULL_TX[k]; });
