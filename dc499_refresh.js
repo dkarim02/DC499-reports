@@ -1443,67 +1443,59 @@ async function fetchTaskData(accessToken) {
   if (!is1st && nowUtcHour < 21) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
   const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
 
-  // Single query: ecom picking + ecom replen tasks, all non-cancelled statuses
-  const sql = `
-SELECT
-  t.TASK_ID,
-  t.TRANSACTION_ID,
-  t.LABOR_ACTIVITY_ID,
-  t.STATUS,
-  t.SOURCE_LOCATION_ID,
-  t.TARGET_LOCATION_ID,
-  t.ASSIGNED_USER_ID,
-  CONVERT_TZ(t.CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt,
-  CONVERT_TZ(t.ACTUAL_START_TIME, '+00:00', '-07:00') AS started_pdt
-FROM default_task.TSK_TASK t
-WHERE t.FACILITY_ID = '${FACILITY}'
-  AND t.STATUS != '9000'
-  AND t.CREATED_TIMESTAMP >= '${startStr}'
-  AND (
-    (t.TYPE_ID = 'PICK/PACK'       AND t.LABOR_ACTIVITY_ID IN ('ECOM MEZZ CART','ECOM NON MEZZ CART'))
-    OR
-    (t.TYPE_ID = 'REPLENISHMENT'   AND LEFT(t.SOURCE_LOCATION_ID, 3) IN ('R1B','R1C','R1D','R1E','R1F'))
-  )
-ORDER BY t.CREATED_TIMESTAMP ASC`.trim();
+  // Two separate queries — ASSIGNED_USER_ID and PLANNED_START_TIME crash the connector (likely PII gate)
+  // Safe columns only: TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID, CREATED_TIMESTAMP
+  const sqlPick = `
+SELECT TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID,
+  CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt
+FROM default_task.TSK_TASK
+WHERE FACILITY_ID = '${FACILITY}'
+  AND STATUS != '9000'
+  AND CREATED_TIMESTAMP >= '${startStr}'
+  AND LABOR_ACTIVITY_ID IN ('ECOM MEZZ CART','ECOM NON MEZZ CART')
+ORDER BY CREATED_TIMESTAMP ASC`.trim();
 
-  const resp = await mcpQuery(accessToken, sql);
-  const rows = resp.rows || [];
+  const sqlReplen = `
+SELECT TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID,
+  CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt
+FROM default_task.TSK_TASK
+WHERE FACILITY_ID = '${FACILITY}'
+  AND STATUS != '9000'
+  AND CREATED_TIMESTAMP >= '${startStr}'
+  AND LEFT(SOURCE_LOCATION_ID, 3) IN ('R1B','R1C','R1D','R1E','R1F')
+ORDER BY CREATED_TIMESTAMP ASC`.trim();
+
+  const [pickResp, replenResp] = await Promise.all([
+    mcpQuery(accessToken, sqlPick),
+    mcpQuery(accessToken, sqlReplen),
+  ]);
 
   const STATUS_LABEL = { '3000':'Queued', '5000':'Assigned', '7000':'In Progress', '8000':'Completed' };
   function statusLabel(s) { return STATUS_LABEL[String(s)] || String(s); }
-  function formatUser(u) {
-    if (!u) return null;
-    const local = u.split('@')[0];
-    return local.charAt(0).toUpperCase() + local.slice(1);
-  }
 
-  const pickTasks   = [];
-  const replenTasks = [];
-
-  for (const r of rows) {
-    const task = {
-      task_id:    r.TASK_ID,
-      subtype:    r.LABOR_ACTIVITY_ID === 'ECOM MEZZ CART' ? 'MEZZ' :
-                  r.LABOR_ACTIVITY_ID === 'ECOM NON MEZZ CART' ? 'NON MEZZ' : 'REPLEN',
-      status:     String(r.STATUS),
+  function mapTask(r, type) {
+    return {
+      task_id:      r.TASK_ID,
+      subtype:      r.LABOR_ACTIVITY_ID === 'ECOM MEZZ CART' ? 'MEZZ' :
+                    r.LABOR_ACTIVITY_ID === 'ECOM NON MEZZ CART' ? 'NON MEZZ' : r.LABOR_ACTIVITY_ID || 'REPLEN',
+      status:       String(r.STATUS),
       status_label: statusLabel(r.STATUS),
-      source:     r.SOURCE_LOCATION_ID || null,
-      target:     r.TARGET_LOCATION_ID || null,
-      assigned_to: formatUser(r.ASSIGNED_USER_ID),
-      created_pdt: r.created_pdt || null,
-      started_pdt: r.started_pdt || null,
+      source:       r.SOURCE_LOCATION_ID || null,
+      target:       r.TARGET_LOCATION_ID || null,
+      created_pdt:  r.created_pdt || null,
     };
-    const isPick = r.LABOR_ACTIVITY_ID === 'ECOM MEZZ CART' || r.LABOR_ACTIVITY_ID === 'ECOM NON MEZZ CART';
-    if (isPick) pickTasks.push(task);
-    else        replenTasks.push(task);
   }
+
+  const pickTasks   = (pickResp.rows   || []).map(r => mapTask(r, 'pick'));
+  const replenTasks = (replenResp.rows || []).map(r => mapTask(r, 'replen'));
 
   function summarize(tasks) {
-    const counts = { queued:0, in_progress:0, completed:0, total_open:0 };
+    const counts = { queued:0, assigned:0, in_progress:0, completed:0, total_open:0 };
     for (const t of tasks) {
-      if (t.status === '8000')       counts.completed++;
-      else if (t.status === '7000')  { counts.in_progress++; counts.total_open++; }
-      else                           { counts.queued++;       counts.total_open++; }
+      if      (t.status === '8000') counts.completed++;
+      else if (t.status === '7000') { counts.in_progress++; counts.total_open++; }
+      else if (t.status === '5000') { counts.assigned++;    counts.total_open++; }
+      else                          { counts.queued++;      counts.total_open++; }
     }
     return counts;
   }

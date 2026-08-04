@@ -752,19 +752,6 @@
 
   <!-- ── Tab: Tasks ──────────────────────────────────────────────────────────── -->
   <div class="tab-pane" id="tab-tasks">
-
-    <!-- Under construction banner -->
-    <div style="text-align:center;padding:48px 24px;">
-      <div style="font-size:48px;margin-bottom:16px;">🚧</div>
-      <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;">Tasks Tab — Under Construction</div>
-      <div style="font-size:13px;color:var(--text-muted);max-width:420px;margin:0 auto;line-height:1.6;">
-        The MAWM task table is currently unreliable through this connector.<br>
-        Working on a fix. In the meantime, use MA → Task screen to view open tasks.
-      </div>
-    </div>
-
-    <!-- Hidden original content (preserved for when table is fixed) -->
-    <div style="display:none;">
     <div class="header-row">
       <div>
         <div id="tk-run-time" class="run-time">Loading...</div>
@@ -780,7 +767,7 @@
       <div class="tile">
         <div class="tile-label">Pick — Open</div>
         <div class="tile-value accent" id="tk-pick-open">--</div>
-        <div class="tile-sub" id="tk-pick-sub">-- queued &nbsp;|&nbsp; -- in progress</div>
+        <div class="tile-sub" id="tk-pick-sub">-- queued &nbsp;|&nbsp; -- assigned &nbsp;|&nbsp; -- in progress</div>
       </div>
       <div class="tile">
         <div class="tile-label">Pick — Completed</div>
@@ -790,7 +777,7 @@
       <div class="tile">
         <div class="tile-label">Replen — Open</div>
         <div class="tile-value amber" id="tk-replen-open">--</div>
-        <div class="tile-sub" id="tk-replen-sub">-- queued &nbsp;|&nbsp; -- in progress</div>
+        <div class="tile-sub" id="tk-replen-sub">-- queued &nbsp;|&nbsp; -- assigned &nbsp;|&nbsp; -- in progress</div>
       </div>
       <div class="tile">
         <div class="tile-label">Replen — Completed</div>
@@ -817,7 +804,7 @@
               <th>Type</th>
               <th>Source</th>
               <th class="r">Status</th>
-              <th>Assigned To</th>
+              <th class="r">Age</th>
               <th>Released</th>
             </tr>
           </thead>
@@ -845,7 +832,7 @@
               <th>Source</th>
               <th>Target</th>
               <th class="r">Status</th>
-              <th>Assigned To</th>
+              <th class="r">Age</th>
               <th>Released</th>
             </tr>
           </thead>
@@ -859,7 +846,6 @@
       <div style="font-size:32px;margin-bottom:10px;">&#x2714;</div>
       No task data yet — data refreshes every 2 minutes.
     </div>
-    </div><!-- /hidden original content -->
   </div><!-- /#tab-tasks -->
 
   <!-- Batch picker modal -->
@@ -1989,10 +1975,10 @@ function renderTasksData(data) {
   var r = data.replen   || { total_open:0, queued:0, in_progress:0, completed:0, tasks:[] };
 
   document.getElementById('tk-pick-open').textContent   = p.total_open.toLocaleString();
-  document.getElementById('tk-pick-sub').textContent    = p.queued + ' queued  |  ' + p.in_progress + ' in progress';
+  document.getElementById('tk-pick-sub').textContent    = p.queued + ' queued  |  ' + (p.assigned||0) + ' assigned  |  ' + p.in_progress + ' in progress';
   document.getElementById('tk-pick-done').textContent   = p.completed.toLocaleString();
   document.getElementById('tk-replen-open').textContent = r.total_open.toLocaleString();
-  document.getElementById('tk-replen-sub').textContent  = r.queued + ' queued  |  ' + r.in_progress + ' in progress';
+  document.getElementById('tk-replen-sub').textContent  = r.queued + ' queued  |  ' + (r.assigned||0) + ' assigned  |  ' + r.in_progress + ' in progress';
   document.getElementById('tk-replen-done').textContent = r.completed.toLocaleString();
 
   document.getElementById('tk-summary-tiles').style.display = '';
@@ -2035,10 +2021,21 @@ function renderTaskTable(type) {
   var td   = 'padding:6px 8px;vertical-align:middle;';
   var tdm  = td + 'color:var(--text-muted);font-size:12px;';
 
+  function taskAge(created_pdt) {
+    if (!created_pdt) return '—';
+    var ms = Date.now() - new Date(String(created_pdt).replace('T',' ').slice(0,19) + '-07:00').getTime();
+    var mins = Math.floor(ms / 60000);
+    if (mins < 1)  return '<1m';
+    if (mins < 60) return mins + 'm';
+    return Math.floor(mins/60) + 'h ' + (mins%60) + 'm';
+  }
+
   var rows = '';
   for (var i = 0; i < filtered.length; i++) {
     var t = filtered[i];
-    var sc = STATUS_COLOR[t.status] || 'var(--text-muted)';
+    var sc  = STATUS_COLOR[t.status] || 'var(--text-muted)';
+    var age = taskAge(t.created_pdt);
+    var ageColor = t.status === '3000' && age.indexOf('h') !== -1 ? 'color:var(--red);font-weight:600;' : '';
     var released = t.created_pdt ? String(t.created_pdt).slice(11,16) : '—';
     if (isPick) {
       var badge = '<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:var(--accent-bg);color:var(--accent);">' + (t.subtype || '') + '</span>';
@@ -2048,7 +2045,7 @@ function renderTaskTable(type) {
         + '<td style="' + td  + '">' + badge + '</td>'
         + '<td style="' + tdm + '">' + (t.source || '—') + '</td>'
         + '<td style="' + td  + 'text-align:right;font-weight:600;color:' + sc + ';">' + (t.status_label || '—') + '</td>'
-        + '<td style="' + tdm + '">' + (t.assigned_to || '—') + '</td>'
+        + '<td style="' + tdm + 'text-align:right;' + ageColor + '">' + age + '</td>'
         + '<td style="' + tdm + '">' + released + '</td>'
         + '</tr>';
     } else {
@@ -2058,7 +2055,7 @@ function renderTaskTable(type) {
         + '<td style="' + tdm + '">' + (t.source || '—') + '</td>'
         + '<td style="' + tdm + '">' + (t.target || '—') + '</td>'
         + '<td style="' + td  + 'text-align:right;font-weight:600;color:' + sc + ';">' + (t.status_label || '—') + '</td>'
-        + '<td style="' + tdm + '">' + (t.assigned_to || '—') + '</td>'
+        + '<td style="' + tdm + 'text-align:right;' + ageColor + '">' + age + '</td>'
         + '<td style="' + tdm + '">' + released + '</td>'
         + '</tr>';
     }
