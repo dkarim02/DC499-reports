@@ -1730,6 +1730,12 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       res.end(JSON.stringify(cache?.shippedData || {}));
       return;
     }
+    if (url.pathname === '/ecom_live.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      const ecomFile = path.join(REPORT_DIR, 'ecom_live.json');
+      res.end(fs.existsSync(ecomFile) ? fs.readFileSync(ecomFile) : '{}');
+      return;
+    }
 
     // serve HTML files
     const fileMap = {
@@ -1739,10 +1745,12 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       '/Totes_live.html':     'Totes_live.html',
       '/Backlog_live.html':   'Backlog_live.html',
       '/Batches_live.html':   'Batches_live.html',
+      '/Ecom_v3.html':        'Ecom_v3.html',
       '/RetailReplen_live.html': 'RetailReplen_live.html',
       '/MegaDash_v1.2.html':  'MegaDash_v1.2.html',
       '/Menu_v1.6.html':      'Menu_v1.6.html',
       '/Changelog.html':      'Changelog.html',
+      '/EOS_live.html':       'EOS_live.html',
     };
     const file = fileMap[url.pathname];
     if (file) {
