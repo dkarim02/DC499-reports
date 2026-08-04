@@ -168,6 +168,13 @@ git push origin main
 **Output JSON files written by dc499_refresh.js:**
 - `batch_status.json` — batch report for Batches_live.html
 - `backlog_live.json` — order backlog for Backlog_live.html
+- `shipped_live.json` — shipped oLPN count (TSK_ACTIVITY_TRACKING)
+- `tasks_live.json` — open picking + replen tasks (TSK_TASK)
+- `retail_replen.json`, `totes_live.json`, `dock_live.json`, `receiving_live.json`
+
+**HTML pages served by :3001 (in addition to JSON):**
+Backlog_live.html, Batches_live.html, Totes_live.html, Receiving_live.html, Ecom_v3.html, EOS_live.html, RetailReplen_live.html, Menu_v1.6.html, Changelog.html
+`ecom_live.json` also served from disk at `/ecom_live.json` (written by scout_ecom_agent.js)
 - `totes_live.json` — putwall tote counts for Totes_live.html
 - `dock_live.json` — dock/receiving activity
 - `receiving_live.json` — receiving live data (also pushed to GitHub by receiving_live_agent.ps1)
@@ -567,12 +574,13 @@ WHERE ilpn.FACILITY_ID = '499'
 
 **Query table:** `default_task.TSK_ACTIVITY_TRACKING` — scan-level, one row per item scan. CREATED_TIMESTAMP is indexed (use for WHERE); ACTIVITY_DATE_TIME is not.
 
-**Three query groups (to stay under MCP ~10k row cap):**
-- Group A: replen + putaway (iLPN Replen Fill/Pull variants, System/User Directed Putaway)
-- Group B: picking + shipping + sorting (Ecom Mezz/Non-Mezz Pick, OB Putaway By Ship Via, NRDR Load Parcel Packages, OB Sort To Putwall Cubby)
-- Group C: packing alone (NRDR CORE PACK FOR ECOM PACK STATION) — split out because packing alone generates ~2,700 rows
+**Four query groups (to stay under MCP ~10k row cap):**
+- Group A: replen + putaway (iLPN Replen Fill/Pull variants, System/User Directed Putaway) — ~2k rows
+- Group B: picking (Ecom Mezz/Non-Mezz Pick To Putwall Cart) — ~4k rows
+- Group C: packing alone (NRDR CORE PACK FOR ECOM PACK STATION) — ~3k rows
+- Group D: shipping + sorting (OB Putaway By Ship Via, NRDR Load Parcel Packages, OB Sort To Putwall Cubby) — ~3k rows. Split from Group B on 2026-08-04 when Group B hit 9,500 row cap late shift.
 
-**Truncation warning:** `truncated: true` written to JSON if any group hits 9,500 rows. Live tab meta line turns amber. If a group needs further splitting, add a Group D.
+**Truncation warning:** `truncated: true` written to JSON if any group hits 9,500 rows. Live tab meta line turns amber. If a group hits the cap again, split it further.
 
 **Shift start times (UTC):**
 - 2nd shift: 21:10 UTC (2:10 PM PDT)
@@ -628,6 +636,25 @@ WHERE ilpn.FACILITY_ID = '499'
 
 ---
 
+## LAN fast-refresh (parked — needs IT firewall rule)
+
+**Goal:** Team members on warehouse wifi get data directly from the PC server (instant) instead of GitHub Pages (2-min CDN delay).
+
+**Blocker:** Windows Firewall blocks inbound connections to port 3001 from other devices. Requires admin rights to open: `netsh advfirewall firewall add rule name="SCOUT DC499 :3001" dir=in action=allow protocol=TCP localport=3001`
+
+**How it worked (fully built, then reverted 2026-08-04):**
+- dc499_refresh.js writes `server_info.json` (LAN IP + port) and pushes to GitHub on server startup
+- Pages fetch `server_info.json` on load, probe `http://{ip}:3001/ping` with 1.5s timeout
+- If reachable: switch `getBase()` to LAN URL, show green ⚡ LAN badge next to timestamp, re-fetch all data
+- If not reachable: silently stay on GitHub Pages — no user impact
+- Fetches fire immediately on load; LAN upgrade happens in background (no added delay)
+
+**Blocker #2:** Mixed content — GitHub Pages is HTTPS, local server is HTTP. Browser blocks HTTP fetch from HTTPS page. Fix requires either HTTPS on local server (self-signed cert, one-time trust per device) or IT hosting the server with a proper cert.
+
+**IT ask:** Open port 3001 inbound on the server PC, or host SCOUT on an internal server with HTTPS.
+
+---
+
 ## Pending work
 
 ### EOS system — remaining fixes
@@ -635,23 +662,21 @@ WHERE ilpn.FACILITY_ID = '499'
 
 ### Batch/Backlog pages — remaining
 - [ ] Putwall column in batch display — join verified but needs multi-PW shift to confirm RESOURCE_GROUP_ID is populated correctly. See "Putwall → batch mapping research" section above.
-- [x] **Shipped oLPNs card** — DONE 2026-08-03. Green "Shipped" tile in Backlog header row. Shows oLPN count (main value) + orders count (sub-label). fetchShipped() in dc499_refresh.js queries PPK_OLPN STATUS IN ('7800','8000') using CREATED_TIMESTAMP. Writes shipped_live.json, served at /shipped_live.json. Page fetches on load + every 5 min independently of backlog refresh.
+- [x] **Shipped oLPNs card** — DONE 2026-08-03, updated 2026-08-04. Violet tile in Backlog header row. Shows oLPN count (main value) + units (sub-label). fetchShipped() switched from PPK_OLPN (batch-updated, stagnant) to TSK_ACTIVITY_TRACKING per-scan — increments in real time. 2nd shift TX: `OB Putaway By Ship Via`. 1st shift TX: `OB Putaway By Ship Via` + `NRDR Load Parcel Packages`. Writes shipped_live.json.
 - [x] **Backlog order-date pooling** — DONE 2026-07-30. READY/RELEASED/ALLOCATED lines pool to order's earliest date; PACKED/SHIPPED keep their own date. sqlCounts query removed; totals now derived from pooled orders array.
 - [x] **Bridge Total row** — DONE 2026-07-30. Total row added below Avg/hr in both live widget and EOD email export.
 - [x] **Total column in Order Lines by Date** — DONE 2026-07-30. True full-day line count per date (all statuses, both shifts) via dedicated sqlDailyTotals query. Shown as rightmost column; footer sums it.
 - [x] **Ready for Pack tile** — DONE 2026-07-30. Teal tile between Allocated and Packed. Shows units (not LPN count) at D1-SN-01 from DCI_ILPN STATUS=5000 joined to DCI_INVENTORY. Color: `--rfp` CSS var, distinct from `--alloc`.
 
-### Tasks tab — Backlog_live.html (BUILT 2026-08-03, BROKEN)
-- Tab exists in Backlog_live.html with health-check tiles and task tables — but never shows data
-- **Root cause:** `default_task.TSK_TASK` only has a usable index on `FACILITY_ID + CREATED_TIMESTAMP`. Any filter beyond that (TYPE_ID, LABOR_ACTIVITY_ID, STATUS, TRANSACTION_ID) causes operation failures. Even a bare 5-minute CREATED_TIMESTAMP window fails intermittently — the table is unreliable through this MCP connector.
-- The one query pattern that worked early in the session (bare 5-min window, no extra filters) returned data inconsistently and now fails consistently.
-- `fetchTaskData()` in dc499_refresh.js uses `LABOR_ACTIVITY_ID IN (...)` + `LEFT(SOURCE_LOCATION_ID,3) IN (...)` filters — both fail. tasks_live.json is never written.
-- **Options to fix:**
-  1. **CSV drop approach** — user exports Task screen from MA manually, page reads local CSV. Gives full open task list (Ready/Assigned/In Progress) with no MAWM query issues.
-  2. **TSK_ACTIVITY_TRACKING** — reframe tab as "work done this shift" (completed picks/replen by person). Proven reliable at shift scale, already used by Ecom Live. No open task counts.
-  3. **Wait and retry** — TSK_TASK sometimes works. Could add retry logic with very narrow windows.
-- **Decision needed:** pick an approach before rebuilding.
-- **Confirmed filters (for when table works):** Ecom picking = `LABOR_ACTIVITY_ID IN ('ECOM MEZZ CART','ECOM NON MEZZ CART')`. Ecom replen = `LEFT(SOURCE_LOCATION_ID,3) IN ('R1B','R1C','R1D','R1E','R1F')`. Both verified against live CSV exports.
+### Tasks tab — Backlog_live.html (WORKING, intermittent)
+- Tab live with picking and replen tables, summary tiles, click-to-expand detail rows, 12h time format, side-by-side layout
+- **TSK_TASK safe columns only:** TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID, CREATED_TIMESTAMP. `ASSIGNED_USER_ID` crashes the query (PII gate — report to MA connector admin).
+- **Status labels:** `{ '3000':'Ready to Assign', '5000':'Assigned', '7000':'In Progress', '8000':'Completed' }`
+- **Picking filter:** `LABOR_ACTIVITY_ID IN ('ECOM MEZZ CART','ECOM NON MEZZ CART')`
+- **Replen filter:** `LEFT(SOURCE_LOCATION_ID,3) IN ('R1B','R1C','R1D','R1E','R1F')`
+- **Reliability:** TSK_TASK queries fail intermittently — works some cycles, times out others. tasks_live.json pushed to GitHub each cycle; server falls back to disk if cache is empty.
+- **Known crash columns to never query:** ASSIGNED_USER_ID, PLANNED_START_TIME (likely PII-gated)
+- **Decision still open:** if intermittent failures become unacceptable, options are CSV drop (MA export) or reframe as TSK_ACTIVITY_TRACKING "work done" view
 
 ### EOD Email — remaining
 - [ ] Verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass) — confirm colors match screen

@@ -827,6 +827,7 @@
                 <th>Task ID</th>
                 <th>Type</th>
                 <th>Source</th>
+                <th class="r">Items</th>
                 <th class="r">Status</th>
               </tr>
             </thead>
@@ -853,6 +854,7 @@
                 <th>Task ID</th>
                 <th>Source</th>
                 <th>Target</th>
+                <th class="r">Items</th>
                 <th class="r">Status</th>
               </tr>
             </thead>
@@ -2073,11 +2075,13 @@ function renderTaskTable(type) {
     }
     var detailId = 'tkd-' + type + '-' + i;
     var detailContent = 'Released ' + released + ' &nbsp;·&nbsp; <span style="' + ageColor + '">Age ' + age + '</span>';
-    var cols = isPick ? 5 : 5;
     var detailRow = '<tr class="tk-detail-row" id="' + detailId + '">'
-      + '<td colspan="' + cols + '" style="font-size:11px;color:var(--text-hint);">' + detailContent + '</td>'
+      + '<td colspan="6" style="font-size:11px;color:var(--text-hint);">' + detailContent + '</td>'
       + '</tr>';
     var toggleFn = 'tkToggle(\'' + detailId + '\',this)';
+    var itemsCell = t.detail_count !== null && t.detail_count !== undefined
+      ? '<td style="text-align:right;font-size:12px;">' + t.detail_count + '</td>'
+      : '<td style="text-align:right;font-size:12px;color:var(--text-muted);">—</td>';
     if (isPick) {
       var badge = '<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:var(--accent-bg);color:var(--accent);">' + (t.subtype || '') + '</span>';
       rows += '<tr class="tk-main-row" onclick="' + toggleFn + '">'
@@ -2085,6 +2089,7 @@ function renderTaskTable(type) {
         + '<td style="font-family:monospace;font-size:12px;">' + (t.task_id || '—') + '</td>'
         + '<td>' + badge + '</td>'
         + '<td style="' + tdm + '">' + (t.source || '—') + '</td>'
+        + itemsCell
         + '<td style="text-align:right;font-weight:600;color:' + sc + ';">' + (t.status_label || '—') + '</td>'
         + '</tr>'
         + detailRow;
@@ -2094,6 +2099,7 @@ function renderTaskTable(type) {
         + '<td style="font-family:monospace;font-size:12px;">' + (t.task_id || '—') + '</td>'
         + '<td style="' + tdm + '">' + (t.source || '—') + '</td>'
         + '<td style="' + tdm + '">' + (t.target || '—') + '</td>'
+        + itemsCell
         + '<td style="text-align:right;font-weight:600;color:' + sc + ';">' + (t.status_label || '—') + '</td>'
         + '</tr>'
         + detailRow;

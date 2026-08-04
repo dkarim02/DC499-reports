@@ -1452,8 +1452,11 @@ SELECT TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID,
 FROM default_task.TSK_TASK
 WHERE FACILITY_ID = '${FACILITY}'
   AND STATUS != '9000'
-  AND CREATED_TIMESTAMP >= '${startStr}'
   AND LABOR_ACTIVITY_ID IN ('ECOM MEZZ CART','ECOM NON MEZZ CART')
+  AND (
+    CREATED_TIMESTAMP >= '${startStr}'
+    OR (STATUS IN ('3000','5000','7000') AND CREATED_TIMESTAMP >= NOW() - INTERVAL 2 DAY)
+  )
 ORDER BY CREATED_TIMESTAMP ASC`.trim();
 
   const sqlReplen = `
@@ -1462,8 +1465,11 @@ SELECT TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_I
 FROM default_task.TSK_TASK
 WHERE FACILITY_ID = '${FACILITY}'
   AND STATUS != '9000'
-  AND CREATED_TIMESTAMP >= '${startStr}'
   AND LEFT(SOURCE_LOCATION_ID, 3) IN ('R1B','R1C','R1D','R1E','R1F')
+  AND (
+    CREATED_TIMESTAMP >= '${startStr}'
+    OR (STATUS IN ('3000','5000','7000') AND CREATED_TIMESTAMP >= NOW() - INTERVAL 2 DAY)
+  )
 ORDER BY CREATED_TIMESTAMP ASC`.trim();
 
   const [pickResp, replenResp] = await Promise.all([
@@ -1489,6 +1495,24 @@ ORDER BY CREATED_TIMESTAMP ASC`.trim();
 
   const pickTasks   = (pickResp.rows   || []).map(r => mapTask(r, 'pick'));
   const replenTasks = (replenResp.rows || []).map(r => mapTask(r, 'replen'));
+
+  // Fetch detail counts per task using small TASK_ID batches (broad filters time out on this table)
+  const allTasks   = [...pickTasks, ...replenTasks];
+  const openIds    = [...new Set(allTasks.filter(t => t.status !== '8000').map(t => t.task_id))];
+  const BATCH_SZ   = 15;
+  const detailMap  = {};
+  for (let i = 0; i < openIds.length; i += BATCH_SZ) {
+    const batchIds = openIds.slice(i, i + BATCH_SZ).map(id => `'${id}'`).join(',');
+    const sqlDetail = `SELECT TASK_ID, COUNT(*) AS detail_count FROM default_task.TSK_TASK_DETAIL WHERE FACILITY_ID = '${FACILITY}' AND TASK_ID IN (${batchIds}) GROUP BY TASK_ID`;
+    try {
+      const dr = await mcpQuery(accessToken, sqlDetail);
+      for (const r of (dr.rows || [])) detailMap[r.TASK_ID] = Number(r.detail_count);
+      console.log(`[${ts()}]   task detail batch ${Math.floor(i/BATCH_SZ)+1}: ${(dr.rows||[]).length} rows`);
+    } catch (e) {
+      console.warn(`  Task detail batch ${Math.floor(i/BATCH_SZ)+1} failed: ${e.message}`);
+    }
+  }
+  for (const t of allTasks) t.detail_count = detailMap[t.task_id] ?? null;
 
   function summarize(tasks) {
     const counts = { queued:0, assigned:0, in_progress:0, completed:0, total_open:0 };
