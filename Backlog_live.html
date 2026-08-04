@@ -981,38 +981,27 @@ function setTab(tab) {
 }
 
 // -- Shared helpers -----------------------------------------------------------
-var _liveBase = null; // resolved after initLiveBase()
-var _liveBaseReady = false;
-var _liveBaseCallbacks = [];
-
-function getBase() {
-  if (_liveBase !== null) return _liveBase;
+var _liveBase = (function() {
   if (window.location.protocol === 'file:') return 'http://localhost:3001';
-  if (window.location.hostname !== 'dkarim02.github.io') return '';
+  var h = window.location.hostname;
+  if (h === 'localhost' || h.match(/^10\./) || h.match(/^192\./)) return '';
   return 'https://dkarim02.github.io/DC499-reports';
+})();
+
+function getBase() { return _liveBase; }
+
+function _showLanBadge(on) {
+  var b = document.getElementById('lan-badge');
+  if (b) b.style.display = on ? 'inline' : 'none';
 }
 
-// Probe LAN server once per session; all fetches use LAN if reachable
-function initLiveBase(cb) {
+// Show badge immediately for local access
+if (_liveBase !== 'https://dkarim02.github.io/DC499-reports') _showLanBadge(true);
+
+// Probe LAN in background — if found, update base and re-fetch all data
+function probeLan() {
   var ghBase = 'https://dkarim02.github.io/DC499-reports';
-  if (window.location.protocol === 'file:') {
-    _liveBase = 'http://localhost:3001';
-    var badge = document.getElementById('lan-badge');
-    if (badge) badge.style.display = 'inline';
-    if (cb) cb(); return;
-  }
-  if (window.location.hostname === 'localhost' || window.location.hostname.match(/^192\./)) {
-    _liveBase = '';
-    var badge = document.getElementById('lan-badge');
-    if (badge) badge.style.display = 'inline';
-    if (cb) cb(); return;
-  }
-  if (window.location.hostname !== 'dkarim02.github.io') { _liveBase = ''; if (cb) cb(); return; }
-  var cached = sessionStorage.getItem('dc499_lan_base');
-  if (cached) { _liveBase = cached; if (cb) cb(); return; }
-  if (cb) _liveBaseCallbacks.push(cb);
-  if (_liveBaseReady) return; // probe already running
-  _liveBaseReady = true;
+  if (_liveBase !== ghBase) return; // already on LAN or localhost, nothing to probe
   fetch(ghBase + '/server_info.json?t=' + Date.now(), { cache: 'no-store' })
     .then(function(r) { return r.json(); })
     .then(function(info) {
@@ -1023,13 +1012,16 @@ function initLiveBase(cb) {
     })
     .catch(function() { return null; })
     .then(function(base) {
-      _liveBase = base || ghBase;
-      sessionStorage.setItem('dc499_lan_base', _liveBase);
-      var badge = document.getElementById('lan-badge');
-      if (badge) badge.style.display = base ? 'inline' : 'none';
-      if (base) console.log('[SCOUT] LAN server detected — using ' + base);
-      _liveBaseCallbacks.forEach(function(fn) { fn(); });
-      _liveBaseCallbacks = [];
+      if (!base) return; // server not reachable, stay on GitHub Pages
+      _liveBase = base;
+      _showLanBadge(true);
+      console.log('[SCOUT] LAN server detected — re-fetching from ' + base);
+      // Re-fetch everything with the faster base
+      fetchBacklogData();
+      fetchRrData();
+      fetchShippedData();
+      fetchBatchData();
+      fetchTasksData();
     });
 }
 function isStale(generated, threshMin) {
@@ -2152,21 +2144,12 @@ function renderTaskTable(type) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 (function(){ var v; try { v = localStorage.getItem('dc499_bt_view_v1'); } catch(e){} if (v === 'compact') setBtView('compact'); })();
-// Show LAN badge immediately if already cached
-(function() {
-  var cached = sessionStorage.getItem('dc499_lan_base');
-  if (cached && cached.indexOf('github') === -1) {
-    var b = document.getElementById('lan-badge');
-    if (b) b.style.display = 'inline';
-  }
-})();
-initLiveBase(function() {
-  fetchBacklogData();
-  fetchRrData();
-  fetchShippedData();
-  setTimeout(fetchBatchData,  800);
-  setTimeout(fetchTasksData, 1600);
-});
+fetchBacklogData();
+fetchRrData();
+fetchShippedData();
+setTimeout(fetchBatchData,  800);
+setTimeout(fetchTasksData, 1600);
+probeLan();
 setInterval(fetchRrData, 2 * 60 * 1000);
 setInterval(fetchShippedData, 5 * 60 * 1000);
 

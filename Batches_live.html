@@ -383,24 +383,25 @@ function scheduleAutoRefresh() {
 
 function manualRefresh() { fetchData(true); }
 
-function getBase() {
+var _liveBase = (function() {
   if (window.location.protocol === 'file:') return 'http://localhost:3001';
-  var cached = sessionStorage.getItem('dc499_lan_base');
-  if (cached) return cached;
-  return window.location.hostname === 'dkarim02.github.io'
-    ? 'https://dkarim02.github.io/DC499-reports' : '';
+  var h = window.location.hostname;
+  if (h === 'localhost' || h.match(/^10\./) || h.match(/^192\./)) return '';
+  return 'https://dkarim02.github.io/DC499-reports';
+})();
+
+function getBase() { return _liveBase; }
+
+function _showLanBadge(on) {
+  var b = document.getElementById('lan-badge');
+  if (b) b.style.display = on ? 'inline' : 'none';
 }
 
-function initLiveBase(cb) {
+if (_liveBase !== 'https://dkarim02.github.io/DC499-reports') _showLanBadge(true);
+
+function probeLan() {
   var ghBase = 'https://dkarim02.github.io/DC499-reports';
-  if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname.match(/^192\./)) {
-    var badge = document.getElementById('lan-badge');
-    if (badge) badge.style.display = 'inline';
-    if (cb) cb(); return;
-  }
-  if (window.location.hostname !== 'dkarim02.github.io') { if (cb) cb(); return; }
-  var cached = sessionStorage.getItem('dc499_lan_base');
-  if (cached) { if (cb) cb(); return; }
+  if (_liveBase !== ghBase) return;
   fetch(ghBase + '/server_info.json?t=' + Date.now(), { cache: 'no-store' })
     .then(function(r) { return r.json(); })
     .then(function(info) {
@@ -411,11 +412,11 @@ function initLiveBase(cb) {
     })
     .catch(function() { return null; })
     .then(function(base) {
-      sessionStorage.setItem('dc499_lan_base', base || ghBase);
-      var badge = document.getElementById('lan-badge');
-      if (badge) badge.style.display = base ? 'inline' : 'none';
-      if (base) console.log('[SCOUT] LAN server detected — using ' + base);
-      if (cb) cb();
+      if (!base) return;
+      _liveBase = base;
+      _showLanBadge(true);
+      console.log('[SCOUT] LAN server detected — re-fetching from ' + base);
+      fetchData(false);
     });
 }
 
@@ -837,17 +838,9 @@ function sendSelectedBatches() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
-(function() {
-  var cached = sessionStorage.getItem('dc499_lan_base');
-  if (cached && cached.indexOf('github') === -1) {
-    var b = document.getElementById('lan-badge');
-    if (b) b.style.display = 'inline';
-  }
-})();
-initLiveBase(function() {
-  fetchData(false);
-  scheduleAutoRefresh();
-});
+fetchData(false);
+scheduleAutoRefresh();
+probeLan();
 
 // ── Remi sprite ───────────────────────────────────────────────────────────────
 (function() {
