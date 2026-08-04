@@ -393,7 +393,11 @@ function getBase() {
 
 function initLiveBase(cb) {
   var ghBase = 'https://dkarim02.github.io/DC499-reports';
-  if (window.location.protocol === 'file:') { if (cb) cb(); return; }
+  if (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname.match(/^192\./)) {
+    var badge = document.getElementById('lan-badge');
+    if (badge) badge.style.display = 'inline';
+    if (cb) cb(); return;
+  }
   if (window.location.hostname !== 'dkarim02.github.io') { if (cb) cb(); return; }
   var cached = sessionStorage.getItem('dc499_lan_base');
   if (cached) { if (cb) cb(); return; }

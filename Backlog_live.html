@@ -995,7 +995,18 @@ function getBase() {
 // Probe LAN server once per session; all fetches use LAN if reachable
 function initLiveBase(cb) {
   var ghBase = 'https://dkarim02.github.io/DC499-reports';
-  if (window.location.protocol === 'file:') { _liveBase = 'http://localhost:3001'; if (cb) cb(); return; }
+  if (window.location.protocol === 'file:') {
+    _liveBase = 'http://localhost:3001';
+    var badge = document.getElementById('lan-badge');
+    if (badge) badge.style.display = 'inline';
+    if (cb) cb(); return;
+  }
+  if (window.location.hostname === 'localhost' || window.location.hostname.match(/^192\./)) {
+    _liveBase = '';
+    var badge = document.getElementById('lan-badge');
+    if (badge) badge.style.display = 'inline';
+    if (cb) cb(); return;
+  }
   if (window.location.hostname !== 'dkarim02.github.io') { _liveBase = ''; if (cb) cb(); return; }
   var cached = sessionStorage.getItem('dc499_lan_base');
   if (cached) { _liveBase = cached; if (cb) cb(); return; }
