@@ -92,7 +92,7 @@ git push origin main
 - Picking: Ecom Mezz Pick To Putwall Cart, Ecom Non-Mezz Pick To Putwall Cart → Sum Quantity
 - Packing: NRDR CORE PACK FOR ECOM PACK STATION → Sum Quantity
 - Shipping (2nd shift): OB Putaway By Ship Via → Sum Quantity, dedup by Container ID
-- Shipping (1st shift): OB Putaway By Ship Via OR NRDR Load Parcel Packages → Sum Quantity, dedup by Container ID
+- Shipping (1st shift): NRDR Load Parcel Packages → Sum Quantity, dedup by Container ID
 - Sorting: OB Sort To Putwall Cubby + Criteria filter → Sum Quantity
 
 **Reserve:**
@@ -511,6 +511,46 @@ WHERE ilpn.FACILITY_ID = '499'
 
 **Implication:** Cannot use TSK_TASK_DETAIL for batch detail counts in the refresh cycle. If detail counts are needed in future, must query by exact TASK_ID list passed in separately, not as a subquery.
 
+**Resolution (2026-08-04):** Solved via small-batch iteration — see pattern below.
+
+---
+
+## Small-batch iteration pattern (established 2026-08-04)
+
+**Problem it solves:** Some large tables (TSK_TASK_DETAIL, potentially others) time out on any broad filter or subquery. They can only be queried with a narrow exact-match filter (e.g. `TASK_ID IN (...)`).
+
+**Pattern:**
+1. Run the primary query first to get the ID list (e.g. open task IDs from TSK_TASK)
+2. Slice that list into batches of ~15 IDs
+3. Loop: for each batch, run a targeted `COUNT(*) GROUP BY ID` query
+4. Merge results into a map keyed by ID, attach to primary records
+5. Each batch fails independently with a `try/catch` — one bad batch doesn't break the rest
+
+```js
+const BATCH_SZ = 15;
+const resultMap = {};
+for (let i = 0; i < ids.length; i += BATCH_SZ) {
+  const batchIds = ids.slice(i, i + BATCH_SZ).map(id => `'${id}'`).join(',');
+  try {
+    const r = await mcpQuery(token, `SELECT ID, COUNT(*) AS cnt FROM table WHERE ID IN (${batchIds}) GROUP BY ID`);
+    for (const row of (r.rows || [])) resultMap[row.ID] = Number(row.cnt);
+  } catch (e) { console.warn(`Batch ${i/BATCH_SZ} failed: ${e.message}`); }
+}
+```
+
+**Batch size guidance:**
+- 15 IDs = safe default, never seen a timeout at this size
+- Can try 25–30 if total ID count is high and latency is a concern
+- Drop to 10 if timeouts reappear
+
+**Where this is used today:**
+- `fetchTaskData()` in dc499_refresh.js — fetches `TSK_TASK_DETAIL` detail counts per open task
+
+**Future candidates for this pattern:**
+- Any per-ID enrichment query where a subquery or broad filter times out
+- PPK_OLPN_DETAIL (if Lost Tote Lookup is built)
+- Any join that returns "operation timed out" on a large table
+
 ---
 
 ## Packed Not Shipped — research (2026-07-27, IN PROGRESS)
@@ -662,7 +702,7 @@ WHERE ilpn.FACILITY_ID = '499'
 
 ### Batch/Backlog pages — remaining
 - [ ] Putwall column in batch display — join verified but needs multi-PW shift to confirm RESOURCE_GROUP_ID is populated correctly. See "Putwall → batch mapping research" section above.
-- [x] **Shipped oLPNs card** — DONE 2026-08-03, updated 2026-08-04. Violet tile in Backlog header row. Shows oLPN count (main value) + units (sub-label). fetchShipped() switched from PPK_OLPN (batch-updated, stagnant) to TSK_ACTIVITY_TRACKING per-scan — increments in real time. 2nd shift TX: `OB Putaway By Ship Via`. 1st shift TX: `OB Putaway By Ship Via` + `NRDR Load Parcel Packages`. Writes shipped_live.json.
+- [x] **Shipped oLPNs card** — DONE 2026-08-03, updated 2026-08-04. Violet tile in Backlog header row. Shows oLPN count (main value) + units (sub-label). fetchShipped() switched from PPK_OLPN (batch-updated, stagnant) to TSK_ACTIVITY_TRACKING per-scan — increments in real time. 2nd shift TX: `OB Putaway By Ship Via`. 1st shift TX: `NRDR Load Parcel Packages` only. Writes shipped_live.json.
 - [x] **Backlog order-date pooling** — DONE 2026-07-30. READY/RELEASED/ALLOCATED lines pool to order's earliest date; PACKED/SHIPPED keep their own date. sqlCounts query removed; totals now derived from pooled orders array.
 - [x] **Bridge Total row** — DONE 2026-07-30. Total row added below Avg/hr in both live widget and EOD email export.
 - [x] **Total column in Order Lines by Date** — DONE 2026-07-30. True full-day line count per date (all statuses, both shifts) via dedicated sqlDailyTotals query. Shown as rightmost column; footer sums it.
@@ -670,10 +710,12 @@ WHERE ilpn.FACILITY_ID = '499'
 
 ### Tasks tab — Backlog_live.html (WORKING, intermittent)
 - Tab live with picking and replen tables, summary tiles, click-to-expand detail rows, 12h time format, side-by-side layout
-- **TSK_TASK safe columns only:** TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID, CREATED_TIMESTAMP. `ASSIGNED_USER_ID` crashes the query (PII gate — report to MA connector admin).
+- **TSK_TASK safe columns only:** TASK_ID, STATUS, TRANSACTION_ID, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID, CREATED_TIMESTAMP. `ASSIGNED_USER_ID` crashes the query (PII gate — report to MA connector admin).
 - **Status labels:** `{ '3000':'Ready to Assign', '5000':'Assigned', '7000':'In Progress', '8000':'Completed' }`
-- **Picking filter:** `LABOR_ACTIVITY_ID IN ('ECOM MEZZ CART','ECOM NON MEZZ CART')`
+- **Picking filter:** `TRANSACTION_ID IN ('Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart')` — NOT LABOR_ACTIVITY_ID. Most tasks have `Default Picking Activity` in LABOR_ACTIVITY_ID regardless of type; TRANSACTION_ID is always reliable.
 - **Replen filter:** `LEFT(SOURCE_LOCATION_ID,3) IN ('R1B','R1C','R1D','R1E','R1F')`
+- **Carryover open tasks:** Query uses OR condition — tasks from this shift always included, PLUS any task still open (STATUS IN 3000/5000/7000) created in the last 2 days. Catches tasks released before shift start (e.g. pre-2:15 PM picks).
+- **Detail counts (TSK_TASK_DETAIL):** After building task list, open task IDs are batched in groups of 15 and queried with `COUNT(*) GROUP BY TASK_ID`. Result attached as `detail_count` per task. Shown as "Details" column in table. Completed tasks show `—` (skipped to keep batch count low). See "Small-batch iteration pattern" below.
 - **Reliability:** TSK_TASK queries fail intermittently — works some cycles, times out others. tasks_live.json pushed to GitHub each cycle; server falls back to disk if cache is empty.
 - **Known crash columns to never query:** ASSIGNED_USER_ID, PLANNED_START_TIME (likely PII-gated)
 - **Decision still open:** if intermittent failures become unacceptable, options are CSV drop (MA export) or reframe as TSK_ACTIVITY_TRACKING "work done" view
