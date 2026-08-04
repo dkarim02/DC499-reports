@@ -1396,39 +1396,40 @@ function gitPush() {
 async function fetchShipped(accessToken) {
   const nowUtc     = new Date();
   const nowUtcHour = nowUtc.getUTCHours();
-  const nowUtcMin  = nowUtc.getUTCMinutes();
-  const is1st      = (nowUtcHour > 10 || (nowUtcHour === 10 && nowUtcMin >= 0)) && nowUtcHour < 21;
+  const is1st      = nowUtcHour >= 10 && nowUtcHour < 21;
   const shiftStart = new Date(nowUtc);
   if (is1st) {
     shiftStart.setUTCHours(13, 0, 0, 0); // 1st shift 6 AM PDT = 13:00 UTC
   } else {
-    shiftStart.setUTCHours(21, 0, 0, 0); // 2nd shift 2 PM PDT = 21:00 UTC
+    shiftStart.setUTCHours(21, 10, 0, 0); // 2nd shift 2:10 PM PDT = 21:10 UTC (matches Ecom Live)
     if (nowUtcHour < 21) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
   }
   const shiftStartStr = shiftStart.toISOString().replace('T', ' ').slice(0, 19);
 
+  // TSK_ACTIVITY_TRACKING gives per-scan real-time counts — PPK_OLPN only updates in batches
+  // 2nd shift: OB Putaway By Ship Via (ship-via scan). 1st shift adds NRDR Load Parcel Packages.
+  const txIds = is1st
+    ? `'OB Putaway By Ship Via','NRDR Load Parcel Packages'`
+    : `'OB Putaway By Ship Via'`;
+
   const sql = `
 SELECT
-  COUNT(*)                    AS shipped_olpns,
-  COUNT(DISTINCT ORDER_ID)    AS shipped_orders
-FROM default_pickpack.PPK_OLPN
+  COUNT(DISTINCT CONTAINER_ID) AS shipped_olpns,
+  SUM(QUANTITY)                AS shipped_units
+FROM default_task.TSK_ACTIVITY_TRACKING
 WHERE FACILITY_ID = '${FACILITY}'
-  AND STATUS IN ('7800', '8000')
   AND CREATED_TIMESTAMP >= '${shiftStartStr}'
-  AND (
-    SHIPPED_DATE_TIME >= '${shiftStartStr}'
-    OR (SHIPPED_DATE_TIME IS NULL AND UPDATED_TIMESTAMP >= '${shiftStartStr}')
-  )`.trim();
+  AND TRANSACTION_ID IN (${txIds})`.trim();
 
   const resp = await mcpQuery(accessToken, sql);
   const row  = (resp.rows || [])[0] || {};
   return {
-    generated:      new Date().toISOString().slice(0, 19),
-    facility:       FACILITY,
-    shift:          is1st ? '1st' : '2nd',
-    shift_start:    shiftStartStr,
-    shipped_olpns:  Number(row.shipped_olpns  || 0),
-    shipped_orders: Number(row.shipped_orders || 0),
+    generated:     new Date().toISOString().slice(0, 19),
+    facility:      FACILITY,
+    shift:         is1st ? '1st' : '2nd',
+    shift_start:   shiftStartStr,
+    shipped_olpns: Number(row.shipped_olpns || 0),
+    shipped_units: Number(row.shipped_units || 0),
   };
 }
 

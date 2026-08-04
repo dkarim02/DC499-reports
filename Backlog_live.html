@@ -530,7 +530,7 @@
           <div class="metric shipped">
             <div class="metric-label">Shipped</div>
             <div class="metric-value" id="m-shipped">--</div>
-            <div class="metric-sub" id="m-shipped-orders">-- orders</div>
+            <div class="metric-sub" id="m-shipped-orders">-- units</div>
           </div>
           <div class="metric total">
             <div class="metric-label">Total Open</div>
@@ -1039,7 +1039,7 @@ function renderShippedTile(data) {
   if (!data) return;
   document.getElementById('m-shipped').textContent = fmt(data.shipped_olpns || 0);
   var ordEl = document.getElementById('m-shipped-orders');
-  if (ordEl) ordEl.textContent = fmt(data.shipped_orders || 0) + ' orders';
+  if (ordEl) ordEl.textContent = fmt(data.shipped_units || 0) + ' units';
 }
 
 var PILL_LABEL = { READY:'Ready', ALLOCATED:'Allocated', PACKED:'Packed' };
