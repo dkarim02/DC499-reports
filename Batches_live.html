@@ -225,10 +225,7 @@
 
   <div class="header-row">
     <div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <div id="run-time" class="run-time">Loading...</div>
-        <span id="lan-badge" style="display:none;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:#16a34a;color:#fff;letter-spacing:.3px;">⚡ LAN</span>
-      </div>
+      <div id="run-time" class="run-time">Loading...</div>
       <div id="shift-start" class="run-time" style="margin-top:2px;"></div>
     </div>
     <div class="header-btns">
@@ -383,41 +380,12 @@ function scheduleAutoRefresh() {
 
 function manualRefresh() { fetchData(true); }
 
-var _liveBase = (function() {
-  if (window.location.protocol === 'file:') return 'http://localhost:3001';
-  var h = window.location.hostname;
-  if (h === 'localhost' || h.match(/^10\./) || h.match(/^192\./)) return '';
-  return 'https://dkarim02.github.io/DC499-reports';
-})();
-
-function getBase() { return _liveBase; }
-
-function _showLanBadge(on) {
-  var b = document.getElementById('lan-badge');
-  if (b) b.style.display = on ? 'inline' : 'none';
-}
-
-if (_liveBase !== 'https://dkarim02.github.io/DC499-reports') _showLanBadge(true);
-
-function probeLan() {
-  var ghBase = 'https://dkarim02.github.io/DC499-reports';
-  if (_liveBase !== ghBase) return;
-  fetch(ghBase + '/server_info.json?t=' + Date.now(), { cache: 'no-store' })
-    .then(function(r) { return r.json(); })
-    .then(function(info) {
-      var lanUrl = 'http://' + info.ip + ':' + (info.port || 3001);
-      return fetch(lanUrl + '/ping', { signal: AbortSignal.timeout(1500) })
-        .then(function(r) { return r.ok ? lanUrl : null; })
-        .catch(function() { return null; });
-    })
-    .catch(function() { return null; })
-    .then(function(base) {
-      if (!base) return;
-      _liveBase = base;
-      _showLanBadge(true);
-      console.log('[SCOUT] LAN server detected — re-fetching from ' + base);
-      fetchData(false);
-    });
+function getBase() {
+  return window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
 }
 
 function fetchData(isManual) {
@@ -840,7 +808,6 @@ function sendSelectedBatches() {
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 fetchData(false);
 scheduleAutoRefresh();
-probeLan();
 
 // ── Remi sprite ───────────────────────────────────────────────────────────────
 (function() {
