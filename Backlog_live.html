@@ -269,6 +269,10 @@
   #tk-summary-tiles .tile-sub{margin-top:5px;line-height:1.5;}
   .tk-table-wrap{overflow-y:auto;max-height:320px;}
   .tk-table-wrap::-webkit-scrollbar{width:4px;}.tk-table-wrap::-webkit-scrollbar-track{background:transparent;}.tk-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .tk-table-wrap table{table-layout:fixed;width:100%;}
+  .tk-table-wrap td,.tk-table-wrap th{white-space:normal;word-break:break-word;}
+  .tk-table-wrap td{padding:8px 6px;vertical-align:top;line-height:1.4;}
+  .tk-table-wrap th{white-space:nowrap;}
 
   /* Batch status badges */
   .status-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.03em;text-transform:uppercase;}
@@ -2033,8 +2037,8 @@ function renderTaskTable(type) {
 
   var STATUS_COLOR = { '7000':'var(--amber)', '5000':'var(--accent)', '3000':'var(--text-muted)', '8000':'var(--green)' };
   var tr_s = 'border-bottom:1px solid var(--border-light);';
-  var td   = 'padding:6px 8px;vertical-align:middle;';
-  var tdm  = td + 'color:var(--text-muted);font-size:12px;';
+  var td   = '';
+  var tdm  = 'color:var(--text-muted);font-size:12px;';
 
   function taskAge(created_pdt) {
     if (!created_pdt) return '—';
