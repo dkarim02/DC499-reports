@@ -1721,7 +1721,8 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
     }
     if (url.pathname === '/tasks_live.json') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify(cache?.tasksData || {}));
+      const tasksPayload = cache?.tasksData || (fs.existsSync(TASKS_FILE) ? JSON.parse(fs.readFileSync(TASKS_FILE,'utf8')) : {});
+      res.end(JSON.stringify(tasksPayload));
       return;
     }
     if (url.pathname === '/shipped_live.json') {

@@ -952,7 +952,7 @@ function setTab(tab) {
   document.getElementById('tab-tasks').classList.toggle('active',   tab === 'tasks');
   document.getElementById('stale-banner').style.display = 'none';
   if (tab === 'batches' && !lastBtData) fetchBatchData();
-  if (tab === 'tasks'   && !lastTkData) fetchTasksData();
+  if (tab === 'tasks') { if (lastTkData) renderTasksData(lastTkData); else fetchTasksData(); }
 }
 
 // -- Shared helpers -----------------------------------------------------------
