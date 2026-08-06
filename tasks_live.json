@@ -1,14 +1,14 @@
 {
-    "generated": "2026-08-06T12:59:25.329Z",
+    "generated": "2026-08-06T13:01:25.859Z",
     "shift": "1st",
     "shift_start": "2026-08-06 10:00:00",
     "facility": "499",
     "picking": {
         "queued": 8,
-        "assigned": 1,
+        "assigned": 0,
         "in_progress": 3,
-        "completed": 11,
-        "total_open": 12,
+        "completed": 13,
+        "total_open": 11,
         "tasks": [
             {
                 "task_id": "WRPICK0000213166",
@@ -133,18 +133,18 @@
             {
                 "task_id": "WRPICK0000213199",
                 "subtype": "NON MEZZ",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "F1D1102B03",
                 "target": null,
                 "created_pdt": "2026-08-06T05:50:21.627000",
-                "detail_count": 20
+                "detail_count": null
             },
             {
                 "task_id": "WRPICK0000213203",
                 "subtype": "NON MEZZ",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "F1A0210D01",
                 "target": null,
                 "created_pdt": "2026-08-06T05:50:21.836000",
@@ -153,8 +153,8 @@
             {
                 "task_id": "WRPICK0000213191",
                 "subtype": "NON MEZZ",
-                "status": "5000",
-                "status_label": "Assigned",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "F1D1210D01",
                 "target": null,
                 "created_pdt": "2026-08-06T05:50:23.857000",
@@ -163,12 +163,12 @@
             {
                 "task_id": "WRPICK0000213193",
                 "subtype": "NON MEZZ",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "F1B0203C01",
                 "target": null,
                 "created_pdt": "2026-08-06T05:50:24.587000",
-                "detail_count": 18
+                "detail_count": null
             },
             {
                 "task_id": "WRPICK0000213206",
@@ -239,15 +239,25 @@
                 "target": null,
                 "created_pdt": "2026-08-06T05:55:16.158000",
                 "detail_count": 1
+            },
+            {
+                "task_id": "WRPICK0000213211",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F1D1111B03",
+                "target": null,
+                "created_pdt": "2026-08-06T06:00:16.331000",
+                "detail_count": 3
             }
         ]
     },
     "replen": {
         "queued": 19,
-        "assigned": 1,
-        "in_progress": 2,
+        "assigned": 0,
+        "in_progress": 4,
         "completed": 7,
-        "total_open": 22,
+        "total_open": 23,
         "tasks": [
             {
                 "task_id": "WRPICK0000212370",
@@ -340,16 +350,6 @@
                 "detail_count": 2
             },
             {
-                "task_id": "WRPICK0000213145",
-                "subtype": "REPLEN PULL",
-                "status": "7000",
-                "status_label": "In Progress",
-                "source": "R1F0606C02",
-                "target": "F1D1111C02",
-                "created_pdt": "2026-08-05T22:25:16.357000",
-                "detail_count": 1
-            },
-            {
                 "task_id": "WRPICK0000213153",
                 "subtype": "Default Picking Activity",
                 "status": "3000",
@@ -361,9 +361,9 @@
             },
             {
                 "task_id": "WRPICK0000213152",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "REPLEN PULL",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1F0105D02",
                 "target": "F1D0413B03",
                 "created_pdt": "2026-08-05T22:30:14.334000",
@@ -411,9 +411,9 @@
             },
             {
                 "task_id": "WRPICK0000213160",
-                "subtype": "Default Picking Activity",
-                "status": "5000",
-                "status_label": "Assigned",
+                "subtype": "REPLEN PULL",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1D0210A01",
                 "target": "P1C0208A01",
                 "created_pdt": "2026-08-06T04:45:15.536000",
@@ -521,9 +521,9 @@
             },
             {
                 "task_id": "WRPICK0000213208",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "REPLEN PULL",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1F0301B02",
                 "target": "F1D1107B02",
                 "created_pdt": "2026-08-06T05:55:16.121000",
@@ -537,6 +537,26 @@
                 "source": "R1B0117B01",
                 "target": "F1D1107B02",
                 "created_pdt": "2026-08-06T05:55:16.321000",
+                "detail_count": 1
+            },
+            {
+                "task_id": "WRPICK0000213213",
+                "subtype": "Default Picking Activity",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "R1B0117B01",
+                "target": "F1D1107B02",
+                "created_pdt": "2026-08-06T06:00:16.224000",
+                "detail_count": 2
+            },
+            {
+                "task_id": "WRPICK0000213212",
+                "subtype": "Default Picking Activity",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "R1D0213A02",
+                "target": "F1D1112A02",
+                "created_pdt": "2026-08-06T06:00:16.279000",
                 "detail_count": 1
             }
         ]
