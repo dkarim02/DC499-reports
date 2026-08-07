@@ -1130,7 +1130,7 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
     WHERE td.FACILITY_ID         = '${FACILITY}'
       AND td.ORDER_ID            = o.ORDER_ID
       AND td.RESOURCE_BATCH_ID   IS NOT NULL
-      AND td.CREATED_TIMESTAMP   >= '${startStr}'
+      AND td.CREATED_TIMESTAMP   >= '${lookbackStart}'
   )`.trim();
 
   const resp = await mcpQuery(accessToken, sql);
