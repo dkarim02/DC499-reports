@@ -118,13 +118,20 @@ h1,h2,h3{font-family:var(--disp);margin:0;font-weight:600}
 
 /* ── Layout ── */
 .wrap{display:grid;grid-template-columns:224px 1fr;gap:0;min-height:60vh}
-.nav{border-right:1px solid var(--line);padding:14px 12px;background:#FAFAF8;position:sticky;top:61px;align-self:start;height:calc(100vh - 61px);overflow:auto}
+.nav{border-right:1px solid var(--line);padding:14px 12px;background:#FAFAF8;position:sticky;top:61px;align-self:start;height:calc(100vh - 61px);overflow:auto;}
 .nav .navlbl{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-2);padding:2px 8px 8px}
 .navbtn{width:100%;text-align:left;background:none;border:none;border-radius:7px;padding:9px 10px;display:flex;align-items:center;gap:9px;color:var(--ink);font-size:13.5px;font-weight:500;margin-bottom:2px}
 .navbtn:hover{background:#EFEEE9}
 .navbtn.active{background:var(--graphite);color:#fff}
 .navbtn.active .navpct{color:#C6CCD3}
 .navbtn .navpct{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.navbtn .home-flag{display:none;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;margin-left:4px;font-size:11px;flex-shrink:0;border:none;background:transparent;color:var(--muted);padding:0;cursor:pointer;line-height:1;transition:color .12s,background .12s;}
+.navbtn:hover .home-flag{display:inline-flex;}
+.navbtn.is-home .home-flag{display:inline-flex;color:#7A4FA3;}
+.navbtn.active .home-flag{color:#C6CCD3;}
+.navbtn.active.is-home .home-flag{color:#B49FD4;}
+.home-flag:hover{background:rgba(122,79,163,.18)!important;color:#7A4FA3!important;}
+.sar-badge.is-home{background:#EDE7F6;color:#6A3FA0;}
 .main{padding:20px 24px 60px}
 .areahead{display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap}
 .clearbtn{font-size:12.5px;color:var(--behind);border-color:var(--line)}
@@ -159,12 +166,13 @@ h1,h2,h3{font-family:var(--disp);margin:0;font-weight:600}
 .cp .cpstat{font-family:var(--mono);font-size:12.5px;margin-left:auto;font-weight:500}
 .cp .cpstat.make{color:var(--make)} .cp .cpstat.near{color:var(--near)} .cp .cpstat.behind{color:var(--behind)} .cp .cpstat.na{color:var(--muted)}
 .cpgrid{display:grid;grid-template-columns:74px minmax(60px,1fr) minmax(60px,1fr) minmax(200px,1.7fr);
-  grid-template-areas:"h0 hp ha hn" "ul up ua note" "hcl hcp hca note" "indl indp inda note" "fl fp fa note";gap:7px 10px;align-items:center}
+  grid-template-areas:"h0 hp ha hn" "ul up ua note" "hcl hcp hca note" "fl fp fa note";gap:7px 10px;align-items:center}
 .cpgrid .colhead{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);text-align:center;align-self:end}
 .cpgrid .colhead.left{text-align:left}
 .cpgrid .glbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .cpgrid .glbl.fin{color:var(--accent-ink)} .cpgrid .glbl.hc{color:#5A6472} .cpgrid .glbl.ind{color:#7A5A9A}
 .ind-pct{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:20px;background:#EDE7F6;color:#6A3FA0;white-space:nowrap;flex-shrink:0}
+.ind-hrs-pct{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 6px;border-radius:20px;background:#EDE7F6;color:#6A3FA0;white-space:nowrap;flex-shrink:0;margin-left:4px}
 .fieldwrap{position:relative}
 input.f{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:14.5px;font-variant-numeric:tabular-nums;text-align:right;background:#fff;transition:border-color .15s,box-shadow .15s}
 
@@ -207,12 +215,20 @@ textarea.noteta::placeholder{color:#C4C8CE}
 .shrow{display:flex;align-items:center;gap:5px}
 .shhours .shhlbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 input.f.shh{width:66px;padding:4px 7px;font-size:12px;text-align:right}
-.cppph{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;margin-top:8px;padding-top:9px;border-top:1px dashed var(--line-2)}
-.cppph .pphdivider{font-family:var(--mono);font-size:15px;color:var(--line-2);line-height:1;align-self:center;padding:0 2px}
+.cppph{display:flex;align-items:baseline;gap:4px 8px;flex-wrap:wrap;justify-content:space-between;margin-top:8px;padding-top:9px;border-top:1px dashed var(--line-2)}
+.cppph .pph-cell{display:inline-flex;align-items:baseline;gap:5px;flex:1;flex-wrap:wrap;row-gap:2px;min-width:0;}
+.cppph .pph-cell:not(:last-child)::after{content:"│";font-size:15px;color:var(--line-2);align-self:center;margin-left:8px;flex-shrink:0;}
+.cppph .pphdivider{display:none}
 .cppph .pphactlbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-2)}
-.pphflag{font-family:var(--mono);font-size:11.5px;font-weight:500;padding:2px 9px;border-radius:20px;white-space:nowrap;justify-self:start}
+.pphflag{font-family:var(--mono);font-size:11.5px;font-weight:500;padding:2px 9px;border-radius:20px;white-space:nowrap;}
 .pphflag.make{background:var(--make-bg);color:var(--make)} .pphflag.behind{background:var(--behind-bg);color:var(--behind)}
 .cppph .glbl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink)}
+/* ── Per-checkpoint hours bar (sits above each Mid/EOD card) ── */
+.cp-hrs-bar{display:flex;gap:16px;align-items:center;margin-bottom:5px;flex-wrap:wrap;}
+.cp-hrs-col{display:flex;align-items:center;gap:6px;}
+.cp-hrs-lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+.cp-hrs-lbl.ind{color:#7A4FA3;}
+.cp-hrs-bar .ind-hrs-pct{font-size:10px;}
 .cppph .pphval{font-size:19px;font-weight:700;color:var(--ink)}
 .cppph .pphsub{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
 .bshift .narr{padding:0}
@@ -223,6 +239,66 @@ input.f.shh{width:66px;padding:4px 7px;font-size:12px;text-align:right}
 .foot{padding:20px 24px 40px;color:var(--muted);font-size:11.5px;font-family:var(--mono);letter-spacing:.03em;line-height:1.6;border-top:1px solid var(--line);margin-top:20px}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--graphite);color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Block timer chip (bottom-left) ── */
+.block-timer{display:flex;flex-direction:column;gap:6px;padding:4px 8px 6px;}
+.timer-chip{display:flex;flex-direction:column;gap:2px;padding:9px 10px;border-radius:8px;font-family:var(--mono);cursor:default;transition:background .3s;}
+.timer-chip .tc-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;opacity:.7;}
+.timer-chip .tc-time{font-size:15px;font-weight:700;letter-spacing:.02em;line-height:1.2;}
+.timer-chip.open{background:var(--line-2);color:var(--muted);}
+.timer-chip.soon{background:#2A1E08;color:#D19B33;}
+.timer-chip.urgent{background:#2A100D;color:#E06058;animation:timerPulse 2s ease-in-out infinite;}
+.timer-chip.next{background:var(--line-2);color:var(--muted-2);}
+.timer-chip.next .tc-time{font-size:13px;}
+.late-btn{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;font-family:var(--mono);font-size:11.5px;font-weight:600;background:#2A100D;color:#E06058;border:1px solid #5A2020;cursor:pointer;transition:background .15s;width:100%;}
+.late-btn:hover{background:#3A1510;}
+body.dark .timer-chip.open{background:#1C2128;}
+body.dark .timer-chip.next{background:#1C2128;}
+@keyframes timerPulse{0%,100%{opacity:1;}50%{opacity:.65;}}
+
+/* ── Sync button in nav ── */
+.nav-bottom-block{margin-top:16px;padding-top:12px;border-top:1px solid var(--line-2);}
+/* ── What's new ── */
+.whats-new{margin-top:12px;padding-top:10px;border-top:1px solid var(--line-2);}
+.whats-new-toggle{width:100%;background:none;border:none;display:flex;align-items:center;justify-content:space-between;padding:4px 2px;cursor:pointer;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);font-weight:600;}
+.whats-new-toggle:hover{color:var(--muted);}
+.whats-new-toggle .wn-arrow{font-size:9px;transition:transform .2s;}
+.whats-new-toggle.open .wn-arrow{transform:rotate(180deg);}
+.whats-new-list{display:none;margin:6px 0 0;padding:0;list-style:none;}
+.whats-new-list.open{display:block;}
+.whats-new-list li{font-family:var(--body);font-size:11.5px;color:var(--muted);padding:5px 2px 5px 10px;position:relative;line-height:1.4;border-bottom:1px solid var(--line-2);}
+.whats-new-list li:last-child{border-bottom:none;}
+.whats-new-list li::before{content:"·";position:absolute;left:0;color:var(--accent);font-size:14px;line-height:1.2;}
+.nav-sync-row{display:flex;gap:5px;margin-top:0;padding:0 8px 8px;}
+.nav-sync-btn{flex:1;text-align:left;background:none;border:1px solid var(--line);border-radius:7px;padding:7px 10px;display:flex;align-items:center;gap:7px;color:var(--accent-ink);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;cursor:pointer;transition:background .15s;}
+.nav-sync-btn:hover{background:var(--make-bg);}
+.nav-sync-btn .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.nav-sync-btn.syncing{color:var(--muted);pointer-events:none;}
+.nav-push-btn{background:none;border:1px solid var(--line);border-radius:7px;padding:7px 10px;color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;}
+.nav-push-btn:hover{background:var(--near-bg);color:var(--near);border-color:var(--near);}
+
+/* ── Sync modal ── */
+.sync-modal-box{max-width:380px;}
+.sync-area-list{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px;}
+.sync-area-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;border:1px solid var(--line-2);background:#FBFBF9;cursor:pointer;transition:background .12s;}
+body.dark .sync-area-row{background:#1C2128;}
+.sync-area-row:hover{background:var(--make-bg);}
+.sync-area-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);flex-shrink:0;cursor:pointer;}
+.sync-area-row .sar-name{font-family:var(--mono);font-size:13px;font-weight:600;flex:1;}
+.sync-area-row .sar-badge{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.sync-area-row .sar-badge.has-remote{background:var(--make-bg);color:var(--make);}
+.sync-area-row .sar-badge.local-only{background:var(--na-bg);color:var(--muted);}
+.sync-area-row .sar-badge.has-local{background:var(--near-bg);color:var(--near);}
+.sync-note{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-bottom:8px;line-height:1.5;}
+
+/* ── Late post modal ── */
+.late-modal-box{max-width:400px;}
+.late-select{width:100%;background:var(--card);border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-family:var(--mono);font-size:13px;color:var(--ink);margin-bottom:10px;}
+.late-select:focus{outline:2px solid var(--accent);}
+.late-just{width:100%;border:1px solid var(--line);border-radius:7px;padding:9px 11px;font-family:var(--body);font-size:13.5px;line-height:1.5;resize:vertical;min-height:80px;background:var(--card);color:var(--ink);}
+.late-just:focus{outline:2px solid var(--accent);}
+.late-char{font-family:var(--mono);font-size:10.5px;color:var(--muted);text-align:right;margin-top:3px;}
+.late-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px;}
 
 /* ── Status check modal ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(20,24,29,.55);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -251,7 +327,8 @@ input.f.shh{width:66px;padding:4px 7px;font-size:12px;text-align:right}
   .nav{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);display:flex;gap:6px;overflow-x:auto}
   .nav .navlbl{display:none}
   .navbtn{width:auto;white-space:nowrap}
-  .cpgrid{grid-template-columns:58px 1fr 1fr;grid-template-areas:"h0 hp ha" "ul up ua" "hcl hcp hca" "indl indp inda" "fl fp fa" "hn hn hn" "note note note";}
+  .nav-bottom-block{display:none}
+  .cpgrid{grid-template-columns:58px 1fr 1fr;grid-template-areas:"h0 hp ha" "ul up ua" "hcl hcp hca" "fl fp fa" "hn hn hn" "note note note";}
   textarea.noteta{min-height:98px}
   .summary .track{width:100%}
 }
@@ -363,7 +440,19 @@ body.view-2nd .bshift.shift1{display:none}
 </section>
 
 <div class="wrap">
-  <nav class="nav" id="nav"><div class="navlbl">Areas</div></nav>
+  <nav class="nav" id="nav"><div class="navlbl">Areas</div><div class="nav-bottom-block"><div class="nav-sync-row"><button class="nav-sync-btn" id="btnNavSync" title="Pull shared numbers from other departments"><span class="sync-dot"></span>Sync depts</button><button class="nav-push-btn" id="btnNavPush" title="Push this area's numbers to the shared store">Push</button></div><button class="late-btn" id="btnPostLate" style="display:none;margin:6px 8px 0;">&#9888; Post late</button><div class="block-timer" id="blockTimer"></div></div>
+<div class="whats-new">
+  <button class="whats-new-toggle" id="btnWhatsNew">What's new <span class="wn-arrow">&#9660;</span></button>
+  <ul class="whats-new-list" id="whatsNewList">
+    <li>Indirect hours field on each Mid-Day and EOD card</li>
+    <li>Three PPH scores — hover each label to see what it tracks</li>
+    <li>Countdown timer shows how long until the current window closes</li>
+    <li>Missed a posting window? Use Post Late to send with a reason</li>
+    <li>Push your numbers to a shared store so other depts can sync them</li>
+    <li>Sync depts — pull in other departments' latest numbers manually</li>
+  </ul>
+</div>
+</nav>
   <main class="main" id="main"></main>
 </div>
 
@@ -406,6 +495,7 @@ function reconcile(st){
   if(st.meta.sendReportWebhook===undefined||!st.meta.sendReportWebhook) st.meta.sendReportWebhook=DEFAULT_WEBHOOK_SEND;
   if(st.meta.checkStatusWebhook===undefined||!st.meta.checkStatusWebhook) st.meta.checkStatusWebhook=DEFAULT_WEBHOOK_CHECK;
   if(!st.meta.submitted) st.meta.submitted={};
+  if(!st.meta.jsonBinUrl) st.meta.jsonBinUrl=DEFAULT_JSONBIN_URL;
   return st;
 }
 function processUOM(area,proc){ if(/putaway/i.test(proc)) return "cases"; if(proc==="Retail IN") return "cases"; if(area==="DC Shipping"||area==="DC Receiving") return "cases"; return "units"; }
@@ -434,6 +524,8 @@ const DEFAULT_WEBHOOK_2ND="https://defaultc291be2656fe41058955fec9bd564d.a1.envi
 const DEFAULT_WEBHOOK_SUBMIT="https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/cd8bf6f50d724ea7a75dc27c7aa3ca32/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Vv8btNldVL3_25q8aO5hFrTHLwq1l-s3kdv__xO15zw";
 const DEFAULT_WEBHOOK_SEND="https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/a04278ad01de41f79e5d3b3798ab75d5/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=l1C3Bpg74tuw5XjmfKvnJiT_SQ1mo-fJCsGsi9zhgcg";
 const DEFAULT_WEBHOOK_CHECK="https://defaultc291be2656fe41058955fec9bd564d.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/28f10ef0bdaf49b88369ebd6e3594bcf/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=gju148EX1_8LgIeG-FfTxHccGRF72heHWOE8trl8i1U";
+const DEFAULT_JSONBIN_URL="https://api.jsonbin.io/v3/b/6a740381f5f4af5e29f11192";
+const JSONBIN_KEY="$2a$10$0pYjAVnZktiQvSYFUXJ8Xu/lKSDPxqZ37HkkZyDs7fiN/SZTfKOW6";
 let mem=null;
 function load(){
   try{const s=localStorage.getItem(STORE_KEY); if(s) return JSON.parse(s);}catch(e){}
@@ -458,7 +550,7 @@ function resetPersonHoursIfNewDay(){
   const today=planDayISO();
   if(STATE.meta.lastResetDate===today) return;
   for(const a in STATE.data) for(const p in STATE.data[a]) for(const key in STATE.data[a][p]){
-    const r=STATE.data[a][p][key]; r.totalHours=null;
+    const r=STATE.data[a][p][key]; r.totalHours=null; r.indirectHours=null;
   }
   STATE.meta.lastResetDate=today;
 }
@@ -473,8 +565,8 @@ function fmt(n){return n==null||isNaN(n)?"—":Math.round(n).toLocaleString("en-
 function fmt1(n){ if(n==null||isNaN(n)) return "—"; return (Math.round(n*10)/10).toLocaleString("en-US"); }
 function shiftLen(area,proc,sh){ const eod=(STATE.data[area][proc]||{})[sh+"|"+"EOD"]||{}; return eod.shiftHours==null?null:eod.shiftHours; }
 function effHours(area,proc,sh,cp){ const sl=shiftLen(area,proc,sh); if(sl==null) return null; return cp==="Midday"?sl/2:sl; }
-function totalHoursHC(area,proc,sh,cp){ const eh=effHours(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(eh==null||(rec.act_hc==null&&rec.act_ind_hc==null)) return null; return eh*((rec.act_hc||0)+(rec.act_ind_hc||0)); }
-function plannedTotalHoursHC(area,proc,sh,cp){ const eh=effHours(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(eh==null||(rec.plan_hc==null&&rec.plan_ind_hc==null)) return null; return eh*((rec.plan_hc||0)+(rec.plan_ind_hc||0)); }
+function totalHoursHC(area,proc,sh,cp){ const eh=effHours(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(eh==null||rec.act_hc==null) return null; return eh*(rec.act_hc||0); }
+function plannedTotalHoursHC(area,proc,sh,cp){ const eh=effHours(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(eh==null||rec.plan_hc==null) return null; return eh*(rec.plan_hc||0); }
 function pph(area,proc,sh,cp){ const th=totalHoursHC(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(th==null||th===0||rec.act_u==null) return null; return rec.act_u/th; }
 function pphPlanned(area,proc,sh,cp){ const th=plannedTotalHoursHC(area,proc,sh,cp); const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; if(th==null||th===0||rec.plan_f==null) return null; return rec.plan_f/th; }
 function totalHoursVal(area,proc,sh,cp){ const r=(STATE.data[area][proc]||{})[sh+"|"+cp]||{}; return r.totalHours==null?null:r.totalHours; }
@@ -493,15 +585,15 @@ function paceStatus(area,proc,sh,cp){
 function pphHTML(area,proc,sh,cp){
   const th=totalHoursHC(area,proc,sh,cp), p=pph(area,proc,sh,cp), eh=effHours(area,proc,sh,cp);
   const rec=(STATE.data[area][proc]||{})[sh+"|"+cp]||{};
-  const sub = th==null ? "enter shift hrs + actual HC" : ("total hrs "+fmt1(th)+" = "+fmt1(eh)+" hrs × "+fmt(rec.act_hc)+" HC");
+  const sub = th==null ? "enter shift hrs + actual HC" : (fmt1(eh)+" hrs × "+fmt(rec.act_hc)+" HC = "+fmt1(th)+" total hrs");
   const pace=paceStatus(area,proc,sh,cp); const flag = pace.cls==="na"?"":`<span class="pphflag ${pace.cls}">${pace.label}</span>`;
   const thF=totalHoursVal(area,proc,sh,cp), pF=pphFin(area,proc,sh,cp);
-  const subF = thF==null ? "enter total hrs" : ("fin ÷ "+fmt1(thF)+" total hrs");
-  const finPart = `<span class="pphdivider">│</span><span class="glbl">Fin PPH</span><span class="pphval mono">${pF==null?"—":fmt1(pF)}</span><span class="pphsub">${subF}</span>`;
+  const subF = thF==null ? "enter total hrs above" : ("act financial ÷ "+fmt1(thF)+" total hrs");
   const thP=plannedTotalHoursHC(area,proc,sh,cp), pP=pphPlanned(area,proc,sh,cp);
-  const subP = thP==null ? "enter planned HC + shift hrs" : ("plan units ÷ "+fmt1(thP)+" planned hrs");
-  const planPart = `<span class="glbl">Planned PPH</span><span class="pphval mono">${pP==null?"—":fmt1(pP)}</span><span class="pphsub">${subP}</span><span class="pphdivider">│</span>`;
-  return `${planPart}<span class="glbl">PPH</span><span class="pphval mono">${p==null?"—":fmt1(p)}</span>${flag}<span class="pphsub">${sub}</span>${finPart}`;
+  const subP = thP==null ? "enter planned HC + shift hrs" : ("plan financial ÷ "+fmt1(thP)+" planned hrs");
+  return `<div class="pph-cell"><span class="glbl" title="PPH based on original planned financial units and planned hours">Planned PPH</span><span class="pphval mono">${pP==null?"—":fmt1(pP)}</span><span class="pphsub">${subP}</span></div>`
+    +`<div class="pph-cell"><span class="glbl" title="Current PPH based on set shift hours and actual units">Static PPH</span><span class="pphval mono">${p==null?"—":fmt1(p)}</span>${flag}<span class="pphsub">${sub}</span></div>`
+    +`<div class="pph-cell"><span class="glbl" title="Current PPH based on total hours entered and financial units">Fin PPH</span><span class="pphval mono">${pF==null?"—":fmt1(pF)}</span><span class="pphsub">${subF}</span></div>`;
 }
 function pphLine(area,proc,key){ const parts=key.split("|"); const wrap=el("div","cppph"); wrap.dataset.proc=proc; wrap.dataset.sh=parts[0]; wrap.dataset.cp=parts[1]; wrap.innerHTML=pphHTML(area,proc,parts[0],parts[1]); return wrap; }
 function statusOf(plan,act){
@@ -549,12 +641,28 @@ function trackHTML(plan,act,cls,pct){
 /* ── render: nav ── */
 function renderNav(){
   const nav=$("#nav"); nav.querySelectorAll(".navbtn").forEach(n=>n.remove());
+  const syncRow=nav.querySelector(".nav-bottom-block");
   for(const a of AREAS){
     const r=rollArea(a);
-    const b=el("button","navbtn"+(a===current?" active":""));
+    const isHome=STATE.meta.homeDept===a;
+    const b=el("button","navbtn"+(a===current?" active":"")+(isHome?" is-home":""));
+    const flag=document.createElement("button");
+    flag.className="home-flag"; flag.type="button";
+    flag.title=isHome?"Clear home dept (this dept is immune to sync)":"Set as home dept (immune to sync)";
+    flag.textContent="⚑";
+    flag.onclick=function(e){
+      e.stopPropagation();
+      STATE.meta.homeDept=(STATE.meta.homeDept===a)?null:a;
+      scheduleSave(); renderNav();
+      toast(STATE.meta.homeDept===a?"Home dept set to "+a+" — will never be overwritten by sync":"Home dept cleared");
+    };
     b.innerHTML=`<span class="dot ${r.cls}"></span>${a}<span class="navpct num">${pctTxt(r.pct)}</span>`;
-    b.onclick=()=>{current=a; STATE.meta.lastArea=a; scheduleSave(); renderNav(); renderMain();};
-    nav.appendChild(b);
+    b.appendChild(flag);
+    b.onclick=function(e){
+      if(e.target===flag||flag.contains(e.target)) return;
+      current=a; STATE.meta.lastArea=a; scheduleSave(); renderNav(); renderMain();
+    };
+    nav.insertBefore(b, syncRow);
   }
 }
 /* ── render: summary ── */
@@ -600,33 +708,60 @@ function processCard(area,proc,pdata){
   for(const sh of SHIFTS){
     const sb=el("div","shiftblock shift"+(sh==="1st"?"1":"2"));
     const shHead=el("div","sh"); shHead.innerHTML=`<span class="shdot"></span><span>${sh} Shift</span>`;
-    const eodR=pdata[sh+"|EOD"]||(pdata[sh+"|EOD"]={plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,plan_ind_hc:null,act_ind_hc:null,recirc:null,shiftHours:null,totalHours:null});
-    const midR=pdata[sh+"|Midday"]||(pdata[sh+"|Midday"]={plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,plan_ind_hc:null,act_ind_hc:null,recirc:null,totalHours:null});
+    const eodR=pdata[sh+"|EOD"]||(pdata[sh+"|EOD"]={plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,plan_ind_hc:null,act_ind_hc:null,recirc:null,shiftHours:null,totalHours:null,indirectHours:null});
+    pdata[sh+"|Midday"]=pdata[sh+"|Midday"]||{plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,plan_ind_hc:null,act_ind_hc:null,recirc:null,totalHours:null,indirectHours:null};
     const hw=el("span","shhours");
 
-    // Row 1: Shift hrs
+    // Shift hrs (stays at the top \u2014 applies to whole shift)
     const row1=el("span","shrow"); row1.innerHTML=`<span class="shhlbl">Shift hrs</span>`;
     const hi=el("input","f num shh"); hi.type="number"; hi.step="0.5"; hi.min="0"; hi.placeholder="\u2014"; if(eodR.shiftHours!=null) hi.value=eodR.shiftHours;
     hi.oninput=()=>{ const v=hi.value===""?null:parseFloat(hi.value); STATE.data[area][proc][sh+"|EOD"].shiftHours=isNaN(v)?null:v; liveUpdate(); };
     row1.appendChild(hi); hw.appendChild(row1);
 
-    // Row 2: Total hrs (Mid)
-    const row2=el("span","shrow"); row2.innerHTML=`<span class="shhlbl">Total hrs (Mid)</span>`;
-    const hm=el("input","f num shh"); hm.type="number"; hm.step="0.5"; hm.min="0"; hm.placeholder="\u2014"; if(midR.totalHours!=null) hm.value=midR.totalHours;
-    hm.oninput=()=>{ const v=hm.value===""?null:parseFloat(hm.value); STATE.data[area][proc][sh+"|Midday"].totalHours=isNaN(v)?null:v; liveUpdate(); };
-    row2.appendChild(hm); hw.appendChild(row2);
-
-    // Row 3: Total hrs (EOD)
-    const row3=el("span","shrow"); row3.innerHTML=`<span class="shhlbl">Total hrs (EOD)</span>`;
-    const he=el("input","f num shh"); he.type="number"; he.step="0.5"; he.min="0"; he.placeholder="\u2014"; if(eodR.totalHours!=null) he.value=eodR.totalHours;
-    he.oninput=()=>{ const v=he.value===""?null:parseFloat(he.value); STATE.data[area][proc][sh+"|EOD"].totalHours=isNaN(v)?null:v; liveUpdate(); };
-    row3.appendChild(he); hw.appendChild(row3);
-
     shHead.appendChild(hw); sb.appendChild(shHead);
+
+    // Build each checkpoint with its own Total hrs / Indirect hrs bar above it
     for(const cp of CPS){
       const key=sh+"|"+cp;
-      const rec=pdata[key]||(pdata[key]={plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,plan_ind_hc:null,act_ind_hc:null,recirc:null,shiftHours:null});
-      sb.appendChild(cpBlock(area,proc,key,rec));
+      const cpRec=pdata[key]||(pdata[key]={plan_u:null,act_u:null,note_u:"",plan_f:null,act_f:null,note_f:"",plan_hc:null,act_hc:null,plan_ind_hc:null,act_ind_hc:null,recirc:null,shiftHours:null,totalHours:null,indirectHours:null});
+
+      // Hours bar: Total hrs | Indirect hrs \u2014 side by side above the card
+      const hBar=el("div","cp-hrs-bar");
+
+      // Total hrs col
+      const thCol=el("div","cp-hrs-col");
+      const thLbl=el("span","cp-hrs-lbl","Total hrs");
+      const thInput=el("input","f num shh"); thInput.type="number"; thInput.step="0.5"; thInput.min="0"; thInput.placeholder="\u2014";
+      if(cpRec.totalHours!=null) thInput.value=cpRec.totalHours;
+      thInput.oninput=()=>{
+        const v=thInput.value===""?null:parseFloat(thInput.value);
+        STATE.data[area][proc][key].totalHours=isNaN(v)?null:v;
+        paintInd(); liveUpdate();
+      };
+      thCol.appendChild(thLbl); thCol.appendChild(thInput); hBar.appendChild(thCol);
+
+      // Indirect hrs col
+      const indCol=el("div","cp-hrs-col");
+      const indLbl=el("span","cp-hrs-lbl ind","Indirect hrs");
+      const indInput=el("input","f num shh"); indInput.type="number"; indInput.step="0.5"; indInput.min="0"; indInput.placeholder="\u2014";
+      if(cpRec.indirectHours!=null) indInput.value=cpRec.indirectHours;
+      const indBadge=el("span","ind-hrs-pct"); indBadge.style.display="none";
+      function paintInd(){
+        const th=STATE.data[area][proc][key].totalHours;
+        const ih=STATE.data[area][proc][key].indirectHours;
+        if(th==null||th===0||ih==null){indBadge.style.display="none";}
+        else{indBadge.style.display="";indBadge.textContent=Math.round(ih/th*100)+"% of hrs";}
+      }
+      paintInd();
+      indInput.oninput=()=>{
+        const v=indInput.value===""?null:parseFloat(indInput.value);
+        STATE.data[area][proc][key].indirectHours=isNaN(v)?null:v;
+        paintInd(); liveUpdate();
+      };
+      indCol.appendChild(indLbl); indCol.appendChild(indInput); indCol.appendChild(indBadge); hBar.appendChild(indCol);
+
+      sb.appendChild(hBar);
+      sb.appendChild(cpBlock(area,proc,key,cpRec));
     }
     body.appendChild(sb);
   }
@@ -733,9 +868,6 @@ function cpBlock(area,proc,key,rec){
   g.appendChild(place(el("span","glbl hc","HC"),"hcl"));
   g.appendChild(place(numInput(area,proc,key,"plan_hc",rec.plan_hc),"hcp"));
   g.appendChild(place(hcActualInput(area,proc,key,rec),"hca"));
-  g.appendChild(place(el("span","glbl ind","Indirect HC"),"indl"));
-  g.appendChild(place(indHcPlannedInput(area,proc,key,rec),"indp"));
-  g.appendChild(place(indHcActualInput(area,proc,key,rec),"inda"));
   g.appendChild(place(el("span","glbl fin","Financial $"),"fl"));
   g.appendChild(place(numInput(area,proc,key,"plan_f",rec.plan_f),"fp"));
   g.appendChild(place(numInput(area,proc,key,"act_f",rec.act_f),"fa"));
@@ -770,12 +902,18 @@ function eodParts(area,proc,sh){
     out.push(["Financial",`${fmt(eod.act_f)} of ${fmt(eod.plan_f)} planned${fgTxt}`]);
   }
   if(mid.plan_hc!=null||mid.act_hc!=null){
-    const indMidPct=(mid.act_ind_hc!=null&&mid.act_hc!=null&&mid.act_hc!==0)?` \u00b7 indirect ${Math.round(mid.act_ind_hc/mid.act_hc*100)}% (${fmt(mid.act_ind_hc)} of ${fmt(mid.act_hc)})`:"";
-    out.push(["HC (Mid-day)",`${mid.act_hc==null?"\u2014":fmt(mid.act_hc)} actual vs ${mid.plan_hc==null?"\u2014":fmt(mid.plan_hc)} planned${indMidPct}`]);
+    out.push(["HC (Mid-day)",`${mid.act_hc==null?"\u2014":fmt(mid.act_hc)} actual vs ${mid.plan_hc==null?"\u2014":fmt(mid.plan_hc)} planned`]);
+  }
+  if(mid.indirectHours!=null){
+    const indMidPct=(mid.totalHours!=null&&mid.totalHours!==0)?` (${Math.round(mid.indirectHours/mid.totalHours*100)}% of total hrs)`:"";
+    out.push(["Indirect hrs (Mid-day)",`${fmt1(mid.indirectHours)} hrs${indMidPct}`]);
   }
   if(eod.plan_hc!=null||eod.act_hc!=null){
-    const indEodPct=(eod.act_ind_hc!=null&&eod.act_hc!=null&&eod.act_hc!==0)?` \u00b7 indirect ${Math.round(eod.act_ind_hc/eod.act_hc*100)}% (${fmt(eod.act_ind_hc)} of ${fmt(eod.act_hc)})`:"";
-    out.push(["HC (EOD)",`${eod.act_hc==null?"\u2014":fmt(eod.act_hc)} actual vs ${eod.plan_hc==null?"\u2014":fmt(eod.plan_hc)} planned${indEodPct}`]);
+    out.push(["HC (EOD)",`${eod.act_hc==null?"\u2014":fmt(eod.act_hc)} actual vs ${eod.plan_hc==null?"\u2014":fmt(eod.plan_hc)} planned`]);
+  }
+  if(eod.indirectHours!=null){
+    const indEodPct=(eod.totalHours!=null&&eod.totalHours!==0)?` (${Math.round(eod.indirectHours/eod.totalHours*100)}% of total hrs)`:"";
+    out.push(["Indirect hrs (EOD)",`${fmt1(eod.indirectHours)} hrs${indEodPct}`]);
   }
   if(hasRecirc(area)){
     if(mid.recirc!=null) out.push(["Recirc (Mid-day)",`${mid.recirc}% (goal \u2264 10% \u2014 ${mid.recirc<=10?"at/under goal":"over goal"})`]);
@@ -951,14 +1089,6 @@ function refreshComputed(){
       const s=cps[ci] && cps[ci].querySelector('[data-role=cpstat]'); if(s){s.className="cpstat "+st.cls; s.textContent=st.pct==null?st.label:pctTxt(st.pct)+" · "+st.label;} ci++; }
   });
   $("#main").querySelectorAll(".cppph").forEach(elm=>{ elm.innerHTML=pphHTML(current, elm.dataset.proc, elm.dataset.sh, elm.dataset.cp); });
-  $("#main").querySelectorAll("[data-role=indpct]").forEach(badge=>{
-    const p=indHcPct(badge.dataset.area,badge.dataset.proc,badge.dataset.key);
-    if(p==null){ badge.style.display="none"; } else { badge.style.display=""; badge.textContent=Math.round(p*100)+"% of HC"; }
-  });
-  $("#main").querySelectorAll("[data-role=indpctplan]").forEach(badge=>{
-    const p=indHcPlanPct(badge.dataset.area,badge.dataset.proc,badge.dataset.key);
-    if(p==null){ badge.style.display="none"; } else { badge.style.display=""; badge.textContent=Math.round(p*100)+"% of HC"; }
-  });
   refreshBridges();
 }
 function renderUpdated(){
@@ -971,13 +1101,13 @@ function renderUpdated(){
 function download(name,text,type){const b=new Blob([text],{type:type||"text/plain"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
 function exportJson(){download(`ntp_dc499_${STATE.meta.date}.json`,JSON.stringify(STATE,null,1),"application/json");toast("Data exported");}
 function exportCsv(){
-  const rows=[["Date","Area","Process","Shift","Checkpoint","Planned HC","Actual HC","Planned Indirect HC","Actual Indirect HC","Indirect HC %","UOM","Planned Vol","Actual Vol","% to Goal","Vol to Goal","Planned $","Actual $","Recirc %","Total Hrs","PPH","Note"]];
+  const rows=[["Date","Area","Process","Shift","Checkpoint","Planned HC","Actual HC","Indirect Hrs","Indirect Hrs %","UOM","Planned Vol","Actual Vol","% to Goal","Vol to Goal","Planned $","Actual $","Recirc %","Total Hrs","PPH","Note"]];
   for(const a of AREAS)for(const p in STATE.data[a])for(const sh of SHIFTS)for(const cp of CPS){
     const r=STATE.data[a][p][sh+"|"+cp]||{}; const st=statusOf(r.plan_u,r.act_u);
     const gap=(r.plan_u!=null&&r.act_u!=null)?r.plan_u-r.act_u:"";
     const _th=totalHoursHC(a,p,sh,cp), _pph=pph(a,p,sh,cp);
-    const _indPct=(r.act_ind_hc!=null&&r.act_hc!=null&&r.act_hc!==0)?Math.round(r.act_ind_hc/r.act_hc*100)+"%":"";
-    rows.push([STATE.meta.date,a,p,sh,cp,r.plan_hc??"",r.act_hc??"",r.plan_ind_hc??"",r.act_ind_hc??"",_indPct,processUOM(a,p)==="cases"?"Cases":"Units",r.plan_u??"",r.act_u??"",st.pct==null?"":Math.round(st.pct*100)+"%",gap,r.plan_f??"",r.act_f??"",r.recirc??"",_th==null?"":Math.round(_th*10)/10,_pph==null?"":Math.round(_pph*10)/10,(r.note_u||"").replace(/\n/g," / ")]);
+    const _indPct=(r.indirectHours!=null&&r.totalHours!=null&&r.totalHours!==0)?Math.round(r.indirectHours/r.totalHours*100)+"%":"";
+    rows.push([STATE.meta.date,a,p,sh,cp,r.plan_hc??"",r.act_hc??"",r.indirectHours??"",_indPct,processUOM(a,p)==="cases"?"Cases":"Units",r.plan_u??"",r.act_u??"",st.pct==null?"":Math.round(st.pct*100)+"%",gap,r.plan_f??"",r.act_f??"",r.recirc??"",_th==null?"":Math.round(_th*10)/10,_pph==null?"":Math.round(_pph*10)/10,(r.note_u||"").replace(/\n/g," / ")]);
   }
   const csv=rows.map(r=>r.map(c=>{c=String(c);return /[",\n]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c;}).join(",")).join("\n");
   download(`ntp_dc499_${STATE.meta.date}.csv`,csv,"text/csv");toast("CSV exported");
@@ -996,7 +1126,7 @@ function clearArea(area){
   if(!confirm("Clear ALL entered data for "+scope+"?\n\nThis wipes planned/actual volume, financial, HC, recirc, shift hours, PPH inputs and every note (both shifts, Mid-Day + EOD). This can't be undone.")) return;
   for(const p in procs){ for(const key in procs[p]){ const r=procs[p][key];
     r.plan_u=null; r.act_u=null; r.note_u=""; r.plan_f=null; r.act_f=null; r.note_f="";
-    r.plan_hc=null; r.act_hc=null; r.plan_ind_hc=null; r.act_ind_hc=null; r.recirc=null; r.shiftHours=null; r.totalHours=null; } }
+    r.plan_hc=null; r.act_hc=null; r.plan_ind_hc=null; r.act_ind_hc=null; r.recirc=null; r.shiftHours=null; r.totalHours=null; r.indirectHours=null; } }
   if(STATE.notes && STATE.notes[area]) STATE.notes[area]={"1st":"","2nd":""};
   save(true); renderAll(); toast(area+" data cleared — ready for new entry");
 }
@@ -1122,15 +1252,13 @@ function cpBlocks(area, proc, sh, cp){
 
   // HC row
   if(rec.plan_hc!=null||rec.act_hc!=null){
-    var indPct=(rec.act_ind_hc!=null&&rec.act_hc!=null&&rec.act_hc!==0)?Math.round(rec.act_ind_hc/rec.act_hc*100)+"% indirect":null;
-    var indVal=rec.act_ind_hc!=null?fmt(rec.act_ind_hc)+(indPct?" ("+indPct+")":""):"\u2014";
     var hcFacts=[
       {title:"HC Planned", value:rec.plan_hc!=null?fmt(rec.plan_hc):"\u2014"},
       {title:"HC Actual",  value:rec.act_hc!=null?fmt(rec.act_hc):"\u2014"},
     ];
-    if(rec.plan_ind_hc!=null||rec.act_ind_hc!=null){
-      hcFacts.push({title:"Indirect HC Planned", value:rec.plan_ind_hc!=null?fmt(rec.plan_ind_hc):"\u2014"});
-      hcFacts.push({title:"Indirect HC Actual",  value:indVal});
+    if(rec.indirectHours!=null){
+      var indHrsPct=(rec.totalHours!=null&&rec.totalHours!==0)?" ("+Math.round(rec.indirectHours/rec.totalHours*100)+"% of hrs)":"";
+      hcFacts.push({title:"Indirect hrs", value:fmt1(rec.indirectHours)+" hrs"+indHrsPct});
     }
     blocks.push({type:"FactSet",spacing:"Small",facts:hcFacts});
   }
@@ -1246,6 +1374,7 @@ function postAreaToTeams(area){
   var url=getTeamsWebhook(block.key);
   if(!url){ toast("No Teams webhook set for "+block.label+". Click \u2018Teams webhook\u2019 to add it."); return; }
   postToTeams(buildCard("DC 499 \u00b7 "+area+" \u00b7 "+block.label,[area],block), area+" "+block.label, url);
+  pushToJsonBin(area); // silently sync this area's numbers to shared store
 }
 function postAllToTeams(){
   var block=currentBlock();
@@ -1446,7 +1575,384 @@ function sendReport(){
     });
 }
 
+/* ── JSONBin shared sync ── */
+
+// Returns true if an area has any locally-entered actual units (i.e. user has worked in it)
+function areaHasLocalActuals(area){
+  const procs=STATE.data[area]||{};
+  for(const p in procs) for(const key in procs[p]){
+    const r=procs[p][key]; if(r.act_u!=null) return true;
+  }
+  return false;
+}
+
+// Builds the payload for one area — all checkpoints, all processes
+function buildAreaPayload(area){
+  const out={};
+  const procs=STATE.data[area]||{};
+  for(const p in procs){
+    out[p]={};
+    for(const key in procs[p]){
+      const r=procs[p][key];
+      // Only include filled checkpoints
+      if(r.plan_u!=null||r.act_u!=null||r.plan_f!=null||r.act_f!=null){
+        out[p][key]={plan_u:r.plan_u,act_u:r.act_u,plan_f:r.plan_f,act_f:r.act_f,
+          plan_hc:r.plan_hc,act_hc:r.act_hc,recirc:r.recirc,note_u:r.note_u||""};
+      }
+    }
+  }
+  return out;
+}
+
+// Push this area's numbers to JSONBin after a Teams post
+function pushToJsonBin(area){
+  const url=STATE.meta.jsonBinUrl||"";
+  if(!url) return;
+  const headers={"X-Master-Key":JSONBIN_KEY,"X-Bin-Meta":"false"};
+  fetch(url, {headers:headers})
+    .then(function(r){ return r.ok?r.json():{}; })
+    .catch(function(){ return {}; })
+    .then(function(existing){
+      existing[area]=buildAreaPayload(area);
+      existing._date=STATE.meta.date;
+      return fetch(url, {method:"PUT",
+        headers:Object.assign({"Content-Type":"application/json"},headers),
+        body:JSON.stringify(existing)});
+    })
+    .catch(function(){});
+}
+
+// Merge remote area data into STATE. force=true skips the local-actuals guard (manual sync)
+// Home dept is ALWAYS immune — never overwritten regardless of force flag
+function mergeRemoteArea(area, remoteProcs, force){
+  if(STATE.meta.homeDept===area) return false;
+  if(!force && areaHasLocalActuals(area)) return false;
+  const procs=STATE.data[area]||{};
+  for(const p in remoteProcs){
+    if(!procs[p]) continue;
+    for(const key in remoteProcs[p]){
+      if(!procs[p][key]) continue;
+      const src=remoteProcs[p][key], dst=procs[p][key];
+      if(force){
+        // Full overwrite — user explicitly checked this area
+        if(src.plan_u!=null) dst.plan_u=src.plan_u;
+        if(src.act_u!=null)  dst.act_u=src.act_u;
+        if(src.plan_f!=null) dst.plan_f=src.plan_f;
+        if(src.act_f!=null)  dst.act_f=src.act_f;
+        if(src.plan_hc!=null) dst.plan_hc=src.plan_hc;
+        if(src.act_hc!=null)  dst.act_hc=src.act_hc;
+        if(src.recirc!=null)  dst.recirc=src.recirc;
+        if(src.note_u) dst.note_u=src.note_u;
+      } else {
+        // Fill-only — only set fields that are null locally
+        if(dst.plan_u==null && src.plan_u!=null) dst.plan_u=src.plan_u;
+        if(dst.act_u==null  && src.act_u!=null)  dst.act_u=src.act_u;
+        if(dst.plan_f==null && src.plan_f!=null) dst.plan_f=src.plan_f;
+        if(dst.act_f==null  && src.act_f!=null)  dst.act_f=src.act_f;
+        if(dst.plan_hc==null && src.plan_hc!=null) dst.plan_hc=src.plan_hc;
+        if(dst.act_hc==null  && src.act_hc!=null)  dst.act_hc=src.act_hc;
+        if(dst.recirc==null  && src.recirc!=null)   dst.recirc=src.recirc;
+        if((!dst.note_u||dst.note_u==="") && src.note_u) dst.note_u=src.note_u;
+      }
+    }
+  }
+  return true;
+}
+
+// Auto-sync: silent pull that skips the home dept and any area with local actuals
+// Called from the timer tick when we're 0-10 mins past a block deadline
+function autoSyncFromJsonBin(blockKey){
+  const url=STATE.meta.jsonBinUrl||"";
+  if(!url) return;
+  // Mark this block as synced for today so the 10-min window only fires once
+  if(!STATE.meta.autoSyncedBlocks) STATE.meta.autoSyncedBlocks={};
+  STATE.meta.autoSyncedBlocks[blockKey]=STATE.meta.date;
+  save(true);
+  fetch(url, {headers:{"X-Master-Key":JSONBIN_KEY,"X-Bin-Meta":"false"}})
+    .then(function(r){ return r.ok?r.json():null; })
+    .then(function(data){
+      if(!data||typeof data!=="object") return;
+      if(data._date && data._date!==STATE.meta.date) return;
+      let changed=false;
+      for(const a of AREAS){
+        if(data[a]){
+          if(mergeRemoteArea(a,data[a],true)) changed=true;
+        }
+      }
+      if(changed){ save(true); renderAll(); toast("Auto-synced other depts' numbers"); }
+    })
+    .catch(function(){});
+}
+
+// Check if any block just passed its deadline within the last 10 minutes and hasn't been auto-synced yet today
+function checkAutoSync(){
+  var pst=pstNow();
+  var cur=toMins(pst.getHours(),pst.getMinutes());
+  var curAdj=pst.getHours()<2?cur+24*60:cur;
+  if(!STATE.meta.autoSyncedBlocks) STATE.meta.autoSyncedBlocks={};
+  for(var i=0;i<BLOCKS.length;i++){
+    var b=BLOCKS[i];
+    var end=toMins(b.endH,b.endM);
+    var minsAfter=curAdj-end;
+    // Fire if we are 0–10 minutes past this block's deadline and haven't fired today
+    if(minsAfter>=0 && minsAfter<=10){
+      var lastSynced=STATE.meta.autoSyncedBlocks[b.key];
+      if(lastSynced!==STATE.meta.date){
+        autoSyncFromJsonBin(b.key);
+        return; // one block at a time
+      }
+    }
+  }
+}
+
+// Manual sync modal — shows checkboxes per area, warns if local data exists
+function showSyncModal(){
+  const url=STATE.meta.jsonBinUrl||"";
+  if(!url){ toast("No JSONBin URL set — add it in Webhooks"); return; }
+
+  const old=document.getElementById("syncModal"); if(old) old.remove();
+  const overlay=document.createElement("div"); overlay.className="modal-overlay"; overlay.id="syncModal";
+  const box=document.createElement("div"); box.className="modal-box sync-modal-box";
+
+  const head=document.createElement("div"); head.className="modal-head";
+  head.innerHTML='<h3>Sync from Shared Store</h3><button class="modal-close" id="smSyncClose">&times;</button>';
+  box.appendChild(head);
+
+  const body=document.createElement("div"); body.className="modal-body";
+  body.innerHTML='<div class="modal-checking">Fetching shared data…</div>';
+  box.appendChild(body);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  document.getElementById("smSyncClose").onclick=function(){ overlay.remove(); };
+  overlay.addEventListener("click",function(e){ if(e.target===overlay) overlay.remove(); });
+
+  fetch(url, {headers:{"X-Master-Key":JSONBIN_KEY,"X-Bin-Meta":"false"}})
+    .then(function(r){ return r.ok?r.json():null; })
+    .then(function(data){
+      body.innerHTML="";
+      if(!data||typeof data!=="object"||Object.keys(data).filter(k=>k!=="date"&&k!=="_date").length===0){
+        body.innerHTML='<p style="font-family:var(--mono);font-size:13px;color:var(--muted);padding:12px 0">No shared data found yet. Departments need to post to Teams first.</p>';
+        const foot=document.createElement("div"); foot.className="modal-foot";
+        const cl=document.createElement("button"); cl.className="btn ghost"; cl.textContent="Close"; cl.onclick=function(){ overlay.remove(); }; foot.appendChild(cl);
+        box.appendChild(foot); return;
+      }
+
+      const dateMatch=data._date===STATE.meta.date;
+      const note=document.createElement("div"); note.className="sync-note";
+      const homeLine=STATE.meta.homeDept?" Your home dept (⚑ "+STATE.meta.homeDept+") is always immune.":"";
+      note.textContent=dateMatch
+        ? "Select which departments to pull in. Areas with a yellow badge have local data — syncing will only fill empty fields."+homeLine
+        : "Warning: shared data is from "+( data._date||"an unknown date")+", not today ("+STATE.meta.date+"). Proceed with caution."+homeLine;
+      body.appendChild(note);
+
+      const list=document.createElement("div"); list.className="sync-area-list";
+      const checks=[];
+      for(const a of AREAS){
+        const hasRemote=!!(data[a] && Object.keys(data[a]).length>0);
+        const hasLocal=areaHasLocalActuals(a);
+        const isHome=STATE.meta.homeDept===a;
+        const row=document.createElement("label"); row.className="sync-area-row";
+        const cb=document.createElement("input"); cb.type="checkbox"; cb.value=a;
+        cb.checked=hasRemote&&!hasLocal&&!isHome;
+        cb.disabled=!hasRemote||isHome;
+        const name=document.createElement("span"); name.className="sar-name"; name.textContent=a;
+        const badge=document.createElement("span"); badge.className="sar-badge";
+        if(isHome){ badge.className+=" is-home"; badge.textContent="Home — immune"; }
+        else if(!hasRemote){ badge.className+=" local-only"; badge.textContent="No remote data"; }
+        else if(hasLocal){ badge.className+=" has-local"; badge.textContent="Has local data"; }
+        else { badge.className+=" has-remote"; badge.textContent="Ready to sync"; }
+        row.appendChild(cb); row.appendChild(name); row.appendChild(badge);
+        list.appendChild(row);
+        if(hasRemote&&!isHome) checks.push({cb,area:a,remoteProcs:data[a]});
+      }
+      body.appendChild(list);
+
+      const foot=document.createElement("div"); foot.className="modal-foot";
+      const cancel=document.createElement("button"); cancel.className="btn ghost"; cancel.textContent="Cancel"; cancel.onclick=function(){ overlay.remove(); }; foot.appendChild(cancel);
+      const apply=document.createElement("button"); apply.className="btn primary"; apply.textContent="Apply selected";
+      apply.onclick=function(){
+        let merged=0;
+        for(const c of checks){
+          if(!c.cb.checked) continue;
+          mergeRemoteArea(c.area, c.remoteProcs, true);
+          merged++;
+        }
+        overlay.remove();
+        if(merged){ save(true); renderAll(); toast(merged+" area"+(merged>1?"s":"")+" synced"); }
+        else { toast("Nothing selected"); }
+      };
+      foot.appendChild(apply);
+      box.appendChild(foot);
+    })
+    .catch(function(){
+      body.innerHTML='<p style="font-family:var(--mono);font-size:13px;color:var(--behind);padding:12px 0">Could not reach the shared store. Check the JSONBin URL in Webhooks.</p>';
+    });
+}
+
 function renderAll(){renderSummary();renderNav();renderMain();renderUpdated();}
+
+/* ── Block timer ── */
+function pstNow(){
+  return new Date(new Date().toLocaleString("en-US",{timeZone:"America/Los_Angeles"}));
+}
+function blockMinsLeft(block){
+  var pst=pstNow();
+  var cur=toMins(pst.getHours(),pst.getMinutes());
+  var curAdj=pst.getHours()<2?cur+24*60:cur;
+  var end=toMins(block.endH,block.endM);
+  return end-curAdj;
+}
+function minsUntilBlock(block){
+  var pst=pstNow();
+  var cur=toMins(pst.getHours(),pst.getMinutes());
+  var curAdj=pst.getHours()<2?cur+24*60:cur;
+  var start=toMins(block.startH,block.startM);
+  return start-curAdj;
+}
+function nextBlock(){
+  var pst=pstNow();
+  var cur=toMins(pst.getHours(),pst.getMinutes());
+  var curAdj=pst.getHours()<2?cur+24*60:cur;
+  var best=null,bestMins=Infinity;
+  for(var i=0;i<BLOCKS.length;i++){
+    var s=toMins(BLOCKS[i].startH,BLOCKS[i].startM);
+    var diff=s-curAdj;
+    if(diff>0&&diff<bestMins){bestMins=diff;best=BLOCKS[i];}
+  }
+  return best?{block:best,mins:bestMins}:null;
+}
+function fmtCountdown(mins){
+  if(mins>=60){ var h=Math.floor(mins/60),m=mins%60; return m>0?(h+"h "+m+"m"):(h+"h"); }
+  return mins+"m";
+}
+function makeTimerChip(cls, labelTxt, timeTxt){
+  var chip=document.createElement("div"); chip.className="timer-chip "+cls;
+  var lbl=document.createElement("span"); lbl.className="tc-label"; lbl.textContent=labelTxt;
+  var t=document.createElement("span"); t.className="tc-time"; t.textContent=timeTxt;
+  chip.appendChild(lbl); chip.appendChild(t);
+  return chip;
+}
+function renderTimer(){
+  var wrap=document.getElementById("blockTimer");
+  var lateBtn=document.getElementById("btnPostLate");
+  if(!wrap) return;
+  wrap.innerHTML="";
+  var block=currentBlock();
+  // Compute missed blocks regardless
+  var pst=pstNow();
+  var cur=toMins(pst.getHours(),pst.getMinutes());
+  var curAdj=pst.getHours()<2?cur+24*60:cur;
+  var missed=[];
+  for(var i=0;i<BLOCKS.length;i++){
+    var e=toMins(BLOCKS[i].endH,BLOCKS[i].endM);
+    var s=toMins(BLOCKS[i].startH,BLOCKS[i].startM);
+    if(e<curAdj && curAdj>s) missed.push(BLOCKS[i]);
+  }
+  // Always show late button if there are missed blocks
+  if(lateBtn){
+    if(missed.length){
+      lateBtn.style.display="";
+      lateBtn.onclick=function(){ showLateModal(missed); };
+    } else {
+      lateBtn.style.display="none";
+    }
+  }
+  if(block){
+    var left=blockMinsLeft(block);
+    var cls=left<=15?"urgent":left<=60?"soon":"open";
+    wrap.appendChild(makeTimerChip(cls, block.label, fmtCountdown(left)+" left"));
+  } else {
+    var nxt=nextBlock();
+    if(nxt){
+      wrap.appendChild(makeTimerChip("next", "Next: "+nxt.block.label, "in "+fmtCountdown(nxt.mins)));
+    }
+  }
+}
+
+/* ── Late post modal ── */
+function showLateModal(missedBlocks){
+  // close any existing
+  var old=document.getElementById("lateModal"); if(old) old.remove();
+  var overlay=document.createElement("div"); overlay.className="modal-overlay"; overlay.id="lateModal";
+  var box=document.createElement("div"); box.className="modal-box late-modal-box";
+
+  var head=document.createElement("div"); head.className="modal-head";
+  head.innerHTML='<h3>Post Late Submission</h3><button class="modal-close" id="lmClose">&times;</button>';
+  box.appendChild(head);
+
+  var body=document.createElement("div"); body.className="modal-body";
+
+  // Block selector
+  var selLbl=document.createElement("span"); selLbl.className="late-lbl"; selLbl.textContent="Missed window";
+  body.appendChild(selLbl);
+  var sel=document.createElement("select"); sel.className="late-select";
+  for(var i=0;i<missedBlocks.length;i++){
+    var opt=document.createElement("option"); opt.value=i; opt.textContent=missedBlocks[i].label;
+    sel.appendChild(opt);
+  }
+  body.appendChild(sel);
+
+  // Justification
+  var justLbl=document.createElement("span"); justLbl.className="late-lbl"; justLbl.style.marginTop="8px"; justLbl.textContent="Reason for late submission (required)";
+  body.appendChild(justLbl);
+  var just=document.createElement("textarea"); just.className="late-just"; just.placeholder="e.g. System outage, shift handover delay, area emergency…";
+  body.appendChild(just);
+  var charHint=document.createElement("div"); charHint.className="late-char"; charHint.textContent="0 / 10 min characters";
+  body.appendChild(charHint);
+  just.oninput=function(){
+    charHint.textContent=just.value.trim().length+" characters"+(just.value.trim().length<10?" — needs at least 10":"");
+    sendBtn.disabled=just.value.trim().length<10;
+  };
+
+  box.appendChild(body);
+
+  var foot=document.createElement("div"); foot.className="modal-foot";
+  var cancel=document.createElement("button"); cancel.className="btn ghost"; cancel.textContent="Cancel";
+  cancel.onclick=function(){ overlay.remove(); }; foot.appendChild(cancel);
+  var sendBtn=document.createElement("button"); sendBtn.className="btn primary"; sendBtn.textContent="Send to Teams";
+  sendBtn.disabled=true;
+  sendBtn.onclick=function(){
+    var block=missedBlocks[parseInt(sel.value)];
+    var justText=just.value.trim();
+    var url=getTeamsWebhook(block.key);
+    if(!url){ toast("No Teams webhook set for "+block.label); return; }
+    // Build card with late banner injected
+    var card=buildLateCard(block, justText);
+    overlay.remove();
+    postToTeams(card, block.label+" (late)", url);
+  };
+  foot.appendChild(sendBtn); box.appendChild(foot);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  document.getElementById("lmClose").onclick=function(){ overlay.remove(); };
+  overlay.addEventListener("click",function(e){ if(e.target===overlay) overlay.remove(); });
+}
+
+function buildLateCard(block, justification){
+  var body=[
+    {type:"Container",style:"attention",bleed:true,items:[
+      {type:"ColumnSet",columns:[
+        {type:"Column",width:"stretch",items:[
+          {type:"TextBlock",text:"DC 499",size:"Small",weight:"Bolder",color:"Light",spacing:"None"},
+          {type:"TextBlock",text:"LATE SUBMISSION — "+block.label.toUpperCase(),size:"Large",weight:"Bolder",spacing:"None",wrap:true},
+        ]},
+        {type:"Column",width:"auto",items:[
+          {type:"TextBlock",text:"[ LATE ]",size:"Small",weight:"Bolder",spacing:"None",color:"Light"},
+        ]},
+      ]},
+      {type:"TextBlock",text:"Plan date "+STATE.meta.date+"  ·  Submitted after window closed",size:"Small",color:"Light",spacing:"Small",isSubtle:true},
+    ]},
+    {type:"TextBlock",text:"REASON FOR LATE SUBMISSION",weight:"Bolder",size:"Small",color:"Attention",spacing:"Medium"},
+    {type:"TextBlock",text:justification,wrap:true,spacing:"None",size:"Small"},
+  ];
+  Array.prototype.push.apply(body, cardBlocksForBlock(block, AREAS));
+  return JSON.stringify({type:"AdaptiveCard","$schema":"http://adaptivecards.io/schemas/adaptive-card.json",version:"1.4",body:body});
+}
+
+// Kick off 1-minute timer tick; auto-sync check piggybacks on the same interval
+renderTimer();
+checkAutoSync();
+setInterval(function(){ renderTimer(); checkAutoSync(); }, 60000);
 resetPersonHoursIfNewDay();
 STATE.meta.date=planDayISO();
 $("#planDate").value=STATE.meta.date;
@@ -1457,6 +1963,7 @@ $("#btnExportJson").onclick=exportJson;
 $("#btnExportCsv").onclick=exportCsv;
 $("#fabPostBtn").onclick=function(e){ e.stopPropagation(); document.getElementById("fabMenu").classList.toggle("open"); };
 $("#fabTeamsCurrent").onclick=function(){ document.getElementById("fabMenu").classList.remove("open"); postAreaToTeams(current); };
+
 $("#fabSubmitEod").onclick=function(){ document.getElementById("fabMenu").classList.remove("open"); submitEOD(current); };
 $("#fabSendReport").onclick=function(){ document.getElementById("fabMenu").classList.remove("open"); sendReport(); };
 document.addEventListener("click",function(e){ var fw=document.getElementById("fabWrap"); if(fw&&!fw.contains(e.target)) document.getElementById("fabMenu").classList.remove("open"); });
@@ -1484,6 +1991,12 @@ document.getElementById("dmToggle").onchange=function(){
 applyDark(!!STATE.meta.darkMode);
 renderAll();
 applyShiftView(activeShift());
+document.getElementById("btnNavSync").onclick=function(){ showSyncModal(); };
+document.getElementById("btnWhatsNew").onclick=function(){
+  this.classList.toggle("open");
+  document.getElementById("whatsNewList").classList.toggle("open");
+};
+document.getElementById("btnNavPush").onclick=function(){ pushToJsonBin(current); toast("Pushing "+current+" to shared store…"); };
 </script>
 </body>
 </html>

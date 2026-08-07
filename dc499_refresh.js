@@ -1505,16 +1505,20 @@ ORDER BY CREATED_TIMESTAMP ASC`.trim();
   const detailMap  = {};
   for (let i = 0; i < openIds.length; i += BATCH_SZ) {
     const batchIds = openIds.slice(i, i + BATCH_SZ).map(id => `'${id}'`).join(',');
-    const sqlDetail = `SELECT TASK_ID, COUNT(*) AS detail_count FROM default_task.TSK_TASK_DETAIL WHERE FACILITY_ID = '${FACILITY}' AND TASK_ID IN (${batchIds}) GROUP BY TASK_ID`;
+    const sqlDetail = `SELECT TASK_ID, COUNT(*) AS detail_count, SUM(CASE WHEN STATUS='9000' THEN 1 ELSE 0 END) AS detail_done FROM default_task.TSK_TASK_DETAIL WHERE FACILITY_ID = '${FACILITY}' AND TASK_ID IN (${batchIds}) GROUP BY TASK_ID`;
     try {
       const dr = await mcpQuery(accessToken, sqlDetail);
-      for (const r of (dr.rows || [])) detailMap[r.TASK_ID] = Number(r.detail_count);
+      for (const r of (dr.rows || [])) detailMap[r.TASK_ID] = { count: Number(r.detail_count), done: Number(r.detail_done) };
       console.log(`[${ts()}]   task detail batch ${Math.floor(i/BATCH_SZ)+1}: ${(dr.rows||[]).length} rows`);
     } catch (e) {
       console.warn(`  Task detail batch ${Math.floor(i/BATCH_SZ)+1} failed: ${e.message}`);
     }
   }
-  for (const t of allTasks) t.detail_count = detailMap[t.task_id] ?? null;
+  for (const t of allTasks) {
+    const d = detailMap[t.task_id];
+    t.detail_count = d ? d.count : null;
+    t.detail_done  = d ? d.done  : null;
+  }
 
   function summarize(tasks) {
     const counts = { queued:0, assigned:0, in_progress:0, completed:0, total_open:0 };

@@ -2079,9 +2079,13 @@ function renderTaskTable(type) {
       + '<td colspan="6" style="font-size:11px;color:var(--text-hint);">' + detailContent + '</td>'
       + '</tr>';
     var toggleFn = 'tkToggle(\'' + detailId + '\',this)';
-    var itemsCell = t.detail_count !== null && t.detail_count !== undefined
-      ? '<td style="text-align:right;font-size:12px;">' + t.detail_count + '</td>'
-      : '<td style="text-align:right;font-size:12px;color:var(--text-muted);">—</td>';
+    var itemsCell;
+    if (t.detail_count !== null && t.detail_count !== undefined) {
+      var donePart = (t.detail_done !== null && t.detail_done !== undefined) ? t.detail_done + '/' : '';
+      itemsCell = '<td style="text-align:right;font-size:12px;">' + donePart + t.detail_count + '</td>';
+    } else {
+      itemsCell = '<td style="text-align:right;font-size:12px;color:var(--text-muted);">—</td>';
+    }
     if (isPick) {
       var badge = '<span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:var(--accent-bg);color:var(--accent);">' + (t.subtype || '') + '</span>';
       rows += '<tr class="tk-main-row" onclick="' + toggleFn + '">'
