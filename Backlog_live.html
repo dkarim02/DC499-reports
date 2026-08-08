@@ -549,11 +549,9 @@
             <span class="total-capsule-value" id="m-total">--</span>
             <span class="total-capsule-date" id="m-date">Today</span>
           </div>
-          <div class="total-capsule-right" id="m-haz-capsule" style="display:none;">
-            <span style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Hazmat</span>
-            <span id="m-haz-orders-cap" style="font-weight:600;color:#d97706;">--</span>
-            <span style="color:var(--text-hint);">orders</span>
-            <span id="m-haz-tags-cap"></span>
+          <div class="total-capsule-right" id="m-last-wave-cap" style="display:none;">
+            <span style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Last wave</span>
+            <span id="m-last-wave-time" style="font-weight:600;color:var(--text);">—</span>
           </div>
         </div>
         <div class="metrics" id="metrics" style="display:none;">
@@ -1234,6 +1232,28 @@ function setView(mode) {
   if (lastBlData) renderBacklogData(lastBlData);
 }
 
+function renderLastWaveCapsule() {
+  var capEl  = document.getElementById('m-last-wave-cap');
+  var timeEl = document.getElementById('m-last-wave-time');
+  if (!capEl || !timeEl) return;
+  if (!lastBtData || !lastBtData.batches || !lastBtData.batches.length) {
+    capEl.style.display = 'none';
+    return;
+  }
+  var latest = null;
+  lastBtData.batches.forEach(function(b) {
+    if (b.released_pdt) {
+      if (!latest || b.released_pdt > latest) latest = b.released_pdt;
+    }
+  });
+  if (latest) {
+    timeEl.textContent = latest;
+    capEl.style.display = 'flex';
+  } else {
+    capEl.style.display = 'none';
+  }
+}
+
 function renderBacklogData(data) {
   var rtEl    = document.getElementById('bl-run-time');
   var staleEl = document.getElementById('stale-banner');
@@ -1329,25 +1349,19 @@ function renderBacklogData(data) {
   // Hazmat — shown in capsule right side
   var hazOrders  = data.hazmat_orders != null ? data.hazmat_orders : null;
   var hazBreak   = data.hazmat_breakdown || {};
-  var hazCapEl   = document.getElementById('m-haz-capsule');
   var hazTile = document.getElementById('m-haz-tile');
   if (hazOrders != null && hazOrders > 0) {
-    // capsule right side
-    document.getElementById('m-haz-orders-cap').textContent = fmt(hazOrders);
     var tagParts = [];
     if (hazBreak.Y)   tagParts.push('<span class="haz-tag Y">Y</span> ' + hazBreak.Y);
     if (hazBreak.LIT) tagParts.push('<span class="haz-tag LIT">LIT</span> ' + hazBreak.LIT);
     if (hazBreak.E)   tagParts.push('<span class="haz-tag E">E</span> ' + hazBreak.E);
-    document.getElementById('m-haz-tags-cap').innerHTML = tagParts.join(' &nbsp;');
-    hazCapEl.style.display = 'flex';
-    // hazmat pill
     document.getElementById('m-haz-orders').textContent = fmt(hazOrders);
     document.getElementById('m-haz-sub').innerHTML = tagParts.length ? tagParts.join(' &nbsp;') : (fmt(data.hazmat_lines || 0) + ' lines');
     hazTile.style.display = '';
   } else {
-    hazCapEl.style.display = 'none';
     hazTile.style.display = 'none';
   }
+  renderLastWaveCapsule();
 
   emptyEl.style.display  = 'none';
   capsuleEl.style.display = 'flex';
@@ -1386,6 +1400,7 @@ function fetchBatchData() {
     .then(function(data) {
       lastBtData = data;
       renderBatchData(data);
+      renderLastWaveCapsule();
       scheduleBtRefresh();
     })
     .catch(function(err) {
