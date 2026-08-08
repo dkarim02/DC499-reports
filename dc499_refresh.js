@@ -747,10 +747,16 @@ GROUP BY PLANNING_STRATEGY_ID, CHASE_MODE
 ORDER BY wave_runs DESC`.trim();
 
   // Query 6: hazmat indicator per open order today — join order lines to item master
+  // EXT_HAZMATINDICATOR values: 'YES' → Y, 'EXEMPT' → E
+  // EXT_LITHIUMBATTERYINDICATOR = 1 → LIT (separate column)
   const sqlHazmat = `
 SELECT
   ol.ORDER_ID,
-  MAX(i.EXT_HAZMATINDICATOR) AS hazmat_indicator,
+  MAX(CASE
+    WHEN i.EXT_HAZMATINDICATOR = 'YES'    THEN 'Y'
+    WHEN i.EXT_LITHIUMBATTERYINDICATOR = 1 THEN 'LIT'
+    WHEN i.EXT_HAZMATINDICATOR = 'EXEMPT' THEN 'E'
+  END) AS hazmat_indicator,
   COUNT(*) AS haz_lines
 FROM default_dcorder.DCO_ORDER_LINE ol
 JOIN default_item_master.ITE_ITEM i ON i.ITEM_ID = ol.ITEM_ID
@@ -760,7 +766,7 @@ WHERE ol.FACILITY_ID = '${FACILITY}'
   AND ol.STATUS NOT IN ('SHIPPED')
   AND ol.CREATED_TIMESTAMP >= '${todayUtcStart}'
   AND ol.CREATED_TIMESTAMP <  '${todayUtcEnd}'
-  AND i.EXT_HAZMATINDICATOR IN ('Y','LIT','E')
+  AND (i.EXT_HAZMATINDICATOR IN ('YES','EXEMPT') OR i.EXT_LITHIUMBATTERYINDICATOR = 1)
 GROUP BY ol.ORDER_ID`.trim();
 
   // Query 7: units in allocated iLPNs at D1-SN-01 (picked, staged, ready to pack). STATUS 5000 = allocated/active.
