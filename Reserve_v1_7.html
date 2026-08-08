@@ -1691,8 +1691,8 @@ function renderFullReport() {
   // ── Putaway card ──
   (function(){
     var totals={};
-    fullReportRows.filter(function(r){return RES_TX.putaway.indexOf((r['Transaction ID']||'').trim())!==-1;})
-      .forEach(function(r){var e=(r['Employee']||'').trim();if(TEAM.has(e))totals[e]=(totals[e]||0)+1;});
+    fullReportRows.filter(function(r){return RES_TX.putaway.indexOf((r['Transaction ID']||'').trim())!==-1&&rowBelongsToReserve(r);})
+      .forEach(function(r){var e=(r['Employee']||'').trim();if(TEAM.has(e))totals[e]=(totals[e]||0)+(parseFloat(r['Completed Quantity'])||0);});
     var sorted=Object.entries(totals).sort(function(a,b){return b[1]-a[1];}),grand=sorted.reduce(function(s,v){return s+v[1];},0);
     renderDeptCard('Putaway',RES_COLORS.putaway,'full-bar-putaway','putaway',sorted,grand);
   })();
