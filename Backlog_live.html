@@ -205,15 +205,39 @@
   .detail-title{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:var(--text);}
   .detail-close{background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-hint);line-height:1;font-family:inherit;padding:0 4px;}
   .detail-close:hover{color:var(--text);}
-  .detail-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .detail-filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
   .detail-filter-label{font-size:11px;color:var(--text-hint);}
-  .sm-toggle{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:background 0.12s,border-color 0.12s,color 0.12s;user-select:none;}
+  .detail-filter-divider{width:1px;height:16px;background:var(--border);flex-shrink:0;}
+  .sm-toggle{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 5px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:background 0.12s,border-color 0.12s,color 0.12s;user-select:none;}
   .sm-toggle.s-btn{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-muted);}
   .sm-toggle.m-btn{background:var(--alloc-bg);color:var(--alloc);border-color:var(--alloc);}
   .sm-toggle.active.s-btn{background:var(--accent);color:#fff;border-color:var(--accent);}
   .sm-toggle.active.m-btn{background:var(--alloc);color:#fff;border-color:var(--alloc);}
   .sm-toggle:hover:not(.active){opacity:0.75;}
+  .sm-toggle.haz-y-btn  {background:#4a1a00;color:#fb923c;border-color:#7c3a00;}
+  .sm-toggle.haz-lit-btn{background:#1a2a00;color:#a3e635;border-color:#2d4a00;}
+  .sm-toggle.haz-e-btn  {background:#1a1a2e;color:#818cf8;border-color:#2e2e50;}
+  .sm-toggle.active.haz-y-btn  {background:#fb923c;color:#1a0a00;border-color:#fb923c;}
+  .sm-toggle.active.haz-lit-btn{background:#a3e635;color:#0d1a00;border-color:#a3e635;}
+  .sm-toggle.active.haz-e-btn  {background:#818cf8;color:#0a0a20;border-color:#818cf8;}
+  [data-theme="light"] .sm-toggle.haz-y-btn  {background:#fff7ed;color:#c2410c;border-color:#fed7aa;}
+  [data-theme="light"] .sm-toggle.haz-lit-btn{background:#f7fee7;color:#4d7c0f;border-color:#d9f99d;}
+  [data-theme="light"] .sm-toggle.haz-e-btn  {background:#eff6ff;color:#3730a3;border-color:#bfdbfe;}
+  [data-theme="light"] .sm-toggle.active.haz-y-btn  {background:#c2410c;color:#fff;border-color:#c2410c;}
+  [data-theme="light"] .sm-toggle.active.haz-lit-btn{background:#4d7c0f;color:#fff;border-color:#4d7c0f;}
+  [data-theme="light"] .sm-toggle.active.haz-e-btn  {background:#3730a3;color:#fff;border-color:#3730a3;}
   .detail-count{font-size:11px;color:var(--text-hint);margin-left:4px;}
+  /* Order search bar */
+  .order-search-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .order-search-row .card-title{margin-bottom:0;}
+  .order-search-wrap{position:relative;display:flex;align-items:center;}
+  .order-search-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 28px 5px 10px;font-size:12px;color:var(--text);font-family:monospace;width:180px;outline:none;transition:border-color 0.15s;}
+  .order-search-input:focus{border-color:var(--accent);}
+  .order-search-input::placeholder{font-family:inherit;color:var(--text-hint);}
+  .order-search-clear{position:absolute;right:7px;background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:14px;line-height:1;padding:0;display:none;}
+  .order-search-clear:hover{color:var(--text);}
+  .order-search-miss{font-size:11px;color:var(--amber);margin-left:6px;white-space:nowrap;}
+  .order-item.search-match{background:var(--accent-bg);outline:1.5px solid var(--accent);}
   .order-list-inner{max-height:320px;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;font-size:13px;}
   .order-list-inner::-webkit-scrollbar{width:5px;}
   .order-list-inner::-webkit-scrollbar-track{background:transparent;}
@@ -588,7 +612,14 @@
         </div>
 
         <div class="card" id="table-card" style="display:none;">
-          <div class="card-title">Order Lines by Date &mdash; tap a status to see orders</div>
+          <div class="order-search-row">
+            <div class="card-title" id="table-card-title">Order Lines by Date &mdash; tap a status to see orders</div>
+            <div class="order-search-wrap">
+              <input class="order-search-input" id="order-search" type="text" placeholder="Search order ID…" autocomplete="off" oninput="onOrderSearch(this.value)" />
+              <button class="order-search-clear" id="order-search-clear" onclick="clearOrderSearch()" title="Clear">&times;</button>
+              <span class="order-search-miss" id="order-search-miss" style="display:none;">Not found</span>
+            </div>
+          </div>
           <table>
             <thead><tr>
               <th>Date</th>
@@ -622,6 +653,10 @@
             <span class="sm-toggle s-btn"    id="sm-filter-s"    onclick="setSmFilter('S')"    title="Singles only">S</span>
             <span class="sm-toggle m-btn"    id="sm-filter-m"    onclick="setSmFilter('M')"    title="Multis only">M</span>
             <span class="sm-toggle warn-btn" id="sm-filter-warn" onclick="setSmFilter('WARN')" title="Approaching 28h SLA" style="font-size:12px;">!</span>
+            <span class="detail-filter-divider" id="haz-filter-divider" style="display:none;"></span>
+            <span class="sm-toggle haz-y-btn"   id="haz-filter-y"   onclick="setHazFilter('Y')"   title="Hazmat — Y" style="display:none;">Y</span>
+            <span class="sm-toggle haz-lit-btn" id="haz-filter-lit" onclick="setHazFilter('LIT')" title="Hazmat — LIT" style="display:none;">LIT</span>
+            <span class="sm-toggle haz-e-btn"   id="haz-filter-e"   onclick="setHazFilter('E')"   title="Hazmat — EXEMPT" style="display:none;">E</span>
             <span class="detail-count" id="detail-count"></span>
           </div>
           <div class="order-list-inner" id="detail-order-list"></div>
@@ -1096,9 +1131,10 @@ function renderShippedTile(data) {
 var PILL_LABEL = { READY:'Ready', ALLOCATED:'Allocated', PACKED:'Packed' };
 var PILL_CLASS = { READY:'pill-ready', ALLOCATED:'pill-alloc', PACKED:'pill-packed' };
 
-var activeSmFilter = null;
-var WARN_YELLOW_MS = (28 - 2) * 60 * 60 * 1000; // 26h — 2h to deadline
-var WARN_RED_MS    = (28 - 1) * 60 * 60 * 1000; // 27h — 1h to deadline
+var activeSmFilter  = null;
+var activeHazFilter = null;
+var WARN_YELLOW_MS = (28 - 2) * 60 * 60 * 1000;
+var WARN_RED_MS    = (28 - 1) * 60 * 60 * 1000;
 
 function ageFlag(oldest_line_utc) {
   if (!oldest_line_utc) return null;
@@ -1113,7 +1149,8 @@ function ageFlag(oldest_line_utc) {
 function openDetailPanel(date, status, row) {
   var key = date + '|' + status;
   if (activeSelection && activeSelection.key === key) { closeDetailPanel(); return; }
-  activeSmFilter = null;
+  activeSmFilter  = null;
+  activeHazFilter = null;
   activeSelection = { key: key };
   document.querySelectorAll('.status-pill').forEach(function(el) { el.classList.remove('active'); });
   var activePill = document.querySelector('[data-pill="' + key + '"]');
@@ -1129,14 +1166,16 @@ function openDetailPanel(date, status, row) {
     listEl.innerHTML = '<div class="detail-empty">No orders found for this status.</div>';
     filterBar.style.display = 'none';
   } else {
-    var hasWarn = false;
+    var hasWarn = false, hazPresent = new Set();
     var html = '';
     orders.forEach(function(o) {
       var sm   = o.line_count === 1 ? 'S' : 'M';
       var flag = ageFlag(o.oldest_line_utc);
       var dataWarn = flag ? ' data-warn="1"' : '';
+      var dataHaz  = o.hazmat ? ' data-haz="' + o.hazmat + '"' : '';
       if (flag) hasWarn = true;
-      html += '<div class="order-item" data-sm="' + sm + '"' + dataWarn + '>';
+      if (o.hazmat) hazPresent.add(o.hazmat);
+      html += '<div class="order-item" data-sm="' + sm + '"' + dataWarn + dataHaz + ' data-oid="' + escHtml(o.order_id) + '">';
       html += '<span class="order-id">' + escHtml(o.order_id) + '</span>';
       html += '<span class="order-right">';
       if (flag) html += '<span class="age-flag" title="' + flag.title + '">' + flag.icon + '</span>';
@@ -1151,10 +1190,34 @@ function openDetailPanel(date, status, row) {
     document.getElementById('sm-filter-m').classList.remove('active');
     document.getElementById('sm-filter-warn').classList.remove('active');
     document.getElementById('sm-filter-warn').style.display = hasWarn ? 'inline-flex' : 'none';
+    var hazDivider = document.getElementById('haz-filter-divider');
+    var hazY   = document.getElementById('haz-filter-y');
+    var hazLit = document.getElementById('haz-filter-lit');
+    var hazE   = document.getElementById('haz-filter-e');
+    hazY.classList.remove('active'); hazLit.classList.remove('active'); hazE.classList.remove('active');
+    hazY.style.display   = hazPresent.has('Y')   ? 'inline-flex' : 'none';
+    hazLit.style.display = hazPresent.has('LIT') ? 'inline-flex' : 'none';
+    hazE.style.display   = hazPresent.has('E')   ? 'inline-flex' : 'none';
+    hazDivider.style.display = hazPresent.size > 0 ? 'inline-block' : 'none';
     updateDetailCount(orders.length);
   }
   card.classList.add('open');
   card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function applyDetailFilters() {
+  var items = document.querySelectorAll('#detail-order-list .order-item');
+  var visible = 0;
+  items.forEach(function(el) {
+    var smOk  = !activeSmFilter
+      || (activeSmFilter === 'WARN' && el.getAttribute('data-warn') === '1')
+      || (activeSmFilter !== 'WARN' && el.getAttribute('data-sm') === activeSmFilter);
+    var hazOk = !activeHazFilter || el.getAttribute('data-haz') === activeHazFilter;
+    var show  = smOk && hazOk;
+    el.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+  updateDetailCount(visible);
 }
 
 function setSmFilter(f) {
@@ -1162,16 +1225,15 @@ function setSmFilter(f) {
   document.getElementById('sm-filter-s').classList.toggle('active',    activeSmFilter === 'S');
   document.getElementById('sm-filter-m').classList.toggle('active',    activeSmFilter === 'M');
   document.getElementById('sm-filter-warn').classList.toggle('active', activeSmFilter === 'WARN');
-  var items = document.querySelectorAll('#detail-order-list .order-item');
-  var visible = 0;
-  items.forEach(function(el) {
-    var show = !activeSmFilter
-      || (activeSmFilter === 'WARN' && el.getAttribute('data-warn') === '1')
-      || (activeSmFilter !== 'WARN' && el.getAttribute('data-sm') === activeSmFilter);
-    el.classList.toggle('hidden', !show);
-    if (show) visible++;
-  });
-  updateDetailCount(visible);
+  applyDetailFilters();
+}
+
+function setHazFilter(f) {
+  activeHazFilter = (activeHazFilter === f) ? null : f;
+  document.getElementById('haz-filter-y').classList.toggle('active',   activeHazFilter === 'Y');
+  document.getElementById('haz-filter-lit').classList.toggle('active', activeHazFilter === 'LIT');
+  document.getElementById('haz-filter-e').classList.toggle('active',   activeHazFilter === 'E');
+  applyDetailFilters();
 }
 
 function updateDetailCount(n) {
@@ -1182,9 +1244,60 @@ function updateDetailCount(n) {
 function closeDetailPanel() {
   activeSelection = null;
   activeSmFilter  = null;
+  activeHazFilter = null;
   document.getElementById('order-detail-card').classList.remove('open');
   document.getElementById('detail-filter-bar').style.display = 'none';
   document.querySelectorAll('.status-pill').forEach(function(el) { el.classList.remove('active'); });
+}
+
+// ── Order search ──────────────────────────────────────────────────────────────
+function onOrderSearch(val) {
+  var clearBtn = document.getElementById('order-search-clear');
+  var missEl   = document.getElementById('order-search-miss');
+  clearBtn.style.display = val ? 'block' : 'none';
+  missEl.style.display   = 'none';
+  if (!val || !lastBlData) return;
+  var q = val.trim().toUpperCase();
+  var found = null;
+  var OPEN_ST = ['READY','ALLOCATED','PACKED'];
+  outer: for (var di = 0; di < (lastBlData.dates||[]).length; di++) {
+    var dateRow = lastBlData.dates[di];
+    for (var si = 0; si < OPEN_ST.length; si++) {
+      var st = OPEN_ST[si];
+      var orders = dateRow.orders || [];
+      for (var oi = 0; oi < orders.length; oi++) {
+        var o = orders[oi];
+        if (o.status.toUpperCase() === st && o.order_id.toUpperCase().indexOf(q) !== -1) {
+          found = { dateRow: dateRow, status: st, order_id: o.order_id };
+          break outer;
+        }
+      }
+    }
+  }
+  if (!found) { missEl.style.display = 'inline'; return; }
+  openDetailPanel(found.dateRow.date, found.status, found.dateRow);
+  setTimeout(function() {
+    var items = document.querySelectorAll('#detail-order-list .order-item');
+    items.forEach(function(el) { el.classList.remove('search-match'); });
+    var target = null;
+    items.forEach(function(el) {
+      if (el.getAttribute('data-oid') && el.getAttribute('data-oid').toUpperCase().indexOf(q) !== -1) {
+        el.classList.add('search-match');
+        if (!target) target = el;
+      }
+    });
+    if (target) target.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 80);
+}
+
+function clearOrderSearch() {
+  var inp = document.getElementById('order-search');
+  if (inp) inp.value = '';
+  document.getElementById('order-search-clear').style.display = 'none';
+  document.getElementById('order-search-miss').style.display  = 'none';
+  document.querySelectorAll('#detail-order-list .order-item').forEach(function(el) {
+    el.classList.remove('search-match');
+  });
 }
 
 function fmtHourRange(h) {
@@ -1288,7 +1401,7 @@ function renderBacklogData(data) {
     return 0;
   }
 
-  var cardTitleEl = document.querySelector('#table-card .card-title');
+  var cardTitleEl = document.getElementById('table-card-title');
   if (cardTitleEl) cardTitleEl.textContent = (viewMode==='orders' ? 'Orders by Date' : 'Order Lines by Date') + ' — tap a status to see orders';
 
   var tb = document.getElementById('tb-dates');
