@@ -1680,29 +1680,16 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
 
   async function refresh() {
     try {
-      // Try silent token refresh first; if it fails, auto-launch browser re-auth
       try {
         accessToken = await getAccessTokenSilent();
-        authNeeded  = false;
+        authNeeded   = false;
+        authNotified = false; // clear flag so next expiry re-alerts
       } catch (e) {
         if (e instanceof AuthError) {
           authNeeded = true;
-          if (!reauthing) {
-            reauthing = true;
-            console.log(`\n[${ts()}] Token expired — opening browser for re-auth (SSO auto-login)...`);
-            doAuthFlow().then(tok => {
-              accessToken  = tok;
-              authNeeded   = false;
-              reauthing    = false;
-              authNotified = false;
-              console.log(`[${ts()}] ✓ Re-authenticated`);
-            }).catch(err => {
-              reauthing = false;
-              console.error(`[${ts()}] Re-auth failed: ${err.message}`);
-            });
-          }
           if (!authNotified) {
             authNotified = true;
+            console.log(`\n[${ts()}] Token expired — sending Teams alert...`);
             notifyAuthExpired().catch(() => {});
           }
           return; // skip this cycle, retry next interval
