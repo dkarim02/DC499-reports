@@ -144,8 +144,14 @@
   [data-theme="dark"] .teams-btn:hover{background:#6264A7;color:#fff;}
 
   /* Backlog metric tiles */
-  .metrics{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:1.5rem;}
-  @media(max-width:900px){.metrics{grid-template-columns:repeat(4,1fr);}}
+  .total-capsule{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:10px;padding:10px 18px;margin-bottom:10px;border-left:3px solid var(--border-mid);}
+  .total-capsule-left{display:flex;align-items:baseline;gap:10px;}
+  .total-capsule-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .total-capsule-value{font-size:22px;font-weight:500;color:var(--text);}
+  .total-capsule-date{font-size:11px;color:var(--text-hint);}
+  .total-capsule-right{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-hint);}
+  .metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:1.5rem;}
+  @media(max-width:900px){.metrics{grid-template-columns:repeat(3,1fr);}}
   @media(max-width:600px){.metrics{grid-template-columns:repeat(2,1fr);}}
   .metric{background:var(--surface2);border-radius:10px;padding:1rem;text-align:center;border-top:3px solid transparent;}
   .metric.ready    {border-top-color:var(--ready);}
@@ -153,7 +159,6 @@
   .metric.rfp      {border-top-color:var(--rfp);}
   .metric.packed   {border-top-color:var(--accent);}
   .metric.shipped  {border-top-color:var(--shipped);}
-  .metric.total    {border-top-color:var(--border-mid);}
   .metric.hazmat   {border-top-color:#d97706;}
   .metric.hazmat   .metric-value{color:#d97706;}
   .haz-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:0.04em;flex-shrink:0;}
@@ -538,6 +543,19 @@
 
     <div class="page-layout">
       <div class="page-main">
+        <div class="total-capsule" id="total-capsule" style="display:none;">
+          <div class="total-capsule-left">
+            <span class="total-capsule-label">Total Open</span>
+            <span class="total-capsule-value" id="m-total">--</span>
+            <span class="total-capsule-date" id="m-date">Today</span>
+          </div>
+          <div class="total-capsule-right" id="m-haz-capsule" style="display:none;">
+            <span style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Hazmat</span>
+            <span id="m-haz-orders-cap" style="font-weight:600;color:#d97706;">--</span>
+            <span style="color:var(--text-hint);">orders</span>
+            <span id="m-haz-tags-cap"></span>
+          </div>
+        </div>
         <div class="metrics" id="metrics" style="display:none;">
           <div class="metric ready">
             <div class="metric-label">Ready</div>
@@ -563,16 +581,6 @@
             <div class="metric-label">Shipped</div>
             <div class="metric-value" id="m-shipped">--</div>
             <div class="metric-sub" id="m-shipped-orders">-- units</div>
-          </div>
-          <div class="metric total">
-            <div class="metric-label">Total Open</div>
-            <div class="metric-value" id="m-total">--</div>
-            <div class="metric-sub" id="m-date">Today</div>
-          </div>
-          <div class="metric hazmat" id="m-haz-tile" style="display:none;">
-            <div class="metric-label">Hazmat</div>
-            <div class="metric-value" id="m-haz-orders">--</div>
-            <div class="metric-sub" id="m-haz-sub">-- lines</div>
           </div>
         </div>
 
@@ -1225,7 +1233,8 @@ function renderBacklogData(data) {
   var rtEl    = document.getElementById('bl-run-time');
   var staleEl = document.getElementById('stale-banner');
   var emptyEl = document.getElementById('bl-empty-state');
-  var metrEl  = document.getElementById('metrics');
+  var metrEl    = document.getElementById('metrics');
+  var capsuleEl = document.getElementById('total-capsule');
   var cardEl  = document.getElementById('table-card');
 
   if (activeTab === 'orders') {
@@ -1312,30 +1321,26 @@ function renderBacklogData(data) {
   document.getElementById('m-total').textContent   = fmt(totO);
   document.getElementById('m-date').textContent    = 'All dates';
 
-  // Hazmat tile — counts across all open orders today
-  var hazOrders = data.hazmat_orders != null ? data.hazmat_orders : null;
-  var hazLines  = data.hazmat_lines  != null ? data.hazmat_lines  : null;
-  var hazBreak  = data.hazmat_breakdown || {};
-  var hazTile   = document.getElementById('m-haz-tile');
+  // Hazmat — shown in capsule right side
+  var hazOrders  = data.hazmat_orders != null ? data.hazmat_orders : null;
+  var hazBreak   = data.hazmat_breakdown || {};
+  var hazCapEl   = document.getElementById('m-haz-capsule');
   if (hazOrders != null && hazOrders > 0) {
-    document.getElementById('m-haz-orders').textContent = fmt(hazOrders);
-    var subParts = [];
-    if (hazBreak.Y)   subParts.push('<span class="haz-tag Y">Y</span> ' + hazBreak.Y);
-    if (hazBreak.LIT) subParts.push('<span class="haz-tag LIT">LIT</span> ' + hazBreak.LIT);
-    if (hazBreak.E)   subParts.push('<span class="haz-tag E">E</span> ' + hazBreak.E);
-    document.getElementById('m-haz-sub').innerHTML = (subParts.length ? subParts.join(' &nbsp;') : (fmt(hazLines) + ' lines'));
-    hazTile.style.display = '';
-  } else if (hazOrders === 0) {
-    document.getElementById('m-haz-orders').textContent = '0';
-    document.getElementById('m-haz-sub').textContent = 'No haz orders';
-    hazTile.style.display = '';
+    document.getElementById('m-haz-orders-cap').textContent = fmt(hazOrders);
+    var tagParts = [];
+    if (hazBreak.Y)   tagParts.push('<span class="haz-tag Y">Y</span> ' + hazBreak.Y);
+    if (hazBreak.LIT) tagParts.push('<span class="haz-tag LIT">LIT</span> ' + hazBreak.LIT);
+    if (hazBreak.E)   tagParts.push('<span class="haz-tag E">E</span> ' + hazBreak.E);
+    document.getElementById('m-haz-tags-cap').innerHTML = tagParts.join(' &nbsp;');
+    hazCapEl.style.display = 'flex';
   } else {
-    hazTile.style.display = 'none';
+    hazCapEl.style.display = 'none';
   }
 
-  emptyEl.style.display = 'none';
-  metrEl.style.display  = 'grid';
-  cardEl.style.display  = 'block';
+  emptyEl.style.display  = 'none';
+  capsuleEl.style.display = 'flex';
+  metrEl.style.display   = 'grid';
+  cardEl.style.display   = 'block';
   renderHourly(data.hourly || []);
   renderWaves(data.waves || []);
 }
