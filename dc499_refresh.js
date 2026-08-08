@@ -746,7 +746,24 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY PLANNING_STRATEGY_ID, CHASE_MODE
 ORDER BY wave_runs DESC`.trim();
 
-  // Query 6: units in allocated iLPNs at D1-SN-01 (picked, staged, ready to pack). STATUS 5000 = allocated/active.
+  // Query 6: hazmat indicator per open order today — join order lines to item master
+  const sqlHazmat = `
+SELECT
+  ol.ORDER_ID,
+  MAX(i.EXT_HAZMATINDICATOR) AS hazmat_indicator,
+  COUNT(*) AS haz_lines
+FROM default_dcorder.DCO_ORDER_LINE ol
+JOIN default_item_master.ITE_ITEM i ON i.ITEM_ID = ol.ITEM_ID
+WHERE ol.FACILITY_ID = '${FACILITY}'
+  AND ol.ORDER_TYPE  = 'ECOM'
+  AND ol.CANCELLED   = 0
+  AND ol.STATUS NOT IN ('SHIPPED')
+  AND ol.CREATED_TIMESTAMP >= '${todayUtcStart}'
+  AND ol.CREATED_TIMESTAMP <  '${todayUtcEnd}'
+  AND i.EXT_HAZMATINDICATOR IN ('Y','LIT','E')
+GROUP BY ol.ORDER_ID`.trim();
+
+  // Query 7: units in allocated iLPNs at D1-SN-01 (picked, staged, ready to pack). STATUS 5000 = allocated/active.
   const sqlRfp = `
 SELECT SUM(inv.ON_HAND) AS unit_count
 FROM default_dcinventory.DCI_ILPN ilpn
@@ -755,14 +772,26 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
   AND ilpn.CURRENT_LOCATION_ID = 'D1-SN-01'
   AND ilpn.STATUS = '5000'`.trim();
 
-  const [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respRfp] = await Promise.all([
+  const [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respHazmat, respRfp] = await Promise.all([
     mcpQuery(accessToken, sqlOrders),
     mcpQuery(accessToken, sqlShipped),
     mcpQuery(accessToken, sqlDailyTotals),
     mcpQuery(accessToken, sqlHourly),
     mcpQuery(accessToken, sqlWaves),
+    mcpQuery(accessToken, sqlHazmat).catch(() => ({ rows: [] })),
     mcpQuery(accessToken, sqlRfp),
   ]);
+
+  // Build hazmat map: ORDER_ID → highest-priority indicator (Y > LIT > E)
+  const HAZ_RANK = { 'Y': 3, 'LIT': 2, 'E': 1 };
+  const hazMap = {};
+  for (const r of (respHazmat.rows || [])) {
+    const ind = (r.hazmat_indicator || '').toUpperCase();
+    if (!HAZ_RANK[ind]) continue;
+    if (!hazMap[r.ORDER_ID] || HAZ_RANK[ind] > HAZ_RANK[hazMap[r.ORDER_ID]]) {
+      hazMap[r.ORDER_ID] = ind;
+    }
+  }
 
   // Build a map of ORDER_ID → earliest line_date across open (non-packed, non-shipped) lines.
   // This pools all READY/RELEASED/ALLOCATED lines for the same order under its oldest date.
@@ -798,6 +827,7 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
       status,
       line_count:      Number(r.line_count),
       oldest_line_utc: r.oldest_line_utc || null,
+      hazmat:          hazMap[r.ORDER_ID] || null,
     });
   }
 
@@ -872,15 +902,34 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
 
   const rfpUnits = Number((respRfp.rows || [])[0]?.unit_count || 0);
 
+  // Hazmat summary — count unique hazmat orders and their lines across today's open orders
+  const hazBreakdown = {};
+  let hazOrderCount = 0, hazLineCount = 0;
+  const todayBucket = buckets[todayStr];
+  if (todayBucket) {
+    const seenHazOrders = new Set();
+    for (const o of todayBucket.orders) {
+      if (!o.hazmat) continue;
+      if (seenHazOrders.has(o.order_id)) continue;
+      seenHazOrders.add(o.order_id);
+      hazOrderCount++;
+      hazLineCount += o.line_count;
+      hazBreakdown[o.hazmat] = (hazBreakdown[o.hazmat] || 0) + 1;
+    }
+  }
+
   return {
-    generated:   new Date().toISOString().slice(0, 19),
-    facility:    FACILITY,
-    today:       todayStr,
-    dates:       datesArr,
+    generated:         new Date().toISOString().slice(0, 19),
+    facility:          FACILITY,
+    today:             todayStr,
+    dates:             datesArr,
     hourly,
     waves,
-    rfp_units:   rfpUnits,
-    shift_label: is1st ? '1st shift' : '2nd shift',
+    rfp_units:         rfpUnits,
+    shift_label:       is1st ? '1st shift' : '2nd shift',
+    hazmat_orders:     hazOrderCount,
+    hazmat_lines:      hazLineCount,
+    hazmat_breakdown:  hazBreakdown,
   };
 }
 

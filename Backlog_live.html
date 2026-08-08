@@ -144,8 +144,8 @@
   [data-theme="dark"] .teams-btn:hover{background:#6264A7;color:#fff;}
 
   /* Backlog metric tiles */
-  .metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:1.5rem;}
-  @media(max-width:900px){.metrics{grid-template-columns:repeat(3,1fr);}}
+  .metrics{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:1.5rem;}
+  @media(max-width:900px){.metrics{grid-template-columns:repeat(4,1fr);}}
   @media(max-width:600px){.metrics{grid-template-columns:repeat(2,1fr);}}
   .metric{background:var(--surface2);border-radius:10px;padding:1rem;text-align:center;border-top:3px solid transparent;}
   .metric.ready    {border-top-color:var(--ready);}
@@ -154,6 +154,17 @@
   .metric.packed   {border-top-color:var(--accent);}
   .metric.shipped  {border-top-color:var(--shipped);}
   .metric.total    {border-top-color:var(--border-mid);}
+  .metric.hazmat   {border-top-color:#d97706;}
+  .metric.hazmat   .metric-value{color:#d97706;}
+  .haz-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:0.04em;flex-shrink:0;}
+  .haz-tag.Y  {background:#4a1a00;color:#fb923c;}
+  .haz-tag.LIT{background:#1a2a00;color:#a3e635;}
+  .haz-tag.E  {background:#1a1a2e;color:#818cf8;}
+  [data-theme="light"] .haz-tag.Y  {background:#fff7ed;color:#c2410c;}
+  [data-theme="light"] .haz-tag.LIT{background:#f7fee7;color:#4d7c0f;}
+  [data-theme="light"] .haz-tag.E  {background:#eff6ff;color:#3730a3;}
+  .haz-mini{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
+  .haz-mini .haz-tag{font-size:9px;padding:1px 5px;}
   .metric-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
   .metric-value{font-size:26px;font-weight:500;color:var(--text);}
   .metric.ready    .metric-value{color:var(--ready);}
@@ -557,6 +568,11 @@
             <div class="metric-label">Total Open</div>
             <div class="metric-value" id="m-total">--</div>
             <div class="metric-sub" id="m-date">Today</div>
+          </div>
+          <div class="metric hazmat" id="m-haz-tile" style="display:none;">
+            <div class="metric-label">Hazmat</div>
+            <div class="metric-value" id="m-haz-orders">--</div>
+            <div class="metric-sub" id="m-haz-sub">-- lines</div>
           </div>
         </div>
 
@@ -1113,6 +1129,7 @@ function openDetailPanel(date, status, row) {
       html += '<span class="order-id">' + escHtml(o.order_id) + '</span>';
       html += '<span class="order-right">';
       if (flag) html += '<span class="age-flag" title="' + flag.title + '">' + flag.icon + '</span>';
+      if (o.hazmat) html += '<span class="haz-tag ' + o.hazmat + '">' + o.hazmat + '</span>';
       html += '<span class="order-lines">' + o.line_count + (o.line_count === 1 ? ' line' : ' lines') + '</span>';
       html += '<span class="sm-badge ' + sm + '">' + sm + '</span>';
       html += '</span></div>';
@@ -1294,6 +1311,27 @@ function renderBacklogData(data) {
   document.getElementById('m-packed').textContent   = fmt(totP);
   document.getElementById('m-total').textContent   = fmt(totO);
   document.getElementById('m-date').textContent    = 'All dates';
+
+  // Hazmat tile — counts across all open orders today
+  var hazOrders = data.hazmat_orders != null ? data.hazmat_orders : null;
+  var hazLines  = data.hazmat_lines  != null ? data.hazmat_lines  : null;
+  var hazBreak  = data.hazmat_breakdown || {};
+  var hazTile   = document.getElementById('m-haz-tile');
+  if (hazOrders != null && hazOrders > 0) {
+    document.getElementById('m-haz-orders').textContent = fmt(hazOrders);
+    var subParts = [];
+    if (hazBreak.Y)   subParts.push('<span class="haz-tag Y">Y</span> ' + hazBreak.Y);
+    if (hazBreak.LIT) subParts.push('<span class="haz-tag LIT">LIT</span> ' + hazBreak.LIT);
+    if (hazBreak.E)   subParts.push('<span class="haz-tag E">E</span> ' + hazBreak.E);
+    document.getElementById('m-haz-sub').innerHTML = (subParts.length ? subParts.join(' &nbsp;') : (fmt(hazLines) + ' lines'));
+    hazTile.style.display = '';
+  } else if (hazOrders === 0) {
+    document.getElementById('m-haz-orders').textContent = '0';
+    document.getElementById('m-haz-sub').textContent = 'No haz orders';
+    hazTile.style.display = '';
+  } else {
+    hazTile.style.display = 'none';
+  }
 
   emptyEl.style.display = 'none';
   metrEl.style.display  = 'grid';
