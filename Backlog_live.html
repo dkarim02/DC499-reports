@@ -582,6 +582,11 @@
             <div class="metric-value" id="m-shipped">--</div>
             <div class="metric-sub" id="m-shipped-orders">-- units</div>
           </div>
+          <div class="metric hazmat" id="m-haz-tile" style="display:none;">
+            <div class="metric-label">Hazmat</div>
+            <div class="metric-value" id="m-haz-orders">--</div>
+            <div class="metric-sub" id="m-haz-sub">-- lines</div>
+          </div>
         </div>
 
         <div class="card" id="table-card" style="display:none;">
@@ -1325,7 +1330,9 @@ function renderBacklogData(data) {
   var hazOrders  = data.hazmat_orders != null ? data.hazmat_orders : null;
   var hazBreak   = data.hazmat_breakdown || {};
   var hazCapEl   = document.getElementById('m-haz-capsule');
+  var hazTile = document.getElementById('m-haz-tile');
   if (hazOrders != null && hazOrders > 0) {
+    // capsule right side
     document.getElementById('m-haz-orders-cap').textContent = fmt(hazOrders);
     var tagParts = [];
     if (hazBreak.Y)   tagParts.push('<span class="haz-tag Y">Y</span> ' + hazBreak.Y);
@@ -1333,8 +1340,13 @@ function renderBacklogData(data) {
     if (hazBreak.E)   tagParts.push('<span class="haz-tag E">E</span> ' + hazBreak.E);
     document.getElementById('m-haz-tags-cap').innerHTML = tagParts.join(' &nbsp;');
     hazCapEl.style.display = 'flex';
+    // hazmat pill
+    document.getElementById('m-haz-orders').textContent = fmt(hazOrders);
+    document.getElementById('m-haz-sub').innerHTML = tagParts.length ? tagParts.join(' &nbsp;') : (fmt(data.hazmat_lines || 0) + ' lines');
+    hazTile.style.display = '';
   } else {
     hazCapEl.style.display = 'none';
+    hazTile.style.display = 'none';
   }
 
   emptyEl.style.display  = 'none';
