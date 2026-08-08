@@ -1909,7 +1909,14 @@ async function main() {
     }
   } else {
     console.log('Getting access token...');
-    accessToken = await getAccessToken();
+    try {
+      accessToken = await getAccessToken();
+    } catch (e) {
+      console.error('Error:', e.message);
+      console.error('Token expired — sending Teams alert...');
+      await notifyAuthExpired().catch(() => {});
+      process.exit(1);
+    }
   }
   if (accessToken) console.log('✓ Authenticated');
 
