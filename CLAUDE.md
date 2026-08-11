@@ -184,7 +184,7 @@ Scheduled Task every 30 min. Checks for node.exe with `*dc499_refresh*`. If not 
 **1st shift (all pages):** workflows/a26c40b1c9ee4739abd0269aedbef04b
 **2nd shift — Batches:** workflows/d4415440c8004523a34336a1a21e6dae
 **2nd shift — Ecom/Backlog:** workflows/eacd8206a4274abb96f43be9d3d01256
-**Auth expiry alert:** workflows/db4396647efa46f783e0ed9a5d09e32f... (TEAMS_WEBHOOK_AUTH_ALERT)
+**Auth expiry alert:** cu/30/workflows/db4396647efa46f783e0ed9a5d09e32f... (TEAMS_WEBHOOK_AUTH_ALERT)
 
 Routing: `getShift()` — 1st = 6AM–2PM PDT, 2nd = 2PM–10PM PDT.
 
@@ -300,6 +300,40 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 
 ---
 
+## Metabase migration (in evaluation — 2026-08-10)
+
+Engineering manager proposed migrating the reporter to Metabase. Here is the agreed direction and open questions.
+
+**Proposed architecture (best case):**
+- Metabase holds a direct DB connection to MAWM (same access as MA tool) — IT manages credentials, no OIDC token expiry
+- Reporter HTML/CSS/JS is hosted on Nordstrom intranet by IT (not GitHub Pages)
+- PC agent (dc499_refresh.js) shrinks to ~100 lines — polls Metabase REST API for operational events only
+- Teams notifications (batch clears, auth alerts) and EOD email remain in PC agent
+- Custom UI (themes, Remi, side panels, drill-downs) fully survives — Metabase is data source only, not UI host
+
+**Key question pending:** Can Dean push HTML/JS updates himself without an IT ticket? (Same deploy speed as GitHub today.) If not, this is a blocking concern. Eng manager should commit to this before migration begins.
+
+**What Metabase replaces:** MCP → all MAWM SQL queries → JSON push to GitHub → CDN. Fewer hops, faster refresh, no token rotation.
+
+**What stays in the PC agent:** Teams webhooks (batch clear notifications, auth expiry alert), EOD email assembly + Outlook HTML formatting, shift detection logic.
+
+**What cannot move to Metabase natively:** Teams notifications on row-level events, EOD email generation, PPH pace math, headcount settings, custom themes.
+
+**Metabase REST API pattern (for PC agent):**
+- Each saved question exposed as: `GET /api/card/{id}/query` with `X-Metabase-Session` header
+- Agent polls these endpoints every 5 min instead of querying MAWM via MCP
+- Returns JSON — agent maps fields to existing JSON output format (batch_status.json, backlog_live.json, etc.)
+
+**SQL translations needed when Metabase cards are shared:**
+- Dedup: `ROW_NUMBER() OVER (PARTITION BY employee, transaction_id, activity_datetime)`
+- Zone H: `CASE WHEN SUBSTR(location,3,1) = 'H' THEN 'Reserve' ELSE 'Ecom' END`
+- Shift bucketing: `DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP,'+00:00','-07:00'),'%Y-%m-%d')`
+- All existing transaction ID filters, shift boundaries, and facility_id='499' rules apply unchanged
+
+**Next step:** Review the Metabase report Dean receives from eng manager. Check: which tables it queries, whether facility_id filter is correct (must be '499' not '0499'), whether the REST API is intranet-accessible, and confirm deploy access terms.
+
+---
+
 ## Pending work
 
 - [ ] EOS: orders_not_released needs EOS time cap in captureSnapshot() — `AND CREATED_TIMESTAMP < '{captureTime}'`
@@ -312,7 +346,7 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 - [ ] Wave progress report (DCO_WAVE_AGGREGATE_ORDER)
 - [ ] Timeclock report (default_timeclock)
 - [ ] GitHub Pro ($4/mo) for private repo + Pages
-- [ ] IT conversation re: server hosting (PC vs server — use Lost Tote Lookup as demo)
+- [ ] IT/Metabase: review eng manager's Metabase report (arriving 2026-08-11), verify facility_id filter, REST API accessibility, and confirm Dean retains deploy access for HTML/JS updates
 
 ---
 
