@@ -787,10 +787,11 @@ function nailFromLive(btn) {
     var proc = NTP_PROC[dept];
     if (!state.data['Ecom'][proc]) state.data['Ecom'][proc] = {};
     var rec = state.data['Ecom'][proc][cpKey] || {};
-    rec.act_u      = totals[dept] || 0;
-    rec.act_f      = totals[dept] || 0;
-    rec.act_hc     = hc[dept]     || 0;
-    rec.shiftHours = shiftHrs;
+    var t = totals[dept];
+    if (t != null && t > 0) rec.act_u = t;
+    var h = hc[dept];
+    if (h != null && h > 0) rec.act_hc = h;
+    if (shiftHrs != null) rec.shiftHours = shiftHrs;
     state.data['Ecom'][proc][cpKey] = rec;
   });
   state.meta.updatedAt = new Date().toISOString();
@@ -2092,10 +2093,11 @@ function nailThePlan(btn) {
     var proc = NTP_PROC[dept];
     if (!state.data['Ecom'][proc]) state.data['Ecom'][proc] = {};
     var rec = state.data['Ecom'][proc][cpKey] || {};
-    rec.act_u      = totals[dept] || 0;
-    rec.act_f      = totals[dept] || 0;
-    rec.act_hc     = hc[dept]     || 0;
-    rec.shiftHours = shiftHrs;
+    var t = totals[dept];
+    if (t != null && t > 0) rec.act_u = t;
+    var h = hc[dept];
+    if (h != null && h > 0) rec.act_hc = h;
+    if (shiftHrs != null) rec.shiftHours = shiftHrs;
     state.data['Ecom'][proc][cpKey] = rec;
   });
 
