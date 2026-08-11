@@ -1893,6 +1893,7 @@ async function main() {
       console.error(`⚠  Token refresh failed at startup: ${lastErr.message}`);
       console.error('   Server will start anyway and retry every cycle.');
       console.error('   To fix: run dc499.bat → option 4 (auth).');
+      notifyAuthExpired().catch(() => {});
     }
   } else {
     console.log('Getting access token...');
