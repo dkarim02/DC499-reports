@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shipping Live v1.5 -- DC499</title>
+<title>Shipping Live v1.6 -- DC499</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -127,12 +127,9 @@
   .theme-option.active{color:var(--accent);}
 
   /* ── LEGEND ── */
-  .legend{display:flex;align-items:center;gap:14px;font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:0.9rem;flex-wrap:wrap;}
-  .legend-swatch{
-    display:inline-flex;align-items:center;justify-content:center;
-    width:26px;height:18px;border-radius:4px;margin-right:4px;
-    font-size:10px;font-weight:900;color:#fff;
-  }
+  .legend{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;margin-bottom:0.9rem;flex-wrap:wrap;}
+  .legend-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 5px;border-radius:5px;background:var(--surface2);border:0.5px solid var(--border);}
+  .legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
   .ls-green {background:var(--box-green);}
   .ls-lime  {background:var(--box-lime);}
   .ls-orange{background:var(--box-orange);}
@@ -161,21 +158,21 @@
     text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;
   }
   th.col-emp{text-align:left;padding-left:8px;}
-  th.col-total{border-left:1.5px solid var(--border-mid);padding-left:8px;padding-right:8px;}
+  th.col-total{border-left:3px solid var(--accent);padding-left:8px;padding-right:8px;}
   th.col-hour-active{color:var(--text);}
   td{padding:0;border-bottom:0.5px solid var(--border-light);vertical-align:middle;white-space:nowrap;}
   tr:last-child td{border-bottom:none;}
 
   /* name cell — tight right padding so boxes sit close */
   .td-emp{
-    padding:6px 3px 6px 8px;
+    padding:6px 0 6px 8px;
     font-size:15px;font-weight:800;color:var(--text);
     min-width:80px;max-width:160px;
     overflow:hidden;text-overflow:ellipsis;
   }
 
   /* hour cell — snug */
-  .hcell{width:46px;min-width:46px;text-align:center;padding:5px 1px;}
+  .hcell{width:44px;min-width:44px;text-align:center;padding:5px 0 5px 2px;}
   .hval{
     display:inline-flex;align-items:center;justify-content:center;
     width:40px;height:34px;border-radius:7px;
@@ -195,10 +192,10 @@
     color:transparent;
     text-shadow:none;
   }
-  .hval.c-empty:hover{transform:none;}
+
 
   /* total cell — narrow gap, clear divider */
-  .td-total{padding:5px 7px 5px 6px;text-align:center;border-left:1.5px solid var(--border-mid);}
+  .td-total{padding:5px 7px 5px 6px;text-align:center;border-left:3px solid var(--accent);}
   .hval-total{
     display:inline-flex;align-items:center;justify-content:center;
     width:46px;height:34px;border-radius:7px;
@@ -344,10 +341,10 @@
 
   <!-- Legend -->
   <div class="legend">
-    <span><span class="legend-swatch ls-green">80+</span>On pace</span>
-    <span><span class="legend-swatch ls-lime">60–79</span>Close</span>
-    <span><span class="legend-swatch ls-orange">40–59</span>Slow</span>
-    <span><span class="legend-swatch ls-red">1–39</span>Behind</span>
+    <span class="legend-pill"><span class="legend-dot ls-green"></span><span style="color:var(--text-muted)">80+</span></span>
+    <span class="legend-pill"><span class="legend-dot ls-lime"></span><span style="color:var(--text-muted)">60–79</span></span>
+    <span class="legend-pill"><span class="legend-dot ls-orange"></span><span style="color:var(--text-muted)">40–59</span></span>
+    <span class="legend-pill"><span class="legend-dot ls-red"></span><span style="color:var(--text-muted)">1–39</span></span>
   </div>
 
   <!-- Scoreboard -->
@@ -532,7 +529,7 @@ function renderScoreboard(data) {
       const count = emp.hours[h] ?? 0;
       const cls   = boxClass(count);
       // zeros render empty (grey box, no number)
-      html += `<td class="hcell"><span class="hval ${cls}">${count === 0 ? '' : count}</span></td>`;
+      html += `<td class="hcell"><span class="hval ${cls}">${count === 0 ? '-' : count}</span></td>`;
     }
     const hoursWithData = hours.filter(h => (emp.hours[h] ?? 0) > 0).length;
     const avgPace  = hoursWithData > 0 ? emp.total / hoursWithData : 0;
@@ -545,7 +542,7 @@ function renderScoreboard(data) {
     const visCount = visible.reduce((s, e) => s + (e.hours[h] ?? 0), 0);
     const avg      = visible.length > 0 ? visCount / visible.length : 0;
     const cls      = visCount === 0 ? 'c-empty' : boxClass(Math.round(avg));
-    html += `<td class="hcell"><span class="hval ${cls}">${visCount === 0 ? '' : visCount}</span></td>`;
+    html += `<td class="hcell"><span class="hval ${cls}">${visCount === 0 ? '-' : visCount}</span></td>`;
   }
   const visibleTotal = visible.reduce((s, e) => s + e.total, 0);
   const teamAvgPace  = (visible.length > 0 && hours.length > 0)
