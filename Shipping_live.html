@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shipping Live v1.5 -- DC499</title>
+<title>Shipping Live v1.6 -- DC499</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -190,11 +190,7 @@
   .hval.c-orange{background:var(--box-orange);}
   .hval.c-red   {background:var(--box-red);}
   /* zero = subtle grey box, no number */
-  .hval.c-empty{
-    background:var(--surface2);
-    color:transparent;
-    text-shadow:none;
-  }
+  .hval.c-empty{background:var(--surface2);color:var(--text-hint);font-size:14px;font-weight:800;text-shadow:none;}
   .hval.c-empty:hover{transform:none;}
 
   /* total cell — narrow gap, clear divider */
@@ -532,7 +528,7 @@ function renderScoreboard(data) {
       const count = emp.hours[h] ?? 0;
       const cls   = boxClass(count);
       // zeros render empty (grey box, no number)
-      html += `<td class="hcell"><span class="hval ${cls}">${count === 0 ? '' : count}</span></td>`;
+      html += `<td class="hcell"><span class="hval ${cls}">${count === 0 ? '–' : count}</span></td>`;
     }
     const hoursWithData = hours.filter(h => (emp.hours[h] ?? 0) > 0).length;
     const avgPace  = hoursWithData > 0 ? emp.total / hoursWithData : 0;
@@ -545,7 +541,7 @@ function renderScoreboard(data) {
     const visCount = visible.reduce((s, e) => s + (e.hours[h] ?? 0), 0);
     const avg      = visible.length > 0 ? visCount / visible.length : 0;
     const cls      = visCount === 0 ? 'c-empty' : boxClass(Math.round(avg));
-    html += `<td class="hcell"><span class="hval ${cls}">${visCount === 0 ? '' : visCount}</span></td>`;
+    html += `<td class="hcell"><span class="hval ${cls}">${visCount === 0 ? '–' : visCount}</span></td>`;
   }
   const visibleTotal = visible.reduce((s, e) => s + e.total, 0);
   const teamAvgPace  = (visible.length > 0 && hours.length > 0)
