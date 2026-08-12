@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shipping Live v1.6 -- DC499</title>
+<title>Shipping Live v1.7 -- DC499</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -127,12 +127,10 @@
   .theme-option.active{color:var(--accent);}
 
   /* ── LEGEND ── */
-  .legend{display:flex;align-items:center;gap:14px;font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:0.9rem;flex-wrap:wrap;}
-  .legend-swatch{
-    display:inline-flex;align-items:center;justify-content:center;
-    width:26px;height:18px;border-radius:4px;margin-right:4px;
-    font-size:10px;font-weight:900;color:#fff;
-  }
+  .legend{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;margin-bottom:0.9rem;flex-wrap:wrap;}
+  .legend-chip{display:inline-flex;align-items:center;gap:0;border-radius:5px;overflow:hidden;border:0.5px solid var(--border);}
+  .lc-dot{width:10px;height:28px;flex-shrink:0;}
+  .lc-label{padding:0 8px;font-size:11px;font-weight:800;color:var(--text-muted);background:var(--surface2);height:28px;display:flex;align-items:center;}
   .ls-green {background:var(--box-green);}
   .ls-lime  {background:var(--box-lime);}
   .ls-orange{background:var(--box-orange);}
@@ -190,7 +188,7 @@
   .hval.c-orange{background:var(--box-orange);}
   .hval.c-red   {background:var(--box-red);}
   /* zero = subtle grey box, no number */
-  .hval.c-empty{background:var(--surface2);color:var(--text-hint);font-size:14px;font-weight:800;text-shadow:none;}
+  .hval.c-empty{background:var(--surface2);color:var(--text-muted);font-size:18px;font-weight:900;text-shadow:none;letter-spacing:0;}
   .hval.c-empty:hover{transform:none;}
 
   /* total cell — narrow gap, clear divider */
@@ -340,10 +338,10 @@
 
   <!-- Legend -->
   <div class="legend">
-    <span><span class="legend-swatch ls-green">80+</span>On pace</span>
-    <span><span class="legend-swatch ls-lime">60–79</span>Close</span>
-    <span><span class="legend-swatch ls-orange">40–59</span>Slow</span>
-    <span><span class="legend-swatch ls-red">1–39</span>Behind</span>
+    <span class="legend-chip"><span class="lc-dot ls-green"></span><span class="lc-label">80+</span></span>
+    <span class="legend-chip"><span class="lc-dot ls-lime"></span><span class="lc-label">60–79</span></span>
+    <span class="legend-chip"><span class="lc-dot ls-orange"></span><span class="lc-label">40–59</span></span>
+    <span class="legend-chip"><span class="lc-dot ls-red"></span><span class="lc-label">1–39</span></span>
   </div>
 
   <!-- Scoreboard -->
