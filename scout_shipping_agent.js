@@ -218,8 +218,8 @@ function shiftStartUtc() {
   return {
     utc: start.toISOString().replace('T', ' ').slice(0, 19),
     label: is1st ? '1st' : '2nd',
-    is1st,
-    pdtHour: is1st ? 6 : 14,
+    // PDT hour the shift starts (for hour-bucket headers)
+    pdtHour: is1st ? 10 : 14,
   };
 }
 
@@ -240,7 +240,7 @@ ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 }
 
 // ── process rows into per-employee hourly buckets ──────────────────────────────
-function processRows(rows, is1st) {
+function processRows(rows, shiftPdtHour) {
   // Dedup: each Employee + Container ID pair counts once, attributed to the earliest hour seen
   const earliest = {}; // key: `employee|containerID` → PDT hour integer
   for (const row of rows) {
@@ -260,9 +260,8 @@ function processRows(rows, is1st) {
   }
 
   // Build per-employee buckets
-  // 1st shift: 6 AM–2 PM PDT = hours 6..13
-  // 2nd shift: 2 PM–10 PM PDT = hours 14..21
-  const HOURS = is1st ? [6,7,8,9,10,11,12,13] : [14,15,16,17,18,19,20,21];
+  // Shift hours 2 PM–10 PM PDT = hours 14..21 (9 possible hours on display)
+  const HOURS = [14, 15, 16, 17, 18, 19, 20, 21];
   const empMap = {}; // employee -> { hourBuckets: {14:n, 15:n,...}, total: n }
 
   for (const [key, pdtHour] of Object.entries(earliest)) {
@@ -298,12 +297,7 @@ function processRows(rows, is1st) {
 
 // ── main fetch ─────────────────────────────────────────────────────────────────
 async function fetchShippingLive(accessToken) {
-  const { utc: shiftStart, label: shift, is1st } = shiftStartUtc();
-
-  // Shift date in PDT for display
-  const shiftDate = new Date(shiftStart + '-07:00').toLocaleDateString('en-US', {
-    timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric',
-  });
+  const { utc: shiftStart, label: shift, pdtHour: shiftPdtHour } = shiftStartUtc();
 
   console.log(`[${ts()}] Querying shipping transactions since ${shiftStart}...`);
   const resp = await mcpQuery(accessToken, buildSql(shiftStart));
@@ -311,12 +305,11 @@ async function fetchShippingLive(accessToken) {
   console.log(`[${ts()}] ${rows.length} rows`);
   if (rows.length >= 9500) console.warn(`[${ts()}] ⚠ Hit row cap — data may be truncated`);
 
-  const { employees, teamHours, teamTotal, hours } = processRows(rows, is1st);
+  const { employees, teamHours, teamTotal, hours } = processRows(rows, shiftPdtHour);
 
   const output = {
     generated:     new Date().toISOString(),
     shift,
-    shift_date:    shiftDate,
     shift_start:   shiftStart,
     facility:      FACILITY,
     row_count:     rows.length,
