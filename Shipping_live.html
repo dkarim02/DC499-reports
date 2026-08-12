@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shipping Live v1.4 -- DC499</title>
+<title>Shipping Live v1.5 -- DC499</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -14,42 +14,42 @@
     --text:#111827;--text-muted:#555;--text-hint:#999;
     --accent:#185FA5;--accent-bg:#e8f0fb;--accent-muted:#91b8e8;
     --green:#15803d;--amber:#b45309;--red:#b91c1c;
-    --box-green:#16a34a;--box-amber:#d97706;--box-red:#dc2626;
+    --box-green:#16a34a;--box-lime:#84cc16;--box-orange:#f97316;--box-red:#dc2626;
   }
   [data-theme="dark"]{
     --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#404040;
     --text:#f4f4f2;--text-muted:#aaa;--text-hint:#666;
     --accent-bg:#0d2340;--accent-muted:#5B9BD5;
     --green:#4ade80;--amber:#fbbf24;--red:#f87171;
-    --box-green:#22c55e;--box-amber:#f59e0b;--box-red:#ef4444;
+    --box-green:#22c55e;--box-lime:#a3e635;--box-orange:#fb923c;--box-red:#ef4444;
   }
   [data-theme="solid"]{
     --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;
     --text:#edf0fa;--text-muted:#8090b0;--text-hint:#4a5570;
     --accent-bg:#0d2340;--accent-muted:#5B9BD5;
     --green:#4ade80;--amber:#fbbf24;--red:#f87171;
-    --box-green:#22c55e;--box-amber:#f59e0b;--box-red:#ef4444;
+    --box-green:#22c55e;--box-lime:#a3e635;--box-orange:#fb923c;--box-red:#ef4444;
   }
   [data-theme="pastel"]{
     --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
     --text:#e8e4f8;--text-muted:#9b9aaa;--text-hint:#565670;
     --accent:#7ecec4;--accent-bg:#152e2c;--accent-muted:#7ecec4;
     --green:#86efac;--amber:#fde68a;--red:#fca5a5;
-    --box-green:#34d399;--box-amber:#fbbf24;--box-red:#f87171;
+    --box-green:#34d399;--box-lime:#bef264;--box-orange:#fdba74;--box-red:#f87171;
   }
   [data-theme="starr"]{
     --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
     --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;
     --accent:#b0003a;--accent-bg:#f8d0e8;--accent-muted:#d06090;
     --green:#1b5e20;--amber:#8b3000;--red:#7b0020;
-    --box-green:#16a34a;--box-amber:#d97706;--box-red:#be123c;
+    --box-green:#16a34a;--box-lime:#65a30d;--box-orange:#c2410c;--box-red:#be123c;
   }
   [data-theme="light"]{
     --bg:#f9fafb;--surface:#fff;--surface2:#f3f4f6;--border:#e5e7eb;--border-light:#f3f4f6;--border-mid:#d1d5db;
     --text:#111827;--text-muted:#4b5563;--text-hint:#9ca3af;
     --accent:#185FA5;--accent-bg:#eff6ff;--accent-muted:#bfdbfe;
     --green:#15803d;--amber:#b45309;--red:#b91c1c;
-    --box-green:#16a34a;--box-amber:#d97706;--box-red:#dc2626;
+    --box-green:#16a34a;--box-lime:#84cc16;--box-orange:#f97316;--box-red:#dc2626;
   }
 
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -133,9 +133,10 @@
     width:26px;height:18px;border-radius:4px;margin-right:4px;
     font-size:10px;font-weight:900;color:#fff;
   }
-  .ls-green{background:var(--box-green);}
-  .ls-amber{background:var(--box-amber);}
-  .ls-red  {background:var(--box-red);}
+  .ls-green {background:var(--box-green);}
+  .ls-lime  {background:var(--box-lime);}
+  .ls-orange{background:var(--box-orange);}
+  .ls-red   {background:var(--box-red);}
 
   /* ── SCOREBOARD CARD ── */
   .card{
@@ -184,9 +185,10 @@
     transition:transform 0.1s;
   }
   .hval:hover{transform:scale(1.06);}
-  .hval.c-green{background:var(--box-green);}
-  .hval.c-amber{background:var(--box-amber);}
-  .hval.c-red  {background:var(--box-red);}
+  .hval.c-green {background:var(--box-green);}
+  .hval.c-lime  {background:var(--box-lime);}
+  .hval.c-orange{background:var(--box-orange);}
+  .hval.c-red   {background:var(--box-red);}
   /* zero = subtle grey box, no number */
   .hval.c-empty{
     background:var(--surface2);
@@ -203,9 +205,10 @@
     font-size:15px;font-weight:800;color:#fff;
     text-shadow:0 1px 3px rgba(0,0,0,0.22);
   }
-  .hval-total.c-green{background:var(--box-green);}
-  .hval-total.c-amber{background:var(--box-amber);}
-  .hval-total.c-red  {background:var(--box-red);}
+  .hval-total.c-green {background:var(--box-green);}
+  .hval-total.c-lime  {background:var(--box-lime);}
+  .hval-total.c-orange{background:var(--box-orange);}
+  .hval-total.c-red   {background:var(--box-red);}
   .hval-total.c-empty{background:var(--surface2);color:var(--text-hint);font-size:13px;font-weight:700;text-shadow:none;}
 
   /* team total footer */
@@ -341,9 +344,10 @@
 
   <!-- Legend -->
   <div class="legend">
-    <span><span class="legend-swatch ls-green">80</span>On pace</span>
-    <span><span class="legend-swatch ls-amber">60</span>Close</span>
-    <span><span class="legend-swatch ls-red">—</span>Behind</span>
+    <span><span class="legend-swatch ls-green">80+</span>On pace</span>
+    <span><span class="legend-swatch ls-lime">60–79</span>Close</span>
+    <span><span class="legend-swatch ls-orange">40–59</span>Slow</span>
+    <span><span class="legend-swatch ls-red">1–39</span>Behind</span>
   </div>
 
   <!-- Scoreboard -->
@@ -484,9 +488,10 @@ function toggleEmp(eid) {
 
 // ── color logic ────────────────────────────────────────────────────────────────
 function boxClass(count) {
-  if (count === 0)                         return 'c-empty';
-  if (count >= TARGET)                     return 'c-green';
-  if (count >= Math.round(TARGET * 0.75)) return 'c-amber';
+  if (count === 0)  return 'c-empty';
+  if (count >= 80)  return 'c-green';
+  if (count >= 60)  return 'c-lime';
+  if (count >= 40)  return 'c-orange';
   return 'c-red';
 }
 
