@@ -377,8 +377,14 @@
 
 <script>
 const DATA_URL     = 'https://dkarim02.github.io/DC499-reports/shipping_live.json';
-const ALL_HOURS    = [14,15,16,17,18,19,20,21];
-const HOUR_LABELS  = {14:'2PM',15:'3PM',16:'4PM',17:'5PM',18:'6PM',19:'7PM',20:'8PM',21:'9PM'};
+const ALL_2ND = [14,15,16,17,18,19,20,21];
+const ALL_1ST = [6,7,8,9,10,11,12,13];
+function hourLabel(h) {
+  if (h === 0) return '12AM';
+  if (h < 12)  return h + 'AM';
+  if (h === 12) return '12PM';
+  return (h - 12) + 'PM';
+}
 const TARGET       = 80;
 const STALE_MS     = 15 * 60 * 1000;
 const SETTINGS_KEY = 'shipping_lan_map_v1';
@@ -504,7 +510,8 @@ function renderScoreboard(data) {
     return;
   }
 
-  const hours = (data.hours || ALL_HOURS).filter(h => h <= nowHour);
+  const defaultHours = (data.shift === '1st') ? ALL_1ST : ALL_2ND;
+  const hours = (data.hours || defaultHours).filter(h => h <= nowHour);
 
   if (!hours.length) {
     document.getElementById('scoreboard-body').innerHTML =
@@ -564,8 +571,9 @@ async function loadData() {
     const ageMs  = Date.now() - gen.getTime();
     const genStr = gen.toLocaleTimeString('en-US', {timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit',hour12:true});
 
+    const dateStr = data.shift_date || '';
     document.getElementById('run-info').textContent =
-      `${data.shift||'2nd'} shift · ${(data.employees||[]).length} associates · updated ${genStr}`;
+      `${data.shift||'2nd'} shift · ${dateStr ? dateStr + ' · ' : ''}${(data.employees||[]).length} associates · updated ${genStr}`;
     document.getElementById('card-meta').textContent =
       `${data.row_count||0} rows${data.truncated?' ⚠ truncated':''}`;
     document.getElementById('stale-banner').style.display = ageMs > STALE_MS ? 'block' : 'none';
