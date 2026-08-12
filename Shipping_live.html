@@ -76,13 +76,13 @@
   @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.3;transform:scale(0.7);}}
 
   /* stale */
-  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:13px;font-weight:700;padding:8px 16px;border-radius:12px;margin-bottom:1rem;text-align:center;}
+  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:13px;font-weight:700;padding:8px 16px;border-radius:7px;margin-bottom:1rem;text-align:center;}
   [data-theme="light"] .stale-banner,[data-theme="starr"] .stale-banner{background:#FFF3CD;color:#7A4F00;}
 
   /* ── ICON BUTTONS ── */
   .icon-btn{
     display:flex;align-items:center;justify-content:center;
-    width:36px;height:36px;border-radius:10px;
+    width:36px;height:36px;border-radius:7px;
     border:0.5px solid var(--border);background:none;
     cursor:pointer;color:var(--text-muted);font-size:17px;
     transition:background 0.12s,color 0.12s;
@@ -94,7 +94,7 @@
     font-family:'Nunito',system-ui,sans-serif;
     font-size:13px;font-weight:700;
     padding:6px 16px;border:0.5px solid var(--accent);
-    border-radius:10px;background:var(--accent-bg);
+    border-radius:7px;background:var(--accent-bg);
     cursor:pointer;color:var(--accent);
     display:flex;align-items:center;gap:5px;
   }
@@ -106,7 +106,7 @@
     display:flex;align-items:center;gap:6px;
     font-family:'Nunito',system-ui,sans-serif;font-size:13px;font-weight:700;
     color:var(--text-muted);cursor:pointer;background:none;
-    border:0.5px solid var(--border);border-radius:10px;
+    border:0.5px solid var(--border);border-radius:7px;
     padding:6px 12px;white-space:nowrap;
   }
   .theme-btn:hover{background:var(--surface2);}
@@ -115,7 +115,7 @@
   .theme-menu{
     display:none;position:absolute;top:calc(100% + 6px);right:0;
     background:var(--surface);border:0.5px solid var(--border);
-    border-radius:12px;overflow:hidden;min-width:120px;
+    border-radius:8px;overflow:hidden;min-width:120px;
     box-shadow:0 8px 28px rgba(0,0,0,0.28);z-index:300;
   }
   .theme-picker.open .theme-menu{display:block;}
@@ -126,30 +126,12 @@
   .theme-option:hover{background:var(--surface2);color:var(--text);}
   .theme-option.active{color:var(--accent);}
 
-  /* ── SUMMARY TILES ── */
-  .summary-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
-  @media(max-width:700px){.summary-tiles{grid-template-columns:repeat(2,1fr);}}
-  .tile{
-    background:var(--surface);border:0.5px solid var(--border);
-    border-radius:16px;padding:16px 14px;text-align:center;
-    border-top:4px solid var(--border-mid);
-  }
-  .tile.t-accent{border-top-color:var(--accent);}
-  .tile.t-green {border-top-color:var(--box-green);}
-  .tile.t-amber {border-top-color:var(--box-amber);}
-  .tile.t-red   {border-top-color:var(--box-red);}
-  .tile-label{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
-  .tile-value{font-size:32px;font-weight:800;color:var(--text);line-height:1;}
-  .tile.t-green .tile-value{color:var(--green);}
-  .tile.t-amber .tile-value{color:var(--amber);}
-  .tile.t-red   .tile-value{color:var(--red);}
-  .tile-sub{font-size:12px;font-weight:600;color:var(--text-hint);margin-top:5px;}
 
   /* ── LEGEND ── */
   .legend{display:flex;align-items:center;gap:16px;font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:1rem;flex-wrap:wrap;}
   .legend-swatch{
     display:inline-flex;align-items:center;justify-content:center;
-    width:28px;height:20px;border-radius:6px;margin-right:4px;
+    width:28px;height:20px;border-radius:4px;margin-right:4px;
     font-size:10px;font-weight:900;color:#fff;
   }
   .ls-green{background:var(--box-green);}
@@ -159,7 +141,7 @@
   /* ── SCOREBOARD CARD ── */
   .card{
     background:var(--surface);border:0.5px solid var(--border);
-    border-radius:16px;padding:1.25rem;margin-bottom:1rem;
+    border-radius:10px;padding:1.25rem;margin-bottom:1rem;
   }
   .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:8px;flex-wrap:wrap;}
   .card-title{font-size:12px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;}
@@ -196,7 +178,7 @@
   .hcell{width:52px;min-width:52px;text-align:center;padding:6px 2px;}
   .hval{
     display:inline-flex;align-items:center;justify-content:center;
-    width:44px;height:38px;border-radius:14px;
+    width:44px;height:38px;border-radius:8px;
     font-size:17px;font-weight:800;
     color:#fff;
     text-shadow:0 1px 4px rgba(0,0,0,0.25);
@@ -216,7 +198,7 @@
   .td-total{padding:6px 10px 6px 8px;text-align:center;border-left:1px solid var(--border-mid);}
   .hval-total{
     display:inline-flex;align-items:center;justify-content:center;
-    width:52px;height:38px;border-radius:14px;
+    width:52px;height:38px;border-radius:8px;
     font-size:17px;font-weight:800;color:#fff;
     text-shadow:0 1px 4px rgba(0,0,0,0.25);
   }
@@ -248,7 +230,7 @@
     overflow-y:auto;
     background:var(--surface);
     border:0.5px solid var(--border);
-    border-radius:20px;
+    border-radius:12px;
     padding:1.75rem;
     z-index:500;
     box-shadow:0 20px 60px rgba(0,0,0,0.4);
@@ -272,14 +254,14 @@
   .btn-save{
     font-family:'Nunito',system-ui,sans-serif;
     font-size:14px;font-weight:800;
-    padding:8px 22px;border:none;border-radius:12px;
+    padding:8px 22px;border:none;border-radius:7px;
     background:var(--accent);cursor:pointer;color:#fff;
   }
   .btn-save:hover{opacity:0.85;}
   .btn-reset{
     font-family:'Nunito',system-ui,sans-serif;
     font-size:14px;font-weight:700;
-    padding:8px 18px;border:1.5px solid var(--border-mid);border-radius:12px;
+    padding:8px 18px;border:1.5px solid var(--border-mid);border-radius:7px;
     background:none;cursor:pointer;color:var(--text-muted);
   }
   .btn-reset:hover{color:var(--red);border-color:var(--box-red);}
@@ -289,7 +271,7 @@
   .settings-list{display:flex;flex-direction:column;gap:6px;}
   .settings-row{
     display:flex;align-items:center;gap:10px;
-    padding:10px 12px;background:var(--surface2);border-radius:12px;
+    padding:10px 12px;background:var(--surface2);border-radius:7px;
   }
   .settings-email{
     font-size:12px;font-weight:600;color:var(--text-muted);
@@ -300,7 +282,7 @@
     font-family:'Nunito',system-ui,sans-serif;
     font-size:14px;font-weight:700;
     background:var(--surface);border:1.5px solid var(--border);
-    border-radius:10px;padding:6px 12px;color:var(--text);
+    border-radius:6px;padding:6px 12px;color:var(--text);
     outline:none;width:120px;flex-shrink:0;
   }
   .settings-input:focus{border-color:var(--accent);}
@@ -354,30 +336,6 @@
   </div>
 
   <div class="stale-banner" id="stale-banner">Data is more than 15 minutes old — hit Refresh.</div>
-
-  <!-- Summary tiles -->
-  <div class="summary-tiles">
-    <div class="tile t-accent">
-      <div class="tile-label">Associates</div>
-      <div class="tile-value" id="tile-assoc">—</div>
-      <div class="tile-sub">active this shift</div>
-    </div>
-    <div class="tile t-accent">
-      <div class="tile-label">Containers</div>
-      <div class="tile-value" id="tile-total">—</div>
-      <div class="tile-sub">total deduped</div>
-    </div>
-    <div class="tile" id="tile-pace-card">
-      <div class="tile-label">Team Avg / Hr</div>
-      <div class="tile-value" id="tile-pace">—</div>
-      <div class="tile-sub" id="tile-pace-sub">vs 80 target</div>
-    </div>
-    <div class="tile t-accent">
-      <div class="tile-label">Target</div>
-      <div class="tile-value">80</div>
-      <div class="tile-sub">per person / hr</div>
-    </div>
-  </div>
 
   <!-- Legend -->
   <div class="legend">
@@ -596,28 +554,7 @@ function renderScoreboard(data) {
   updateTiles(visible.length, visibleTotal, teamAvgPace);
 }
 
-function updateTiles(assocCount, total, teamAvgPace) {
-  document.getElementById('tile-assoc').textContent = assocCount || '—';
-  document.getElementById('tile-total').textContent = total      || '—';
-
-  const paceCard = document.getElementById('tile-pace-card');
-  const paceSub  = document.getElementById('tile-pace-sub');
-  paceCard.className = 'tile';
-
-  if (teamAvgPace >= TARGET) {
-    paceCard.classList.add('t-green');
-    paceSub.textContent = 'on pace';
-  } else if (teamAvgPace >= TARGET * 0.75) {
-    paceCard.classList.add('t-amber');
-    paceSub.textContent = 'close — push it';
-  } else if (total > 0) {
-    paceCard.classList.add('t-red');
-    paceSub.textContent = 'behind target';
-  } else {
-    paceSub.textContent = 'vs 80 target';
-  }
-  document.getElementById('tile-pace').textContent = teamAvgPace > 0 ? Math.round(teamAvgPace) : '—';
-}
+function updateTiles() {}
 
 // ── load data ──────────────────────────────────────────────────────────────────
 async function loadData() {
