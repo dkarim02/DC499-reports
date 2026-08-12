@@ -3,234 +3,343 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shipping Live v1.1 -- DC499</title>
+<title>Shipping Live v1.2 -- DC499</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   /* ── THEME VARS ── */
   :root {
-    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
-    --text:#111827;--text-muted:#555;--text-hint:#888;--bar-bg:#e5e5e5;
+    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e0e0e0;
+    --text:#111827;--text-muted:#555;--text-hint:#999;
     --accent:#185FA5;--accent-bg:#e8f0fb;--accent-muted:#91b8e8;
-    --green:#15803d;--green-bg:#f0fdf4;
-    --amber:#b45309;--amber-bg:#fffbeb;
-    --red:#b91c1c;--red-bg:#fef2f2;
-    /* vivid box fills — separate from text/border vars */
+    --green:#15803d;--amber:#b45309;--red:#b91c1c;
     --box-green:#16a34a;--box-amber:#d97706;--box-red:#dc2626;
   }
   [data-theme="dark"]{
     --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#404040;
-    --text:#f4f4f2;--text-muted:#aaa;--text-hint:#666;--bar-bg:#3a3a3a;
+    --text:#f4f4f2;--text-muted:#aaa;--text-hint:#666;
     --accent-bg:#0d2340;--accent-muted:#5B9BD5;
-    --green:#4ade80;--green-bg:#052e16;
-    --amber:#fbbf24;--amber-bg:#2e1a00;
-    --red:#f87171;--red-bg:#2e1010;
+    --green:#4ade80;--amber:#fbbf24;--red:#f87171;
     --box-green:#22c55e;--box-amber:#f59e0b;--box-red:#ef4444;
   }
   [data-theme="solid"]{
     --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;
-    --text:#edf0fa;--text-muted:#8090b0;--text-hint:#4a5570;--bar-bg:#2e3650;
+    --text:#edf0fa;--text-muted:#8090b0;--text-hint:#4a5570;
     --accent-bg:#0d2340;--accent-muted:#5B9BD5;
-    --green:#4ade80;--green-bg:#052e16;
-    --amber:#fbbf24;--amber-bg:#2a1f00;
-    --red:#f87171;--red-bg:#2d0a0a;
+    --green:#4ade80;--amber:#fbbf24;--red:#f87171;
     --box-green:#22c55e;--box-amber:#f59e0b;--box-red:#ef4444;
   }
   [data-theme="pastel"]{
     --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
-    --text:#e8e4f8;--text-muted:#9b9aaa;--text-hint:#565670;--bar-bg:#3c3f52;
+    --text:#e8e4f8;--text-muted:#9b9aaa;--text-hint:#565670;
     --accent:#7ecec4;--accent-bg:#152e2c;--accent-muted:#7ecec4;
-    --green:#86efac;--green-bg:#162b22;
-    --amber:#fde68a;--amber-bg:#2e2410;
-    --red:#fca5a5;--red-bg:#2e1a1a;
+    --green:#86efac;--amber:#fde68a;--red:#fca5a5;
     --box-green:#34d399;--box-amber:#fbbf24;--box-red:#f87171;
   }
   [data-theme="starr"]{
     --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
-    --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;--bar-bg:#e8c0d8;
+    --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;
     --accent:#b0003a;--accent-bg:#f8d0e8;--accent-muted:#d06090;
-    --green:#1b5e20;--green-bg:#f0d8e8;
-    --amber:#8b3000;--amber-bg:#fad0e0;
-    --red:#7b0020;--red-bg:#f8c8d8;
+    --green:#1b5e20;--amber:#8b3000;--red:#7b0020;
     --box-green:#16a34a;--box-amber:#d97706;--box-red:#be123c;
   }
   [data-theme="light"]{
     --bg:#f9fafb;--surface:#fff;--surface2:#f3f4f6;--border:#e5e7eb;--border-light:#f3f4f6;--border-mid:#d1d5db;
-    --text:#111827;--text-muted:#4b5563;--text-hint:#9ca3af;--bar-bg:#e5e7eb;
+    --text:#111827;--text-muted:#4b5563;--text-hint:#9ca3af;
     --accent:#185FA5;--accent-bg:#eff6ff;--accent-muted:#bfdbfe;
-    --green:#15803d;--green-bg:#f0fdf4;
-    --amber:#b45309;--amber-bg:#fffbeb;
-    --red:#b91c1c;--red-bg:#fef2f2;
+    --green:#15803d;--amber:#b45309;--red:#b91c1c;
     --box-green:#16a34a;--box-amber:#d97706;--box-red:#dc2626;
   }
 
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
+  body{
+    font-family:'Nunito',system-ui,sans-serif;
+    background:var(--bg);color:var(--text);
+    min-height:100vh;padding:1.5rem;
+    transition:background 0.2s,color 0.2s;
+  }
   .container{max-width:1100px;margin:0 auto;}
 
-  /* ── TOP BAR ── */
-  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;gap:12px;flex-wrap:wrap;}
-  .dept-label{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:0.09em;text-transform:uppercase;margin-bottom:3px;}
-  h1{font-size:21px;font-weight:600;margin-bottom:3px;letter-spacing:-0.01em;}
-  .subtitle{font-size:13px;color:var(--text-muted);}
-  .top-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  /* ── CONTROLS BAR ── */
+  .controls-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:1.25rem;gap:8px;flex-wrap:wrap;
+  }
+  .controls-left{display:flex;align-items:center;gap:8px;}
+  .controls-right{display:flex;align-items:center;gap:6px;}
+
+  .run-info{font-size:13px;font-weight:600;color:var(--text-muted);}
 
   /* live dot */
-  .live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:6px;animation:livepulse 2s infinite;}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:6px;animation:livepulse 2s infinite;flex-shrink:0;}
   @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.3;transform:scale(0.7);}}
 
   /* stale */
-  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:12px;padding:8px 14px;border-radius:8px;margin-bottom:1rem;text-align:center;}
+  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:13px;font-weight:700;padding:8px 16px;border-radius:12px;margin-bottom:1rem;text-align:center;}
   [data-theme="light"] .stale-banner,[data-theme="starr"] .stale-banner{background:#FFF3CD;color:#7A4F00;}
+
+  /* ── ICON BUTTONS ── */
+  .icon-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:10px;
+    border:0.5px solid var(--border);background:none;
+    cursor:pointer;color:var(--text-muted);font-size:17px;
+    transition:background 0.12s,color 0.12s;
+    font-family:inherit;
+  }
+  .icon-btn:hover{background:var(--surface2);color:var(--text);}
+
+  .refresh-btn{
+    font-family:'Nunito',system-ui,sans-serif;
+    font-size:13px;font-weight:700;
+    padding:6px 16px;border:0.5px solid var(--accent);
+    border-radius:10px;background:var(--accent-bg);
+    cursor:pointer;color:var(--accent);
+    display:flex;align-items:center;gap:5px;
+  }
+  .refresh-btn:hover{opacity:0.8;}
 
   /* ── THEME PICKER ── */
   .theme-picker{position:relative;}
-  .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
+  .theme-btn{
+    display:flex;align-items:center;gap:6px;
+    font-family:'Nunito',system-ui,sans-serif;font-size:13px;font-weight:700;
+    color:var(--text-muted);cursor:pointer;background:none;
+    border:0.5px solid var(--border);border-radius:10px;
+    padding:6px 12px;white-space:nowrap;
+  }
   .theme-btn:hover{background:var(--surface2);}
-  .theme-btn-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
-  .theme-picker.open .theme-btn-chevron{transform:rotate(180deg);}
-  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;min-width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.28);z-index:200;}
+  .theme-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
+  .theme-picker.open .theme-chevron{transform:rotate(180deg);}
+  .theme-menu{
+    display:none;position:absolute;top:calc(100% + 6px);right:0;
+    background:var(--surface);border:0.5px solid var(--border);
+    border-radius:12px;overflow:hidden;min-width:120px;
+    box-shadow:0 8px 28px rgba(0,0,0,0.28);z-index:300;
+  }
   .theme-picker.open .theme-menu{display:block;}
-  .theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
+  .theme-option{
+    padding:10px 18px;font-size:14px;font-weight:700;
+    cursor:pointer;color:var(--text-muted);transition:background 0.1s;
+  }
   .theme-option:hover{background:var(--surface2);color:var(--text);}
-  .theme-option.active{color:var(--accent);background:var(--surface2);}
-
-  /* ── BUTTONS ── */
-  .refresh-btn{font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--accent);border-radius:6px;background:var(--accent-bg);cursor:pointer;color:var(--accent);font-weight:600;display:flex;align-items:center;gap:5px;}
-  .refresh-btn:hover{opacity:0.8;}
-
-  /* ── TAB BAR ── */
-  .tab-bar{display:flex;gap:0;border-bottom:1px solid var(--border-mid);margin-bottom:1.5rem;}
-  .tab-btn{font-family:inherit;font-size:13px;font-weight:600;padding:9px 20px;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2.5px solid transparent;margin-bottom:-1px;transition:color 0.12s,border-color 0.12s;letter-spacing:0.01em;}
-  .tab-btn:hover{color:var(--text);}
-  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
-  .tab-pane{display:none;}
-  .tab-pane.active{display:block;}
+  .theme-option.active{color:var(--accent);}
 
   /* ── SUMMARY TILES ── */
-  .summary-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem;}
+  .summary-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
   @media(max-width:700px){.summary-tiles{grid-template-columns:repeat(2,1fr);}}
-  .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:14px;text-align:center;border-top:3px solid var(--border-mid);}
+  .tile{
+    background:var(--surface);border:0.5px solid var(--border);
+    border-radius:16px;padding:16px 14px;text-align:center;
+    border-top:4px solid var(--border-mid);
+  }
   .tile.t-accent{border-top-color:var(--accent);}
-  .tile.t-green{border-top-color:var(--box-green);}
-  .tile.t-amber{border-top-color:var(--box-amber);}
-  .tile.t-red{border-top-color:var(--box-red);}
-  .tile-label{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;}
-  .tile-value{font-size:28px;font-weight:600;color:var(--text);line-height:1;}
+  .tile.t-green {border-top-color:var(--box-green);}
+  .tile.t-amber {border-top-color:var(--box-amber);}
+  .tile.t-red   {border-top-color:var(--box-red);}
+  .tile-label{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
+  .tile-value{font-size:32px;font-weight:800;color:var(--text);line-height:1;}
   .tile.t-green .tile-value{color:var(--green);}
   .tile.t-amber .tile-value{color:var(--amber);}
   .tile.t-red   .tile-value{color:var(--red);}
-  .tile-sub{font-size:11px;color:var(--text-hint);margin-top:5px;}
+  .tile-sub{font-size:12px;font-weight:600;color:var(--text-hint);margin-top:5px;}
 
   /* ── LEGEND ── */
-  .legend{display:flex;align-items:center;gap:16px;font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:1rem;flex-wrap:wrap;}
-  .legend-swatch{display:inline-flex;align-items:center;justify-content:center;width:26px;height:18px;border-radius:4px;margin-right:5px;font-size:10px;font-weight:700;color:#fff;}
+  .legend{display:flex;align-items:center;gap:16px;font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:1rem;flex-wrap:wrap;}
+  .legend-swatch{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:28px;height:20px;border-radius:6px;margin-right:4px;
+    font-size:10px;font-weight:900;color:#fff;
+  }
   .ls-green{background:var(--box-green);}
   .ls-amber{background:var(--box-amber);}
   .ls-red  {background:var(--box-red);}
 
   /* ── SCOREBOARD CARD ── */
-  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+  .card{
+    background:var(--surface);border:0.5px solid var(--border);
+    border-radius:16px;padding:1.25rem;margin-bottom:1rem;
+  }
   .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:8px;flex-wrap:wrap;}
-  .card-title{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;}
-  .card-meta{font-size:11px;color:var(--text-hint);}
+  .card-title{font-size:12px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;}
+  .card-meta{font-size:12px;font-weight:600;color:var(--text-hint);}
 
   /* ── TABLE ── */
   .score-wrap{overflow-x:auto;}
   .score-wrap::-webkit-scrollbar{height:4px;}
   .score-wrap::-webkit-scrollbar-track{background:transparent;}
   .score-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  th{text-align:center;font-size:10px;font-weight:700;color:var(--text-muted);padding:7px 4px 8px;border-bottom:1px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;}
+
+  table{width:100%;border-collapse:collapse;}
+  th{
+    text-align:center;font-size:11px;font-weight:800;
+    color:var(--text-muted);padding:7px 4px 9px;
+    border-bottom:1.5px solid var(--border-mid);
+    text-transform:uppercase;letter-spacing:0.07em;white-space:nowrap;
+  }
   th.col-emp{text-align:left;padding-left:10px;}
   th.col-total{border-left:1px solid var(--border-mid);padding-left:10px;}
-  th.col-hour-active{color:var(--text);font-weight:700;}
+  th.col-hour-active{color:var(--text);}
   td{padding:0;border-bottom:0.5px solid var(--border-light);vertical-align:middle;white-space:nowrap;}
   tr:last-child td{border-bottom:none;}
 
   /* name cell */
   .td-emp{
-    padding:7px 6px 7px 10px;
-    font-size:13px;font-weight:600;color:var(--text);
-    min-width:80px;max-width:160px;
+    padding:8px 6px 8px 10px;
+    font-size:15px;font-weight:800;color:var(--text);
+    min-width:90px;max-width:170px;
     overflow:hidden;text-overflow:ellipsis;
   }
 
-  /* hour cell — tight, box sits right next to name */
-  .hcell{width:50px;min-width:50px;text-align:center;padding:5px 2px;}
+  /* hour cell */
+  .hcell{width:52px;min-width:52px;text-align:center;padding:6px 2px;}
   .hval{
     display:inline-flex;align-items:center;justify-content:center;
-    width:40px;height:34px;border-radius:7px;
-    font-size:14px;font-weight:700;
+    width:44px;height:38px;border-radius:14px;
+    font-size:17px;font-weight:800;
     color:#fff;
-    text-shadow:0 1px 3px rgba(0,0,0,0.3);
+    text-shadow:0 1px 4px rgba(0,0,0,0.25);
+    transition:transform 0.1s;
   }
+  .hval:hover{transform:scale(1.07);}
   .hval.c-green{background:var(--box-green);}
   .hval.c-amber{background:var(--box-amber);}
   .hval.c-red  {background:var(--box-red);}
-  .hval.c-empty{background:transparent;color:var(--text-hint);font-size:11px;font-weight:400;text-shadow:none;}
+  .hval.c-empty{
+    background:transparent;color:var(--text-hint);
+    font-size:13px;font-weight:600;text-shadow:none;
+  }
+  .hval.c-empty:hover{transform:none;}
 
   /* total cell */
-  .td-total{padding:5px 10px 5px 8px;text-align:center;border-left:1px solid var(--border-mid);}
+  .td-total{padding:6px 10px 6px 8px;text-align:center;border-left:1px solid var(--border-mid);}
   .hval-total{
     display:inline-flex;align-items:center;justify-content:center;
-    width:48px;height:34px;border-radius:8px;
-    font-size:14px;font-weight:700;color:#fff;
-    text-shadow:0 1px 3px rgba(0,0,0,0.3);
+    width:52px;height:38px;border-radius:14px;
+    font-size:17px;font-weight:800;color:#fff;
+    text-shadow:0 1px 4px rgba(0,0,0,0.25);
   }
   .hval-total.c-green{background:var(--box-green);}
   .hval-total.c-amber{background:var(--box-amber);}
   .hval-total.c-red  {background:var(--box-red);}
-  .hval-total.c-empty{background:var(--surface2);color:var(--text-hint);font-size:12px;font-weight:500;text-shadow:none;}
+  .hval-total.c-empty{background:var(--surface2);color:var(--text-hint);font-size:13px;font-weight:700;text-shadow:none;}
 
-  /* team total footer row */
-  tfoot tr td{border-top:1.5px solid var(--border-mid);border-bottom:none;background:var(--surface2);}
-  tfoot .td-emp{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);}
+  /* team total footer */
+  tfoot tr td{border-top:2px solid var(--border-mid);border-bottom:none;background:var(--surface2);}
+  tfoot .td-emp{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);}
 
-  /* ── SETTINGS TAB ── */
-  .settings-section{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem;}
-  .settings-section-title{font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1.25rem;}
-  .settings-actions{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;}
-  .btn-save{font-family:inherit;font-size:13px;padding:7px 18px;border:none;border-radius:7px;background:var(--accent);cursor:pointer;color:#fff;font-weight:600;}
+  /* empty state */
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:15px;font-weight:600;line-height:1.6;}
+
+  /* ── SETTINGS MODAL ── */
+  .modal-backdrop{
+    display:none;position:fixed;inset:0;
+    background:rgba(0,0,0,0.5);z-index:400;
+    backdrop-filter:blur(2px);
+  }
+  .modal-backdrop.open{display:block;}
+  .modal{
+    position:fixed;top:50%;left:50%;
+    transform:translate(-50%,-50%) scale(0.96);
+    opacity:0;
+    width:min(520px, calc(100vw - 2rem));
+    max-height:calc(100vh - 4rem);
+    overflow-y:auto;
+    background:var(--surface);
+    border:0.5px solid var(--border);
+    border-radius:20px;
+    padding:1.75rem;
+    z-index:500;
+    box-shadow:0 20px 60px rgba(0,0,0,0.4);
+    transition:transform 0.18s ease,opacity 0.18s ease;
+  }
+  .modal.open{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  .modal::-webkit-scrollbar{width:4px;}
+  .modal::-webkit-scrollbar-track{background:transparent;}
+  .modal::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;}
+  .modal-title{font-size:16px;font-weight:800;color:var(--text);}
+  .modal-close{
+    background:none;border:none;cursor:pointer;
+    font-size:20px;color:var(--text-hint);line-height:1;
+    font-family:inherit;padding:2px 6px;border-radius:6px;
+  }
+  .modal-close:hover{color:var(--text);background:var(--surface2);}
+
+  .modal-actions{display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;}
+  .btn-save{
+    font-family:'Nunito',system-ui,sans-serif;
+    font-size:14px;font-weight:800;
+    padding:8px 22px;border:none;border-radius:12px;
+    background:var(--accent);cursor:pointer;color:#fff;
+  }
   .btn-save:hover{opacity:0.85;}
-  .btn-reset{font-family:inherit;font-size:13px;padding:7px 18px;border:1px solid var(--border-mid);border-radius:7px;background:var(--surface2);cursor:pointer;color:var(--text-muted);font-weight:600;}
+  .btn-reset{
+    font-family:'Nunito',system-ui,sans-serif;
+    font-size:14px;font-weight:700;
+    padding:8px 18px;border:1.5px solid var(--border-mid);border-radius:12px;
+    background:none;cursor:pointer;color:var(--text-muted);
+  }
   .btn-reset:hover{color:var(--red);border-color:var(--box-red);}
-  .settings-list{display:flex;flex-direction:column;gap:6px;}
-  .settings-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border-radius:8px;}
-  .settings-email{font-size:12px;color:var(--text-muted);font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;}
-  .settings-arrow{font-size:12px;color:var(--text-hint);flex-shrink:0;}
-  .settings-input{font-family:inherit;font-size:13px;font-weight:600;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text);outline:none;width:120px;flex-shrink:0;}
-  .settings-input:focus{border-color:var(--accent);}
-  .settings-input::placeholder{font-weight:400;color:var(--text-hint);}
-  .settings-toggle{display:inline-flex;align-items:center;width:32px;height:17px;border-radius:9px;background:var(--border);position:relative;transition:background 0.2s;flex-shrink:0;cursor:pointer;}
-  .settings-toggle::after{content:'';position:absolute;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
-  .settings-toggle.on{background:var(--accent);}
-  .settings-toggle.on::after{left:17px;}
-  .settings-empty{font-size:13px;color:var(--text-hint);padding:1.5rem 0;text-align:center;}
-  .save-toast{display:none;font-size:12px;color:var(--green);font-weight:600;margin-left:8px;}
+  .save-toast{font-size:13px;font-weight:700;color:var(--green);display:none;margin-left:4px;}
   .save-toast.show{display:inline;}
 
-  /* ── EMPTY STATE ── */
-  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.6;}
+  .settings-list{display:flex;flex-direction:column;gap:6px;}
+  .settings-row{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 12px;background:var(--surface2);border-radius:12px;
+  }
+  .settings-email{
+    font-size:12px;font-weight:600;color:var(--text-muted);
+    font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;
+  }
+  .settings-arrow{font-size:13px;color:var(--text-hint);flex-shrink:0;}
+  .settings-input{
+    font-family:'Nunito',system-ui,sans-serif;
+    font-size:14px;font-weight:700;
+    background:var(--surface);border:1.5px solid var(--border);
+    border-radius:10px;padding:6px 12px;color:var(--text);
+    outline:none;width:120px;flex-shrink:0;
+  }
+  .settings-input:focus{border-color:var(--accent);}
+  .settings-input::placeholder{font-weight:500;color:var(--text-hint);}
+  .settings-toggle{
+    display:inline-flex;align-items:center;
+    width:34px;height:18px;border-radius:10px;
+    background:var(--border);position:relative;
+    transition:background 0.2s;flex-shrink:0;cursor:pointer;
+  }
+  .settings-toggle::after{
+    content:'';position:absolute;left:2px;
+    width:14px;height:14px;border-radius:50%;
+    background:#fff;transition:left 0.2s;
+    box-shadow:0 1px 4px rgba(0,0,0,0.25);
+  }
+  .settings-toggle.on{background:var(--accent);}
+  .settings-toggle.on::after{left:18px;}
+  .settings-empty{font-size:14px;font-weight:600;color:var(--text-hint);padding:2rem 0;text-align:center;}
 
-  /* ── DISCLAIMER ── */
-  .disclaimer{font-size:11px;color:var(--text-hint);margin-top:2rem;padding-top:1rem;border-top:0.5px solid var(--border);}
+  /* disclaimer */
+  .disclaimer{font-size:11px;font-weight:600;color:var(--text-hint);margin-top:2rem;padding-top:1rem;border-top:0.5px solid var(--border);}
 </style>
 </head>
 <body data-theme="dark">
 <div class="container">
 
-  <!-- Top bar -->
-  <div class="top-bar">
-    <div class="top-left">
-      <div class="dept-label">Shipping — DC499</div>
-      <h1><span class="live-dot"></span>Shipping Live</h1>
-      <div class="subtitle" id="subtitle">Loading...</div>
+  <!-- Controls bar — no header, just actions -->
+  <div class="controls-bar">
+    <div class="controls-left">
+      <span class="live-dot"></span>
+      <span class="run-info" id="run-info">Loading...</span>
     </div>
-    <div class="top-right">
+    <div class="controls-right">
       <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
       <div class="theme-picker" id="theme-picker">
         <button class="theme-btn" onclick="toggleThemePicker()">
           <span id="theme-label">Dark</span>
-          <span class="theme-btn-chevron">&#9660;</span>
+          <span class="theme-chevron">&#9660;</span>
         </button>
         <div class="theme-menu">
           <div class="theme-option" onclick="setTheme('dark')">Dark</div>
@@ -240,80 +349,72 @@
           <div class="theme-option" onclick="setTheme('light')">Light</div>
         </div>
       </div>
+      <button class="icon-btn" onclick="openSettings()" title="Settings">&#9881;</button>
     </div>
   </div>
 
-  <div class="stale-banner" id="stale-banner">Data is more than 15 minutes old — refresh may be needed.</div>
+  <div class="stale-banner" id="stale-banner">Data is more than 15 minutes old — hit Refresh.</div>
 
-  <!-- Tab bar -->
-  <div class="tab-bar">
-    <button class="tab-btn active" id="tab-btn-scoreboard" onclick="switchTab('scoreboard')">Scoreboard</button>
-    <button class="tab-btn" id="tab-btn-settings" onclick="switchTab('settings')">Settings</button>
+  <!-- Summary tiles -->
+  <div class="summary-tiles">
+    <div class="tile t-accent">
+      <div class="tile-label">Associates</div>
+      <div class="tile-value" id="tile-assoc">—</div>
+      <div class="tile-sub">active this shift</div>
+    </div>
+    <div class="tile t-accent">
+      <div class="tile-label">Containers</div>
+      <div class="tile-value" id="tile-total">—</div>
+      <div class="tile-sub">total deduped</div>
+    </div>
+    <div class="tile" id="tile-pace-card">
+      <div class="tile-label">Team Avg / Hr</div>
+      <div class="tile-value" id="tile-pace">—</div>
+      <div class="tile-sub" id="tile-pace-sub">vs 80 target</div>
+    </div>
+    <div class="tile t-accent">
+      <div class="tile-label">Target</div>
+      <div class="tile-value">80</div>
+      <div class="tile-sub">per person / hr</div>
+    </div>
   </div>
 
-  <!-- ── SCOREBOARD TAB ── -->
-  <div class="tab-pane active" id="tab-scoreboard">
+  <!-- Legend -->
+  <div class="legend">
+    <span><span class="legend-swatch ls-green">80</span>On pace</span>
+    <span><span class="legend-swatch ls-amber">60</span>Close</span>
+    <span><span class="legend-swatch ls-red">—</span>Behind</span>
+  </div>
 
-    <!-- Summary tiles -->
-    <div class="summary-tiles">
-      <div class="tile t-accent">
-        <div class="tile-label">Associates</div>
-        <div class="tile-value" id="tile-assoc">—</div>
-        <div class="tile-sub">active this shift</div>
-      </div>
-      <div class="tile t-accent">
-        <div class="tile-label">Total Containers</div>
-        <div class="tile-value" id="tile-total">—</div>
-        <div class="tile-sub">deduped</div>
-      </div>
-      <div class="tile" id="tile-pace-card">
-        <div class="tile-label">Team Avg / Hr</div>
-        <div class="tile-value" id="tile-pace">—</div>
-        <div class="tile-sub" id="tile-pace-sub">vs 80 target</div>
-      </div>
-      <div class="tile t-accent">
-        <div class="tile-label">Target</div>
-        <div class="tile-value">80</div>
-        <div class="tile-sub">containers / person / hr</div>
-      </div>
+  <!-- Scoreboard -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Hourly Scoreboard</span>
+      <span class="card-meta" id="card-meta"></span>
     </div>
-
-    <!-- Legend -->
-    <div class="legend">
-      <span><span class="legend-swatch ls-green">80</span>On pace</span>
-      <span><span class="legend-swatch ls-amber">60</span>Close</span>
-      <span><span class="legend-swatch ls-red">0</span>Behind</span>
+    <div class="score-wrap">
+      <div id="scoreboard-body"><div class="empty-state">Waiting for data…<br>Run dc499.bat → option 8.</div></div>
     </div>
-
-    <!-- Scoreboard -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Hourly Scoreboard</span>
-        <span class="card-meta" id="card-meta"></span>
-      </div>
-      <div class="score-wrap">
-        <div id="scoreboard-body"><div class="empty-state">Waiting for data...</div></div>
-      </div>
-    </div>
-
-  </div><!-- /tab-scoreboard -->
-
-  <!-- ── SETTINGS TAB ── -->
-  <div class="tab-pane" id="tab-settings">
-    <div class="settings-section">
-      <div class="settings-section-title">LAN ID Mapping</div>
-      <div class="settings-actions">
-        <button class="btn-save" onclick="saveSettings()">Save</button>
-        <button class="btn-reset" onclick="resetSettings()">Reset All</button>
-        <span class="save-toast" id="save-toast">Saved</span>
-      </div>
-      <div class="settings-list" id="settings-rows">
-        <div class="settings-empty">No associates yet. Run a refresh after shift starts, then come back here.</div>
-      </div>
-    </div>
-  </div><!-- /tab-settings -->
+  </div>
 
   <div class="disclaimer">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="closeSettings()"></div>
+<div class="modal" id="settings-modal">
+  <div class="modal-header">
+    <span class="modal-title">LAN ID Mapping</span>
+    <button class="modal-close" onclick="closeSettings()">&#215;</button>
+  </div>
+  <div class="modal-actions">
+    <button class="btn-save" onclick="saveSettings()">Save</button>
+    <button class="btn-reset" onclick="resetSettings()">Reset all</button>
+    <span class="save-toast" id="save-toast">Saved</span>
+  </div>
+  <div class="settings-list" id="settings-rows">
+    <div class="settings-empty">No associates yet.<br>Run a refresh after shift starts.</div>
+  </div>
 </div>
 
 <script>
@@ -327,14 +428,6 @@ const THEME_KEY    = 'shipping_theme_v1';
 const THEME_NAMES  = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr',light:'Light'};
 
 let lastData = null;
-
-// ── tabs ───────────────────────────────────────────────────────────────────────
-function switchTab(name) {
-  ['scoreboard','settings'].forEach(t => {
-    document.getElementById('tab-btn-' + t).classList.toggle('active', t === name);
-    document.getElementById('tab-' + t).classList.toggle('active', t === name);
-  });
-}
 
 // ── theme ──────────────────────────────────────────────────────────────────────
 function setTheme(t) {
@@ -353,7 +446,18 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#theme-picker')) document.getElementById('theme-picker').classList.remove('open');
 });
 
-// ── settings ───────────────────────────────────────────────────────────────────
+// ── settings modal ─────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('modal-backdrop').classList.add('open');
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('modal-backdrop').classList.remove('open');
+  document.getElementById('settings-modal').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+
+// ── settings data ──────────────────────────────────────────────────────────────
 function loadSettings() {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch { return {}; }
 }
@@ -397,13 +501,13 @@ function renderSettings(employees) {
   const settings = loadSettings();
   const container = document.getElementById('settings-rows');
   if (!employees || !employees.length) {
-    container.innerHTML = '<div class="settings-empty">No associates yet. Run a refresh after shift starts.</div>';
+    container.innerHTML = '<div class="settings-empty">No associates yet.<br>Run a refresh after shift starts.</div>';
     return;
   }
   container.innerHTML = employees.map(emp => {
-    const s    = settings[emp.employee] || {};
-    const eid  = encodeId(emp.employee);
-    const on   = s.enabled !== false;
+    const s   = settings[emp.employee] || {};
+    const eid = encodeId(emp.employee);
+    const on  = s.enabled !== false;
     return `<div class="settings-row">
       <span class="settings-email" title="${emp.employee}">${emp.employee}</span>
       <span class="settings-arrow">→</span>
@@ -420,7 +524,7 @@ function toggleEmp(eid) {
 
 // ── color logic ────────────────────────────────────────────────────────────────
 function boxClass(count) {
-  if (count >= TARGET)             return 'c-green';
+  if (count >= TARGET)                     return 'c-green';
   if (count >= Math.round(TARGET * 0.75)) return 'c-amber';
   return 'c-red';
 }
@@ -436,64 +540,56 @@ function renderScoreboard(data) {
 
   if (!visible.length) {
     document.getElementById('scoreboard-body').innerHTML =
-      '<div class="empty-state">No active associates.<br>Add LAN IDs and enable associates in the Settings tab.</div>';
+      '<div class="empty-state">No active associates.<br>Open Settings (⚙) to configure LAN IDs.</div>';
     updateTiles(0, 0, 0);
     return;
   }
 
-  // Only show hours that have started (h <= nowHour)
+  // Only show hours that have started
   const hours = (data.hours || ALL_HOURS).filter(h => h <= nowHour);
 
   if (!hours.length) {
     document.getElementById('scoreboard-body').innerHTML =
-      '<div class="empty-state">Shift hasn\'t started yet — check back at 2:15 PM.</div>';
+      '<div class="empty-state">Shift hasn\'t started yet.<br>Check back at 2:15 PM.</div>';
     updateTiles(visible.length, 0, 0);
     return;
   }
 
-  // ── header ──
+  // header
   let html = '<table><thead><tr>';
   html += '<th class="col-emp">Associate</th>';
   for (const h of hours) {
-    const isCurrent = h === nowHour;
-    html += `<th class="hcell${isCurrent?' col-hour-active':''}">${HOUR_LABELS[h] || h}</th>`;
+    html += `<th class="hcell${h===nowHour?' col-hour-active':''}">${HOUR_LABELS[h]||h}</th>`;
   }
-  html += '<th class="col-total">Total</th>';
-  html += '</tr></thead><tbody>';
+  html += '<th class="col-total">Total</th></tr></thead><tbody>';
 
-  // ── rows ──
+  // rows
   for (const emp of visible) {
     const name = displayName(emp.employee, settings);
     html += `<tr><td class="td-emp" title="${emp.employee}">${name}</td>`;
-
     for (const h of hours) {
       const count = emp.hours[h] ?? 0;
-      const cls   = boxClass(count);
-      html += `<td class="hcell"><span class="hval ${cls}">${count}</span></td>`;
+      html += `<td class="hcell"><span class="hval ${boxClass(count)}">${count}</span></td>`;
     }
-
-    // total — color by avg pace across hours shown
     const hoursWithData = hours.filter(h => (emp.hours[h] ?? 0) > 0).length;
     const avgPace = hoursWithData > 0 ? emp.total / hoursWithData : 0;
     const totalCls = emp.total === 0 ? 'c-empty' : boxClass(Math.round(avgPace));
-    html += `<td class="td-total"><span class="hval-total ${totalCls}">${emp.total}</span></td>`;
-    html += '</tr>';
+    html += `<td class="td-total"><span class="hval-total ${totalCls}">${emp.total}</span></td></tr>`;
   }
 
-  // ── team footer ──
-  html += '</tbody><tfoot><tr>';
-  html += '<td class="td-emp">Team</td>';
+  // team footer
+  html += '</tbody><tfoot><tr><td class="td-emp">Team</td>';
   for (const h of hours) {
-    const visCount     = visible.reduce((s, e) => s + (e.hours[h] ?? 0), 0);
-    const avgPerPerson = visible.length > 0 ? visCount / visible.length : 0;
-    const cls = visCount === 0 ? 'c-empty' : boxClass(Math.round(avgPerPerson));
+    const visCount = visible.reduce((s, e) => s + (e.hours[h] ?? 0), 0);
+    const avg      = visible.length > 0 ? visCount / visible.length : 0;
+    const cls      = visCount === 0 ? 'c-empty' : boxClass(Math.round(avg));
     html += `<td class="hcell"><span class="hval ${cls}">${visCount}</span></td>`;
   }
-  const visibleTotal  = visible.reduce((s, e) => s + e.total, 0);
-  const teamAvgPace   = (visible.length > 0 && hours.length > 0)
+  const visibleTotal = visible.reduce((s, e) => s + e.total, 0);
+  const teamAvgPace  = (visible.length > 0 && hours.length > 0)
     ? visibleTotal / (visible.length * hours.length) : 0;
-  const teamTotalCls  = visibleTotal === 0 ? 'c-empty' : boxClass(Math.round(teamAvgPace));
-  html += `<td class="td-total"><span class="hval-total ${teamTotalCls}">${visibleTotal}</span></td>`;
+  const teamCls = visibleTotal === 0 ? 'c-empty' : boxClass(Math.round(teamAvgPace));
+  html += `<td class="td-total"><span class="hval-total ${teamCls}">${visibleTotal}</span></td>`;
   html += '</tr></tfoot></table>';
 
   document.getElementById('scoreboard-body').innerHTML = html;
@@ -502,7 +598,7 @@ function renderScoreboard(data) {
 
 function updateTiles(assocCount, total, teamAvgPace) {
   document.getElementById('tile-assoc').textContent = assocCount || '—';
-  document.getElementById('tile-total').textContent = total || '—';
+  document.getElementById('tile-total').textContent = total      || '—';
 
   const paceCard = document.getElementById('tile-pace-card');
   const paceSub  = document.getElementById('tile-pace-sub');
@@ -525,7 +621,7 @@ function updateTiles(assocCount, total, teamAvgPace) {
 
 // ── load data ──────────────────────────────────────────────────────────────────
 async function loadData() {
-  document.getElementById('subtitle').textContent = 'Refreshing...';
+  document.getElementById('run-info').textContent = 'Refreshing...';
   try {
     const res = await fetch(DATA_URL + '?t=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -534,19 +630,19 @@ async function loadData() {
 
     const gen    = new Date(data.generated);
     const ageMs  = Date.now() - gen.getTime();
-    const genStr = gen.toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true });
+    const genStr = gen.toLocaleTimeString('en-US', {timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit',hour12:true});
 
-    document.getElementById('subtitle').textContent =
-      `${data.shift || '2nd'} shift · ${(data.employees||[]).length} associates · updated ${genStr}`;
+    document.getElementById('run-info').textContent =
+      `${data.shift||'2nd'} shift · ${(data.employees||[]).length} associates · updated ${genStr}`;
     document.getElementById('card-meta').textContent =
-      `${data.row_count || 0} rows${data.truncated ? ' ⚠ truncated' : ''}`;
+      `${data.row_count||0} rows${data.truncated?' ⚠ truncated':''}`;
     document.getElementById('stale-banner').style.display = ageMs > STALE_MS ? 'block' : 'none';
 
     renderScoreboard(data);
     renderSettings(data.employees || []);
 
   } catch (e) {
-    document.getElementById('subtitle').textContent = 'Error — ' + e.message;
+    document.getElementById('run-info').textContent = 'Error — ' + e.message;
     document.getElementById('scoreboard-body').innerHTML =
       '<div class="empty-state">Could not load shipping_live.json.<br>Run dc499.bat → option 8 first.</div>';
   }
@@ -554,8 +650,7 @@ async function loadData() {
 
 // ── init ───────────────────────────────────────────────────────────────────────
 (function init() {
-  const saved = localStorage.getItem(THEME_KEY) || 'dark';
-  setTheme(saved);
+  setTheme(localStorage.getItem(THEME_KEY) || 'dark');
   loadData();
   setInterval(loadData, 5 * 60 * 1000);
 })();
