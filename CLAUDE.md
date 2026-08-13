@@ -142,10 +142,13 @@ Writes `rfp_units` to backlog_live.json.
 1. Refresh data only (one-shot)
 2. Start live server on :3001
 3. Start live server + open Receiving Live
-4. First-time auth / re-auth
+4. First-time auth / re-auth (dc499_refresh)
 5. Ecom Live — one-shot refresh (scout_ecom_agent.js)
-6. Ecom Live — auto-refresh every 5 min
+6. Ecom Live — auto-refresh every 30 min
 7. Ecom Live — auth
+8. Shipping Live — one-shot refresh (scout_shipping_agent.js)
+9. Shipping Live — auto-refresh every 5 min
+10. Shipping Live — auth
 
 **Output JSON:** batch_status.json, backlog_live.json, shipped_live.json, tasks_live.json, retail_replen.json, totes_live.json, dock_live.json, receiving_live.json
 
@@ -231,6 +234,22 @@ Animated MP4 (`remi.mp4`) runs along top of progress bars. Files: Batches_live.h
 ## Ecom Live tab (scout_ecom_agent.js)
 
 **Agent:** scout_ecom_agent.js — launch via dc499.bat options 5/6/7 only. Output: ecom_live.json (local + GitHub).
+
+---
+
+## Shipping Live tab (scout_shipping_agent.js)
+
+**Agent:** scout_shipping_agent.js — launch via dc499.bat options 8/9/10 only. Output: shipping_live.json (local + GitHub).
+
+**Transaction types:** NRDR CORE PALLETIZE OLPN, FLOOR LOAD PALLETIZE OLPN
+
+**Dedup:** Employee + Container ID — earliest PDT hour attribution. Hourly target: 80 containers/person/hour.
+
+**Shift:** 2nd shift only (2:15 PM PDT start = 21:15 UTC). Hours 14–21 PDT.
+
+**4-tier color scale:** 0=grey (–), 1–39=red, 40–59=orange, 60–79=lime, 80+=green
+
+**HOUR_LABELS bug (fixed):** Shipping_live.html was referencing undefined `HOUR_LABELS[h]` — corrected to call `hourLabel(h)` function.
 
 **Query table:** TSK_ACTIVITY_TRACKING. Row columns aliased to CSV names: Employee, Transaction ID, Activity Datetime, Quantity, Completed Quantity, CP Trace Id, Container ID, Current Location, Previous Location, Criteria.
 

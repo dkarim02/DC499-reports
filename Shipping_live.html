@@ -522,7 +522,7 @@ function renderScoreboard(data) {
   let html = '<table><thead><tr>';
   html += '<th class="col-emp">Associate</th>';
   for (const h of hours) {
-    html += `<th class="hcell${h===nowHour?' col-hour-active':''}">${HOUR_LABELS[h]||h}</th>`;
+    html += `<th class="hcell${h===nowHour?' col-hour-active':''}">${hourLabel(h)}</th>`;
   }
   html += '<th class="col-total">Total</th></tr></thead><tbody>';
 
