@@ -47,7 +47,7 @@ async function doAuthFlow() {
     scope:'openid offline_access', prompt:'consent',
     resource:`${MCP_BASE}/mcp`,
   });
-  const opener = process.platform === 'win32' ? 'start ""' : 'open';
+  const opener = process.platform === 'win32' ? 'start ""' : process.platform === 'darwin' ? 'open' : 'xdg-open';
   try { execSync(`${opener} "${authUrl}"`); } catch {}
   console.log('Browser opened. Waiting for callback...');
   const code = await waitForCode(state);

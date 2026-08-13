@@ -1181,7 +1181,7 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
   AND o.MAXIMUM_STATUS  = '2090'
   AND NOT EXISTS (
     SELECT 1
-    FROM default_pickpack.TSK_TASK_DETAIL td
+    FROM default_task.TSK_TASK_DETAIL td
     WHERE td.FACILITY_ID         = '${FACILITY}'
       AND td.ORDER_ID            = o.ORDER_ID
       AND td.RESOURCE_BATCH_ID   IS NOT NULL
@@ -1381,7 +1381,7 @@ async function notifyNewCleared(batchStatusData) {
   saveSentBatches(new Set([...sent, ...newOnes.map(b => b.batch_id)]));
   try {
     const webhook = TEAMS_WEBHOOKS_BATCHES[getShiftLabel()] || TEAMS_WEBHOOKS_BATCHES['2nd'];
-  await jsonPost(webhook, JSON.stringify(card), { 'Content-Type': 'application/json' });
+    await jsonPost(webhook, JSON.stringify(card), { 'Content-Type': 'application/json' });
     console.log(`[${ts()}] ✓ Teams — notified ${newOnes.length} newly cleared batch(es)`);
   } catch (e) {
     console.warn(`[${ts()}]   Teams batch notify failed: ${e.message}`);
@@ -1653,7 +1653,7 @@ async function queryAndWrite(accessToken) {
 
   if (shippedData) {
     fs.writeFileSync(SHIPPED_FILE, JSON.stringify(shippedData, null, 4));
-    console.log(`[${ts()}] ✓ shipped_live.json — ${shippedData.shipped_olpns} oLPNs, ${shippedData.shipped_orders} orders`);
+    console.log(`[${ts()}] ✓ shipped_live.json — ${shippedData.shipped_olpns} oLPNs, ${shippedData.shipped_units} units`);
   }
 
   gitPush();
