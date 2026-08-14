@@ -209,7 +209,7 @@ function makeDummyEmployees(seed) {
   return emps;
 }
 function makeDummyDay(pickTotal, replenTotal, putawayTotal, seed) {
-  var emps = makeDummyEmployees(seed);
+  var emps = makeDummyEmployees(seed || pickTotal);
   // Scale employees so their sum roughly matches totals
   var rawPick = 0, rawReplen = 0, rawPutaway = 0;
   Object.values(emps).forEach(function(e) { rawPick += e.pick_f1 + e.pick_f2; rawReplen += e.replen; rawPutaway += e.putaway; });
@@ -232,15 +232,14 @@ var DUMMY_DAYS_BASE = [
   { pick:1510, pick_f1:910,  pick_f2:600, replen:400, putaway:102, headcount:12, hc:{pick:7,pick2:0,replen:3,putaway:2}, shift_hours:8, logged:'10:52 PM' },
 ];
 function reseedDummy() {
-  var mon = weekMonday(new Date());
+  var mon = weekMonday(todayISO());
   var seed = { _weekMon: mon };
+  var dates = weekDates();
   DUMMY_DAYS_BASE.forEach(function(base, idx) {
-    if (idx >= 4) return;
-    var d = new Date(mon + 'T00:00:00');
-    d.setDate(d.getDate() + idx);
-    var dk = d.toLocaleDateString('en-CA');
+    if (idx >= dates.length) return;
+    var dk = dates[idx];
     var day = Object.assign({}, base);
-    day.employees = makeDummyDay(day.pick_f1, day.pick_f2, day.replen, day.putaway, idx * 7 + 13);
+    day.employees = makeDummyDay(day.pick, day.replen, day.putaway, idx * 7 + 13);
     seed[dk] = day;
   });
   saveWeeklyData(seed);
