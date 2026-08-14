@@ -108,7 +108,7 @@ h1{font-size:19px;font-weight:500;margin-bottom:3px;}
 .chart-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 12px 10px;}
 .chart-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;}
 .chart-week-total{font-size:18px;font-weight:600;line-height:1;margin-bottom:12px;}
-.chart-legend{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.chart-legend{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;min-height:16px;}
 .chart-legend-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--text-muted);}
 .chart-legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .chart-bars{display:flex;align-items:flex-end;gap:6px;height:130px;}
@@ -384,13 +384,13 @@ function render() {
     h += '<div class="chart-card">';
     h += '<div class="chart-title" style="color:'+color+';">'+title+'</div>';
     h += '<div class="chart-week-total" style="color:'+color+';">'+weekTotal.toLocaleString()+'</div>';
+    h += '<div class="chart-legend">';
     if (legendItems) {
-      h += '<div class="chart-legend">';
       legendItems.forEach(function(l) {
         h += '<div class="chart-legend-item"><div class="chart-legend-dot" style="background:'+l.color+';"></div>'+l.label+'</div>';
       });
-      h += '</div>';
     }
+    h += '</div>';
     h += '<div class="chart-bars">';
     h += barsFn(maxV);
     h += '</div></div>';
@@ -424,7 +424,7 @@ function render() {
       out += '<div class="chart-bar-wrap">';
       if (s && total > 0) {
         out += '<div class="chart-bar'+dc+'" style="height:'+totalPct+'%;width:100%;display:flex;flex-direction:column;border-radius:3px 3px 0 0;overflow:hidden;">';
-        out += '<div style="flex:'+f2pct+';background:#22B8D4;min-height:2px;"></div>';
+        out += '<div style="flex:'+f2pct+';background:#67E8F9;min-height:2px;"></div>';
         out += '<div style="flex:'+f1pct+';background:#0891B2;min-height:2px;"></div>';
         out += '</div>';
       } else {
@@ -435,7 +435,7 @@ function render() {
       out += '</div>';
     });
     return out;
-  }, [{color:'#0891B2',label:'F1'},{color:'#22B8D4',label:'F2'}]);
+  }, [{color:'#0891B2',label:'F1 — Floor 1'},{color:'#67E8F9',label:'F2 — Floor 2'}]);
 
   // Chart 2: Replen
   var replenWeekTotal = 0;
