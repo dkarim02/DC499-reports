@@ -1809,6 +1809,12 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       res.end(fs.existsSync(ecomFile) ? fs.readFileSync(ecomFile) : '{}');
       return;
     }
+    if (url.pathname === '/reserve_live.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      const reserveFile = path.join(REPORT_DIR, 'reserve_live.json');
+      res.end(fs.existsSync(reserveFile) ? fs.readFileSync(reserveFile) : '{}');
+      return;
+    }
 
     // serve HTML files
     const fileMap = {
@@ -1824,6 +1830,8 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       '/Menu_v1.6.html':      'Menu_v1.6.html',
       '/Changelog.html':      'Changelog.html',
       '/EOS_live.html':       'EOS_live.html',
+      '/Reserve_v1_7.html':   'Reserve_v1_7.html',
+      '/Shipping_live.html':  'Shipping_live.html',
     };
     const file = fileMap[url.pathname];
     if (file) {
