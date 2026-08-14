@@ -207,6 +207,22 @@
   .tab.active-pick2{color:#D97706;border-bottom-color:#D97706;font-weight:500;}
   .tab.active-putaway{color:#059669;border-bottom-color:#059669;font-weight:500;}
   .tab.active-full{color:#0891B2;border-bottom-color:#0891B2;font-weight:500;}
+  .tab.active-weekly{color:#7F77DD;border-bottom-color:#7F77DD;font-weight:500;}
+  .nail-btn-rs{font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #1a6b2f;border-radius:6px;background:#e6f4eb;color:#1a6b2f;cursor:pointer;font-weight:600;}
+  .nail-btn-rs:hover{background:#c8e8d0;}
+  [data-theme="dark"] .nail-btn-rs{background:#0d3a1e;color:#7fe09b;border-color:#2a8a45;}
+  [data-theme="dark"] .nail-btn-rs:hover{background:#1a5c30;}
+  .log-day-btn{font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #7F77DD;border-radius:6px;background:#EEEDFE;color:#534AB7;cursor:pointer;font-weight:600;}
+  .log-day-btn:hover{background:#CECBF6;}
+  [data-theme="dark"] .log-day-btn{background:#3C3489;color:#CECBF6;border-color:#7F77DD;}
+  [data-theme="dark"] .log-day-btn:hover{background:#534AB7;color:#fff;}
+  .weekly-grid-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .weekly-grid-table th{text-align:right;font-size:11px;font-weight:500;color:var(--text-muted);padding:6px 10px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;}
+  .weekly-grid-table th:first-child{text-align:left;}
+  .weekly-grid-table td{text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border-light);font-size:13px;font-weight:500;color:var(--text);}
+  .weekly-grid-table td:first-child{text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;}
+  .weekly-grid-table tr:last-child td{border-bottom:none;font-weight:600;}
+  .weekly-today-col{background:rgba(8,145,178,0.05);}
   .progress-fill-pick2{height:100%;border-radius:4px;background:#D97706;transition:width 0.4s;}
   .progress-fill-putaway{height:100%;border-radius:4px;background:#059669;transition:width 0.4s;}
   .bar-fill-pick2{height:100%;border-radius:4px;background:#D97706;}
@@ -302,6 +318,7 @@
     <div class="tabs-left">
       <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
       <button class="tab" id="tab-live" onclick="switchTab('live')" style="color:var(--text-muted);">&#x26A1; Live</button>
+      <button class="tab" id="tab-weekly" onclick="switchTab('weekly')" style="color:var(--text-muted);">&#x1F4C5; Weekly</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -329,10 +346,28 @@
         <div style="font-size:15px;font-weight:600;color:var(--text);">&#x26A1; Reserve Live</div>
         <div style="font-size:12px;color:var(--text-hint);margin-top:2px;" id="live-meta">Loading...</div>
       </div>
-      <button onclick="loadLiveData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="nail-btn-rs" id="nail-btn-rs" onclick="nailFromLiveRS(this)">&#x1F4CC; NAIL</button>
+        <button class="log-day-btn" onclick="logDay(this)">&#x1F4C5; Log Day</button>
+        <button onclick="loadLiveData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
+      </div>
     </div>
     <div id="live-content">
       <div class="full-empty">Loading live data...</div>
+    </div>
+  </div>
+
+  <!-- WEEKLY RECAP TAB -->
+  <div class="tab-panel" id="panel-weekly">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);">&#x1F4C5; Weekly Recap</div>
+        <div style="font-size:12px;color:var(--text-hint);margin-top:2px;" id="weekly-meta">Mon – Fri · saved locally</div>
+      </div>
+      <button onclick="clearWeeklyData()" style="font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #A32D2D;border-radius:6px;background:#fcebeb;color:#A32D2D;cursor:pointer;">&#x21BA; Clear Week</button>
+    </div>
+    <div id="weekly-content">
+      <div class="full-empty">No data logged yet — use Log Day on the Live tab to capture today's shift.</div>
     </div>
   </div>
 
@@ -490,13 +525,15 @@ function toggleDark() { applyTheme(document.documentElement.getAttribute('data-t
 function switchTab(tab) {
   document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
   document.getElementById('tab-live').className = 'tab' + (tab === 'live' ? ' active-full' : '');
+  document.getElementById('tab-weekly').className = 'tab' + (tab === 'weekly' ? ' active-weekly' : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['full','live','settings'].forEach(function(t) {
+  ['full','live','weekly','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
   if (tab === 'settings') { renderRoster(); renderGoalsCard(); }
   if (tab === 'full') { renderFullReport(); }
   if (tab === 'live') { loadLiveData(); }
+  if (tab === 'weekly') { renderWeeklyRecap(); }
 }
 
 // ── ROSTER ──────────────────────────────────────────────
@@ -1645,11 +1682,222 @@ function addTMFromLive(emp) {
   if (rsLiveData) renderLiveReport(rsLiveData);
 }
 
+// ── NAIL THE PLAN (Reserve → Retail tab) ───────────────
+var NTP_KEY  = 'ntp_dc499_v1';
+var NTP_FILE = 'dc499-nail-the-plan 32.html';
+
+// Mirror of NTP's currentBlock() — must stay in sync
+var NTP_BLOCKS = [
+  { shift:'1st', cp:'Midday', startH:10, startM:1,  endH:15, endM:0  },
+  { shift:'1st', cp:'EOD',    startH:15, startM:1,  endH:20, endM:0  },
+  { shift:'2nd', cp:'Midday', startH:14, startM:16, endH:20, endM:0  },
+  { shift:'2nd', cp:'EOD',    startH:20, startM:1,  endH:25, endM:30 },
+];
+function ntpCurrentBlockRS() {
+  var pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  var cur = pst.getHours() * 60 + pst.getMinutes();
+  var curAdj = pst.getHours() < 2 ? cur + 24 * 60 : cur;
+  for (var i = 0; i < NTP_BLOCKS.length; i++) {
+    var b = NTP_BLOCKS[i];
+    var s = b.startH * 60 + b.startM, e = b.endH * 60 + b.endM;
+    if (curAdj >= s && curAdj <= e) return b;
+  }
+  return null;
+}
+function nailFromLiveRS(btn) {
+  if (!rsLiveData || !rsLiveData.associates) { alert('No live data — run Option 11 in dc499.bat first.'); return; }
+  var block = ntpCurrentBlockRS();
+  if (!block) { alert('Outside shift hours — no active Nail the Plan checkpoint right now.'); return; }
+  var cpKey = block.shift + '|' + block.cp;
+  var TEAM  = getTeamSet();
+  var pick = 0, replen = 0, putaway = 0;
+  Object.keys(rsLiveData.associates).forEach(function(emp) {
+    if (!TEAM.has(emp)) return;
+    var a = rsLiveData.associates[emp];
+    pick    += (a.pick_f1 || 0) + (a.pick_f2 || 0);
+    replen  += (a.replen  || 0);
+    putaway += (a.putaway || 0);
+  });
+  var state;
+  try { state = JSON.parse(localStorage.getItem(NTP_KEY) || 'null'); } catch(e) { state = null; }
+  if (!state)             state = {};
+  if (!state.data)        state.data = {};
+  if (!state.meta)        state.meta = { date: new Date().toLocaleDateString('en-CA'), updatedAt: null };
+  if (!state.data['Retail']) state.data['Retail'] = {};
+  [
+    { proc: 'Retail OUT', val: pick    },
+    { proc: 'Retail IN',  val: replen + putaway },
+  ].forEach(function(entry) {
+    if (!state.data['Retail'][entry.proc]) state.data['Retail'][entry.proc] = {};
+    var rec = state.data['Retail'][entry.proc][cpKey] || {};
+    if (entry.val > 0) rec.act_u = entry.val;
+    state.data['Retail'][entry.proc][cpKey] = rec;
+  });
+  state.meta.updatedAt = new Date().toISOString();
+  try { localStorage.setItem(NTP_KEY, JSON.stringify(state)); } catch(e) { alert('Could not write to localStorage.'); return; }
+  if (btn) { btn.textContent = '✓ Nailed'; btn.disabled = true; setTimeout(function(){ btn.textContent = '📌 NAIL'; btn.disabled = false; }, 3000); }
+  var base = window.location.href.replace(/\/[^\/]*$/, '/');
+  window.open(base + NTP_FILE, '_blank');
+}
+
+// ── WEEKLY RECAP ────────────────────────────────────────
+var RS_WEEKLY_KEY = 'rs_weekly_v1';
+var WEEK_DAYS = ['Mon','Tue','Wed','Thu','Fri'];
+
+function weekMonday(d) {
+  var dt = new Date(d);
+  var day = dt.getDay(); // 0=Sun,1=Mon,...
+  var diff = (day === 0) ? -6 : 1 - day;
+  dt.setDate(dt.getDate() + diff);
+  return dt.toLocaleDateString('en-CA');
+}
+function todayISO() {
+  return new Date().toLocaleDateString('en-CA');
+}
+function isSunday() {
+  return new Date().getDay() === 0;
+}
+function loadWeeklyData() {
+  try {
+    var raw = localStorage.getItem(RS_WEEKLY_KEY);
+    if (!raw) return {};
+    var obj = JSON.parse(raw);
+    // Reset if stored week doesn't match current week
+    var curMon = weekMonday(new Date());
+    if (obj._weekMon && obj._weekMon !== curMon) {
+      if (isSunday()) { localStorage.removeItem(RS_WEEKLY_KEY); return {}; }
+    }
+    return obj;
+  } catch(e) { return {}; }
+}
+function saveWeeklyData(obj) {
+  try { localStorage.setItem(RS_WEEKLY_KEY, JSON.stringify(obj)); } catch(e) {}
+}
+function logDay(btn) {
+  if (!rsLiveData || !rsLiveData.associates) { alert('No live data — run Option 11 in dc499.bat first, then refresh.'); return; }
+  var TEAM = getTeamSet();
+  var pick = 0, replen = 0, putaway = 0;
+  Object.keys(rsLiveData.associates).forEach(function(emp) {
+    if (!TEAM.has(emp)) return;
+    var a = rsLiveData.associates[emp];
+    pick    += (a.pick_f1 || 0) + (a.pick_f2 || 0);
+    replen  += (a.replen  || 0);
+    putaway += (a.putaway || 0);
+  });
+  var dateKey = todayISO();
+  var weekly  = loadWeeklyData();
+  weekly._weekMon = weekMonday(new Date());
+  weekly[dateKey] = { pick: pick, replen: replen, putaway: putaway, logged: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Los_Angeles'}) };
+  saveWeeklyData(weekly);
+  if (btn) { btn.textContent = '✓ Logged'; btn.disabled = true; setTimeout(function(){ btn.textContent = '📅 Log Day'; btn.disabled = false; }, 2500); }
+  if (document.getElementById('panel-weekly').className.includes('active')) renderWeeklyRecap();
+}
+function clearWeeklyData() {
+  if (!confirm('Clear all weekly data?')) return;
+  try { localStorage.removeItem(RS_WEEKLY_KEY); } catch(e) {}
+  renderWeeklyRecap();
+}
+function renderWeeklyRecap() {
+  var content = document.getElementById('weekly-content');
+  if (!content) return;
+  var weekly  = loadWeeklyData();
+  var curMon  = weekMonday(new Date());
+  // Build Mon-Fri date keys for this week
+  var weekDates = [];
+  for (var i = 0; i < 5; i++) {
+    var d = new Date(curMon + 'T00:00:00');
+    d.setDate(d.getDate() + i);
+    weekDates.push(d.toLocaleDateString('en-CA'));
+  }
+  var todayKey = todayISO();
+  var hasAny = weekDates.some(function(dk) { return weekly[dk]; });
+  var html = '';
+  if (!hasAny) {
+    html = '<div class="full-empty" style="padding:3rem;">No shifts logged this week.<br><small style="color:var(--text-hint);">Go to the Live tab, load live data, then tap Log Day at the end of each shift.</small></div>';
+    content.innerHTML = html;
+    return;
+  }
+  html += '<div class="card">';
+  html += '<table class="weekly-grid-table"><thead><tr>';
+  html += '<th>Metric</th>';
+  weekDates.forEach(function(dk, i) {
+    var isToday = dk === todayKey;
+    html += '<th class="' + (isToday ? 'weekly-today-col' : '') + '">' + WEEK_DAYS[i] + (isToday ? ' <span style="color:#0891B2;">&#x25CF;</span>' : '') + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+  var rows = [
+    { label: 'Picking', field: 'pick', color: '#0891B2' },
+    { label: 'Replen',  field: 'replen', color: '#6366F1' },
+    { label: 'Putaway', field: 'putaway', color: '#059669' },
+  ];
+  var totals = { pick: 0, replen: 0, putaway: 0, grand: 0 };
+  rows.forEach(function(row) {
+    html += '<tr>';
+    html += '<td style="color:' + row.color + ';">' + row.label + '</td>';
+    weekDates.forEach(function(dk, i) {
+      var snap = weekly[dk];
+      var val  = snap ? (snap[row.field] || 0) : null;
+      var isToday = dk === todayKey;
+      if (val == null) {
+        html += '<td class="' + (isToday ? 'weekly-today-col' : '') + '" style="color:var(--text-hint);">–</td>';
+      } else {
+        totals[row.field] += val;
+        totals.grand += val;
+        html += '<td class="' + (isToday ? 'weekly-today-col' : '') + '">' + val.toLocaleString() + '</td>';
+      }
+    });
+    html += '</tr>';
+  });
+  // Grand total row
+  html += '<tr style="border-top:0.5px solid var(--border);">';
+  html += '<td>Total</td>';
+  weekDates.forEach(function(dk, i) {
+    var snap = weekly[dk];
+    var isToday = dk === todayKey;
+    if (!snap) {
+      html += '<td class="' + (isToday ? 'weekly-today-col' : '') + '" style="color:var(--text-hint);">–</td>';
+    } else {
+      var grand = (snap.pick||0) + (snap.replen||0) + (snap.putaway||0);
+      html += '<td class="' + (isToday ? 'weekly-today-col' : '') + '">' + grand.toLocaleString() + '</td>';
+    }
+  });
+  html += '</tr>';
+  html += '</tbody></table>';
+  // Logged-at timestamps
+  var loggedLine = weekDates.map(function(dk, i) {
+    var snap = weekly[dk];
+    return snap && snap.logged ? WEEK_DAYS[i] + ' @ ' + snap.logged : null;
+  }).filter(Boolean).join(' · ');
+  if (loggedLine) html += '<div style="font-size:11px;color:var(--text-hint);margin-top:10px;">' + loggedLine + '</div>';
+  html += '</div>';
+  content.innerHTML = html;
+}
+
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
 setShift(getShift());
 renderRoster();
 renderHeadcountCard();
+// ── SEED DUMMY WEEKLY DATA (for testing — remove after first real week) ──
+(function() {
+  var existing = localStorage.getItem(RS_WEEKLY_KEY);
+  if (existing) return; // don't overwrite real data
+  var mon = weekMonday(new Date());
+  var seed = { _weekMon: mon };
+  var offsets = [0,1,2]; // Mon, Tue, Wed
+  var dummies = [
+    { pick: 1420, replen: 380, putaway: 95, logged: '10:41 PM' },
+    { pick: 1650, replen: 410, putaway: 110, logged: '10:38 PM' },
+    { pick: 1380, replen: 355, putaway: 88, logged: '10:45 PM' },
+  ];
+  offsets.forEach(function(off, idx) {
+    var d = new Date(mon + 'T00:00:00');
+    d.setDate(d.getDate() + off);
+    seed[d.toLocaleDateString('en-CA')] = dummies[idx];
+  });
+  saveWeeklyData(seed);
+})();
+
 setInterval(function() {
   if (document.getElementById('panel-live').className.includes('active')) loadLiveData();
 }, 5 * 60 * 1000);
