@@ -300,10 +300,13 @@
       <p style="font-size:11px;color:#0891B2;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">Reserve Stock</p>
       <p class="subtitle" id="main-subtitle">2nd Shift · Upload a CSV to get started</p>
     </div>
-    <button class="dark-toggle" onclick="toggleDark()">
-      <span id="toggle-label">Dark mode</span>
-      <div class="toggle-track"><div class="toggle-thumb"></div></div>
-    </button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="openWeeklyRecap()" style="font-family:inherit;font-size:12px;padding:6px 12px;border:0.5px solid #7F77DD;border-radius:8px;background:var(--surface);color:#7F77DD;cursor:pointer;white-space:nowrap;">&#x1F4C5; Weekly Recap</button>
+      <button class="dark-toggle" onclick="toggleDark()">
+        <span id="toggle-label">Dark mode</span>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </button>
+    </div>
   </div>
 
   <div class="tabs">
@@ -340,7 +343,6 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="nail-btn-rs" id="nail-btn-rs" onclick="nailFromLiveRS(this)">&#x1F4CC; NAIL</button>
         <button class="log-day-btn" onclick="logDay(this)">&#x1F4C5; Log Day</button>
-        <button onclick="openWeeklyRecap()" style="font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #7F77DD;border-radius:6px;background:var(--surface);color:#7F77DD;cursor:pointer;">&#x1F4CA; Weekly</button>
         <button onclick="loadLiveData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
       </div>
     </div>
