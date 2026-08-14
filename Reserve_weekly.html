@@ -174,7 +174,7 @@ function loadWeeklyData() {
     var raw = localStorage.getItem(RS_WEEKLY_KEY);
     if (!raw) return {};
     var obj = JSON.parse(raw);
-    var curMon = weekMonday(new Date());
+    var curMon = weekMonday(todayISO());
     if (obj._weekMon && obj._weekMon !== curMon && isSunday()) {
       localStorage.removeItem(RS_WEEKLY_KEY); return {};
     }
@@ -284,7 +284,7 @@ function render() {
   // subtitle
   var sub = document.getElementById('wk-subtitle');
   if (sub) {
-    var mon = weekMonday(new Date());
+    var mon = weekMonday(todayISO());
     sub.textContent = 'Week of ' + new Date(mon + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · Reserve Stock';
   }
 
