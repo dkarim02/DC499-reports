@@ -160,7 +160,8 @@
   }
   th.col-emp{text-align:left;padding-left:8px;}
   th.col-total{border-left:1.5px solid var(--border-mid);padding-left:8px;padding-right:8px;}
-  th.col-hour-active{color:var(--text);}
+  th.col-hour-active{color:var(--accent);background:var(--accent-bg);border-bottom-color:var(--accent);}
+  td.col-hour-active{background:var(--accent-bg);}
   td{padding:0;border-bottom:0.5px solid var(--border-light);vertical-align:middle;white-space:nowrap;}
   tr:last-child td{border-bottom:none;}
 
@@ -532,8 +533,8 @@ function renderScoreboard(data) {
     for (const h of hours) {
       const count = emp.hours[h] ?? 0;
       const cls   = boxClass(count);
-      // zeros render empty (grey box, no number)
-      html += `<td class="hcell"><span class="hval ${cls}">${count === 0 ? '–' : count}</span></td>`;
+      const active = h === nowHour ? ' col-hour-active' : '';
+      html += `<td class="hcell${active}"><span class="hval ${cls}">${count === 0 ? '–' : count}</span></td>`;
     }
     const hoursWithData = hours.filter(h => (emp.hours[h] ?? 0) > 0).length;
     const avgPace  = hoursWithData > 0 ? emp.total / hoursWithData : 0;
@@ -546,7 +547,8 @@ function renderScoreboard(data) {
     const visCount = visible.reduce((s, e) => s + (e.hours[h] ?? 0), 0);
     const avg      = visible.length > 0 ? visCount / visible.length : 0;
     const cls      = visCount === 0 ? 'c-empty' : boxClass(Math.round(avg));
-    html += `<td class="hcell"><span class="hval ${cls}">${visCount === 0 ? '–' : visCount}</span></td>`;
+    const active   = h === nowHour ? ' col-hour-active' : '';
+    html += `<td class="hcell${active}"><span class="hval ${cls}">${visCount === 0 ? '–' : visCount}</span></td>`;
   }
   const visibleTotal = visible.reduce((s, e) => s + e.total, 0);
   const teamAvgPace  = (visible.length > 0 && hours.length > 0)
