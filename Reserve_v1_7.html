@@ -1440,16 +1440,32 @@ function clickLiveTile(typ) {
   if (rsLiveData) renderLiveReport(rsLiveData);
 }
 
+var RS_GH_BASE = 'https://dkarim02.github.io/DC499-reports';
+
 function loadLiveData() {
   var meta = document.getElementById('live-meta');
   var content = document.getElementById('live-content');
   if (meta) meta.textContent = 'Fetching...';
-  fetch(getLiveBase() + '/reserve_live.json?_=' + Date.now())
+
+  var suffix = '/reserve_live.json?_=' + Date.now();
+  var primaryUrl = getLiveBase() + suffix;
+  var fallbackUrl = RS_GH_BASE + suffix;
+
+  function handleData(d) { rsLiveData = d; renderLiveReport(d); }
+  function handleError(e) {
+    if (content) content.innerHTML = '<div class="full-empty">Could not load reserve_live.json — run Option 11 in dc499.bat first.<br><small style="color:var(--text-hint);">' + e.message + '</small></div>';
+    if (meta) meta.textContent = 'Error loading data';
+  }
+
+  fetch(primaryUrl)
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(d) { rsLiveData = d; renderLiveReport(d); })
-    .catch(function(e) {
-      if (content) content.innerHTML = '<div class="full-empty">Could not load reserve_live.json — run Option 11 in dc499.bat first.<br><small style="color:var(--text-hint);">' + e.message + '</small></div>';
-      if (meta) meta.textContent = 'Error loading data';
+    .then(handleData)
+    .catch(function() {
+      // localhost not available — fall back to GitHub Pages
+      fetch(fallbackUrl)
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(handleData)
+        .catch(handleError);
     });
 }
 
