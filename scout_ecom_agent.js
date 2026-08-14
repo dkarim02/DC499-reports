@@ -292,28 +292,21 @@ ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 async function fetchEcomLive(accessToken) {
   const { utc: shiftStart, label: shift } = shiftStartUtc();
 
-  console.log(`[${ts()}] Querying Group A (replen/putaway) since ${shiftStart}...`);
-  const respA = await mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_A));
+  console.log(`[${ts()}] Querying Groups A-D in parallel since ${shiftStart}...`);
+  const [respA, respB, respC, respD] = await Promise.all([
+    mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_A)),
+    mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_B)),
+    mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_C)),
+    mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_D)),
+  ]);
   const rowsA = respA.rows || [];
-  console.log(`[${ts()}] Group A: ${rowsA.length} rows`);
-  if (rowsA.length >= 9500) console.warn(`[${ts()}] ⚠ Group A hit row cap — replen/putaway may be truncated`);
-
-  console.log(`[${ts()}] Querying Group B (picking)...`);
-  const respB = await mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_B));
   const rowsB = respB.rows || [];
-  console.log(`[${ts()}] Group B: ${rowsB.length} rows`);
-  if (rowsB.length >= 9500) console.warn(`[${ts()}] ⚠ Group B hit row cap — picking may be truncated`);
-
-  console.log(`[${ts()}] Querying Group C (packing)...`);
-  const respC = await mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_C));
   const rowsC = respC.rows || [];
-  console.log(`[${ts()}] Group C: ${rowsC.length} rows`);
-  if (rowsC.length >= 9500) console.warn(`[${ts()}] ⚠ Group C hit row cap — packing may be truncated`);
-
-  console.log(`[${ts()}] Querying Group D (shipping/sorting)...`);
-  const respD = await mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_D));
   const rowsD = respD.rows || [];
-  console.log(`[${ts()}] Group D: ${rowsD.length} rows`);
+  console.log(`[${ts()}] Group A: ${rowsA.length}  B: ${rowsB.length}  C: ${rowsC.length}  D: ${rowsD.length}`);
+  if (rowsA.length >= 9500) console.warn(`[${ts()}] ⚠ Group A hit row cap — replen/putaway may be truncated`);
+  if (rowsB.length >= 9500) console.warn(`[${ts()}] ⚠ Group B hit row cap — picking may be truncated`);
+  if (rowsC.length >= 9500) console.warn(`[${ts()}] ⚠ Group C hit row cap — packing may be truncated`);
   if (rowsD.length >= 9500) console.warn(`[${ts()}] ⚠ Group D hit row cap — shipping/sorting may be truncated`);
 
   const rows = rowsA.concat(rowsB, rowsC, rowsD);

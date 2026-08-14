@@ -294,23 +294,26 @@ async function fetchReserveLive(accessToken) {
   const totals     = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0 };
   const rowCounts  = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0 };
 
-  for (const group of RS_GROUPS) {
-    console.log(`[${ts()}] Querying ${group.label}...`);
+  console.log(`[${ts()}] Querying all groups in parallel...`);
+  const results = await Promise.all(RS_GROUPS.map(async group => {
     try {
       const resp = await mcpQuery(accessToken, buildGroupSql(shiftStart, group));
-      const rows = resp.rows || [];
-      console.log(`[${ts()}] ${group.label}: ${rows.length} associates`);
-      rowCounts[group.key] = rows.length;
-
-      for (const row of rows) {
-        const emp = row.Employee;
-        const qty = Math.round(Number(row.total_qty) || 0);
-        if (!associates[emp]) associates[emp] = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0 };
-        associates[emp][group.key] = qty;
-        totals[group.key] += qty;
-      }
+      return { group, rows: resp.rows || [] };
     } catch (e) {
       console.error(`[${ts()}] ${group.label} query failed:`, e.message);
+      return { group, rows: [] };
+    }
+  }));
+
+  for (const { group, rows } of results) {
+    console.log(`[${ts()}] ${group.label}: ${rows.length} associates`);
+    rowCounts[group.key] = rows.length;
+    for (const row of rows) {
+      const emp = row.Employee;
+      const qty = Math.round(Number(row.total_qty) || 0);
+      if (!associates[emp]) associates[emp] = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0 };
+      associates[emp][group.key] = qty;
+      totals[group.key] += qty;
     }
   }
 
