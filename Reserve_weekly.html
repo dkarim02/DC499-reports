@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reserve Weekly Recap</title>
+<style>
+:root{--bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;--text:#1a1a1a;--text-muted:#666;--text-hint:#888;--bar-bg:#e5e5e5;}
+[data-theme="dark"]{--bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;--text:#f0f0ee;--text-muted:#999;--text-hint:#777;--bar-bg:#3a3a3a;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
+.container{max-width:760px;margin:0 auto;}
+.top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;gap:12px;flex-wrap:wrap;}
+h1{font-size:19px;font-weight:500;margin-bottom:3px;}
+.subtitle{font-size:13px;color:var(--text-muted);}
+.dark-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
+.dark-toggle:hover{background:var(--surface2);}
+.toggle-track{width:28px;height:16px;border-radius:8px;background:var(--bar-bg);position:relative;transition:background 0.2s;flex-shrink:0;}
+.toggle-thumb{width:12px;height:12px;border-radius:50%;background:var(--text-hint);position:absolute;top:2px;left:2px;transition:left 0.2s,background 0.2s;}
+[data-theme="dark"] .toggle-track{background:#534AB7;}
+[data-theme="dark"] .toggle-thumb{left:14px;background:#fff;}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+/* ── summary strip ── */
+.sum-strip{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:1rem;}
+@media(min-width:480px){.sum-strip{grid-template-columns:repeat(4,1fr);}}
+.sum-tile{background:var(--surface2);border-radius:10px;padding:12px 10px;text-align:center;}
+.sum-label{font-size:9px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;}
+.sum-val{font-size:22px;font-weight:600;color:var(--text);line-height:1;}
+.sum-sub{font-size:10px;color:var(--text-hint);margin-top:3px;}
+/* ── day cards ── */
+.day-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
+.day-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px 8px;text-align:center;cursor:pointer;transition:all 0.15s;position:relative;min-height:88px;display:flex;flex-direction:column;align-items:center;}
+.day-card:hover{border-color:#7F77DD;background:var(--surface2);}
+.day-card.active{border-color:#7F77DD;box-shadow:0 0 0 3px rgba(127,119,221,0.15);}
+.day-card.today{border-color:#0891B2;}
+.day-card.today.active{border-color:#7F77DD;}
+.day-card.empty{opacity:0.4;cursor:default;}
+.day-card.empty:hover{border-color:var(--border);background:var(--surface);}
+.day-name{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:4px;}
+.day-card.today .day-name{color:#0891B2;}
+.day-card.active .day-name{color:#7F77DD;}
+.day-total{font-size:20px;font-weight:600;color:var(--text);line-height:1;}
+.day-sub{font-size:9px;color:var(--text-hint);margin-top:2px;}
+.day-logged{font-size:9px;color:var(--text-hint);margin-top:auto;padding-top:4px;}
+.day-clear{position:absolute;top:4px;right:5px;background:none;border:none;cursor:pointer;color:var(--bar-bg);font-size:14px;padding:0;line-height:1;display:none;}
+.day-card:hover .day-clear{display:block;}
+.day-clear:hover{color:#A32D2D;}
+/* ── section label ── */
+.section-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;}
+/* ── dept rows ── */
+.dept-row{display:grid;grid-template-columns:80px 1fr 58px 52px;align-items:center;gap:8px;margin-bottom:10px;}
+.dept-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;}
+.bar-outer{background:var(--bar-bg);border-radius:4px;height:7px;overflow:hidden;}
+.bar-inner{height:100%;border-radius:4px;transition:width 0.4s;}
+.dept-val{font-size:13px;font-weight:600;color:var(--text);text-align:right;}
+.dept-pph{font-size:10px;color:var(--text-hint);text-align:right;}
+/* ── employee table ── */
+.emp-table{width:100%;border-collapse:collapse;font-size:12px;}
+.emp-table th{text-align:left;font-size:10px;font-weight:500;color:var(--text-muted);padding:5px 8px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;}
+.emp-table th.r{text-align:right;}
+.emp-table td{padding:7px 8px;border-bottom:0.5px solid var(--border-light);color:var(--text);}
+.emp-table td.r{text-align:right;font-weight:500;}
+.emp-table tr:last-child td{border-bottom:none;}
+.emp-bar-wrap{background:var(--bar-bg);border-radius:3px;height:4px;flex:1;overflow:hidden;min-width:30px;}
+.emp-bar-fill{height:100%;border-radius:3px;}
+/* ── compare table ── */
+.cmp-table{width:100%;border-collapse:collapse;font-size:12px;}
+.cmp-table th{text-align:right;font-size:10px;font-weight:500;color:var(--text-muted);padding:5px 8px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;}
+.cmp-table th:first-child{text-align:left;}
+.cmp-table td{text-align:right;padding:7px 8px;border-bottom:0.5px solid var(--border-light);font-weight:500;}
+.cmp-table td:first-child{text-align:left;font-weight:400;color:var(--text);}
+.cmp-table tr.sel td{background:rgba(127,119,221,0.06);}
+.cmp-table tfoot td{font-weight:700;border-top:0.5px solid var(--border);border-bottom:none;padding-top:9px;}
+.cmp-table tfoot td:first-child{font-weight:600;}
+/* ── mini sparkbar in compare ── */
+.spk-wrap{display:flex;align-items:center;gap:5px;justify-content:flex-end;}
+.spk-bar{background:var(--bar-bg);border-radius:3px;height:5px;overflow:hidden;width:50px;}
+.spk-fill{height:100%;border-radius:3px;}
+/* ── empty state ── */
+.empty-state{text-align:center;padding:4rem 2rem;color:var(--text-hint);font-size:14px;line-height:1.7;}
+/* ── actions bar ── */
+.actions-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem;}
+.btn{font-family:inherit;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;border:0.5px solid var(--border);background:var(--surface);color:var(--text-muted);}
+.btn:hover{background:var(--surface2);}
+.btn-danger{border-color:#A32D2D;background:#fcebeb;color:#A32D2D;}
+.btn-danger:hover{background:#f09595;}
+[data-theme="dark"] .btn-danger{background:#501313;border-color:#A32D2D;color:#F7C1C1;}
+.btn-seed{border-color:#7F77DD;background:#EEEDFE;color:#534AB7;}
+.btn-seed:hover{background:#CECBF6;}
+[data-theme="dark"] .btn-seed{background:#3C3489;color:#CECBF6;}
+/* ── tabs ── */
+.tabs{display:flex;gap:0;border-bottom:1.5px solid var(--border);margin-bottom:1rem;}
+.dtab{font-family:inherit;font-size:13px;padding:7px 16px;border:none;border-bottom:2px solid transparent;margin-bottom:-1.5px;background:none;color:var(--text-hint);cursor:pointer;}
+.dtab:hover{color:var(--text);}
+.dtab.active{color:#7F77DD;border-bottom-color:#7F77DD;font-weight:500;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
+/* ── best-per-dept table ── */
+.bpd-table{width:100%;border-collapse:collapse;font-size:12px;}
+.bpd-table th{text-align:left;font-size:10px;font-weight:500;color:var(--text-muted);padding:5px 8px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;}
+.bpd-table th.r{text-align:right;}
+.bpd-table td{padding:7px 8px;border-bottom:0.5px solid var(--border-light);color:var(--text);}
+.bpd-table td.r{text-align:right;font-weight:500;}
+.bpd-table tr:last-child td{border-bottom:none;}
+.trophy{color:#F59E0B;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="top-bar">
+    <div>
+      <h1>&#x1F4C5; Reserve Weekly Recap</h1>
+      <p class="subtitle" id="wk-subtitle">Loading...</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <button class="btn btn-seed" onclick="reseedDummy()">&#x1F9EA; Reseed Demo</button>
+      <button class="btn btn-danger" onclick="clearAll()">&#x21BA; Clear Week</button>
+      <button class="dark-toggle" onclick="toggleDark()">
+        <span id="toggle-label">Dark mode</span>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </button>
+    </div>
+  </div>
+
+  <div id="main-content"></div>
+
+  <p class="nordstrom-tag">Nordstrom &middot; Reserve Stock &middot; Weekly Recap<br>
+  <span style="font-size:10px;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</span></p>
+</div>
+
+<script>
+var RS_WEEKLY_KEY = 'rs_weekly_v1';
+var WEEK_DAYS = ['Mon','Tue','Wed','Thu','Fri'];
+var _selDay = null; // selected ISO date key
+var _detailTab = 'dept'; // 'dept' | 'emp'
+
+// ── theme ──────────────────────────────────────────────
+var prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
+  try { localStorage.setItem('rs_weekly_theme', dark ? 'dark' : 'light'); } catch(e) {}
+}
+(function() {
+  var saved; try { saved = localStorage.getItem('rs_weekly_theme'); } catch(e) {}
+  applyTheme(saved ? saved === 'dark' : prefersDark.matches);
+})();
+prefersDark.addEventListener('change', function(e) { applyTheme(e.matches); });
+function toggleDark() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
+
+// ── helpers ────────────────────────────────────────────
+function weekMonday(d) {
+  var dt = new Date(d);
+  var day = dt.getDay();
+  var diff = (day === 0) ? -6 : 1 - day;
+  dt.setDate(dt.getDate() + diff);
+  return dt.toLocaleDateString('en-CA');
+}
+function todayISO() { return new Date().toLocaleDateString('en-CA'); }
+function isSunday() { return new Date().getDay() === 0; }
+
+// ── storage ────────────────────────────────────────────
+function loadWeeklyData() {
+  try {
+    var raw = localStorage.getItem(RS_WEEKLY_KEY);
+    if (!raw) return {};
+    var obj = JSON.parse(raw);
+    var curMon = weekMonday(new Date());
+    if (obj._weekMon && obj._weekMon !== curMon && isSunday()) {
+      localStorage.removeItem(RS_WEEKLY_KEY); return {};
+    }
+    return obj;
+  } catch(e) { return {}; }
+}
+function saveWeeklyData(obj) {
+  try { localStorage.setItem(RS_WEEKLY_KEY, JSON.stringify(obj)); } catch(e) {}
+}
+
+// ── dummy data seed ─────────────────────────────────────
+var DUMMY_EMPS = [
+  'alex.torres@nordstrom.com','maria.lopez@nordstrom.com','jordan.smith@nordstrom.com',
+  'priya.patel@nordstrom.com','miguel.santos@nordstrom.com','lisa.chen@nordstrom.com',
+  'darius.king@nordstrom.com','sofia.reyes@nordstrom.com','james.wu@randstadusa.com',
+  'nina.garcia@randstadusa.com','carlos.mendez@nordstrom.com','aisha.johnson@nordstrom.com',
+  'ryan.oconnor@nordstrom.com'
+];
+function makeDummyEmployees(seed) {
+  var rng = (function() { var s = seed || 42; return function() { s = (s * 1664525 + 1013904223) & 0xFFFFFFFF; return (s >>> 0) / 4294967296; }; })();
+  var emps = {};
+  DUMMY_EMPS.forEach(function(email, i) {
+    var r = function(lo, hi) { return Math.round(lo + rng() * (hi - lo)); };
+    var role = i < 7 ? 'pick' : (i < 10 ? 'replen' : 'mixed');
+    emps[email] = {
+      pick_f1: role === 'pick' ? r(80,200) : (role === 'mixed' ? r(20,80) : 0),
+      pick_f2: role === 'pick' ? r(60,180) : (role === 'mixed' ? r(10,60) : 0),
+      replen:  role === 'replen' ? r(100,180) : (role === 'mixed' ? r(30,90) : 0),
+      putaway: role === 'replen' ? r(20,60) : (role === 'mixed' ? r(10,40) : 0),
+    };
+  });
+  return emps;
+}
+function makeDummyDay(pickTotal, replenTotal, putawayTotal, seed) {
+  var emps = makeDummyEmployees(seed);
+  // Scale employees so their sum roughly matches totals
+  var rawPick = 0, rawReplen = 0, rawPutaway = 0;
+  Object.values(emps).forEach(function(e) { rawPick += e.pick_f1 + e.pick_f2; rawReplen += e.replen; rawPutaway += e.putaway; });
+  var scalePick    = rawPick    > 0 ? pickTotal    / rawPick    : 1;
+  var scaleReplen  = rawReplen  > 0 ? replenTotal  / rawReplen  : 1;
+  var scalePutaway = rawPutaway > 0 ? putawayTotal / rawPutaway : 1;
+  Object.keys(emps).forEach(function(email) {
+    var e = emps[email];
+    e.pick_f1  = Math.round(e.pick_f1  * scalePick);
+    e.pick_f2  = Math.round(e.pick_f2  * scalePick);
+    e.replen   = Math.round(e.replen   * scaleReplen);
+    e.putaway  = Math.round(e.putaway  * scalePutaway);
+  });
+  return emps;
+}
+var DUMMY_DAYS_BASE = [
+  { pick:1420, pick_f1:870,  pick_f2:550, replen:380, putaway:95,  headcount:12, hc:{pick:7,pick2:0,replen:3,putaway:2}, shift_hours:8, logged:'10:41 PM' },
+  { pick:1650, pick_f1:980,  pick_f2:670, replen:410, putaway:110, headcount:13, hc:{pick:8,pick2:0,replen:3,putaway:2}, shift_hours:8, logged:'10:38 PM' },
+  { pick:1380, pick_f1:820,  pick_f2:560, replen:355, putaway:88,  headcount:11, hc:{pick:7,pick2:0,replen:3,putaway:2}, shift_hours:8, logged:'10:45 PM' },
+  { pick:1510, pick_f1:910,  pick_f2:600, replen:400, putaway:102, headcount:12, hc:{pick:7,pick2:0,replen:3,putaway:2}, shift_hours:8, logged:'10:52 PM' },
+];
+function reseedDummy() {
+  var mon = weekMonday(new Date());
+  var seed = { _weekMon: mon };
+  DUMMY_DAYS_BASE.forEach(function(base, idx) {
+    if (idx >= 4) return;
+    var d = new Date(mon + 'T00:00:00');
+    d.setDate(d.getDate() + idx);
+    var dk = d.toLocaleDateString('en-CA');
+    var day = Object.assign({}, base);
+    day.employees = makeDummyDay(day.pick_f1, day.pick_f2, day.replen, day.putaway, idx * 7 + 13);
+    seed[dk] = day;
+  });
+  saveWeeklyData(seed);
+  _selDay = null;
+  render();
+}
+function clearAll() {
+  if (!confirm('Clear all weekly data for this week?')) return;
+  try { localStorage.removeItem(RS_WEEKLY_KEY); } catch(e) {}
+  _selDay = null; render();
+}
+function clearDay(dk) {
+  if (!confirm('Remove ' + WEEK_DAYS[weekDates().indexOf(dk)] + '\'s log?')) return;
+  var d = loadWeeklyData(); delete d[dk]; saveWeeklyData(d);
+  if (_selDay === dk) _selDay = null;
+  render();
+}
+function selectDay(dk) {
+  _selDay = (_selDay === dk) ? null : dk;
+  render();
+}
+function switchDetailTab(t) { _detailTab = t; render(); }
+function weekDates() {
+  var curMon = weekMonday(new Date()), arr = [];
+  for (var i = 0; i < 5; i++) {
+    var d = new Date(curMon + 'T00:00:00'); d.setDate(d.getDate() + i);
+    arr.push(d.toLocaleDateString('en-CA'));
+  }
+  return arr;
+}
+
+// ── main render ────────────────────────────────────────
+function render() {
+  var weekly   = loadWeeklyData();
+  var dates    = weekDates();
+  var todayKey = todayISO();
+  var hasAny   = dates.some(function(dk) { return !!weekly[dk]; });
+
+  // subtitle
+  var sub = document.getElementById('wk-subtitle');
+  if (sub) {
+    var mon = weekMonday(new Date());
+    sub.textContent = 'Week of ' + new Date(mon + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · Reserve Stock';
+  }
+
+  var content = document.getElementById('main-content');
+  if (!hasAny) {
+    content.innerHTML = '<div class="empty-state">No shifts logged this week.<br><small>Go to the Live tab in the Reserve reporter, load live data,<br>then tap <strong>Log Day</strong> at end of shift.</small><br><br><button class="btn btn-seed" onclick="reseedDummy()" style="margin-top:8px;">&#x1F9EA; Load demo data</button></div>';
+    return;
+  }
+
+  // Auto-select first logged day
+  if (!_selDay || !weekly[_selDay]) {
+    _selDay = dates.find(function(dk) { return !!weekly[dk]; }) || null;
+  }
+
+  // ── week aggregates ────────────────────────────────
+  var wk = { pick:0, replen:0, putaway:0, grand:0, days:0, hcSum:0 };
+  dates.forEach(function(dk) {
+    var s = weekly[dk]; if (!s) return;
+    wk.pick    += (s.pick    || 0);
+    wk.replen  += (s.replen  || 0);
+    wk.putaway += (s.putaway || 0);
+    wk.grand   += (s.pick||0) + (s.replen||0) + (s.putaway||0);
+    wk.days++;
+    wk.hcSum   += (s.headcount || 0);
+  });
+  var wkAvg     = wk.days ? Math.round(wk.grand / wk.days) : 0;
+  var wkAvgHc   = wk.days ? Math.round(wk.hcSum / wk.days) : 0;
+  var maxGrand  = 0;
+  dates.forEach(function(dk) { var s=weekly[dk]; if(!s) return; var g=(s.pick||0)+(s.replen||0)+(s.putaway||0); if(g>maxGrand) maxGrand=g; });
+  var maxPick   = 0, maxReplen = 0, maxPutaway = 0;
+  dates.forEach(function(dk){ var s=weekly[dk]; if(!s) return; if((s.pick||0)>maxPick) maxPick=s.pick||0; if((s.replen||0)>maxReplen) maxReplen=s.replen||0; if((s.putaway||0)>maxPutaway) maxPutaway=s.putaway||0; });
+
+  var html = '';
+
+  // ── summary strip ──────────────────────────────────
+  html += '<div class="sum-strip">';
+  html += '<div class="sum-tile"><div class="sum-label">Week Total</div><div class="sum-val">' + wk.grand.toLocaleString() + '</div><div class="sum-sub">' + wk.days + ' shift' + (wk.days!==1?'s':'') + ' logged</div></div>';
+  html += '<div class="sum-tile"><div class="sum-label">Avg / Shift</div><div class="sum-val">' + wkAvg.toLocaleString() + '</div><div class="sum-sub">units per day</div></div>';
+  html += '<div class="sum-tile"><div class="sum-label" style="color:#0891B2;">Picking</div><div class="sum-val" style="color:#0891B2;">' + wk.pick.toLocaleString() + '</div><div class="sum-sub">' + (wk.grand?Math.round(wk.pick/wk.grand*100):0) + '% of total</div></div>';
+  html += '<div class="sum-tile"><div class="sum-label" style="color:#6366F1;">Replen</div><div class="sum-val" style="color:#6366F1;">' + wk.replen.toLocaleString() + '</div><div class="sum-sub">' + (wk.grand?Math.round(wk.replen/wk.grand*100):0) + '% of total</div></div>';
+  html += '</div>';
+
+  // ── day cards ──────────────────────────────────────
+  html += '<div class="day-strip">';
+  dates.forEach(function(dk, i) {
+    var snap    = weekly[dk];
+    var isToday = dk === todayKey;
+    var isSel   = dk === _selDay;
+    var isEmpty = !snap;
+    var grand   = snap ? (snap.pick||0)+(snap.replen||0)+(snap.putaway||0) : 0;
+    var barPct  = maxGrand > 0 ? Math.round(grand/maxGrand*100) : 0;
+    var cls = 'day-card' + (isEmpty?' empty':'') + (isSel?' active':'') + (isToday?' today':'');
+    var safeKey = dk.replace(/'/g,"\\'");
+    html += '<div class="' + cls + '" onclick="' + (isEmpty ? '' : 'selectDay(\'' + safeKey + '\')') + '">';
+    if (!isEmpty) html += '<button class="day-clear" onclick="event.stopPropagation();clearDay(\'' + safeKey + '\')" title="Remove">&#x00D7;</button>';
+    html += '<div class="day-name">' + WEEK_DAYS[i] + (isToday ? ' &#x25CF;' : '') + '</div>';
+    if (isEmpty) {
+      html += '<div class="day-total" style="font-size:14px;color:var(--text-hint);">–</div>';
+    } else {
+      html += '<div class="day-total">' + grand.toLocaleString() + '</div>';
+      html += '<div style="width:100%;background:var(--bar-bg);border-radius:3px;height:3px;margin-top:5px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:' + (isSel?'#7F77DD':'#0891B2') + ';width:' + barPct + '%;transition:width 0.3s;"></div></div>';
+      if (snap.pick_f1 != null) {
+        html += '<div class="day-sub">F1:' + (snap.pick_f1||0).toLocaleString() + ' F2:' + (snap.pick_f2||0).toLocaleString() + '</div>';
+      }
+    }
+    html += '<div class="day-logged">' + (snap&&snap.logged ? snap.logged : '') + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // ── selected day detail ────────────────────────────
+  var sel = _selDay ? weekly[_selDay] : null;
+  if (sel) {
+    var selIdx   = dates.indexOf(_selDay);
+    var selLabel = selIdx >= 0 ? WEEK_DAYS[selIdx] : _selDay;
+    var selGrand = (sel.pick||0)+(sel.replen||0)+(sel.putaway||0);
+    var shiftHrs = sel.shift_hours || 8;
+    var hcPick   = (sel.hc&&(sel.hc.pick||sel.hc.pick2)) ? (sel.hc.pick||0)+(sel.hc.pick2||0) : Math.max(1,Math.round((sel.headcount||1)*0.6));
+    var hcReplen = (sel.hc&&sel.hc.replen) ? sel.hc.replen : Math.max(1,Math.round((sel.headcount||1)*0.25));
+    var hcPut    = (sel.hc&&sel.hc.putaway) ? sel.hc.putaway : Math.max(1,Math.round((sel.headcount||1)*0.15));
+    function pph(u, hc) { return hc>0&&shiftHrs>0 ? Math.round(u/(hc*shiftHrs)) : null; }
+
+    html += '<div class="card">';
+    // header
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">';
+    html += '<div><div style="font-size:15px;font-weight:600;color:var(--text);">' + selLabel + ' &nbsp;<span style="font-size:13px;color:var(--text-muted);font-weight:400;">' + selGrand.toLocaleString() + ' units</span></div>';
+    html += '<div style="font-size:11px;color:var(--text-hint);margin-top:2px;">Logged ' + (sel.logged||'?') + (sel.headcount ? ' &nbsp;·&nbsp; ' + sel.headcount + ' associates active' : '') + ' &nbsp;·&nbsp; ' + shiftHrs + 'h shift</div></div>';
+    html += '</div>';
+
+    // detail tabs
+    html += '<div class="tabs">';
+    html += '<button class="dtab' + (_detailTab==='dept'?' active':'') + '" onclick="switchDetailTab(\'dept\')">Dept Breakdown</button>';
+    html += '<button class="dtab' + (_detailTab==='emp'?' active':'') + '" onclick="switchDetailTab(\'emp\')">Associates</button>';
+    html += '</div>';
+
+    // ── dept tab ──
+    html += '<div class="tab-panel' + (_detailTab==='dept'?' active':'') + '">';
+    var depts = [
+      {label:'Picking', val:sel.pick||0, color:'#0891B2', pphVal:pph(sel.pick||0,hcPick),
+       sub: sel.pick_f1!=null ? 'F1: '+(sel.pick_f1||0).toLocaleString()+' &nbsp;·&nbsp; F2: '+(sel.pick_f2||0).toLocaleString() : null},
+      {label:'Replen',  val:sel.replen||0, color:'#6366F1', pphVal:pph(sel.replen||0,hcReplen), sub:null},
+      {label:'Putaway', val:sel.putaway||0, color:'#059669', pphVal:pph(sel.putaway||0,hcPut), sub:null},
+    ];
+    html += '<div style="margin-top:4px;">';
+    depts.forEach(function(dept) {
+      var pct = selGrand > 0 ? Math.round(dept.val/selGrand*100) : 0;
+      html += '<div class="dept-row">';
+      html += '<div class="dept-label" style="color:' + dept.color + ';">' + dept.label + '</div>';
+      html += '<div><div class="bar-outer"><div class="bar-inner" style="width:'+pct+'%;background:'+dept.color+';"></div></div>';
+      if (dept.sub) html += '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;">'+dept.sub+'</div>';
+      html += '</div>';
+      html += '<div class="dept-val">'+dept.val.toLocaleString()+'</div>';
+      html += '<div class="dept-pph">'+(dept.pphVal!=null?dept.pphVal+' PPH':'')+'</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    // composition strip
+    html += '<div style="display:flex;gap:14px;margin-top:12px;padding-top:10px;border-top:0.5px solid var(--border);flex-wrap:wrap;">';
+    depts.forEach(function(dept) {
+      var pct = selGrand > 0 ? Math.round(dept.val/selGrand*100) : 0;
+      html += '<div style="display:flex;align-items:center;gap:5px;">';
+      html += '<div style="width:8px;height:8px;border-radius:50%;background:'+dept.color+';flex-shrink:0;"></div>';
+      html += '<span style="font-size:11px;color:var(--text-muted);">'+dept.label+'</span>';
+      html += '<span style="font-size:11px;font-weight:600;color:var(--text);">'+pct+'%</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '</div>'; // dept tab
+
+    // ── emp tab ──
+    html += '<div class="tab-panel' + (_detailTab==='emp'?' active':'') + '">';
+    var emps = sel.employees;
+    if (!emps || !Object.keys(emps).length) {
+      html += '<div style="text-align:center;padding:2rem;color:var(--text-hint);font-size:13px;">No employee-level data — log a new shift to capture it.</div>';
+    } else {
+      var empList = Object.keys(emps).map(function(email) {
+        var e = emps[email];
+        var pick = (e.pick_f1||0)+(e.pick_f2||0);
+        var total = pick + (e.replen||0) + (e.putaway||0);
+        return { email:email, short:email.split('@')[0], pick:pick, pick_f1:e.pick_f1||0, pick_f2:e.pick_f2||0, replen:e.replen||0, putaway:e.putaway||0, total:total };
+      }).filter(function(e){ return e.total > 0; });
+      empList.sort(function(a,b){ return b.total - a.total; });
+      var maxEmpTotal = empList[0] ? empList[0].total : 1;
+
+      html += '<div style="margin-top:6px;">';
+      // summary counts
+      html += '<div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">';
+      html += '<div style="font-size:12px;color:var(--text-muted);">'+empList.length+' associates</div>';
+      var avgPick = empList.length ? Math.round(empList.reduce(function(s,e){return s+e.pick;},0)/empList.length) : 0;
+      html += '<div style="font-size:12px;color:#0891B2;">Avg pick: <strong>'+avgPick.toLocaleString()+'</strong></div>';
+      var topPicker = empList.slice().sort(function(a,b){return b.pick-a.pick;})[0];
+      if (topPicker && topPicker.pick > 0) html += '<div style="font-size:12px;color:var(--text-muted);">Top picker: <strong style="color:var(--text);">'+topPicker.short+'</strong> ('+topPicker.pick.toLocaleString()+')</div>';
+      html += '</div>';
+
+      html += '<table class="emp-table"><thead><tr>';
+      html += '<th>#</th><th>Associate</th>';
+      html += '<th class="r">Pick</th><th class="r">Replen</th><th class="r">Putaway</th><th class="r">Total</th><th style="width:60px;"></th>';
+      html += '</tr></thead><tbody>';
+      empList.forEach(function(e, idx) {
+        var pct = Math.round(e.total/maxEmpTotal*100);
+        var trophy = idx===0 ? '<span class="trophy">&#x1F3C6;</span> ' : (idx<3 ? '<span style="color:var(--text-hint);">#'+(idx+1)+'</span> ' : '<span style="color:var(--text-hint);font-size:10px;">'+(idx+1)+'</span> ');
+        html += '<tr>';
+        html += '<td style="color:var(--text-hint);font-size:10px;">'+(idx+1)+'</td>';
+        html += '<td>'+trophy+e.short+'</td>';
+        html += '<td class="r" style="color:#0891B2;">'+(e.pick>0?e.pick.toLocaleString():'–')+'</td>';
+        html += '<td class="r" style="color:#6366F1;">'+(e.replen>0?e.replen.toLocaleString():'–')+'</td>';
+        html += '<td class="r" style="color:#059669;">'+(e.putaway>0?e.putaway.toLocaleString():'–')+'</td>';
+        html += '<td class="r" style="font-weight:600;">'+e.total.toLocaleString()+'</td>';
+        html += '<td><div style="display:flex;align-items:center;gap:4px;"><div class="emp-bar-wrap"><div class="emp-bar-fill" style="width:'+pct+'%;background:#7F77DD;"></div></div></div></td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      html += '</div>';
+    }
+    html += '</div>'; // emp tab
+    html += '</div>'; // card
+  }
+
+  // ── week comparison table ─────────────────────────
+  var loggedDates = dates.filter(function(dk){ return !!weekly[dk]; });
+  if (loggedDates.length > 1) {
+    html += '<div class="card">';
+    html += '<div class="section-label">Week Comparison</div>';
+    html += '<table class="cmp-table"><thead><tr>';
+    html += '<th>Day</th><th>Pick</th><th>Replen</th><th>Putaway</th><th>Total</th><th style="width:60px;text-align:right;">vs best</th>';
+    html += '</tr></thead><tbody>';
+    dates.forEach(function(dk, i) {
+      var s = weekly[dk]; if (!s) return;
+      var grand = (s.pick||0)+(s.replen||0)+(s.putaway||0);
+      var isSel = dk === _selDay;
+      var isToday = dk === todayKey;
+      var pct = maxGrand > 0 ? Math.round(grand/maxGrand*100) : 0;
+      html += '<tr class="' + (isSel?'sel':'') + '" style="cursor:pointer;" onclick="selectDay(\'' + dk.replace(/'/g,"\\'") + '\')">';
+      html += '<td style="font-weight:'+(isSel?'600':'400')+';color:'+(isToday?'#0891B2':'var(--text)')+';">'+ WEEK_DAYS[i]+(isToday?' ●':'')+'</td>';
+      html += '<td style="color:#0891B2;">'+(s.pick||0).toLocaleString()+'</td>';
+      html += '<td style="color:#6366F1;">'+(s.replen||0).toLocaleString()+'</td>';
+      html += '<td style="color:#059669;">'+(s.putaway||0).toLocaleString()+'</td>';
+      html += '<td style="font-weight:600;color:var(--text);">'+grand.toLocaleString()+'</td>';
+      html += '<td><div class="spk-wrap"><div class="spk-bar"><div class="spk-fill" style="width:'+pct+'%;background:'+(isSel?'#7F77DD':'#0891B2')+';"></div></div><span style="font-size:9px;color:var(--text-hint);">'+pct+'%</span></div></td>';
+      html += '</tr>';
+    });
+    html += '</tbody><tfoot><tr>';
+    html += '<td>Total</td>';
+    html += '<td style="color:#0891B2;">'+wk.pick.toLocaleString()+'</td>';
+    html += '<td style="color:#6366F1;">'+wk.replen.toLocaleString()+'</td>';
+    html += '<td style="color:#059669;">'+wk.putaway.toLocaleString()+'</td>';
+    html += '<td>'+wk.grand.toLocaleString()+'</td>';
+    html += '<td></td>';
+    html += '</tr></tfoot></table>';
+    html += '</div>';
+  }
+
+  // ── best per dept per day ──────────────────────────
+  var hasEmpData = dates.some(function(dk){ var s=weekly[dk]; return s&&s.employees&&Object.keys(s.employees).length; });
+  if (hasEmpData) {
+    html += '<div class="card">';
+    html += '<div class="section-label">Leader by Dept per Day</div>';
+    html += '<table class="bpd-table"><thead><tr><th>Day</th><th>Top Picker</th><th class="r">Units</th><th>Top Replen</th><th class="r">Units</th></tr></thead><tbody>';
+    dates.forEach(function(dk, i) {
+      var s = weekly[dk]; if (!s||!s.employees) return;
+      var empArr = Object.keys(s.employees).map(function(email){
+        var e=s.employees[email];
+        return {short:email.split('@')[0], pick:(e.pick_f1||0)+(e.pick_f2||0), replen:e.replen||0};
+      });
+      var topPick = empArr.slice().sort(function(a,b){return b.pick-a.pick;})[0];
+      var topReplen = empArr.slice().sort(function(a,b){return b.replen-a.replen;})[0];
+      var isToday = dk===todayKey;
+      html += '<tr>';
+      html += '<td style="font-weight:500;color:'+(isToday?'#0891B2':'var(--text)')+'">'+WEEK_DAYS[i]+'</td>';
+      html += '<td style="color:#0891B2;">'+(topPick&&topPick.pick>0?'<span class="trophy">&#x1F3C6;</span> '+topPick.short:'–')+'</td>';
+      html += '<td class="r" style="color:#0891B2;">'+(topPick&&topPick.pick>0?topPick.pick.toLocaleString():'')+'</td>';
+      html += '<td style="color:#6366F1;">'+(topReplen&&topReplen.replen>0?'<span class="trophy">&#x1F3C6;</span> '+topReplen.short:'–')+'</td>';
+      html += '<td class="r" style="color:#6366F1;">'+(topReplen&&topReplen.replen>0?topReplen.replen.toLocaleString():'')+'</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  content.innerHTML = html;
+}
+
+// ── Auto-seed on first open ─────────────────────────
+(function() {
+  var existing = localStorage.getItem(RS_WEEKLY_KEY);
+  if (!existing) reseedDummy();
+  else render();
+})();
+</script>
+</body>
+</html>
