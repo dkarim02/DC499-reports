@@ -64,7 +64,8 @@ function saveToken(t) {
   fs.writeFileSync(TOKEN_FILE, JSON.stringify(out, null, 2));
 }
 function isTokenFresh(stored) {
-  return stored?.access_token && stored._saved_at && (Date.now() - stored._saved_at) < TOKEN_TTL;
+  const ttl = stored?.expires_in ? stored.expires_in * 900 : TOKEN_TTL;
+  return stored?.access_token && stored._saved_at && (Date.now() - stored._saved_at) < ttl;
 }
 async function acquireLock() {
   const deadline = Date.now() + 15000;
@@ -350,23 +351,8 @@ async function fetchShippingLive(accessToken) {
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
   console.log(`[${ts()}] ✓ shipping_live.json written (${employees.length} associates, ${shift} shift)`);
 
-  try {
-    execSync('git stash',                      { cwd: __dirname, stdio: 'pipe' });
-    execSync('git fetch origin main',          { cwd: __dirname, stdio: 'pipe' });
-    execSync('git rebase origin/main',         { cwd: __dirname, stdio: 'pipe' });
-    execSync('git stash pop',                  { cwd: __dirname, stdio: 'pipe' });
-    execSync('git add shipping_live.json',     { cwd: __dirname, stdio: 'pipe' });
-    execSync('git commit -m "Shipping live update -- ' + new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) + '"', { cwd: __dirname, stdio: 'pipe' });
-    execSync('git push origin main',           { cwd: __dirname, stdio: 'pipe' });
-    console.log(`[${ts()}] ✓ shipping_live.json pushed to GitHub`);
-  } catch (e) {
-    const msg = e.stderr ? e.stderr.toString() : e.message;
-    if (msg.includes('nothing to commit') || msg.includes('no changes')) {
-      console.log(`[${ts()}] No changes to push`);
-    } else {
-      console.warn(`[${ts()}] Git push warning:`, msg.slice(0, 200));
-    }
-  }
+  // Git push handled by dc499_refresh.js (single coordinator — avoids concurrent push collisions)
+  console.log(`[${ts()}] shipping_live.json ready — dc499_refresh will push on next cycle`);
 
   return employees.length;
 }

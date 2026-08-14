@@ -54,7 +54,8 @@ function saveToken(t) {
   fs.writeFileSync(TOKEN_FILE, JSON.stringify(out, null, 2));
 }
 function isTokenFresh(stored) {
-  return stored?.access_token && stored._saved_at && (Date.now() - stored._saved_at) < TOKEN_TTL;
+  const ttl = stored?.expires_in ? stored.expires_in * 900 : TOKEN_TTL;
+  return stored?.access_token && stored._saved_at && (Date.now() - stored._saved_at) < ttl;
 }
 async function acquireLock() {
   const deadline = Date.now() + 15000;
@@ -1459,7 +1460,7 @@ function gitPush() {
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
   try {
-    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync(`git commit -m "Live update -- ${stamp}"`,             { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git fetch origin main',                               { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git rebase --autostash origin/main',                  { cwd: REPORT_DIR, stdio: 'pipe' });
