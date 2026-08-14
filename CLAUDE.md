@@ -42,17 +42,17 @@ Browser-based reporting suite on GitHub Pages. Processes MAWM CSV exports for as
 2. Settings footer nordstrom-tag paragraph
 3. Menu card badge + openApp() filename
 
-**Git push pattern (agent script):**
+**Git push pattern (dc499_refresh.js only — single coordinator):**
 ```
-git stash
+git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json
+git commit -m "Live update -- {stamp} [+ecom, +shipping, +reserve]"
 git fetch origin main
-git rebase origin/main
-git stash pop
-git add receiving_live.json
-git commit -m "message"
+git rebase --autostash origin/main
 git push origin main
 ```
 Note: use `git fetch origin main` + `git rebase origin/main` (not `git pull --rebase`) — Claude Code MCP's internal fetches populate FETCH_HEAD with multiple entries, causing `pull --rebase` to fail with "Cannot rebase onto multiple branches".
+
+**Sub-agents (ecom, shipping, reserve) do NOT push to git.** They write their JSON files and dc499_refresh picks them up on its next 2-min cycle. Commit message appends `[+ecom]` / `[+shipping]` / `[+reserve]` for any sub-agent files included. This prevents concurrent push collisions.
 
 ---
 
@@ -146,11 +146,14 @@ Writes `rfp_units` to backlog_live.json.
 3. Start live server + open Receiving Live
 4. First-time auth / re-auth (dc499_refresh)
 5. Ecom Live — one-shot refresh (scout_ecom_agent.js)
-6. Ecom Live — auto-refresh every 30 min
+6. Ecom Live — auto-refresh every 3 min
 7. Ecom Live — auth
 8. Shipping Live — one-shot refresh (scout_shipping_agent.js)
-9. Shipping Live — auto-refresh every 5 min
+9. Shipping Live — auto-refresh every 3 min
 10. Shipping Live — auth
+11. Reserve Live — one-shot refresh (scout_reserve_agent.js)
+12. Reserve Live — auto-refresh every 3 min
+13. Reserve Live — auth
 
 **Output JSON:** batch_status.json, backlog_live.json, shipped_live.json, tasks_live.json, retail_replen.json, totes_live.json, dock_live.json, receiving_live.json
 
@@ -239,22 +242,24 @@ All four agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent
 
 **Fix (2026-08-13):** File-based lock + freshness check in `getAccessTokenSilent()`:
 - `_saved_at` timestamp written to token file on every save
-- `TOKEN_TTL = 55 * 60 * 1000` — treat access token as fresh for 55 min (based on typical 60-min OIDC lifetime; adjust if Nordstrom SSO uses shorter window)
+- `TOKEN_TTL = 55 * 60 * 1000` — fallback TTL if `expires_in` is missing from stored token
+- `isTokenFresh()` uses `stored.expires_in * 900` (90% of actual lifetime) when available, falls back to `TOKEN_TTL` — self-correcting regardless of Nordstrom's OIDC window
 - Fast path: if token is fresh, return immediately — no network call
 - Lock path: claim `.mcp_token.lock` (exclusive `wx` write), re-check freshness after acquiring (another agent may have just refreshed), then refresh once, release lock in `finally`
-- If Nordstrom's `expires_in` differs from 60 min, update `TOKEN_TTL` accordingly or switch to reading `expires_in` from the token response directly
 
 ---
 
 ## Ecom Live tab (scout_ecom_agent.js)
 
-**Agent:** scout_ecom_agent.js — launch via dc499.bat options 5/6/7 only. Output: ecom_live.json (local + GitHub).
+**Agent:** scout_ecom_agent.js — launch via dc499.bat options 5/6/7 only. Output: ecom_live.json (written locally; dc499_refresh pushes to GitHub on next 2-min cycle).
+
+**Query pattern:** Groups A/B/C/D fire in parallel (`Promise.all`) — single round-trip time instead of 4 sequential queries.
 
 ---
 
 ## Shipping Live tab (scout_shipping_agent.js)
 
-**Agent:** scout_shipping_agent.js — launch via dc499.bat options 8/9/10 only. Output: shipping_live.json (local + GitHub).
+**Agent:** scout_shipping_agent.js — launch via dc499.bat options 8/9/10 only. Output: shipping_live.json (written locally; dc499_refresh pushes to GitHub on next 2-min cycle).
 
 **Transaction types:** NRDR CORE PALLETIZE OLPN, FLOOR LOAD PALLETIZE OLPN
 
@@ -284,9 +289,9 @@ All four agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent
 
 ## Reserve Live tab (scout_reserve_agent.js)
 
-**Agent:** scout_reserve_agent.js — launch via dc499.bat options 11/12/13 only. Output: reserve_live.json (local + GitHub).
+**Agent:** scout_reserve_agent.js — launch via dc499.bat options 11/12/13 only. Output: reserve_live.json (written locally; dc499_refresh pushes to GitHub on next 2-min cycle).
 
-**Queries:** Pre-aggregated `GROUP BY CREATED_BY` — immune to 10k row cap regardless of shift volume. Result rows = distinct employees.
+**Queries:** Pre-aggregated `GROUP BY CREATED_BY` — immune to 10k row cap regardless of shift volume. Result rows = distinct employees. All 4 groups fire in parallel (`Promise.all`).
 
 **Metrics:** pick_f1 (Non Haz Retail Pick To oLPN Cart), pick_f2 (Non Haz Retail Pick To oLPN Cart Floor 2), replen (iLPN Replen Fill/Large), putaway (System/User Directed Putaway). Zone H filter on replen + putaway.
 
@@ -406,14 +411,12 @@ Engineering manager proposed migrating the reporter to Metabase. Here is the agr
 - [ ] EOD Email: verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass)
 - [ ] Packed Not Shipped: build PackedNotShipped_live.html + fetchPackedNotShipped() in dc499_refresh.js
 - [ ] Putwall column in batch display — needs multi-PW shift to confirm TSK_TASK_DETAIL.RESOURCE_GROUP_ID populated
-- [ ] Ecom Live: decide on `Returns System Directed Putaway` — add to Group A (putaway) or exclude
 - [ ] Lost Tote Lookup: verify PPK_OLPN_DETAIL schema + repick location join. Requires PC server endpoint.
 - [ ] PWA / iPad: add manifest.json + service worker; update getLiveBase() to LAN IP for iPad
 - [ ] Wave progress report (DCO_WAVE_AGGREGATE_ORDER)
 - [ ] Timeclock report (default_timeclock)
 - [ ] GitHub Pro ($4/mo) for private repo + Pages
 - [ ] IT/Metabase: review eng manager's Metabase report, verify facility_id filter, REST API accessibility, and confirm Dean retains deploy access for HTML/JS updates
-- [ ] Token TTL: verify Nordstrom OIDC `expires_in` value — update TOKEN_TTL in all 4 agents if not 60 min, or switch to reading expires_in from token response directly
 - [ ] Reserve Weekly: UPH trend line + replen/pick ratio metrics (agreed, not yet built)
 
 ---
