@@ -32,12 +32,10 @@ h1{font-size:19px;font-weight:500;margin-bottom:3px;}
 .day-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px 8px;text-align:center;cursor:pointer;transition:all 0.15s;position:relative;min-height:88px;display:flex;flex-direction:column;align-items:center;}
 .day-card:hover{border-color:#7F77DD;background:var(--surface2);}
 .day-card.active{border-color:#7F77DD;box-shadow:0 0 0 3px rgba(127,119,221,0.15);}
-.day-card.today{border-color:#0891B2;}
-.day-card.today.active{border-color:#7F77DD;}
+.day-card.today .day-name{color:#0891B2;}
 .day-card.empty{opacity:0.4;cursor:default;}
 .day-card.empty:hover{border-color:var(--border);background:var(--surface);}
 .day-name{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:4px;}
-.day-card.today .day-name{color:#0891B2;}
 .day-card.active .day-name{color:#7F77DD;}
 .day-total{font-size:20px;font-weight:600;color:var(--text);line-height:1;}
 .day-sub{font-size:9px;color:var(--text-hint);margin-top:2px;}
@@ -258,7 +256,7 @@ function clearDay(dk) {
   render();
 }
 function selectDay(dk) {
-  _selDay = dk;
+  _selDay = _selDay === dk ? null : dk;
   render();
 }
 function switchDetailTab(t) { _detailTab = t; render(); }
