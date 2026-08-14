@@ -28,6 +28,10 @@ echo  8  Shipping Live - one-shot refresh
 echo  9  Shipping Live - start auto-refresh (every 5 min)
 echo  10 Shipping Live - auth
 echo ──────────────────────────────
+echo  11 Reserve Live - one-shot refresh
+echo  12 Reserve Live - start auto-refresh (every 5 min)
+echo  13 Reserve Live - auth
+echo ──────────────────────────────
 set /p choice="Select: "
 
 if "%choice%"=="1" (
@@ -98,6 +102,27 @@ if "%choice%"=="10" (
     echo.
     echo Starting Shipping Live auth flow...
     "%NODE_EXE%" "%~dp0scout_shipping_agent.js" --auth
+    pause
+    exit /b
+)
+if "%choice%"=="11" (
+    echo.
+    echo Running Reserve Live one-shot refresh...
+    "%NODE_EXE%" "%~dp0scout_reserve_agent.js"
+    pause
+    exit /b
+)
+if "%choice%"=="12" (
+    echo.
+    echo Starting Reserve Live auto-refresh every 30 min...
+    "%NODE_EXE%" "%~dp0scout_reserve_agent.js" --serve
+    pause
+    exit /b
+)
+if "%choice%"=="13" (
+    echo.
+    echo Starting Reserve Live auth flow...
+    "%NODE_EXE%" "%~dp0scout_reserve_agent.js" --auth
     pause
     exit /b
 )

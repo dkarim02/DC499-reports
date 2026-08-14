@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reserve Stock Report Processor v1.7</title>
+<title>Reserve Stock Report Processor v1.8</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -244,8 +244,12 @@
   .full-side-tm.on-roster{color:var(--text);}
   .full-side-tm.off-roster{color:var(--text-hint);}
   .full-side-tm-units{font-size:11px;color:var(--text-muted);font-weight:500;}
-  .full-side-add-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid #059669;background:rgba(5,150,105,0.1);color:#059669;cursor:pointer;font-family:inherit;}
-  .full-side-disable-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:0.5px solid var(--border);background:none;color:var(--text-hint);cursor:pointer;font-family:inherit;}
+  .full-side-add-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:1.5px solid #185FA5;background:rgba(24,95,165,0.08);color:#185FA5;cursor:pointer;font-family:inherit;}
+  .full-side-add-btn:hover{background:rgba(24,95,165,0.18);}
+  .full-side-enable-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:1.5px solid #059669;background:rgba(5,150,105,0.08);color:#059669;cursor:pointer;font-family:inherit;}
+  .full-side-enable-btn:hover{background:rgba(5,150,105,0.18);}
+  .full-side-disable-btn{font-size:10px;padding:2px 8px;border-radius:4px;border:1.5px solid #C0392B;background:rgba(192,57,43,0.08);color:#C0392B;cursor:pointer;font-family:inherit;}
+  .full-side-disable-btn:hover{background:rgba(192,57,43,0.18);}
   .full-layout-with-panel{display:grid;grid-template-columns:1fr 280px;gap:14px;align-items:start;}
   .assoc-row{cursor:pointer;transition:background 0.15s;}
   .assoc-row:hover td{background:var(--surface2);}
@@ -258,6 +262,26 @@
   .assoc-stats{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;}
   .assoc-stat{font-size:11px;color:var(--text-muted);}
   .assoc-stat span{color:var(--text);font-weight:500;}
+
+  /* ── HEADCOUNT STEPPER ── */
+  .hc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+  .hc-item{display:flex;flex-direction:column;gap:4px;}
+  .hc-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;}
+  .hc-stepper{display:flex;align-items:center;border:0.5px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface);}
+  .hc-btn{font-family:inherit;font-size:16px;font-weight:400;width:32px;height:34px;border:none;background:none;color:var(--text-muted);cursor:pointer;line-height:1;flex-shrink:0;}
+  .hc-btn:hover{background:var(--surface2);color:var(--text);}
+  .hc-input{flex:1;font-family:inherit;font-size:14px;font-weight:500;text-align:center;border:none;background:none;color:var(--text);outline:none;width:0;min-width:0;padding:0;}
+  .hc-input::-webkit-inner-spin-button,.hc-input::-webkit-outer-spin-button{-webkit-appearance:none;}
+  .hc-detected{font-size:11px;color:var(--text-hint);margin-top:2px;}
+  /* ── PPH COLLAPSIBLE ── */
+  .pph-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:8px 0 6px;border-top:0.5px solid var(--border);margin-top:10px;user-select:none;}
+  .pph-toggle-label{font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .pph-toggle-arrow{font-size:11px;color:var(--text-hint);transition:transform 0.2s;}
+  .pph-toggle-arrow.open{transform:rotate(180deg);}
+  .pph-body{display:none;padding-top:8px;}
+  .pph-body.open{display:block;}
+  .pph-input{width:100%;font-family:inherit;font-size:13px;padding:5px 8px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);outline:none;text-align:right;}
+  .pph-input:focus{border-color:#9B4DCA;}
 </style>
 </head>
 <body>
@@ -276,280 +300,16 @@
 
   <div class="tabs">
     <div class="tabs-left">
-      <button class="tab active-pick" id="tab-pick" onclick="switchTab('pick')">Pick F1</button>
-      <button class="tab" id="tab-pick2" onclick="switchTab('pick2')">Pick F2</button>
-      <button class="tab" id="tab-replen" onclick="switchTab('replen')">Replenishment</button>
-      <button class="tab" id="tab-putaway" onclick="switchTab('putaway')">Putaway</button>
+      <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
+      <button class="tab" id="tab-live" onclick="switchTab('live')" style="color:var(--text-muted);">&#x26A1; Live</button>
     </div>
-    <button class="tab" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
     </div>
   </div>
 
-  <!-- PICK TAB -->
-  <div class="tab-panel active" id="panel-pick">
-    <div id="pick-upload">
-      <div class="drop-zone" id="dz-pick" onclick="document.getElementById('fi-pick').click()">
-        <div class="icon">&#x2B06;</div>
-        <p>Drop Pick Floor 1 CSV here</p>
-        <small>or click to browse</small>
-        <input type="file" id="fi-pick" accept=".csv" style="display:none;">
-      </div>
-    </div>
-    <div class="error-msg" id="err-pick"></div>
-    <div class="stale-banner" id="stale-pick"></div>
-    <div class="results" id="res-pick">
-      <div class="header-row">
-        <div>
-          <div class="file-name" id="rn-pick"></div>
-          <div class="run-time" id="rt-pick"></div>
-          <div class="run-time" id="tf-pick"></div>
-          <div class="run-time" id="fd-pick"></div>
-        </div>
-        <div class="header-btns">
-          <button class="copy-btn" onclick="copyTable('pick')">&#x1F4CB; Copy</button>
-          <button class="reset-btn-pick" onclick="resetPanel('pick')">&#x21BA; New file</button>
-        </div>
-      </div>
-      <div class="metrics">
-        <div class="metric"><div class="metric-label">Team Total</div><div class="metric-value" id="m-pick-total">—</div></div>
-        <div class="metric">
-          <div class="metric-label">Daily Goal</div>
-          <div class="metric-value" id="m-pick-goal">—</div>
-          <div class="metric-sub" id="m-pick-pct"></div>
-          <div class="progress-wrap" id="m-pick-pw" style="display:none;"><div class="progress-fill-pick" id="m-pick-pb" style="width:0%"></div></div>
-          <div class="remaining-label" id="m-pick-remaining"></div>
-        </div>
-        <div class="metric"><div class="metric-label">Associates</div><div class="metric-value" id="m-pick-assoc">—</div></div>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Associate</th><th style="text-align:right;">Units Picked</th><th style="text-align:right;width:35%;">Share</th></tr></thead>
-          <tbody id="tb-pick"></tbody>
-          <tfoot><tr><td>Team total</td><td style="text-align:right;" id="ft-pick"></td><td></td></tr></tfoot>
-        </table>
-      </div>
-      <div class="card" id="ex-pick-wrap" style="display:none;">
-        <div class="excluded-label">Excluded associates</div>
-        <div id="ex-pick-list"></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-header">
-          <div class="chart-title">Units picked by hour</div>
-          <div class="chart-controls">
-            <button class="chart-mode-btn active-pick" id="mode-smooth-pick" onclick="setMode('pick','smooth')" title="Smooth">
-              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><path d="M1 10 C4 10 4 2 9 2 C14 2 14 10 17 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
-            </button>
-            <button class="chart-mode-btn" id="mode-spiky-pick" onclick="setMode('pick','spiky')" title="Spiky">
-              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><polyline points="1,10 5,10 7,2 9,10 11,2 13,10 17,10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-            </button>
-            <a class="chart-dl-btn" onclick="downloadChart('chart-pick','pick-chart')">&#x2193; Save</a>
-          </div>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-pick"></canvas></div>
-        <div class="peak-label" id="peak-pick"></div>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- PICK F2 TAB -->
-  <div class="tab-panel" id="panel-pick2">
-    <div id="pick2-upload">
-      <div class="drop-zone" id="dz-pick2" onclick="document.getElementById('fi-pick2').click()">
-        <div class="icon">&#x2B06;</div>
-        <p>Drop Pick Floor 2 CSV here</p>
-        <small>Transaction: Non Haz Retail Pick To oLPN Cart Floor 2</small>
-        <input type="file" id="fi-pick2" accept=".csv" style="display:none;">
-      </div>
-    </div>
-    <div class="error-msg" id="err-pick2"></div>
-    <div class="stale-banner" id="stale-pick2"></div>
-    <div class="results" id="res-pick2">
-      <div class="header-row">
-        <div>
-          <div class="file-name" id="rn-pick2"></div>
-          <div class="run-time" id="rt-pick2"></div>
-          <div class="run-time" id="tf-pick2"></div>
-          <div class="run-time" id="fd-pick2"></div>
-        </div>
-        <div class="header-btns">
-          <button class="copy-btn" onclick="copyTable('pick2')">&#x1F4CB; Copy</button>
-          <button class="reset-btn" onclick="resetPanel('pick2')">&#x21BA; New file</button>
-        </div>
-      </div>
-      <div class="metrics">
-        <div class="metric"><div class="metric-label">Team Total</div><div class="metric-value" id="m-pick2-total">—</div></div>
-        <div class="metric">
-          <div class="metric-label">Daily Goal</div>
-          <div class="metric-value" id="m-pick2-goal">—</div>
-          <div class="metric-sub" id="m-pick2-pct"></div>
-          <div class="progress-wrap" id="m-pick2-pw" style="display:none;"><div class="progress-fill-pick2" id="m-pick2-pb" style="width:0%"></div></div>
-        </div>
-        <div class="metric"><div class="metric-label">Associates</div><div class="metric-value" id="m-pick2-assoc">—</div></div>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Associate</th><th style="text-align:right;">Units Picked</th><th style="text-align:right;width:35%;">Share</th></tr></thead>
-          <tbody id="tb-pick2"></tbody>
-          <tfoot><tr><td>Team total</td><td style="text-align:right;" id="ft-pick2"></td><td></td></tr></tfoot>
-        </table>
-      </div>
-      <div class="card" id="ex-pick2-wrap" style="display:none;">
-        <div class="excluded-label">Excluded associates</div>
-        <div id="ex-pick2-list"></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-header">
-          <div class="chart-title">Pick F2 units by hour</div>
-          <div class="chart-controls">
-            <button class="chart-mode-btn active" id="mode-smooth-pick2" onclick="setMode('pick2','smooth')" title="Smooth">
-              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><path d="M1 10 C4 10 4 2 9 2 C14 2 14 10 17 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
-            </button>
-            <button class="chart-mode-btn" id="mode-spiky-pick2" onclick="setMode('pick2','spiky')" title="Spiky">
-              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><polyline points="1,10 5,10 7,2 9,10 11,2 13,10 17,10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-            </button>
-            <a class="chart-dl-btn" onclick="downloadChart('chart-pick2','pick2-chart')">&#x2193; Save</a>
-          </div>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-pick2"></canvas></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PUTAWAY TAB -->
-  <div class="tab-panel" id="panel-putaway">
-    <div id="putaway-upload">
-      <div class="drop-zone" id="dz-putaway" onclick="document.getElementById('fi-putaway').click()">
-        <div class="icon">&#x2B06;</div>
-        <p>Drop putaway CSV here</p>
-        <small>System Directed &amp; User Directed Putaway</small>
-        <input type="file" id="fi-putaway" accept=".csv" style="display:none;">
-      </div>
-    </div>
-    <div class="error-msg" id="err-putaway"></div>
-    <div class="stale-banner" id="stale-putaway"></div>
-    <div class="results" id="res-putaway">
-      <div class="header-row">
-        <div>
-          <div class="file-name" id="rn-putaway"></div>
-          <div class="run-time" id="rt-putaway"></div>
-          <div class="run-time" id="tf-putaway"></div>
-          <div class="run-time" id="fd-putaway"></div>
-        </div>
-        <div class="header-btns">
-          <button class="copy-btn" onclick="copyTable('putaway')">&#x1F4CB; Copy</button>
-          <button class="reset-btn" onclick="resetPanel('putaway')">&#x21BA; New file</button>
-        </div>
-      </div>
-      <div class="metrics">
-        <div class="metric"><div class="metric-label">Team Total</div><div class="metric-value" id="m-putaway-total">—</div></div>
-        <div class="metric">
-          <div class="metric-label">Daily Goal</div>
-          <div class="metric-value" id="m-putaway-goal">—</div>
-          <div class="metric-sub" id="m-putaway-pct"></div>
-          <div class="progress-wrap" id="m-putaway-pw" style="display:none;"><div class="progress-fill-putaway" id="m-putaway-pb" style="width:0%"></div></div>
-        </div>
-        <div class="metric"><div class="metric-label">Associates</div><div class="metric-value" id="m-putaway-assoc">—</div></div>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Associate</th><th style="text-align:right;">Putaway Units</th><th style="text-align:right;width:35%;">Share</th></tr></thead>
-          <tbody id="tb-putaway"></tbody>
-          <tfoot><tr><td>Team total</td><td style="text-align:right;" id="ft-putaway"></td><td></td></tr></tfoot>
-        </table>
-      </div>
-      <div class="card" id="ex-putaway-wrap" style="display:none;">
-        <div class="excluded-label">Excluded associates</div>
-        <div id="ex-putaway-list"></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-header">
-          <div class="chart-title">Putaway units by hour</div>
-          <div class="chart-controls">
-            <button class="chart-mode-btn active" id="mode-smooth-putaway" onclick="setMode('putaway','smooth')" title="Smooth">
-              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><path d="M1 10 C4 10 4 2 9 2 C14 2 14 10 17 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
-            </button>
-            <button class="chart-mode-btn" id="mode-spiky-putaway" onclick="setMode('putaway','spiky')" title="Spiky">
-              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><polyline points="1,10 5,10 7,2 9,10 11,2 13,10 17,10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-            </button>
-            <a class="chart-dl-btn" onclick="downloadChart('chart-putaway','putaway-chart')">&#x2193; Save</a>
-          </div>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-putaway"></canvas></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- REPLEN TAB -->
-  <div class="tab-panel" id="panel-replen">
-    <div id="replen-upload">
-      <div class="drop-zone" id="dz-replen" onclick="document.getElementById('fi-replen').click()">
-        <div class="icon">&#x2B06;</div>
-        <p>Drop replen report CSV here</p>
-        <small>or click to browse</small>
-        <input type="file" id="fi-replen" accept=".csv" style="display:none;">
-      </div>
-    </div>
-    <div class="error-msg" id="err-replen"></div>
-    <div class="stale-banner" id="stale-replen"></div>
-    <div class="results" id="res-replen">
-      <div class="header-row">
-        <div>
-          <div class="file-name" id="rn-replen"></div>
-          <div class="run-time" id="rt-replen"></div>
-          <div class="run-time" id="tf-replen"></div>
-          <div class="run-time" id="fd-replen"></div>
-        </div>
-        <div class="header-btns">
-          <button class="copy-btn" onclick="copyTable('replen')">&#x1F4CB; Copy</button>
-          <button class="reset-btn-replen" onclick="resetPanel('replen')">&#x21BA; New file</button>
-        </div>
-      </div>
-      <div class="metrics">
-        <div class="metric"><div class="metric-label">Team Total</div><div class="metric-value" id="m-replen-total">—</div></div>
-        <div class="metric">
-          <div class="metric-label">Daily Goal</div>
-          <div class="metric-value" id="m-replen-goal">—</div>
-          <div class="metric-sub" id="m-replen-pct"></div>
-          <div class="progress-wrap" id="m-replen-pw" style="display:none;"><div class="progress-fill-replen" id="m-replen-pb" style="width:0%"></div></div>
-          <div class="remaining-label" id="m-replen-remaining"></div>
-        </div>
-        <div class="metric"><div class="metric-label">Associates</div><div class="metric-value" id="m-replen-assoc">—</div></div>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Associate</th><th style="text-align:right;">Completed Qty</th><th style="text-align:right;width:35%;">Share</th></tr></thead>
-          <tbody id="tb-replen"></tbody>
-          <tfoot><tr><td>Team total</td><td style="text-align:right;" id="ft-replen"></td><td></td></tr></tfoot>
-        </table>
-      </div>
-      <div class="card" id="ex-replen-wrap" style="display:none;">
-        <div class="excluded-label">Excluded associates</div>
-        <div id="ex-replen-list"></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-header">
-          <div class="chart-title">Completed quantity by hour</div>
-          <div class="chart-controls">
-            <button class="chart-mode-btn active-replen" id="mode-smooth-replen" onclick="setMode('replen','smooth')" title="Smooth">
-              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><path d="M1 10 C4 10 4 2 9 2 C14 2 14 10 17 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
-            </button>
-            <button class="chart-mode-btn" id="mode-spiky-replen" onclick="setMode('replen','spiky')" title="Spiky">
-              <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><polyline points="1,10 5,10 7,2 9,10 11,2 13,10 17,10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-            </button>
-            <a class="chart-dl-btn" onclick="downloadChart('chart-replen','replen-chart')">&#x2193; Save</a>
-          </div>
-        </div>
-        <div class="chart-wrap"><canvas id="chart-replen"></canvas></div>
-        <div class="peak-label" id="peak-replen"></div>
-      </div>
-    </div>
-  </div>
-
   <!-- FULL REPORT TAB -->
-  <div class="tab-panel" id="panel-full">
+  <div class="tab-panel active" id="panel-full">
     <div class="drop-zone" id="dz-full" onclick="document.getElementById('fi-full').click()" style="margin-bottom:1rem;">
       <div class="icon">&#x2B06;</div>
       <p>Drop any activity CSV here</p>
@@ -559,6 +319,20 @@
     <div id="full-files-loaded" style="display:none;font-size:12px;color:var(--text-hint);margin-bottom:0.75rem;"></div>
     <div id="full-content">
       <div class="full-empty">No data yet — upload a CSV on any tab to populate the Full Report.</div>
+    </div>
+  </div>
+
+  <!-- LIVE TAB -->
+  <div class="tab-panel" id="panel-live">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);">&#x26A1; Reserve Live</div>
+        <div style="font-size:12px;color:var(--text-hint);margin-top:2px;" id="live-meta">Loading...</div>
+      </div>
+      <button onclick="loadLiveData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
+    </div>
+    <div id="live-content">
+      <div class="full-empty">Loading live data...</div>
     </div>
   </div>
 
@@ -572,6 +346,29 @@
       </div>
       <p class="roster-notice" style="margin-top:8px;">Switching shifts changes the active team roster and chart time window.</p>
     </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="roster-header">
+        <div class="roster-title">Dept Headcount</div>
+        <button class="add-btn" onclick="resetHeadcountToDetected()" style="font-size:11px;padding:4px 10px;">Reset to detected</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Associate count used for PPH pace. Auto-filled from CSV — override as needed.</p>
+      <div class="hc-grid" id="hc-grid"><!-- rendered by renderHeadcountCard() --></div>
+      <div class="hc-detected" id="hc-detected-date"></div>
+      <div class="pph-toggle" onclick="togglePPHSection()">
+        <span class="pph-toggle-label">PPH Targets</span>
+        <span class="pph-toggle-arrow" id="pph-arrow">&#x25BC;</span>
+      </div>
+      <div class="pph-body" id="pph-body">
+        <div class="hc-item" style="margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--border);">
+          <div class="hc-label">Shift Hours</div>
+          <input class="pph-input" type="number" min="6" max="12" step="0.5" id="shift-hours-input" onchange="setShiftHours(this.value)" onblur="setShiftHours(this.value)">
+        </div>
+        <div class="hc-grid" id="pph-grid"><!-- rendered by renderPPHSection() --></div>
+        <button class="add-btn" onclick="resetPPHToDefaults()" style="width:100%;text-align:center;margin-top:8px;font-size:11px;padding:5px 10px;">Reset to defaults</button>
+      </div>
+      <p class="roster-notice" style="margin-top:8px;">Headcount and targets save to this browser.</p>
+    </div>
+
     <div class="card">
       <div class="roster-header">
         <div class="roster-title">Team members <span id="shift-roster-label" style="font-size:12px;color:var(--text-hint);margin-left:4px;"></span> <span class="saved-badge" id="saved-badge">Saved &#x2713;</span></div>
@@ -587,89 +384,7 @@
       <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
     </div>
 
-    <div class="card" style="margin-top:1rem;">
-      <div class="roster-header">
-        <div class="roster-title">Daily goals <span class="saved-badge" id="goals-saved-badge">Saved &#x2713;</span></div>
-        <div style="font-size:12px;color:var(--text-hint);" id="goals-date-label"></div>
-      </div>
-      <p style="font-size:13px;color:var(--text-hint);margin-bottom:1rem;">Drop a CSV export of the goals sheet or enter manually.</p>
-      <div id="goals-current" style="display:none;margin-bottom:1rem;">
-        <div class="goals-row">
-          <div class="goals-item"><div class="goals-dept">Pick F1</div><div class="goals-val" id="goal-pick-display">—</div></div>
-          <div class="goals-item"><div class="goals-dept">Pick F2</div><div class="goals-val" id="goal-pick2-display">—</div></div>
-          <div class="goals-item"><div class="goals-dept">Replenishment</div><div class="goals-val" id="goal-replen-display">—</div></div>
-          <div class="goals-item"><div class="goals-dept">Putaway</div><div class="goals-val" id="goal-putaway-display">—</div></div>
-        </div>
-      </div>
-      <div class="goals-drop-zone" id="goals-dz" onclick="document.getElementById('goals-file').click()">
-        <span id="goals-dz-label">&#x1F4CB; Drop goals CSV here or click to browse</span>
-        <input type="file" id="goals-file" accept=".csv" style="display:none;">
-      </div>
-      <div class="goals-status" id="goals-status"></div>
-      <div class="goals-divider">
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Or enter goals manually:</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div><label class="goals-manual-label">Pick F1 goal</label><input type="number" id="manual-pick-goal" class="goals-manual-input" placeholder="e.g. 1620" /></div>
-          <div><label class="goals-manual-label">Pick F2 goal</label><input type="number" id="manual-pick2-goal" class="goals-manual-input" placeholder="e.g. 1000" /></div>
-          <div><label class="goals-manual-label">Replen goal</label><input type="number" id="manual-replen-goal" class="goals-manual-input" placeholder="e.g. 5253" /></div>
-          <div><label class="goals-manual-label">Putaway goal</label><input type="number" id="manual-putaway-goal" class="goals-manual-input" placeholder="e.g. 56" /></div>
-        </div>
-        <button class="add-btn" onclick="saveManualGoals()" style="margin-top:8px;width:100%;text-align:center;">Save manual goals</button>
-      </div>
-      
-      <div class="pph-calc" id="calc-pick">
-        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Picking</div>
-        <div class="pph-calc-row">
-          <div>
-            <div class="pph-calc-label">Total Hours</div>
-            <input type="number" class="pph-calc-input" id="calc-hrs-pick" placeholder="e.g. 32" step="0.01" min="0" />
-          </div>
-          <div>
-            <div class="pph-calc-label">Financial PPH</div>
-            <input type="number" class="pph-calc-input" id="calc-pph-pick" placeholder="e.g. 93.1" step="0.01" min="0" />
-          </div>
-        </div>
-        <button class="pph-calc-btn" onclick="calcGoal('pick')">Calculate &amp; Set Goal</button>
-        <div class="pph-calc-result" id="calc-result-pick"></div>
-      </div>
-
-      <div class="pph-calc" id="calc-replen">
-        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Replenishment</div>
-        <div class="pph-calc-row">
-          <div>
-            <div class="pph-calc-label">Total Hours</div>
-            <input type="number" class="pph-calc-input" id="calc-hrs-replen" placeholder="e.g. 48" step="0.01" min="0" />
-          </div>
-          <div>
-            <div class="pph-calc-label">Financial PPH</div>
-            <input type="number" class="pph-calc-input" id="calc-pph-replen" placeholder="e.g. 83.38" step="0.01" min="0" />
-          </div>
-        </div>
-        <button class="pph-calc-btn" onclick="calcGoal('replen')">Calculate &amp; Set Goal</button>
-        <div class="pph-calc-result" id="calc-result-replen"></div>
-      </div>
-      <div class="pph-calc" id="calc-pick2">
-        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Pick F2</div>
-        <div class="pph-calc-row">
-          <div><div class="pph-calc-label">Total Hours</div><input type="number" class="pph-calc-input" id="calc-hrs-pick2" placeholder="e.g. 32" step="0.01" min="0" /></div>
-          <div><div class="pph-calc-label">Financial PPH</div><input type="number" class="pph-calc-input" id="calc-pph-pick2" placeholder="e.g. 93.1" step="0.01" min="0" /></div>
-        </div>
-        <button class="pph-calc-btn" onclick="calcGoal('pick2')">Calculate &amp; Set Goal</button>
-        <div class="pph-calc-result" id="calc-result-pick2"></div>
-      </div>
-      <div class="pph-calc" id="calc-putaway">
-        <div class="pph-calc-title">&#x1F9EE; PPH Calculator &mdash; Putaway</div>
-        <div class="pph-calc-row">
-          <div><div class="pph-calc-label">Total Hours</div><input type="number" class="pph-calc-input" id="calc-hrs-putaway" placeholder="e.g. 16" step="0.01" min="0" /></div>
-          <div><div class="pph-calc-label">Financial PPH</div><input type="number" class="pph-calc-input" id="calc-pph-putaway" placeholder="e.g. 14" step="0.01" min="0" /></div>
-        </div>
-        <button class="pph-calc-btn" onclick="calcGoal('putaway')">Calculate &amp; Set Goal</button>
-        <div class="pph-calc-result" id="calc-result-putaway"></div>
-      </div>
-      <p class="roster-notice" style="margin-top:8px;">Goals save to this browser until updated.</p>
-    </div>
-
-    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v1.7</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v1.8</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Reserve Stock &middot; Last updated: <span id="last-updated"></span></p>
@@ -773,17 +488,15 @@ function toggleDark() { applyTheme(document.documentElement.getAttribute('data-t
 
 // ── TABS ──────────────────────────────────────────────
 function switchTab(tab) {
-  document.getElementById('tab-pick').className = 'tab' + (tab === 'pick' ? ' active-pick' : '');
-  document.getElementById('tab-pick2').className = 'tab' + (tab === 'pick2' ? ' active-pick2' : '');
-  document.getElementById('tab-replen').className = 'tab' + (tab === 'replen' ? ' active-replen' : '');
-  document.getElementById('tab-putaway').className = 'tab' + (tab === 'putaway' ? ' active-putaway' : '');
   document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
+  document.getElementById('tab-live').className = 'tab' + (tab === 'live' ? ' active-full' : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['pick','pick2','replen','putaway','full','settings'].forEach(function(t) {
+  ['full','live','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
   if (tab === 'settings') { renderRoster(); renderGoalsCard(); }
   if (tab === 'full') { renderFullReport(); }
+  if (tab === 'live') { loadLiveData(); }
 }
 
 // ── ROSTER ──────────────────────────────────────────────
@@ -845,115 +558,7 @@ function removeMember(idx) { const r = loadRoster(); r.splice(idx,1); saveRoster
 function toggleMember(idx) { const r = loadRoster(); r[idx].enabled = !r[idx].enabled; saveRoster(r); renderRoster(); reprocessAll(); }
 document.getElementById('new-email').addEventListener('keydown', function(e) { if (e.key === 'Enter') addMember(); });
 
-// ── GOALS ──────────────────────────────────────────────
-function loadGoals() { try { const s = localStorage.getItem(GOALS_KEY); if (s) return JSON.parse(s); } catch(e) {} return {pick:null,pick2:null,replen:null,putaway:null,date:null}; }
-function saveGoals(g) { try { localStorage.setItem(GOALS_KEY, JSON.stringify(g)); flashBadge('goals-saved-badge'); } catch(e) {} }
-
-function renderGoalsCard() {
-  const g = loadGoals(), cur = document.getElementById('goals-current');
-  if (g.pick || g.replen) {
-    cur.style.display = 'block';
-    document.getElementById('goal-pick-display').textContent = g.pick ? g.pick.toLocaleString() : '\u2014';
-    document.getElementById('goal-replen-display').textContent = g.replen ? g.replen.toLocaleString() : '\u2014';
-    document.getElementById('goals-date-label').textContent = g.date ? 'Set ' + g.date : '';
-  } else {
-    cur.style.display = 'none';
-    document.getElementById('goals-date-label').textContent = '';
-  }
-}
-
-function updateGoalMetric(type, actual) {
-  const g = loadGoals(), goal = g[type];
-  const goalEl = document.getElementById('m-' + type + '-goal');
-  const pctEl = document.getElementById('m-' + type + '-pct');
-  const pw = document.getElementById('m-' + type + '-pw');
-  const pb = document.getElementById('m-' + type + '-pb');
-  const remEl = document.getElementById('m-' + type + '-remaining');
-  if (!goal) { goalEl.textContent = 'No goal set'; pctEl.textContent = 'Set in Settings'; pw.style.display = 'none'; if(remEl)remEl.textContent = ''; return; }
-  const pct = Math.min(Math.round((actual / goal) * 100), 100);
-  const over = actual >= goal;
-  goalEl.textContent = goal.toLocaleString();
-  pctEl.textContent = (over ? '\u2713 ' : '') + pct + '% of goal' + (over ? ' \u2014 exceeded!' : '');
-  pctEl.style.color = over ? '#0F6E56' : (pct >= 75 ? '#B07B00' : 'var(--text-hint)');
-  pw.style.display = 'block';
-  pb.style.width = pct + '%';
-  if(remEl)remEl.textContent = over ? '' : (goal - actual).toLocaleString() + ' remaining';
-}
-
-function saveManualGoals() {
-  const p = parseInt(document.getElementById('manual-pick-goal').value);
-  const r = parseInt(document.getElementById('manual-replen-goal').value);
-  if (isNaN(p) && isNaN(r)) return;
-  const existing = loadGoals();
-  saveGoals({pick: isNaN(p) ? existing.pick : Math.ceil(p), replen: isNaN(r) ? existing.replen : Math.ceil(r), date: new Date().toLocaleDateString()});
-  renderGoalsCard();
-  document.getElementById('goals-status').textContent = '\u2713 Saved';
-  setTimeout(function() { document.getElementById('goals-status').textContent = ''; }, 2000);
-  reprocessAll();
-}
-
-function processGoalsCsv(file) {
-  const status = document.getElementById('goals-status');
-  status.textContent = 'Reading...';
-  Papa.parse(file, {header:false, skipEmptyLines:true, complete:function(res) {
-    try {
-      const rows = res.data;
-      let pickGoal = null, replenGoal = null, goalColIdx = -1, deptColIdx = -1;
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        for (let j = 0; j < row.length; j++) {
-          const cell = (row[j] || '').toString().trim().toLowerCase();
-          if (cell === 'planned goal') goalColIdx = j;
-          if (cell === 'department') deptColIdx = j;
-        }
-        if (goalColIdx > -1 && deptColIdx > -1) break;
-      }
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const dept = deptColIdx > -1 ? (row[deptColIdx]||'').toString().toLowerCase() : row.join(' ').toLowerCase();
-        const valCol = goalColIdx > -1 ? row[goalColIdx] : null;
-        if (dept.includes('picking')) { const v = valCol ? parseFloat(valCol.toString().replace(/,/g,'')) : null; if (v && !isNaN(v)) pickGoal = Math.ceil(v); }
-        if (dept.includes('stock control') && dept.includes('replen')) { const v = valCol ? parseFloat(valCol.toString().replace(/,/g,'')) : null; if (v && !isNaN(v)) replenGoal = Math.ceil(v); }
-      }
-      if (!pickGoal && !replenGoal) throw new Error('Could not find goal values');
-      const existing = loadGoals();
-      saveGoals({pick: pickGoal||existing.pick, replen: replenGoal||existing.replen, date: new Date().toLocaleDateString()});
-      renderGoalsCard(); reprocessAll();
-      status.textContent = '\u2713 Goals updated';
-      setTimeout(function() { status.textContent = ''; }, 3000);
-    } catch(e) {
-      status.textContent = '\u26A0 Could not read \u2014 try manual entry';
-      setTimeout(function() { status.textContent = ''; }, 4000);
-    }
-  }});
-}
-
-
-// ── PPH CALCULATOR ─────────────────────────────────────
-function calcGoal(type) {
-  var hrsEl = document.getElementById('calc-hrs-' + type);
-  var pphEl = document.getElementById('calc-pph-' + type);
-  var resEl = document.getElementById('calc-result-' + type);
-  var hrs = parseFloat(hrsEl.value);
-  var pph = parseFloat(pphEl.value);
-  if (isNaN(hrs) || isNaN(pph) || hrs <= 0 || pph <= 0) {
-    resEl.textContent = 'Enter valid hours and PPH';
-    resEl.className = 'pph-calc-result';
-    return;
-  }
-  var goal = Math.round(hrs * pph);
-  // Save to goals
-  var g = loadGoals();
-  g[type] = goal;
-  g.date = new Date().toLocaleDateString();
-  saveGoals(g);
-  renderGoalsCard();
-  reprocessAll();
-  resEl.textContent = hrs + ' hrs × ' + pph + ' PPH = ' + goal.toLocaleString() + ' ✔ Set as goal';
-  resEl.className = 'pph-calc-result success';
-}
-
-
+function renderGoalsCard() { renderHeadcountCard(); }
 function filterRoster(query) {
   var q = query.toLowerCase().trim();
   var members = document.querySelectorAll('#roster-list .roster-member');
@@ -977,33 +582,6 @@ function reprocessAll() {
 }
 
 // ── FILE HANDLING ──────────────────────────────────────
-const dzPick = document.getElementById('dz-pick');
-const fiPick = document.getElementById('fi-pick');
-dzPick.addEventListener('dragover', function(e){e.preventDefault();dzPick.classList.add('dragover');});
-dzPick.addEventListener('dragleave', function(){dzPick.classList.remove('dragover');});
-dzPick.addEventListener('drop', function(e){e.preventDefault();dzPick.classList.remove('dragover');handleFile(e.dataTransfer.files[0],'pick');});
-fiPick.addEventListener('change', function(){handleFile(fiPick.files[0],'pick');});
-
-var dzPick2 = document.getElementById('dz-pick2');
-var fiPick2 = document.getElementById('fi-pick2');
-dzPick2.addEventListener('dragover', function(e){e.preventDefault();dzPick2.classList.add('dragover');});
-dzPick2.addEventListener('dragleave', function(){dzPick2.classList.remove('dragover');});
-dzPick2.addEventListener('drop', function(e){e.preventDefault();dzPick2.classList.remove('dragover');handleFile(e.dataTransfer.files[0],'pick2');});
-fiPick2.addEventListener('change', function(){handleFile(fiPick2.files[0],'pick2');});
-
-const dzReplen = document.getElementById('dz-replen');
-const fiReplen = document.getElementById('fi-replen');
-dzReplen.addEventListener('dragover', function(e){e.preventDefault();dzReplen.classList.add('dragover');});
-dzReplen.addEventListener('dragleave', function(){dzReplen.classList.remove('dragover');});
-dzReplen.addEventListener('drop', function(e){e.preventDefault();dzReplen.classList.remove('dragover');handleFile(e.dataTransfer.files[0],'replen');});
-fiReplen.addEventListener('change', function(){handleFile(fiReplen.files[0],'replen');});
-
-var dzPutaway = document.getElementById('dz-putaway');
-var fiPutaway = document.getElementById('fi-putaway');
-dzPutaway.addEventListener('dragover', function(e){e.preventDefault();dzPutaway.classList.add('dragover');});
-dzPutaway.addEventListener('dragleave', function(){dzPutaway.classList.remove('dragover');});
-dzPutaway.addEventListener('drop', function(e){e.preventDefault();dzPutaway.classList.remove('dragover');handleFile(e.dataTransfer.files[0],'putaway');});
-fiPutaway.addEventListener('change', function(){handleFile(fiPutaway.files[0],'putaway');});
 
 var dzFull = document.getElementById('dz-full');
 var fiFull = document.getElementById('fi-full');
@@ -1029,76 +607,187 @@ function processFullFile(file) {
   }});
 }
 
-const goalsDz = document.getElementById('goals-dz');
-const goalsFile = document.getElementById('goals-file');
-goalsDz.addEventListener('dragover', function(e) { e.preventDefault(); goalsDz.classList.add('dragover'); });
-goalsDz.addEventListener('dragleave', function() { goalsDz.classList.remove('dragover'); });
-goalsDz.addEventListener('drop', function(e) { e.preventDefault(); goalsDz.classList.remove('dragover'); if (e.dataTransfer.files[0]) processGoalsCsv(e.dataTransfer.files[0]); });
-goalsFile.addEventListener('change', function() { if (goalsFile.files[0]) processGoalsCsv(goalsFile.files[0]); });
+// ── HEADCOUNT + PPH ────────────────────────────────────
+var HC_DEPTS = ['pick','pick2','replen','putaway'];
+var HC_LABELS = {pick:'Pick F1', pick2:'Pick F2', replen:'Replenishment', putaway:'Putaway'};
+var HC_KEY = 'rs_headcount_v1';
+var PPH_KEY_RS = 'rs_pph_v1';
+var SHIFT_HOURS_KEY_RS = 'rs_shift_hours_v1';
 
-function showError(type, msg) { const el = document.getElementById('err-' + type); el.textContent = msg; el.style.display = 'block'; }
+var FIN_FCST_PPH_RS = {pick:93.1, pick2:93.1, replen:83.4, putaway:14.0};
+var MIN_TX_RS = {pick:5, pick2:5, replen:5, putaway:3};
 
-function handleFile(file, type) {
-  if (!file) return;
-  document.getElementById('err-'+type).style.display='none';
-  Papa.parse(file,{header:true,skipEmptyLines:true,complete:function(r){
-    lastUpload[type]={rows:r.data,fileName:file.name,file:file};
-    processData(r.data,file.name,type);
-    if(fullReportFiles.indexOf(file.name)===-1){
-      fullReportFiles.push(file.name);
-      addToFullReport(r.data,file.name);
-      var hint=document.getElementById('full-files-loaded');
-      if(hint&&fullReportFiles.length>0){hint.style.display='block';hint.textContent=fullReportFiles.length+' file'+(fullReportFiles.length>1?'s':'')+' loaded — '+fullReportRows.length+' total rows';}
+function loadHeadcount() {
+  try { var s = localStorage.getItem(HC_KEY); if (s) return JSON.parse(s); } catch(e) {}
+  return {date:'', counts:{pick:0,pick2:0,replen:0,putaway:0}};
+}
+function saveHeadcount(hc) { try { localStorage.setItem(HC_KEY, JSON.stringify(hc)); } catch(e) {} }
+
+function loadPPH() {
+  try {
+    var s = localStorage.getItem(PPH_KEY_RS);
+    if (s) {
+      var p = JSON.parse(s);
+      var merged = {};
+      HC_DEPTS.forEach(function(d){ merged[d] = p[d] != null ? p[d] : FIN_FCST_PPH_RS[d]; });
+      return merged;
     }
-  }});
+  } catch(e) {}
+  return Object.assign({}, FIN_FCST_PPH_RS);
+}
+function savePPH(vals) { try { localStorage.setItem(PPH_KEY_RS, JSON.stringify(vals)); } catch(e) {} }
+function getPPH(typ) { return loadPPH()[typ] || FIN_FCST_PPH_RS[typ] || 0; }
+function setPPHValue(typ, val) {
+  var vals = loadPPH(), n = parseFloat(val);
+  vals[typ] = isNaN(n) || n <= 0 ? FIN_FCST_PPH_RS[typ] : n;
+  savePPH(vals);
+}
+function resetPPHToDefaults() { savePPH(Object.assign({}, FIN_FCST_PPH_RS)); renderPPHSection(); }
+
+function getShiftHoursRS() {
+  try { var v = parseFloat(localStorage.getItem(SHIFT_HOURS_KEY_RS)); if (v >= 6 && v <= 12) return v; } catch(e) {}
+  return 8;
+}
+function setShiftHours(val) {
+  var v = parseFloat(val);
+  if (isNaN(v) || v < 6 || v > 12) return;
+  try { localStorage.setItem(SHIFT_HOURS_KEY_RS, v); } catch(e) {}
+  var el = document.getElementById('shift-hours-input');
+  if (el) el.value = v;
 }
 
-function processData(rows, fileName, type) {
-  if (type==='pick') {
-    var filtered=rows.filter(function(r){return PICK_TX.indexOf((r['Transaction ID']||'').trim())!==-1&&(parseFloat(r['Quantity'])||0)>0;});
-    if(!filtered.length){showError(type,'No Pick F1 transactions found.');return;}
-    renderGeneric(filtered,fileName,'pick','Quantity',false);
-  } else if (type==='pick2') {
-    var filtered=rows.filter(function(r){return PICK2_TX.indexOf((r['Transaction ID']||'').trim())!==-1&&(parseFloat(r['Quantity'])||0)>0;});
-    if(!filtered.length){showError(type,'No Pick F2 transactions found.');return;}
-    renderGeneric(filtered,fileName,'pick2','Quantity',false);
-  } else if (type==='replen') {
-    var filtered=rows.filter(function(r){return REPLEN_TX.indexOf((r['Transaction ID']||'').trim())!==-1 && rowBelongsToReserve(r);});
-    if(!filtered.length){showError(type,'No replenishment transactions found.');return;}
-    renderGeneric(filtered,fileName,'replen','Completed Quantity',false);
-  } else if (type==='putaway') {
-    var filtered=rows.filter(function(r){return PUTAWAY_TX.indexOf((r['Transaction ID']||'').trim())!==-1 && rowBelongsToReserve(r);});
-    if(!filtered.length){showError(type,'No putaway transactions found.');return;}
-    renderGeneric(filtered,fileName,'putaway','Completed Quantity',false);
-  }
-}
+function todayStr() { var d = new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 
-function renderGeneric(rows,fileName,type,metricKey,countMode) {
-  var TEAM=getTeamSet(),totals={},excluded=new Set();
-  rows.forEach(function(r){
-    var e=(r['Employee']||'').trim(),q=countMode?1:(parseFloat(r[metricKey])||0);
-    if(TEAM.has(e))totals[e]=(totals[e]||0)+q;
-    else if(e)excluded.add(e);
+function detectHeadcounts() {
+  var TEAM = getTeamSet(), counts = {};
+  HC_DEPTS.forEach(function(typ) {
+    var txList = RES_TX[typ], threshold = MIN_TX_RS[typ] || 0;
+    var empCount = {};
+    fullReportRows.forEach(function(r) {
+      if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return;
+      var e = (r['Employee']||'').trim();
+      if (!TEAM.has(e)) return;
+      empCount[e] = (empCount[e]||0) + 1;
+    });
+    counts[typ] = Object.keys(empCount).filter(function(e){ return empCount[e] >= threshold; }).length;
   });
-  var sorted=Object.entries(totals).sort(function(a,b){return b[1]-a[1];});
-  var grand=sorted.reduce(function(s,v){return s+v[1];},0);
-  startStaleTimer(type,document.getElementById('stale-'+type));
-  document.getElementById('rn-'+type).textContent=fileName;
-  document.getElementById('rt-'+type).textContent='Processed '+new Date().toLocaleString();
-  document.getElementById('tf-'+type).textContent=getTimeframe(rows);
-  document.getElementById('fd-'+type).textContent=getFileDate(lastUpload[type]&&lastUpload[type].file?lastUpload[type].file:null);
-  document.getElementById('m-'+type+'-total').textContent=grand.toLocaleString();
-  document.getElementById('m-'+type+'-assoc').textContent=sorted.length;
-  document.getElementById('ft-'+type).textContent=grand.toLocaleString();
-  buildTable('tb-'+type,sorted,grand,type);
-  buildExcluded('ex-'+type,excluded,type);
-  updateGoalMetric(type,grand);
-  var teamRows=rows.filter(function(r){return TEAM.has((r['Employee']||'').trim());});
-  var hourly=buildHourlyChart(teamRows,metricKey,countMode);
-  document.getElementById(type+'-upload').style.display='none';
-  document.getElementById('res-'+type).style.display='block';
-  setTimeout(function(){drawChart('chart-'+type,type,hourly.labels,hourly.data,chartModes[type]);},50);
+  return counts;
 }
+
+function getHeadcounts() {
+  var hc = loadHeadcount(), today = todayStr();
+  if (hc.date !== today && fullReportRows.length) {
+    hc = {date: today, counts: detectHeadcounts()};
+    saveHeadcount(hc);
+  }
+  return hc.counts;
+}
+
+function resetHeadcountToDetected() {
+  if (!fullReportRows.length) { alert('Upload a CSV first to detect headcounts.'); return; }
+  saveHeadcount({date: todayStr(), counts: detectHeadcounts()});
+  renderHeadcountCard();
+}
+
+function adjustHeadcount(typ, delta) {
+  var hc = loadHeadcount(), today = todayStr();
+  if (hc.date !== today) hc = {date: today, counts: detectHeadcounts()};
+  hc.counts[typ] = Math.max(0, (hc.counts[typ]||0) + delta);
+  saveHeadcount(hc);
+  renderHeadcountCard();
+}
+
+function setHeadcount(typ, val) {
+  var hc = loadHeadcount(), today = todayStr();
+  if (hc.date !== today) hc = {date: today, counts: detectHeadcounts()};
+  hc.counts[typ] = Math.max(0, parseInt(val)||0);
+  saveHeadcount(hc);
+}
+
+function renderHeadcountCard() {
+  var grid = document.getElementById('hc-grid');
+  if (!grid) return;
+  var hc = loadHeadcount(), today = todayStr();
+  if (hc.date !== today && fullReportRows.length) {
+    hc = {date: today, counts: detectHeadcounts()};
+    saveHeadcount(hc);
+  }
+  var html = '';
+  HC_DEPTS.forEach(function(typ) {
+    var val = hc.counts[typ] || 0;
+    html += '<div class="hc-item">';
+    html += '<div class="hc-label">'+HC_LABELS[typ]+'</div>';
+    html += '<div class="hc-stepper">';
+    html += '<button class="hc-btn" onclick="adjustHeadcount(\''+typ+'\',-1)">&#x2212;</button>';
+    html += '<input class="hc-input" type="number" min="0" value="'+val+'" id="hc-input-'+typ+'" onchange="setHeadcount(\''+typ+'\',this.value)" onblur="setHeadcount(\''+typ+'\',this.value)">';
+    html += '<button class="hc-btn" onclick="adjustHeadcount(\''+typ+'\',1)">+</button>';
+    html += '</div></div>';
+  });
+  grid.innerHTML = html;
+  var dateEl = document.getElementById('hc-detected-date');
+  if (dateEl) dateEl.textContent = hc.date ? 'Last detected: ' + hc.date : '';
+}
+
+function togglePPHSection() {
+  var body = document.getElementById('pph-body'), arrow = document.getElementById('pph-arrow');
+  if (!body) return;
+  var isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  arrow.classList.toggle('open', !isOpen);
+  if (!isOpen) renderPPHSection();
+}
+
+function renderPPHSection() {
+  var grid = document.getElementById('pph-grid');
+  if (!grid) return;
+  var hoursEl = document.getElementById('shift-hours-input');
+  if (hoursEl) hoursEl.value = getShiftHoursRS();
+  var vals = loadPPH(), html = '';
+  HC_DEPTS.forEach(function(typ) {
+    var v = vals[typ] != null ? vals[typ] : FIN_FCST_PPH_RS[typ];
+    html += '<div class="hc-item">';
+    html += '<div class="hc-label">'+HC_LABELS[typ]+'</div>';
+    html += '<input class="pph-input" type="number" min="0.1" step="0.1" value="'+v+'" id="pph-input-'+typ+'"';
+    html += ' onchange="setPPHValue(\''+typ+'\',this.value)" onblur="setPPHValue(\''+typ+'\',this.value)">';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+// ── PPH PACE ───────────────────────────────────────────
+var PROD_SHIFT_START_RS = 14 + 15/60; // 2:15 PM
+var PROD_LUNCH_AFTER_RS = 18 + 15/60; // 6:15 PM
+
+function getElapsedProdHrsRS() {
+  var now = new Date(), nowH = now.getHours() + now.getMinutes()/60;
+  if (nowH < 5) nowH += 24;
+  if (nowH <= PROD_SHIFT_START_RS) return 0;
+  var hrs = getShiftHoursRS();
+  var cap = PROD_SHIFT_START_RS + hrs + 0.5;
+  var elapsed = Math.min(nowH, cap) - PROD_SHIFT_START_RS;
+  if (nowH > PROD_LUNCH_AFTER_RS) elapsed -= 0.5;
+  return Math.max(0, Math.min(elapsed, hrs));
+}
+
+function getTilePaceRS(typ, grand) {
+  if (getShift() !== '2nd') return null;
+  var pph = getPPH(typ);
+  if (!pph) return null;
+  var hcCounts = getHeadcounts(), headcount = hcCounts[typ];
+  if (!headcount) return null;
+  var elapsed = getElapsedProdHrsRS();
+  if (elapsed <= 0) return null;
+  var projFull = headcount * getShiftHoursRS() * pph;
+  var projNow  = headcount * elapsed * pph;
+  var paceRatio = grand / projNow;
+  var pctOfFull = Math.round(grand / projFull * 100);
+  var barPct = Math.min(100, pctOfFull);
+  var color = paceRatio >= 1.0 ? '#059669' : (paceRatio >= 0.8 ? '#C47B00' : '#C0392B');
+  var label = paceRatio >= 1.0 ? '✓ On pace' : '⚠ Behind';
+  return {color:color, label:label, barPct:barPct, pctOfFull:pctOfFull, projFull:Math.round(projFull)};
+}
+
+function showError(type, msg) { var el = document.getElementById('err-' + type); if(el){el.textContent = msg; el.style.display = 'block';} }
 
 // ── RENDER ─────────────────────────────────────────────
 function getFileDate(file){if(!file||!file.lastModified)return '';return 'File date: '+new Date(file.lastModified).toLocaleDateString();}
@@ -1324,18 +1013,15 @@ function clearFullReport() {
 }
 
 function clickTile(typ) {
-  var wrapper=document.getElementById('full-layout-wrapper');
   if(_activeTile===typ){
     _activeTile=null;
     document.querySelectorAll('.full-tile').forEach(function(t){t.classList.remove('active');});
     var sp=document.getElementById('full-side-panel');
     if(sp){sp.classList.remove('open');sp.innerHTML='';}
-    if(wrapper){wrapper.style.display='block';}
     drawFullChart();return;
   }
   _activeTile=typ;
   document.querySelectorAll('.full-tile').forEach(function(t){t.classList.toggle('active',t.dataset.typ===typ);});
-  if(wrapper){wrapper.style.display='grid';wrapper.style.gridTemplateColumns='1fr 280px';wrapper.style.gap='14px';wrapper.style.alignItems='start';}
   renderSidePanel(typ);
   if(typ==='picking'){drawFullChart(null,['pick','pick2']);}
   else{drawFullChart(typ);}
@@ -1378,7 +1064,7 @@ function renderSidePanel(typ) {
         var short=item.emp.split('@')[0];
         html+='<div class="full-side-tm on-roster"><span>'+short+(item.enabled?'':' <span style="font-size:10px;opacity:0.5;">(off)</span>')+'</span>';
         html+='<div style="display:flex;align-items:center;gap:6px;"><span class="full-side-tm-units">'+item.val.toLocaleString()+'</span>';
-        html+='<button class="full-side-disable-btn" data-emp="'+item.emp+'" data-typ="picking" onclick="toggleTMFromPanel(this.dataset.emp,this.dataset.typ)">'+(item.enabled?'Disable':'Enable')+'</button></div></div>';
+        html+='<button class="'+(item.enabled?'full-side-disable-btn':'full-side-enable-btn')+'" data-emp="'+item.emp+'" data-typ="picking" onclick="toggleTMFromPanel(this.dataset.emp,this.dataset.typ)">'+(item.enabled?'Disable':'Enable')+'</button></div></div>';
       });
       html+='</div>';
     }
@@ -1422,7 +1108,7 @@ function renderSidePanel(typ) {
       var short=item.emp.split('@')[0];
       html+='<div class="full-side-tm on-roster"><span>'+short+(item.enabled?'':' <span style="font-size:10px;opacity:0.5;">(off)</span>')+'</span>';
       html+='<div style="display:flex;align-items:center;gap:6px;"><span class="full-side-tm-units">'+item.val.toLocaleString()+'</span>';
-      html+='<button class="full-side-disable-btn" data-emp="'+item.emp+'" data-typ="'+typ+'" onclick="toggleTMFromPanel(this.dataset.emp,this.dataset.typ)">'+(item.enabled?'Disable':'Enable')+'</button></div></div>';
+      html+='<button class="'+(item.enabled?'full-side-disable-btn':'full-side-enable-btn')+'" data-emp="'+item.emp+'" data-typ="'+typ+'" onclick="toggleTMFromPanel(this.dataset.emp,this.dataset.typ)">'+(item.enabled?'Disable':'Enable')+'</button></div></div>';
     });
     html+='</div>';
   }
@@ -1443,12 +1129,16 @@ function addTMFromPanel(emp,typ){
   if(!confirm('Add '+emp.split('@')[0]+' to roster?'))return;
   var roster=loadRoster();
   if(!roster.find(function(m){return m.email===emp;})){roster.push({email:emp,enabled:true});saveRoster(roster);}
-  renderFullReport();if(_activeTile)setTimeout(function(){renderSidePanel(_activeTile);},50);
+  var tile=_activeTile;
+  renderFullReport();
+  if(tile) setTimeout(function(){_activeTile=tile;renderSidePanel(tile);},50);
 }
 function toggleTMFromPanel(emp,typ){
   var roster=loadRoster(),idx=roster.findIndex(function(m){return m.email===emp;});
   if(idx===-1)return;roster[idx].enabled=!roster[idx].enabled;saveRoster(roster);
-  renderFullReport();if(_activeTile)setTimeout(function(){renderSidePanel(_activeTile);},50);
+  var tile=_activeTile;
+  renderFullReport();
+  if(tile) setTimeout(function(){_activeTile=tile;renderSidePanel(tile);},50);
 }
 
 // Associate charts
@@ -1599,6 +1289,9 @@ function drawFullChart(filterTyp, typesOverride) {
 function renderFullReport() {
   var panel=document.getElementById('full-content');if(!panel)return;
   if(!fullReportRows.length){panel.innerHTML='<div class="full-empty">No data yet — upload a CSV to populate the Full Report.</div>';return;}
+  // auto-detect headcounts whenever report is re-rendered with data
+  var hc=loadHeadcount(),today=todayStr();
+  if(hc.date!==today&&fullReportRows.length){saveHeadcount({date:today,counts:detectHeadcounts()});}
   var TEAM=getTeamSet(),types=['pick','pick2','replen','putaway'],html='';
   html+='<div class="full-header"><div class="full-title">Full Report <span style="font-size:11px;padding:2px 8px;border-radius:5px;background:#e8f0fb;color:#185FA5;margin-left:8px;">'+getShift()+' shift</span></div>';
   html+='<button class="full-reset-btn" onclick="clearFullReport()">&#x21BA; Clear</button></div>';
@@ -1612,20 +1305,45 @@ function renderFullReport() {
   html+='<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary</div>';
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
   // Wide Picking tile — spans both columns
-  html+='<div class="full-tile" id="tile-picking" data-typ="picking" onclick="clickTile(this.dataset.typ)" style="color:#0891B2;grid-column:span 2;">';
-  html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Picking</div>';
-  html+='<div style="font-size:22px;font-weight:500;color:var(--text);">'+pickingGrand.toLocaleString()+'</div></div>';
+  (function(){
+    var pace=getTilePaceRS('pick',pickingGrand);
+    html+='<div class="full-tile" id="tile-picking" data-typ="picking" onclick="clickTile(this.dataset.typ)" style="color:#0891B2;grid-column:span 2;">';
+    html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Picking</div>';
+    html+='<div style="font-size:22px;font-weight:500;color:var(--text);">'+pickingGrand.toLocaleString()+'</div>';
+    if(pace){
+      html+='<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;"><span style="font-size:9px;color:'+pace.color+';font-weight:500;">'+pace.label+'</span><span style="font-size:9px;color:var(--text-hint);">'+pace.pctOfFull+'% of '+pace.projFull.toLocaleString()+'</span></div>';
+    }
+    html+='</div>';
+  })();
   // Replen tile
   var replenMeta=fullReportRows.filter(function(r){return RES_TX.replen.indexOf((r['Transaction ID']||'').trim())!==-1&&rowBelongsToReserve(r);}).reduce(function(s,r){var e=(r['Employee']||'').trim();if(!TEAM.has(e))return s;return s+(parseFloat(r['Completed Quantity'])||0);},0);
-  html+='<div class="full-tile" id="tile-replen" data-typ="replen" onclick="clickTile(this.dataset.typ)" style="color:'+RES_COLORS.replen+';">';
-  html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Replenishment</div>';
-  html+='<div style="font-size:18px;font-weight:500;color:var(--text);">'+replenMeta.toLocaleString()+'</div></div>';
+  (function(){
+    var pace=getTilePaceRS('replen',replenMeta);
+    html+='<div class="full-tile" id="tile-replen" data-typ="replen" onclick="clickTile(this.dataset.typ)" style="color:'+RES_COLORS.replen+';">';
+    html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Replenishment</div>';
+    html+='<div style="font-size:18px;font-weight:500;color:var(--text);">'+replenMeta.toLocaleString()+'</div>';
+    if(pace){
+      html+='<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;"><span style="font-size:9px;color:'+pace.color+';font-weight:500;">'+pace.label+'</span><span style="font-size:9px;color:var(--text-hint);">'+pace.pctOfFull+'% of '+pace.projFull.toLocaleString()+'</span></div>';
+    }
+    html+='</div>';
+  })();
   // Putaway tile
   var putawayMeta=fullReportRows.filter(function(r){return RES_TX.putaway.indexOf((r['Transaction ID']||'').trim())!==-1&&rowBelongsToReserve(r);}).reduce(function(s,r){var e=(r['Employee']||'').trim();if(!TEAM.has(e))return s;return s+(parseFloat(r['Completed Quantity'])||0);},0);
-  html+='<div class="full-tile" id="tile-putaway" data-typ="putaway" onclick="clickTile(this.dataset.typ)" style="color:'+RES_COLORS.putaway+';">';
-  html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Putaway</div>';
-  html+='<div style="font-size:18px;font-weight:500;color:var(--text);">'+putawayMeta.toLocaleString()+'</div></div>';
+  (function(){
+    var pace=getTilePaceRS('putaway',putawayMeta);
+    html+='<div class="full-tile" id="tile-putaway" data-typ="putaway" onclick="clickTile(this.dataset.typ)" style="color:'+RES_COLORS.putaway+';">';
+    html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Putaway</div>';
+    html+='<div style="font-size:18px;font-weight:500;color:var(--text);">'+putawayMeta.toLocaleString()+'</div>';
+    if(pace){
+      html+='<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
+      html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;"><span style="font-size:9px;color:'+pace.color+';font-weight:500;">'+pace.label+'</span><span style="font-size:9px;color:var(--text-hint);">'+pace.pctOfFull+'% of '+pace.projFull.toLocaleString()+'</span></div>';
+    }
+    html+='</div>';
+  })();
   html+='</div></div>';
+  html+='<div id="full-side-panel" class="full-side-panel"></div>';
   // Chart
   html+='<div class="card" style="margin-bottom:1rem;">';
   html+='<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;">Activity by Hour</div>';
@@ -1634,9 +1352,8 @@ function renderFullReport() {
   [{label:'Picking',color:'#0891B2'},{label:'Replenishment',color:RES_COLORS.replen},{label:'Putaway',color:RES_COLORS.putaway}]
     .forEach(function(d){html+='<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);"><span style="width:12px;height:3px;background:'+d.color+';display:inline-block;border-radius:2px;"></span>'+d.label+'</span>';});
   html+='</div></div>';
-  // Layout: side panel nested INSIDE wrapper as right column
-  html+='<div id="full-layout-wrapper">';
-  html+='<div id="full-dept-grid"><div class="full-grid">';
+  // Dept cards
+  html+='<div class="full-grid">';
 
   // ── Helper: render one dept card ──────────────────────
   function renderDeptCard(label, color, barClass, empKey_suffix, sorted, grand) {
@@ -1697,18 +1414,189 @@ function renderFullReport() {
     renderDeptCard('Putaway',RES_COLORS.putaway,'full-bar-putaway','putaway',sorted,grand);
   })();
 
-  html+='</div></div>';
-  html+='<div id="full-side-panel" class="full-side-panel"></div>';
   html+='</div>';
   panel.innerHTML=html;
   setTimeout(function(){drawFullChart();},50);
+}
+
+// ── LIVE TAB ────────────────────────────────────────────
+var rsLiveData = null;
+var _activeLiveTile = null;
+
+var RS_LIVE_COLORS = {pick_f1:'#0891B2', pick_f2:'#D97706', replen:'#6366F1', putaway:'#059669'};
+var RS_LIVE_LABELS = {pick_f1:'Pick F1', pick_f2:'Pick F2', replen:'Replenishment', putaway:'Putaway'};
+var RS_LIVE_TYPES  = ['pick_f1','pick_f2','replen','putaway'];
+
+function getLiveBase() {
+  return window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
+}
+
+function clickLiveTile(typ) {
+  _activeLiveTile = (_activeLiveTile === typ) ? null : typ;
+  if (rsLiveData) renderLiveReport(rsLiveData);
+}
+
+function loadLiveData() {
+  var meta = document.getElementById('live-meta');
+  var content = document.getElementById('live-content');
+  if (meta) meta.textContent = 'Fetching...';
+  fetch(getLiveBase() + '/reserve_live.json?_=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(d) { rsLiveData = d; renderLiveReport(d); })
+    .catch(function(e) {
+      if (content) content.innerHTML = '<div class="full-empty">Could not load reserve_live.json — run Option 11 in dc499.bat first.<br><small style="color:var(--text-hint);">' + e.message + '</small></div>';
+      if (meta) meta.textContent = 'Error loading data';
+    });
+}
+
+function renderLiveReport(d) {
+  var meta    = document.getElementById('live-meta');
+  var content = document.getElementById('live-content');
+  if (!d || !d.associates) {
+    if (content) content.innerHTML = '<div class="full-empty">No data in reserve_live.json — run Option 11 in dc499.bat to populate.</div>';
+    if (meta) meta.textContent = 'No data';
+    return;
+  }
+
+  var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
+  if (meta) meta.textContent = (d.shift || '2nd') + ' shift \xb7 updated ' + gen;
+
+  var roster = loadRoster();
+  var TEAM   = getTeamSet();
+
+  // ── Summary tiles ──────────────────────────────────────
+  var html = '<div class="card" style="margin-bottom:1rem;">';
+  html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary — Live <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">\xb7 click a tile to see associates</span></div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">';
+  RS_LIVE_TYPES.forEach(function(typ) {
+    var color = RS_LIVE_COLORS[typ];
+    var isActive = _activeLiveTile === typ;
+    // total for TEAM members only
+    var grand = 0;
+    Object.keys(d.associates).forEach(function(emp) {
+      if (TEAM.has(emp)) grand += (d.associates[emp][typ] || 0);
+    });
+    var pace = getTilePaceRS(typ === 'pick_f1' ? 'pick' : typ === 'pick_f2' ? 'pick2' : typ, grand);
+    html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="' + typ + '" onclick="clickLiveTile(this.dataset.livtyp)" style="color:' + color + ';cursor:pointer;">';
+    html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">' + RS_LIVE_LABELS[typ] + '</div>';
+    html += '<div style="font-size:18px;font-weight:500;color:var(--text);">' + grand.toLocaleString() + '</div>';
+    if (pace) {
+      html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:' + pace.color + ';width:' + pace.barPct + '%;"></div></div>';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
+      html += '<span style="font-size:9px;color:' + pace.color + ';font-weight:500;">' + pace.label + '</span>';
+      html += '<span style="font-size:9px;color:var(--text-hint);">' + pace.pctOfFull + '% of ' + pace.projFull.toLocaleString() + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // ── Per-dept associate cards (shown when tile is active) ──
+  html += '<div>';
+  RS_LIVE_TYPES.forEach(function(typ) {
+    var color    = RS_LIVE_COLORS[typ];
+    var label    = RS_LIVE_LABELS[typ];
+    var barClass = 'full-bar-' + (typ === 'pick_f1' ? 'pick' : typ === 'pick_f2' ? 'pick2' : typ);
+    var isActive = _activeLiveTile === typ;
+
+    // Build sorted list of all associates who have any units for this dept
+    var allEntries = [];
+    Object.keys(d.associates).forEach(function(emp) {
+      var val = d.associates[emp][typ] || 0;
+      if (val > 0) allEntries.push([emp, val]);
+    });
+    allEntries.sort(function(a,b){ return b[1]-a[1]; });
+
+    var enabledRows  = allEntries.filter(function(e){ var m=roster.find(function(r){return r.email===e[0];}); return m ? m.enabled : false; });
+    var disabledRows = allEntries.filter(function(e){ var m=roster.find(function(r){return r.email===e[0];}); return m && !m.enabled; });
+    var notOnRoster  = allEntries.filter(function(e){ return !roster.find(function(r){return r.email===e[0];}); });
+    var grand = enabledRows.reduce(function(s,e){return s+e[1];},0);
+
+    html += '<div id="live-card-' + typ + '" style="' + (isActive ? '' : 'display:none;') + 'margin-bottom:1rem;">';
+    html += '<div class="full-card"><div class="full-card-title" style="color:' + color + ';">' + label + '<span class="full-card-total">' + grand.toLocaleString() + '</span></div>';
+
+    if (!allEntries.length) {
+      html += '<div class="full-empty" style="padding:1rem;">No ' + label + ' data yet.</div>';
+    } else {
+      html += '<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th><th></th></tr></thead><tbody>';
+      var enabledIdx = 0;
+      enabledRows.forEach(function(entry) {
+        var emp = entry[0], val = entry[1];
+        var pct   = grand > 0 ? Math.round((val/grand)*100) : 0;
+        var short = emp.split('@')[0];
+        var trophy = enabledIdx === 0 && grand > 0 ? ' &#x1F3C6;' : '';
+        enabledIdx++;
+        var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        html += '<tr>';
+        html += '<td>' + short + trophy + '</td>';
+        html += '<td style="text-align:right;font-weight:500;">' + val.toLocaleString() + '</td>';
+        html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill ' + barClass + '" style="width:' + pct + '%"></div></div>';
+        html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">' + pct + '%</span></div></td>';
+        html += '<td><button class="full-side-disable-btn" onclick="toggleTMFromLive(\'' + safeEmp + '\')">Disable</button></td>';
+        html += '</tr>';
+      });
+      if (disabledRows.length) {
+        html += '<tr><td colspan="4" style="padding:6px 8px 3px;font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.05em;border-top:0.5px solid var(--border-mid);">Inactive</td></tr>';
+        disabledRows.forEach(function(entry) {
+          var emp = entry[0], val = entry[1], short = emp.split('@')[0];
+          var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          html += '<tr style="opacity:0.45;"><td>' + short + '</td>';
+          html += '<td style="text-align:right;font-weight:500;"><span style="color:var(--text-hint);">' + val.toLocaleString() + '</span></td>';
+          html += '<td></td>';
+          html += '<td><button class="full-side-enable-btn" onclick="toggleTMFromLive(\'' + safeEmp + '\')">Enable</button></td></tr>';
+        });
+      }
+      if (notOnRoster.length) {
+        html += '<tr><td colspan="4" style="padding:6px 8px 3px;font-size:10px;font-weight:600;color:#D97706;text-transform:uppercase;letter-spacing:0.05em;border-top:0.5px solid var(--border-mid);">Not on roster</td></tr>';
+        notOnRoster.forEach(function(entry) {
+          var emp = entry[0], val = entry[1], short = emp.split('@')[0];
+          var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          html += '<tr style="opacity:0.7;"><td>' + short + '</td>';
+          html += '<td style="text-align:right;font-weight:500;">' + val.toLocaleString() + '</td>';
+          html += '<td></td>';
+          html += '<td><button class="full-side-add-btn" onclick="addTMFromLive(\'' + safeEmp + '\')">+ Add</button></td></tr>';
+        });
+      }
+      html += '</tbody><tfoot><tr><td>Total (active)</td><td style="text-align:right;">' + grand.toLocaleString() + '</td><td></td><td></td></tr></tfoot></table>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div>';
+
+  if (content) content.innerHTML = html;
+}
+
+function toggleTMFromLive(emp) {
+  var roster = loadRoster();
+  var idx = roster.findIndex(function(m){ return m.email === emp; });
+  if (idx === -1) return;
+  roster[idx].enabled = !roster[idx].enabled;
+  saveRoster(roster);
+  if (rsLiveData) renderLiveReport(rsLiveData);
+}
+
+function addTMFromLive(emp) {
+  if (!confirm('Add ' + emp.split('@')[0] + ' to roster?')) return;
+  var roster = loadRoster();
+  if (!roster.find(function(m){ return m.email === emp; })) {
+    roster.push({email: emp, enabled: true});
+    saveRoster(roster);
+  }
+  if (rsLiveData) renderLiveReport(rsLiveData);
 }
 
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
 setShift(getShift());
 renderRoster();
-renderGoalsCard();
+renderHeadcountCard();
+setInterval(function() {
+  if (document.getElementById('panel-live').className.includes('active')) loadLiveData();
+}, 5 * 60 * 1000);
 </script>
 </body>
 </html>
