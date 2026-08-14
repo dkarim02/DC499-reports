@@ -308,10 +308,8 @@ function render() {
     return;
   }
 
-  // Auto-select first logged day
-  if (!_selDay || !weekly[_selDay]) {
-    _selDay = dates.find(function(dk) { return !!weekly[dk]; }) || null;
-  }
+  // Validate _selDay — clear if that day's data was removed
+  if (_selDay && !weekly[_selDay]) _selDay = null;
 
   // ── week aggregates ────────────────────────────────
   var wk = { pick:0, replen:0, putaway:0, grand:0, days:0, hcSum:0 };
