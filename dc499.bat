@@ -21,15 +21,15 @@ echo  3  Start live server + open Receiving Live
 echo  4  First-time auth
 echo ──────────────────────────────
 echo  5  Ecom Live - one-shot refresh
-echo  6  Ecom Live - start auto-refresh (every 30 min)
+echo  6  Ecom Live - start auto-refresh (every 3 min)
 echo  7  Ecom Live - auth
 echo ──────────────────────────────
 echo  8  Shipping Live - one-shot refresh
-echo  9  Shipping Live - start auto-refresh (every 5 min)
+echo  9  Shipping Live - start auto-refresh (every 3 min)
 echo  10 Shipping Live - auth
 echo ──────────────────────────────
 echo  11 Reserve Live - one-shot refresh
-echo  12 Reserve Live - start auto-refresh (every 5 min)
+echo  12 Reserve Live - start auto-refresh (every 3 min)
 echo  13 Reserve Live - auth
 echo ──────────────────────────────
 set /p choice="Select: "
@@ -71,8 +71,8 @@ if "%choice%"=="5" (
 )
 if "%choice%"=="6" (
     echo.
-    echo Starting Ecom Live auto-refresh every 5 min...
-    "%NODE_EXE%" "%~dp0scout_ecom_agent.js" --serve --interval=5
+    echo Starting Ecom Live auto-refresh every 3 min...
+    "%NODE_EXE%" "%~dp0scout_ecom_agent.js" --serve --interval=3
     pause
     exit /b
 )
@@ -93,8 +93,8 @@ if "%choice%"=="8" (
 )
 if "%choice%"=="9" (
     echo.
-    echo Starting Shipping Live auto-refresh every 5 min...
-    "%NODE_EXE%" "%~dp0scout_shipping_agent.js" --serve --interval=5
+    echo Starting Shipping Live auto-refresh every 3 min...
+    "%NODE_EXE%" "%~dp0scout_shipping_agent.js" --serve --interval=3
     pause
     exit /b
 )
@@ -114,8 +114,8 @@ if "%choice%"=="11" (
 )
 if "%choice%"=="12" (
     echo.
-    echo Starting Reserve Live auto-refresh every 30 min...
-    "%NODE_EXE%" "%~dp0scout_reserve_agent.js" --serve
+    echo Starting Reserve Live auto-refresh every 3 min...
+    "%NODE_EXE%" "%~dp0scout_reserve_agent.js" --serve --interval=3
     pause
     exit /b
 )
