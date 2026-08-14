@@ -1461,11 +1461,15 @@ function gitPush() {
   });
   try {
     execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync(`git commit -m "Live update -- ${stamp}"`,             { cwd: REPORT_DIR, stdio: 'pipe' });
+    const staged = execSync('git diff --cached --name-only', { cwd: REPORT_DIR, stdio: 'pipe' }).toString().trim().split('\n').filter(Boolean);
+    const LABELS = { 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve' };
+    const extras = staged.map(f => LABELS[f]).filter(Boolean);
+    const suffix = extras.length ? ` [+${extras.join(', ')}]` : '';
+    execSync(`git commit -m "Live update -- ${stamp}${suffix}"`,    { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git fetch origin main',                               { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git rebase --autostash origin/main',                  { cwd: REPORT_DIR, stdio: 'pipe' });
     execSync('git push origin main',                                { cwd: REPORT_DIR, stdio: 'pipe' });
-    console.log(`[${ts()}] ✓ Pushed to git`);
+    console.log(`[${ts()}] ✓ Pushed to git${suffix}`);
   } catch (e) {
     const msg = e.stderr?.toString() || e.stdout?.toString() || e.message;
     if (msg.includes('nothing to commit') || msg.includes('nothing added')) {
