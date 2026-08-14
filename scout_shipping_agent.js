@@ -49,6 +49,9 @@ const INTERVAL   = (() => {
 function b64url(buf) {
   return buf.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
+const LOCK_FILE = TOKEN_FILE + '.lock';
+const TOKEN_TTL = 55 * 60 * 1000;
+
 function loadToken() {
   for (const f of [TOKEN_FILE, TOKEN_FILE + '.bak']) {
     try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
@@ -56,9 +59,22 @@ function loadToken() {
   return null;
 }
 function saveToken(t) {
+  const out = { ...t, _saved_at: Date.now() };
   try { if (fs.existsSync(TOKEN_FILE)) fs.copyFileSync(TOKEN_FILE, TOKEN_FILE + '.bak'); } catch {}
-  fs.writeFileSync(TOKEN_FILE, JSON.stringify(t, null, 2));
+  fs.writeFileSync(TOKEN_FILE, JSON.stringify(out, null, 2));
 }
+function isTokenFresh(stored) {
+  return stored?.access_token && stored._saved_at && (Date.now() - stored._saved_at) < TOKEN_TTL;
+}
+async function acquireLock() {
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    try { fs.writeFileSync(LOCK_FILE, String(process.pid), { flag: 'wx' }); return true; } catch {}
+    await new Promise(r => setTimeout(r, 150));
+  }
+  return false;
+}
+function releaseLock() { try { fs.unlinkSync(LOCK_FILE); } catch {} }
 async function refreshAccessToken(rt) {
   return jsonPost(`${MCP_BASE}/token`, new URLSearchParams({
     grant_type: 'refresh_token', refresh_token: rt, client_id: CLIENT_ID,
@@ -118,22 +134,32 @@ async function getAccessToken() {
 }
 class AuthError extends Error {}
 async function getAccessTokenSilent() {
-  const stored = loadToken();
-  if (!stored?.refresh_token) throw new AuthError('No refresh token — run --auth first');
-  const candidates = [stored.refresh_token];
+  const quick = loadToken();
+  if (isTokenFresh(quick)) return quick.access_token;
+
+  const locked = await acquireLock();
   try {
-    const bak = JSON.parse(fs.readFileSync(TOKEN_FILE + '.bak', 'utf8'));
-    if (bak?.refresh_token && bak.refresh_token !== stored.refresh_token) candidates.push(bak.refresh_token);
-  } catch {}
-  let lastErr;
-  for (const rt of candidates) {
+    const stored = loadToken();
+    if (!stored?.refresh_token) throw new AuthError('No refresh token — run --auth first');
+    if (isTokenFresh(stored)) return stored.access_token;
+
+    const candidates = [stored.refresh_token];
     try {
-      const fresh = await refreshAccessToken(rt);
-      saveToken({ ...stored, ...fresh });
-      return fresh.access_token;
-    } catch (e) { lastErr = e; }
+      const bak = JSON.parse(fs.readFileSync(TOKEN_FILE + '.bak', 'utf8'));
+      if (bak?.refresh_token && bak.refresh_token !== stored.refresh_token) candidates.push(bak.refresh_token);
+    } catch {}
+    let lastErr;
+    for (const rt of candidates) {
+      try {
+        const fresh = await refreshAccessToken(rt);
+        saveToken({ ...stored, ...fresh });
+        return fresh.access_token;
+      } catch (e) { lastErr = e; }
+    }
+    throw new AuthError('Token refresh failed: ' + lastErr.message);
+  } finally {
+    if (locked) releaseLock();
   }
-  throw new AuthError('Token refresh failed: ' + lastErr.message);
 }
 
 // ── HTTP helpers ───────────────────────────────────────────────────────────────
