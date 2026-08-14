@@ -45,12 +45,14 @@ Browser-based reporting suite on GitHub Pages. Processes MAWM CSV exports for as
 **Git push pattern (agent script):**
 ```
 git stash
-git pull --rebase origin main
+git fetch origin main
+git rebase origin/main
 git stash pop
 git add receiving_live.json
 git commit -m "message"
 git push origin main
 ```
+Note: use `git fetch origin main` + `git rebase origin/main` (not `git pull --rebase`) — Claude Code MCP's internal fetches populate FETCH_HEAD with multiple entries, causing `pull --rebase` to fail with "Cannot rebase onto multiple branches".
 
 ---
 
@@ -231,6 +233,19 @@ Animated MP4 (`remi.mp4`) runs along top of progress bars. Files: Batches_live.h
 
 ---
 
+## Token locking (all four agents)
+
+All four agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent.js`, `scout_shipping_agent.js`) share `.mcp_token.json`. Running them concurrently caused token collision — one agent would consume the refresh token before another could use it, revoking the session.
+
+**Fix (2026-08-13):** File-based lock + freshness check in `getAccessTokenSilent()`:
+- `_saved_at` timestamp written to token file on every save
+- `TOKEN_TTL = 55 * 60 * 1000` — treat access token as fresh for 55 min (based on typical 60-min OIDC lifetime; adjust if Nordstrom SSO uses shorter window)
+- Fast path: if token is fresh, return immediately — no network call
+- Lock path: claim `.mcp_token.lock` (exclusive `wx` write), re-check freshness after acquiring (another agent may have just refreshed), then refresh once, release lock in `finally`
+- If Nordstrom's `expires_in` differs from 60 min, update `TOKEN_TTL` accordingly or switch to reading `expires_in` from the token response directly
+
+---
+
 ## Ecom Live tab (scout_ecom_agent.js)
 
 **Agent:** scout_ecom_agent.js — launch via dc499.bat options 5/6/7 only. Output: ecom_live.json (local + GitHub).
@@ -264,6 +279,38 @@ Animated MP4 (`remi.mp4`) runs along top of progress bars. Files: Batches_live.h
 **Shift start (UTC):** 2nd = 21:10, 1st = 10:00. Boundary: `is1st = h >= 10 && h < 21`.
 
 **Pending TX type:** `Returns System Directed Putaway` — not yet assigned to a group. Decision pending.
+
+---
+
+## Reserve Live tab (scout_reserve_agent.js)
+
+**Agent:** scout_reserve_agent.js — launch via dc499.bat options 11/12/13 only. Output: reserve_live.json (local + GitHub).
+
+**Queries:** Pre-aggregated `GROUP BY CREATED_BY` — immune to 10k row cap regardless of shift volume. Result rows = distinct employees.
+
+**Metrics:** pick_f1 (Non Haz Retail Pick To oLPN Cart), pick_f2 (Non Haz Retail Pick To oLPN Cart Floor 2), replen (iLPN Replen Fill/Large), putaway (System/User Directed Putaway). Zone H filter on replen + putaway.
+
+**NAIL button:** `nailFromLiveRS(btn)` in Reserve_v1_7.html — writes to NTP Retail tab (`ntp_dc499_v1` localStorage). Picking → "Retail OUT", Replen + Putaway → "Retail IN".
+
+---
+
+## Reserve Weekly (Reserve_weekly.html)
+
+Standalone file, opened via 📅 Weekly Recap button in Reserve_v1_7.html top-bar.
+
+**Storage key:** `rs_weekly_v1` — written by `logDay(btn)` in Reserve_v1_7.html, read by Reserve_weekly.html.
+
+**Per-day payload:** `{ pick, pick_f1, pick_f2, replen, putaway, headcount, hc: {pick, pick2, replen, putaway}, shift_hours, logged, employees: {email: {pick_f1, pick_f2, replen, putaway}} }`
+
+**Date helpers (UTC-safe):** `todayISO()` builds manually from `getFullYear/Month/Date`. `weekMonday(isoStr)` accepts ISO string only — never pass a Date object. `weekDates()` returns Mon–Fri ISO array using local constructor. Always use these; `toLocaleDateString('en-CA')` and `new Date('YYYY-MM-DD')` both have UTC-shift bugs.
+
+**Resets:** Sunday morning — `loadWeeklyData()` clears if `_weekMon` doesn't match current week and today is Sunday.
+
+**Charts:** 3 vertical bar charts (Picking stacked F1/F2, Replen, Putaway). Clicking a bar or day card selects that day — inactive bars dim. Clicking selected card deselects (shows week overview). No auto-select on load.
+
+**Day detail tabs:** Dept Breakdown (3 stat tiles: units + PPH) | Associates (ranked table with per-dept units).
+
+**Demo data:** `reseedDummy()` seeds Mon–Thu with `DUMMY_DAYS_BASE` templates + scaled per-associate breakdowns. Reseed Demo button always available.
 
 ---
 
@@ -365,7 +412,9 @@ Engineering manager proposed migrating the reporter to Metabase. Here is the agr
 - [ ] Wave progress report (DCO_WAVE_AGGREGATE_ORDER)
 - [ ] Timeclock report (default_timeclock)
 - [ ] GitHub Pro ($4/mo) for private repo + Pages
-- [ ] IT/Metabase: review eng manager's Metabase report (arriving 2026-08-11), verify facility_id filter, REST API accessibility, and confirm Dean retains deploy access for HTML/JS updates
+- [ ] IT/Metabase: review eng manager's Metabase report, verify facility_id filter, REST API accessibility, and confirm Dean retains deploy access for HTML/JS updates
+- [ ] Token TTL: verify Nordstrom OIDC `expires_in` value — update TOKEN_TTL in all 4 agents if not 60 min, or switch to reading expires_in from token response directly
+- [ ] Reserve Weekly: UPH trend line + replen/pick ratio metrics (agreed, not yet built)
 
 ---
 
