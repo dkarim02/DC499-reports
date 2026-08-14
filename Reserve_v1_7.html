@@ -216,13 +216,43 @@
   .log-day-btn:hover{background:#CECBF6;}
   [data-theme="dark"] .log-day-btn{background:#3C3489;color:#CECBF6;border-color:#7F77DD;}
   [data-theme="dark"] .log-day-btn:hover{background:#534AB7;color:#fff;}
-  .weekly-grid-table{width:100%;border-collapse:collapse;font-size:13px;}
-  .weekly-grid-table th{text-align:right;font-size:11px;font-weight:500;color:var(--text-muted);padding:6px 10px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;}
-  .weekly-grid-table th:first-child{text-align:left;}
-  .weekly-grid-table td{text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border-light);font-size:13px;font-weight:500;color:var(--text);}
-  .weekly-grid-table td:first-child{text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;}
-  .weekly-grid-table tr:last-child td{border-bottom:none;font-weight:600;}
-  .weekly-today-col{background:rgba(8,145,178,0.05);}
+  /* ── WEEKLY DASHBOARD ── */
+  .wk-day-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
+  .wk-day-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 8px 8px;text-align:center;cursor:pointer;transition:all 0.15s;position:relative;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;}
+  .wk-day-card:hover{border-color:#7F77DD;background:var(--surface2);}
+  .wk-day-card.wk-active{border-color:#7F77DD;background:var(--surface);box-shadow:0 0 0 3px rgba(127,119,221,0.15);}
+  .wk-day-card.wk-today{border-color:#0891B2;}
+  .wk-day-card.wk-today.wk-active{border-color:#7F77DD;}
+  .wk-day-card.wk-empty{opacity:0.45;cursor:default;}
+  .wk-day-card.wk-empty:hover{border-color:var(--border);background:var(--surface);}
+  .wk-day-name{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:4px;}
+  .wk-day-card.wk-today .wk-day-name{color:#0891B2;}
+  .wk-day-card.wk-active .wk-day-name{color:#7F77DD;}
+  .wk-day-total{font-size:20px;font-weight:600;color:var(--text);line-height:1;}
+  .wk-day-sub{font-size:9px;color:var(--text-hint);margin-top:3px;}
+  .wk-day-logged{font-size:9px;color:var(--text-hint);margin-top:auto;padding-top:4px;}
+  .wk-day-dots{display:flex;gap:3px;margin-top:5px;justify-content:center;}
+  .wk-dot{width:5px;height:5px;border-radius:50%;}
+  .wk-detail{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+  .wk-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .wk-detail-title{font-size:14px;font-weight:600;color:var(--text);}
+  .wk-detail-meta{font-size:11px;color:var(--text-hint);}
+  .wk-dept-rows{display:flex;flex-direction:column;gap:10px;}
+  .wk-dept-row{display:grid;grid-template-columns:80px 1fr 60px 55px;align-items:center;gap:8px;}
+  .wk-dept-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;}
+  .wk-bar-outer{background:var(--bar-bg);border-radius:4px;height:6px;overflow:hidden;}
+  .wk-bar-inner{height:100%;border-radius:4px;transition:width 0.4s;}
+  .wk-dept-val{font-size:13px;font-weight:600;color:var(--text);text-align:right;}
+  .wk-dept-pph{font-size:10px;color:var(--text-hint);text-align:right;}
+  .wk-summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem;}
+  .wk-sum-tile{background:var(--surface2);border-radius:8px;padding:10px;text-align:center;}
+  .wk-sum-label{font-size:9px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;}
+  .wk-sum-val{font-size:18px;font-weight:600;color:var(--text);}
+  .wk-sum-sub{font-size:9px;color:var(--text-hint);margin-top:2px;}
+  .wk-day-clear{position:absolute;top:5px;right:6px;background:none;border:none;cursor:pointer;color:var(--bar-bg);font-size:14px;padding:0;line-height:1;display:none;}
+  .wk-day-card:hover .wk-day-clear{display:block;}
+  .wk-day-clear:hover{color:#A32D2D;}
+  .wk-pick-sub{font-size:10px;color:var(--text-hint);margin-top:2px;}
   .progress-fill-pick2{height:100%;border-radius:4px;background:#D97706;transition:width 0.4s;}
   .progress-fill-putaway{height:100%;border-radius:4px;background:#059669;transition:width 0.4s;}
   .bar-fill-pick2{height:100%;border-radius:4px;background:#D97706;}
@@ -1776,18 +1806,29 @@ function saveWeeklyData(obj) {
 function logDay(btn) {
   if (!rsLiveData || !rsLiveData.associates) { alert('No live data — run Option 11 in dc499.bat first, then refresh.'); return; }
   var TEAM = getTeamSet();
-  var pick = 0, replen = 0, putaway = 0;
+  var pick_f1 = 0, pick_f2 = 0, replen = 0, putaway = 0, headcount = 0;
   Object.keys(rsLiveData.associates).forEach(function(emp) {
     if (!TEAM.has(emp)) return;
     var a = rsLiveData.associates[emp];
-    pick    += (a.pick_f1 || 0) + (a.pick_f2 || 0);
+    pick_f1 += (a.pick_f1 || 0);
+    pick_f2 += (a.pick_f2 || 0);
     replen  += (a.replen  || 0);
     putaway += (a.putaway || 0);
+    headcount++;
   });
+  var hcStored = loadHeadcount();
+  var shiftHrs = getShiftHoursRS ? getShiftHoursRS() : 8;
   var dateKey = todayISO();
   var weekly  = loadWeeklyData();
   weekly._weekMon = weekMonday(new Date());
-  weekly[dateKey] = { pick: pick, replen: replen, putaway: putaway, logged: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Los_Angeles'}) };
+  weekly[dateKey] = {
+    pick: pick_f1 + pick_f2, pick_f1: pick_f1, pick_f2: pick_f2,
+    replen: replen, putaway: putaway,
+    headcount: headcount,
+    hc: hcStored.counts || {},
+    shift_hours: shiftHrs,
+    logged: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Los_Angeles'})
+  };
   saveWeeklyData(weekly);
   if (btn) { btn.textContent = '✓ Logged'; btn.disabled = true; setTimeout(function(){ btn.textContent = '📅 Log Day'; btn.disabled = false; }, 2500); }
   if (document.getElementById('panel-weekly').className.includes('active')) renderWeeklyRecap();
@@ -1797,12 +1838,27 @@ function clearWeeklyData() {
   try { localStorage.removeItem(RS_WEEKLY_KEY); } catch(e) {}
   renderWeeklyRecap();
 }
+var _wkSelectedDay = null; // ISO date key of selected day card
+
+function clearDayEntry(dk) {
+  if (!confirm('Remove this day\'s log entry?')) return;
+  var weekly = loadWeeklyData();
+  delete weekly[dk];
+  saveWeeklyData(weekly);
+  if (_wkSelectedDay === dk) _wkSelectedDay = null;
+  renderWeeklyRecap();
+}
+
+function selectWkDay(dk) {
+  _wkSelectedDay = (_wkSelectedDay === dk) ? null : dk;
+  renderWeeklyRecap();
+}
+
 function renderWeeklyRecap() {
   var content = document.getElementById('weekly-content');
   if (!content) return;
-  var weekly  = loadWeeklyData();
-  var curMon  = weekMonday(new Date());
-  // Build Mon-Fri date keys for this week
+  var weekly   = loadWeeklyData();
+  var curMon   = weekMonday(new Date());
   var weekDates = [];
   for (var i = 0; i < 5; i++) {
     var d = new Date(curMon + 'T00:00:00');
@@ -1810,66 +1866,170 @@ function renderWeeklyRecap() {
     weekDates.push(d.toLocaleDateString('en-CA'));
   }
   var todayKey = todayISO();
-  var hasAny = weekDates.some(function(dk) { return weekly[dk]; });
-  var html = '';
+  var hasAny   = weekDates.some(function(dk) { return weekly[dk]; });
+
   if (!hasAny) {
-    html = '<div class="full-empty" style="padding:3rem;">No shifts logged this week.<br><small style="color:var(--text-hint);">Go to the Live tab, load live data, then tap Log Day at the end of each shift.</small></div>';
-    content.innerHTML = html;
+    content.innerHTML = '<div class="full-empty" style="padding:3rem;">No shifts logged this week.<br><small style="color:var(--text-hint);">Go to the Live tab, load live data, then tap <strong>Log Day</strong> at the end of each shift.</small></div>';
     return;
   }
-  html += '<div class="card">';
-  html += '<table class="weekly-grid-table"><thead><tr>';
-  html += '<th>Metric</th>';
-  weekDates.forEach(function(dk, i) {
-    var isToday = dk === todayKey;
-    html += '<th class="' + (isToday ? 'weekly-today-col' : '') + '">' + WEEK_DAYS[i] + (isToday ? ' <span style="color:#0891B2;">&#x25CF;</span>' : '') + '</th>';
+
+  // Auto-select first logged day if nothing selected
+  if (!_wkSelectedDay || !weekly[_wkSelectedDay]) {
+    _wkSelectedDay = weekDates.find(function(dk) { return !!weekly[dk]; }) || null;
+  }
+
+  // ── Week-level aggregates for summary strip ────────────
+  var wkTotals = { pick: 0, replen: 0, putaway: 0, grand: 0, days: 0 };
+  weekDates.forEach(function(dk) {
+    var s = weekly[dk]; if (!s) return;
+    wkTotals.pick    += (s.pick    || 0);
+    wkTotals.replen  += (s.replen  || 0);
+    wkTotals.putaway += (s.putaway || 0);
+    wkTotals.grand   += (s.pick||0) + (s.replen||0) + (s.putaway||0);
+    wkTotals.days++;
   });
-  html += '</tr></thead><tbody>';
-  var rows = [
-    { label: 'Picking', field: 'pick', color: '#0891B2' },
-    { label: 'Replen',  field: 'replen', color: '#6366F1' },
-    { label: 'Putaway', field: 'putaway', color: '#059669' },
-  ];
-  var totals = { pick: 0, replen: 0, putaway: 0, grand: 0 };
-  rows.forEach(function(row) {
-    html += '<tr>';
-    html += '<td style="color:' + row.color + ';">' + row.label + '</td>';
-    weekDates.forEach(function(dk, i) {
-      var snap = weekly[dk];
-      var val  = snap ? (snap[row.field] || 0) : null;
-      var isToday = dk === todayKey;
-      if (val == null) {
-        html += '<td class="' + (isToday ? 'weekly-today-col' : '') + '" style="color:var(--text-hint);">–</td>';
-      } else {
-        totals[row.field] += val;
-        totals.grand += val;
-        html += '<td class="' + (isToday ? 'weekly-today-col' : '') + '">' + val.toLocaleString() + '</td>';
-      }
-    });
-    html += '</tr>';
-  });
-  // Grand total row
-  html += '<tr style="border-top:0.5px solid var(--border);">';
-  html += '<td>Total</td>';
-  weekDates.forEach(function(dk, i) {
-    var snap = weekly[dk];
-    var isToday = dk === todayKey;
-    if (!snap) {
-      html += '<td class="' + (isToday ? 'weekly-today-col' : '') + '" style="color:var(--text-hint);">–</td>';
-    } else {
-      var grand = (snap.pick||0) + (snap.replen||0) + (snap.putaway||0);
-      html += '<td class="' + (isToday ? 'weekly-today-col' : '') + '">' + grand.toLocaleString() + '</td>';
-    }
-  });
-  html += '</tr>';
-  html += '</tbody></table>';
-  // Logged-at timestamps
-  var loggedLine = weekDates.map(function(dk, i) {
-    var snap = weekly[dk];
-    return snap && snap.logged ? WEEK_DAYS[i] + ' @ ' + snap.logged : null;
-  }).filter(Boolean).join(' · ');
-  if (loggedLine) html += '<div style="font-size:11px;color:var(--text-hint);margin-top:10px;">' + loggedLine + '</div>';
+  var daysLeft = weekDates.filter(function(dk) { return !weekly[dk] && dk <= todayKey; }).length;
+  var wkAvg = wkTotals.days ? Math.round(wkTotals.grand / wkTotals.days) : 0;
+
+  var html = '';
+
+  // ── Summary strip ─────────────────────────────────────
+  html += '<div class="wk-summary-strip">';
+  html += '<div class="wk-sum-tile"><div class="wk-sum-label">Week Total</div><div class="wk-sum-val">' + wkTotals.grand.toLocaleString() + '</div><div class="wk-sum-sub">' + wkTotals.days + ' shift' + (wkTotals.days !== 1 ? 's' : '') + ' logged</div></div>';
+  html += '<div class="wk-sum-tile"><div class="wk-sum-label">Avg / Day</div><div class="wk-sum-val">' + wkAvg.toLocaleString() + '</div><div class="wk-sum-sub">units per shift</div></div>';
+  html += '<div class="wk-sum-tile"><div class="wk-sum-label" style="color:#0891B2;">Picking</div><div class="wk-sum-val" style="color:#0891B2;">' + wkTotals.pick.toLocaleString() + '</div><div class="wk-sum-sub">' + (wkTotals.grand ? Math.round(wkTotals.pick/wkTotals.grand*100) : 0) + '% of total</div></div>';
+  html += '<div class="wk-sum-tile"><div class="wk-sum-label" style="color:#6366F1;">Replen</div><div class="wk-sum-val" style="color:#6366F1;">' + wkTotals.replen.toLocaleString() + '</div><div class="wk-sum-sub">' + (wkTotals.grand ? Math.round(wkTotals.replen/wkTotals.grand*100) : 0) + '% of total</div></div>';
   html += '</div>';
+
+  // ── Day cards strip ───────────────────────────────────
+  // Max grand per logged day — for proportional dot heights
+  var maxGrand = 0;
+  weekDates.forEach(function(dk) { var s = weekly[dk]; if (!s) return; var g=(s.pick||0)+(s.replen||0)+(s.putaway||0); if(g>maxGrand) maxGrand=g; });
+
+  html += '<div class="wk-day-strip">';
+  weekDates.forEach(function(dk, i) {
+    var snap    = weekly[dk];
+    var isToday = dk === todayKey;
+    var isSel   = dk === _wkSelectedDay;
+    var isEmpty = !snap;
+    var cls = 'wk-day-card' + (isSel ? ' wk-active' : '') + (isToday ? ' wk-today' : '') + (isEmpty ? ' wk-empty' : '');
+    var grand   = snap ? (snap.pick||0)+(snap.replen||0)+(snap.putaway||0) : 0;
+    var safeKey = dk.replace(/'/g,"\\'");
+    html += '<div class="' + cls + '" onclick="' + (isEmpty ? '' : 'selectWkDay(\'' + safeKey + '\')') + '">';
+    if (!isEmpty) {
+      html += '<button class="wk-day-clear" onclick="event.stopPropagation();clearDayEntry(\'' + safeKey + '\')" title="Remove">&#x00D7;</button>';
+    }
+    html += '<div class="wk-day-name">' + WEEK_DAYS[i] + (isToday ? ' &#x25CF;' : '') + '</div>';
+    if (isEmpty) {
+      html += '<div class="wk-day-total" style="font-size:13px;color:var(--text-hint);">–</div>';
+    } else {
+      html += '<div class="wk-day-total">' + grand.toLocaleString() + '</div>';
+      // Proportional mini bar
+      var barPct = maxGrand > 0 ? Math.round(grand/maxGrand*100) : 0;
+      html += '<div style="width:100%;background:var(--bar-bg);border-radius:3px;height:3px;margin-top:5px;overflow:hidden;">';
+      html += '<div style="height:100%;border-radius:3px;background:' + (isSel ? '#7F77DD' : '#0891B2') + ';width:' + barPct + '%;transition:width 0.3s;"></div></div>';
+      // F1/F2 sub if available
+      if (snap.pick_f1 != null) {
+        html += '<div class="wk-pick-sub">F1: ' + (snap.pick_f1||0).toLocaleString() + ' F2: ' + (snap.pick_f2||0).toLocaleString() + '</div>';
+      }
+    }
+    html += '<div class="wk-day-logged">' + (snap && snap.logged ? snap.logged : '') + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // ── Selected day detail ───────────────────────────────
+  var sel = _wkSelectedDay ? weekly[_wkSelectedDay] : null;
+  if (sel) {
+    var selIdx    = weekDates.indexOf(_wkSelectedDay);
+    var selLabel  = selIdx >= 0 ? WEEK_DAYS[selIdx] : _wkSelectedDay;
+    var selGrand  = (sel.pick||0) + (sel.replen||0) + (sel.putaway||0);
+    var shiftHrs  = sel.shift_hours || 8;
+    var hcPick    = (sel.hc && sel.hc.pick) ? ((sel.hc.pick||0) + (sel.hc.pick2||0)) : (sel.headcount || 1);
+    var hcReplen  = (sel.hc && sel.hc.replen) ? sel.hc.replen : 1;
+    var hcPutaway = (sel.hc && sel.hc.putaway) ? sel.hc.putaway : 1;
+
+    function pph(units, hc) { return hc > 0 && shiftHrs > 0 ? Math.round(units / (hc * shiftHrs)) : null; }
+    var pphPick    = pph(sel.pick||0, hcPick);
+    var pphReplen  = pph(sel.replen||0, hcReplen);
+    var pphPutaway = pph(sel.putaway||0, hcPutaway);
+
+    var depts = [
+      { label:'Picking',  val: sel.pick||0,    color:'#0891B2', pphVal: pphPick,
+        sub: sel.pick_f1 != null ? 'F1: ' + (sel.pick_f1||0).toLocaleString() + ' · F2: ' + (sel.pick_f2||0).toLocaleString() : null },
+      { label:'Replen',   val: sel.replen||0,  color:'#6366F1', pphVal: pphReplen,    sub: null },
+      { label:'Putaway',  val: sel.putaway||0, color:'#059669', pphVal: pphPutaway,   sub: null },
+    ];
+
+    html += '<div class="wk-detail">';
+    html += '<div class="wk-detail-header">';
+    html += '<div><div class="wk-detail-title">' + selLabel + ' — ' + selGrand.toLocaleString() + ' units</div>';
+    html += '<div class="wk-detail-meta">Logged ' + (sel.logged || '?') + (sel.headcount ? ' · ' + sel.headcount + ' associates active' : '') + ' · ' + shiftHrs + 'h shift</div></div>';
+    html += '</div>';
+
+    html += '<div class="wk-dept-rows">';
+    depts.forEach(function(dept) {
+      var barPct = selGrand > 0 ? Math.round(dept.val / selGrand * 100) : 0;
+      html += '<div class="wk-dept-row">';
+      html += '<div class="wk-dept-label" style="color:' + dept.color + ';">' + dept.label + '</div>';
+      html += '<div><div class="wk-bar-outer"><div class="wk-bar-inner" style="width:' + barPct + '%;background:' + dept.color + ';"></div></div>';
+      if (dept.sub) html += '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;">' + dept.sub + '</div>';
+      html += '</div>';
+      html += '<div class="wk-dept-val">' + dept.val.toLocaleString() + '</div>';
+      html += '<div class="wk-dept-pph">' + (dept.pphVal != null ? dept.pphVal + ' PPH' : '') + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // Composition donut-style text breakdown
+    html += '<div style="display:flex;gap:14px;margin-top:14px;padding-top:10px;border-top:0.5px solid var(--border);flex-wrap:wrap;">';
+    depts.forEach(function(dept) {
+      var pct = selGrand > 0 ? Math.round(dept.val/selGrand*100) : 0;
+      html += '<div style="display:flex;align-items:center;gap:5px;">';
+      html += '<div style="width:8px;height:8px;border-radius:50%;background:' + dept.color + ';flex-shrink:0;"></div>';
+      html += '<span style="font-size:11px;color:var(--text-muted);">' + dept.label + '</span>';
+      html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + pct + '%</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+  }
+
+  // ── Week comparison table ─────────────────────────────
+  var loggedDays = weekDates.filter(function(dk) { return !!weekly[dk]; });
+  if (loggedDays.length > 1) {
+    html += '<div class="card" style="overflow-x:auto;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Week Comparison</div>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    html += '<thead><tr><th style="text-align:left;font-size:10px;font-weight:500;color:var(--text-muted);padding:5px 8px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;">Day</th>';
+    ['Pick','Replen','Putaway','Total'].forEach(function(h) {
+      html += '<th style="text-align:right;font-size:10px;font-weight:500;color:var(--text-muted);padding:5px 8px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;">' + h + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    weekDates.forEach(function(dk, i) {
+      var s = weekly[dk]; if (!s) return;
+      var grand = (s.pick||0)+(s.replen||0)+(s.putaway||0);
+      var isSel = dk === _wkSelectedDay;
+      var isToday = dk === todayKey;
+      html += '<tr style="cursor:pointer;' + (isSel ? 'background:rgba(127,119,221,0.07);' : '') + '" onclick="selectWkDay(\'' + dk.replace(/'/g,"\\'") + '\')">';
+      html += '<td style="padding:7px 8px;border-bottom:0.5px solid var(--border-light);font-weight:' + (isSel ? '600' : '400') + ';color:' + (isToday ? '#0891B2' : 'var(--text)') + ';">' + WEEK_DAYS[i] + (isToday ? ' ●' : '') + '</td>';
+      html += '<td style="text-align:right;padding:7px 8px;border-bottom:0.5px solid var(--border-light);color:#0891B2;font-weight:500;">' + (s.pick||0).toLocaleString() + '</td>';
+      html += '<td style="text-align:right;padding:7px 8px;border-bottom:0.5px solid var(--border-light);color:#6366F1;font-weight:500;">' + (s.replen||0).toLocaleString() + '</td>';
+      html += '<td style="text-align:right;padding:7px 8px;border-bottom:0.5px solid var(--border-light);color:#059669;font-weight:500;">' + (s.putaway||0).toLocaleString() + '</td>';
+      html += '<td style="text-align:right;padding:7px 8px;border-bottom:0.5px solid var(--border-light);font-weight:600;color:var(--text);">' + grand.toLocaleString() + '</td>';
+      html += '</tr>';
+    });
+    // Totals row
+    html += '<tr style="border-top:0.5px solid var(--border);">';
+    html += '<td style="padding:7px 8px;font-weight:600;color:var(--text);">Week</td>';
+    html += '<td style="text-align:right;padding:7px 8px;color:#0891B2;font-weight:600;">' + wkTotals.pick.toLocaleString() + '</td>';
+    html += '<td style="text-align:right;padding:7px 8px;color:#6366F1;font-weight:600;">' + wkTotals.replen.toLocaleString() + '</td>';
+    html += '<td style="text-align:right;padding:7px 8px;color:#059669;font-weight:600;">' + wkTotals.putaway.toLocaleString() + '</td>';
+    html += '<td style="text-align:right;padding:7px 8px;font-weight:700;color:var(--text);">' + wkTotals.grand.toLocaleString() + '</td>';
+    html += '</tr>';
+    html += '</tbody></table></div>';
+  }
+
   content.innerHTML = html;
 }
 
@@ -1886,9 +2046,9 @@ renderHeadcountCard();
   var seed = { _weekMon: mon };
   var offsets = [0,1,2]; // Mon, Tue, Wed
   var dummies = [
-    { pick: 1420, replen: 380, putaway: 95, logged: '10:41 PM' },
-    { pick: 1650, replen: 410, putaway: 110, logged: '10:38 PM' },
-    { pick: 1380, replen: 355, putaway: 88, logged: '10:45 PM' },
+    { pick:1420, pick_f1:870, pick_f2:550, replen:380, putaway:95,  headcount:12, hc:{pick:7,pick2:0,replen:3,putaway:2}, shift_hours:8, logged:'10:41 PM' },
+    { pick:1650, pick_f1:980, pick_f2:670, replen:410, putaway:110, headcount:13, hc:{pick:8,pick2:0,replen:3,putaway:2}, shift_hours:8, logged:'10:38 PM' },
+    { pick:1380, pick_f1:820, pick_f2:560, replen:355, putaway:88,  headcount:11, hc:{pick:7,pick2:0,replen:3,putaway:2}, shift_hours:8, logged:'10:45 PM' },
   ];
   offsets.forEach(function(off, idx) {
     var d = new Date(mon + 'T00:00:00');
