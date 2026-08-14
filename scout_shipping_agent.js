@@ -326,7 +326,8 @@ async function fetchShippingLive(accessToken) {
 
   try {
     execSync('git stash',                      { cwd: __dirname, stdio: 'pipe' });
-    execSync('git pull --rebase origin main',  { cwd: __dirname, stdio: 'pipe' });
+    execSync('git fetch origin main',          { cwd: __dirname, stdio: 'pipe' });
+    execSync('git rebase origin/main',         { cwd: __dirname, stdio: 'pipe' });
     execSync('git stash pop',                  { cwd: __dirname, stdio: 'pipe' });
     execSync('git add shipping_live.json',     { cwd: __dirname, stdio: 'pipe' });
     execSync('git commit -m "Shipping live update -- ' + new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) + '"', { cwd: __dirname, stdio: 'pipe' });
