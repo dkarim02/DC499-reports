@@ -516,33 +516,20 @@ function render() {
 
     // ── dept tab ──
     html += '<div class="tab-panel' + (_detailTab==='dept'?' active':'') + '">';
-    var depts = [
-      {label:'Picking', val:sel.pick||0, color:'#0891B2', pphVal:pph(sel.pick||0,hcPick),
-       sub: sel.pick_f1!=null ? 'F1: '+(sel.pick_f1||0).toLocaleString()+' &nbsp;·&nbsp; F2: '+(sel.pick_f2||0).toLocaleString() : null},
-      {label:'Replen',  val:sel.replen||0, color:'#6366F1', pphVal:pph(sel.replen||0,hcReplen), sub:null},
-      {label:'Putaway', val:sel.putaway||0, color:'#059669', pphVal:pph(sel.putaway||0,hcPut), sub:null},
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px;">';
+    var deptTiles = [
+      { label:'Picking', val:sel.pick||0, color:'#0891B2', pphVal:pph(sel.pick||0,hcPick),
+        sub: sel.pick_f1!=null ? 'F1 '+((sel.pick_f1||0).toLocaleString())+' · F2 '+((sel.pick_f2||0).toLocaleString()) : null },
+      { label:'Replen',  val:sel.replen||0,  color:'#6366F1', pphVal:pph(sel.replen||0,hcReplen),  sub:null },
+      { label:'Putaway', val:sel.putaway||0, color:'#059669', pphVal:pph(sel.putaway||0,hcPut), sub:null },
     ];
-    html += '<div style="margin-top:4px;">';
-    depts.forEach(function(dept) {
-      var pct = selGrand > 0 ? Math.round(dept.val/selGrand*100) : 0;
-      html += '<div class="dept-row">';
-      html += '<div class="dept-label" style="color:' + dept.color + ';">' + dept.label + '</div>';
-      html += '<div><div class="bar-outer"><div class="bar-inner" style="width:'+pct+'%;background:'+dept.color+';"></div></div>';
-      if (dept.sub) html += '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;">'+dept.sub+'</div>';
-      html += '</div>';
-      html += '<div class="dept-val">'+dept.val.toLocaleString()+'</div>';
-      html += '<div class="dept-pph">'+(dept.pphVal!=null?dept.pphVal+' PPH':'')+'</div>';
-      html += '</div>';
-    });
-    html += '</div>';
-    // composition strip
-    html += '<div style="display:flex;gap:14px;margin-top:12px;padding-top:10px;border-top:0.5px solid var(--border);flex-wrap:wrap;">';
-    depts.forEach(function(dept) {
-      var pct = selGrand > 0 ? Math.round(dept.val/selGrand*100) : 0;
-      html += '<div style="display:flex;align-items:center;gap:5px;">';
-      html += '<div style="width:8px;height:8px;border-radius:50%;background:'+dept.color+';flex-shrink:0;"></div>';
-      html += '<span style="font-size:11px;color:var(--text-muted);">'+dept.label+'</span>';
-      html += '<span style="font-size:11px;font-weight:600;color:var(--text);">'+pct+'%</span>';
+    deptTiles.forEach(function(d) {
+      var pct = selGrand > 0 ? Math.round(d.val/selGrand*100) : 0;
+      html += '<div style="background:var(--surface2);border-radius:10px;padding:12px 10px;">';
+      html += '<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:'+d.color+';margin-bottom:5px;">'+d.label+'</div>';
+      html += '<div style="font-size:22px;font-weight:600;color:var(--text);line-height:1;">'+d.val.toLocaleString()+'</div>';
+      html += '<div style="font-size:10px;color:var(--text-hint);margin-top:3px;">'+(d.pphVal!=null ? d.pphVal+' PPH' : pct+'% of day')+'</div>';
+      if (d.sub) html += '<div style="font-size:9px;color:var(--text-hint);margin-top:4px;padding-top:4px;border-top:0.5px solid var(--border);">'+d.sub+'</div>';
       html += '</div>';
     });
     html += '</div>';
