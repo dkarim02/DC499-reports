@@ -1423,9 +1423,7 @@ function renderFullReport() {
 var rsLiveData = null;
 var _activeLiveTile = null;
 
-var RS_LIVE_COLORS = {pick_f1:'#0891B2', pick_f2:'#D97706', replen:'#6366F1', putaway:'#059669'};
-var RS_LIVE_LABELS = {pick_f1:'Pick F1', pick_f2:'Pick F2', replen:'Replenishment', putaway:'Putaway'};
-var RS_LIVE_TYPES  = ['pick_f1','pick_f2','replen','putaway'];
+var RS_LIVE_TILE_KEYS = ['picking','replen','putaway'];
 
 function getLiveBase() {
   return window.location.protocol === 'file:'
@@ -1469,21 +1467,35 @@ function renderLiveReport(d) {
   var TEAM   = getTeamSet();
 
   // ── Summary tiles ──────────────────────────────────────
+  // Picking = F1+F2 merged; Replen and Putaway separate
+  var pickingGrand = 0;
+  Object.keys(d.associates).forEach(function(emp) {
+    if (TEAM.has(emp)) pickingGrand += (d.associates[emp].pick_f1 || 0) + (d.associates[emp].pick_f2 || 0);
+  });
+  var replenGrand = 0, putawayGrand = 0;
+  Object.keys(d.associates).forEach(function(emp) {
+    if (TEAM.has(emp)) { replenGrand += (d.associates[emp].replen || 0); putawayGrand += (d.associates[emp].putaway || 0); }
+  });
+
   var html = '<div class="card" style="margin-bottom:1rem;">';
   html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary — Live <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">\xb7 click a tile to see associates</span></div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">';
-  RS_LIVE_TYPES.forEach(function(typ) {
-    var color = RS_LIVE_COLORS[typ];
-    var isActive = _activeLiveTile === typ;
-    // total for TEAM members only
-    var grand = 0;
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+
+  // Picking tile — spans full width, shows F1/F2 sub-totals
+  (function() {
+    var isActive = _activeLiveTile === 'picking';
+    var pace = getTilePaceRS('pick', pickingGrand);
+    var f1 = 0, f2 = 0;
     Object.keys(d.associates).forEach(function(emp) {
-      if (TEAM.has(emp)) grand += (d.associates[emp][typ] || 0);
+      if (TEAM.has(emp)) { f1 += (d.associates[emp].pick_f1 || 0); f2 += (d.associates[emp].pick_f2 || 0); }
     });
-    var pace = getTilePaceRS(typ === 'pick_f1' ? 'pick' : typ === 'pick_f2' ? 'pick2' : typ, grand);
-    html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="' + typ + '" onclick="clickLiveTile(this.dataset.livtyp)" style="color:' + color + ';cursor:pointer;">';
-    html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">' + RS_LIVE_LABELS[typ] + '</div>';
-    html += '<div style="font-size:18px;font-weight:500;color:var(--text);">' + grand.toLocaleString() + '</div>';
+    html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="picking" onclick="clickLiveTile(this.dataset.livtyp)" style="color:#0891B2;cursor:pointer;grid-column:span 2;">';
+    html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Picking</div>';
+    html += '<div style="font-size:22px;font-weight:500;color:var(--text);">' + pickingGrand.toLocaleString() + '</div>';
+    html += '<div style="display:flex;gap:12px;margin-top:4px;justify-content:center;">';
+    html += '<span style="font-size:10px;color:var(--text-hint);">F1: <strong style="color:var(--text);">' + f1.toLocaleString() + '</strong></span>';
+    html += '<span style="font-size:10px;color:var(--text-hint);">F2: <strong style="color:var(--text);">' + f2.toLocaleString() + '</strong></span>';
+    html += '</div>';
     if (pace) {
       html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:' + pace.color + ';width:' + pace.barPct + '%;"></div></div>';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
@@ -1492,21 +1504,65 @@ function renderLiveReport(d) {
       html += '</div>';
     }
     html += '</div>';
-  });
+  })();
+
+  // Replen tile
+  (function() {
+    var isActive = _activeLiveTile === 'replen';
+    var pace = getTilePaceRS('replen', replenGrand);
+    html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="replen" onclick="clickLiveTile(this.dataset.livtyp)" style="color:#6366F1;cursor:pointer;">';
+    html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Replenishment</div>';
+    html += '<div style="font-size:18px;font-weight:500;color:var(--text);">' + replenGrand.toLocaleString() + '</div>';
+    if (pace) {
+      html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:' + pace.color + ';width:' + pace.barPct + '%;"></div></div>';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
+      html += '<span style="font-size:9px;color:' + pace.color + ';font-weight:500;">' + pace.label + '</span>';
+      html += '<span style="font-size:9px;color:var(--text-hint);">' + pace.pctOfFull + '% of ' + pace.projFull.toLocaleString() + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  })();
+
+  // Putaway tile
+  (function() {
+    var isActive = _activeLiveTile === 'putaway';
+    var pace = getTilePaceRS('putaway', putawayGrand);
+    html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="putaway" onclick="clickLiveTile(this.dataset.livtyp)" style="color:#059669;cursor:pointer;">';
+    html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Putaway</div>';
+    html += '<div style="font-size:18px;font-weight:500;color:var(--text);">' + putawayGrand.toLocaleString() + '</div>';
+    if (pace) {
+      html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:' + pace.color + ';width:' + pace.barPct + '%;"></div></div>';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
+      html += '<span style="font-size:9px;color:' + pace.color + ';font-weight:500;">' + pace.label + '</span>';
+      html += '<span style="font-size:9px;color:var(--text-hint);">' + pace.pctOfFull + '% of ' + pace.projFull.toLocaleString() + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  })();
+
   html += '</div></div>';
 
   // ── Per-dept associate cards (shown when tile is active) ──
-  html += '<div>';
-  RS_LIVE_TYPES.forEach(function(typ) {
-    var color    = RS_LIVE_COLORS[typ];
-    var label    = RS_LIVE_LABELS[typ];
-    var barClass = 'full-bar-' + (typ === 'pick_f1' ? 'pick' : typ === 'pick_f2' ? 'pick2' : typ);
-    var isActive = _activeLiveTile === typ;
+  // Cards: 'picking' (merged F1+F2), 'replen', 'putaway'
+  var LIVE_CARD_DEFS = [
+    { key:'picking', label:'Picking', color:'#0891B2', barClass:'full-bar-pick',
+      getVal: function(assoc) { return (assoc.pick_f1||0) + (assoc.pick_f2||0); } },
+    { key:'replen',  label:'Replenishment', color:'#6366F1', barClass:'full-bar-replen',
+      getVal: function(assoc) { return assoc.replen||0; } },
+    { key:'putaway', label:'Putaway', color:'#059669', barClass:'full-bar-putaway',
+      getVal: function(assoc) { return assoc.putaway||0; } },
+  ];
 
-    // Build sorted list of all associates who have any units for this dept
+  html += '<div>';
+  LIVE_CARD_DEFS.forEach(function(def) {
+    var color    = def.color;
+    var label    = def.label;
+    var barClass = def.barClass;
+    var isActive = _activeLiveTile === def.key;
+
     var allEntries = [];
     Object.keys(d.associates).forEach(function(emp) {
-      var val = d.associates[emp][typ] || 0;
+      var val = def.getVal(d.associates[emp]);
       if (val > 0) allEntries.push([emp, val]);
     });
     allEntries.sort(function(a,b){ return b[1]-a[1]; });
@@ -1516,7 +1572,7 @@ function renderLiveReport(d) {
     var notOnRoster  = allEntries.filter(function(e){ return !roster.find(function(r){return r.email===e[0];}); });
     var grand = enabledRows.reduce(function(s,e){return s+e[1];},0);
 
-    html += '<div id="live-card-' + typ + '" style="' + (isActive ? '' : 'display:none;') + 'margin-bottom:1rem;">';
+    html += '<div id="live-card-' + def.key + '" style="' + (isActive ? '' : 'display:none;') + 'margin-bottom:1rem;">';
     html += '<div class="full-card"><div class="full-card-title" style="color:' + color + ';">' + label + '<span class="full-card-total">' + grand.toLocaleString() + '</span></div>';
 
     if (!allEntries.length) {
