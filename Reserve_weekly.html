@@ -32,6 +32,8 @@ h1{font-size:19px;font-weight:500;margin-bottom:3px;}
 .day-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 6px 8px;text-align:center;cursor:pointer;transition:all 0.15s;position:relative;min-height:88px;display:flex;flex-direction:column;align-items:center;}
 .day-card:hover{border-color:#7F77DD;background:var(--surface2);}
 .day-card.active{border-color:#7F77DD;box-shadow:0 0 0 3px rgba(127,119,221,0.15);}
+.day-card.cmp{border-color:#F59E0B;box-shadow:0 0 0 3px rgba(245,158,11,0.15);}
+.day-card.cmp .day-name{color:#F59E0B;}
 .day-card.today .day-name{color:#0891B2;}
 .day-card.empty{opacity:0.4;cursor:default;}
 .day-card.empty:hover{border-color:var(--border);background:var(--surface);}
@@ -43,6 +45,10 @@ h1{font-size:19px;font-weight:500;margin-bottom:3px;}
 .day-clear{position:absolute;top:4px;right:5px;background:none;border:none;cursor:pointer;color:var(--bar-bg);font-size:14px;padding:0;line-height:1;display:none;}
 .day-card:hover .day-clear{display:block;}
 .day-clear:hover{color:#A32D2D;}
+.day-vs{position:absolute;bottom:5px;right:5px;background:#F59E0B;color:#fff;border:none;border-radius:4px;font-family:inherit;font-size:8px;font-weight:700;padding:2px 5px;cursor:pointer;display:none;line-height:1.4;letter-spacing:0.03em;}
+.day-card:hover .day-vs{display:block;}
+.day-card.cmp .day-vs{display:block;background:#d97706;}
+.chart-bar.focused-cmp{opacity:1;filter:none;box-shadow:0 0 0 2px #F59E0B;}
 /* ── section label ── */
 .section-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;}
 /* ── dept rows ── */
@@ -108,8 +114,8 @@ h1{font-size:19px;font-weight:500;margin-bottom:3px;}
 .chart-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 12px 10px;}
 .chart-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;}
 .chart-week-total{font-size:18px;font-weight:600;line-height:1;margin-bottom:12px;}
-.chart-legend{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;min-height:16px;}
-.chart-legend-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--text-muted);}
+.chart-legend{display:flex;gap:6px;flex-wrap:wrap;}
+.chart-legend-item{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--text-muted);}
 .chart-legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .chart-bars{display:flex;align-items:flex-end;gap:6px;height:130px;}
 .chart-bar-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;cursor:pointer;}
@@ -147,8 +153,10 @@ h1{font-size:19px;font-weight:500;margin-bottom:3px;}
 <script>
 var RS_WEEKLY_KEY = 'rs_weekly_v1';
 var WEEK_DAYS = ['Mon','Tue','Wed','Thu','Fri'];
-var _selDay = null; // selected ISO date key
+var _selDay = null; // selected ISO date key (base)
+var _cmpDay = null; // second day for comparison
 var _detailTab = 'dept'; // 'dept' | 'emp'
+var _uphMode = 'pick'; // 'pick' | 'replen' | 'putaway'
 
 // ── theme ──────────────────────────────────────────────
 var prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
@@ -258,25 +266,32 @@ function reseedDummy() {
     seed[dk] = day;
   });
   saveWeeklyData(seed);
-  _selDay = null;
+  _selDay = null; _cmpDay = null;
   render();
 }
 function clearAll() {
   if (!confirm('Clear all weekly data for this week?')) return;
   try { localStorage.removeItem(RS_WEEKLY_KEY); } catch(e) {}
-  _selDay = null; render();
+  _selDay = null; _cmpDay = null; render();
 }
 function clearDay(dk) {
   if (!confirm('Remove ' + WEEK_DAYS[weekDates().indexOf(dk)] + '\'s log?')) return;
   var d = loadWeeklyData(); delete d[dk]; saveWeeklyData(d);
   if (_selDay === dk) _selDay = null;
+  if (_cmpDay === dk) _cmpDay = null;
   render();
 }
 function selectDay(dk) {
-  _selDay = _selDay === dk ? null : dk;
+  if (dk === _selDay) { _selDay = null; _cmpDay = null; }
+  else { _selDay = dk; _cmpDay = null; }
+  render();
+}
+function setCmp(dk) {
+  _cmpDay = (_cmpDay === dk) ? null : dk;
   render();
 }
 function switchDetailTab(t) { _detailTab = t; render(); }
+function switchUphMode(m) { _uphMode = m; render(); }
 function weekDates() {
   var curMon = weekMonday(todayISO());
   var parts = curMon.split('-');
@@ -287,6 +302,124 @@ function weekDates() {
     arr.push(y + '-' + (m<10?'0'+m:m) + '-' + (day<10?'0'+day:day));
   }
   return arr;
+}
+
+// ── UPH trend chart ─────────────────────────────────────
+var UPH_MODES = [
+  { key:'pick',   label:'Pick',   color:'#0891B2' },
+  { key:'replen', label:'Replen', color:'#6366F1' },
+  { key:'putaway',label:'Putaway',color:'#059669' },
+];
+function renderUphTrend(weekly, dates, todayKey) {
+  var mode   = UPH_MODES.filter(function(m){ return m.key===_uphMode; })[0] || UPH_MODES[0];
+  var color  = mode.color;
+
+  var points = dates.map(function(dk) {
+    var s = weekly[dk];
+    if (!s) return null;
+    var hrs = s.shift_hours || 8;
+    if (!hrs) return null;
+    var units, hc;
+    if (mode.key === 'pick') {
+      units = s.pick || 0;
+      hc    = (s.hc && s.hc.pick) ? (s.hc.pick + (s.hc.pick2||0)) : Math.max(1, Math.round((s.headcount||1)*0.6));
+    } else if (mode.key === 'replen') {
+      units = s.replen || 0;
+      hc    = (s.hc && s.hc.replen) ? s.hc.replen : Math.max(1, Math.round((s.headcount||1)*0.25));
+    } else {
+      units = s.putaway || 0;
+      hc    = (s.hc && s.hc.putaway) ? s.hc.putaway : Math.max(1, Math.round((s.headcount||1)*0.15));
+    }
+    if (!hc) return null;
+    return { dk: dk, uph: units / (hc * hrs) };
+  });
+
+  var logged = points.filter(function(p){ return p && p.uph != null; });
+  if (!logged.length) return '';
+
+  var maxV = Math.max.apply(null, logged.map(function(p){ return p.uph; }));
+  var minV = Math.min.apply(null, logged.map(function(p){ return p.uph; }));
+  var avgV = Math.round(logged.reduce(function(s,p){ return s+p.uph; },0) / logged.length);
+
+  var W=500, H=130, pL=14, pR=30, pT=28, pB=22;
+  var cW = W-pL-pR, cH = H-pT-pB;
+  var xs = dates.map(function(dk,i){ return pL + i*(cW/4); });
+
+  var span = maxV - minV;
+  var yFloor = Math.max(0, minV - span*0.4);
+  var yCeil  = maxV + span*0.4;
+  if (yCeil <= yFloor + 0.01) { yFloor = 0; yCeil = (maxV || 10) * 1.4; }
+  function yp(v){ return pT + cH*(1 - (v-yFloor)/(yCeil-yFloor)); }
+
+  var linePts = [];
+  points.forEach(function(p, i){
+    if (!p || p.uph == null) return;
+    linePts.push({ x: xs[i], y: yp(p.uph), i: i, p: p });
+  });
+
+  var lineD = '', areaD = '';
+  if (linePts.length) {
+    lineD = 'M'+linePts[0].x.toFixed(1)+','+linePts[0].y.toFixed(1);
+    for (var li=1; li<linePts.length; li++)
+      lineD += ' L'+linePts[li].x.toFixed(1)+','+linePts[li].y.toFixed(1);
+    areaD = lineD+' L'+linePts[linePts.length-1].x.toFixed(1)+','+(pT+cH)+' L'+linePts[0].x.toFixed(1)+','+(pT+cH)+' Z';
+  }
+
+  var avgY = yp(avgV).toFixed(1);
+  var gradId = 'uphGrad_'+mode.key;
+  var svg = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block;overflow:visible;">';
+  svg += '<defs><linearGradient id="'+gradId+'" x1="0" y1="0" x2="0" y2="1">';
+  svg += '<stop offset="0%" stop-color="'+color+'" stop-opacity="0.18"/>';
+  svg += '<stop offset="100%" stop-color="'+color+'" stop-opacity="0.01"/>';
+  svg += '</linearGradient></defs>';
+  svg += '<line x1="'+pL+'" y1="'+avgY+'" x2="'+(W-pR)+'" y2="'+avgY+'" stroke="'+color+'" stroke-width="0.75" stroke-dasharray="3,4" opacity="0.4"/>';
+  svg += '<text x="'+(W-pR+4)+'" y="'+(parseFloat(avgY)+3.5).toFixed(1)+'" font-size="8" fill="'+color+'" opacity="0.7">avg</text>';
+  if (areaD) svg += '<path d="'+areaD+'" fill="url(#'+gradId+')"/>';
+  if (lineD) svg += '<path d="'+lineD+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+  linePts.forEach(function(pt){
+    var isSel   = _selDay === pt.p.dk;
+    var isToday = pt.p.dk === todayKey;
+    var val     = Math.round(pt.p.uph);
+    var safeKey = pt.p.dk.replace(/'/g,"\\'");
+    var dotFill = isSel ? color : (isToday ? '#0891B2' : color);
+    var dotR    = isSel ? 6 : 4;
+    svg += '<g onclick="selectDay(\''+safeKey+'\')" style="cursor:pointer;">';
+    svg += '<circle cx="'+pt.x.toFixed(1)+'" cy="'+pt.y.toFixed(1)+'" r="'+dotR+'" fill="'+dotFill+'" style="stroke:var(--surface);stroke-width:2px;"/>';
+    svg += '<text x="'+pt.x.toFixed(1)+'" y="'+(pt.y-10).toFixed(1)+'" text-anchor="middle" font-size="10" style="fill:'+(isSel?color:'var(--text-muted)')+';font-weight:'+(isSel?'600':'400')+';">'+val+'</text>';
+    svg += '</g>';
+  });
+  dates.forEach(function(dk, i){
+    var p       = points[i];
+    var isEmpty = !p || p.uph == null;
+    var isToday = dk === todayKey;
+    var fill    = isEmpty ? 'var(--bar-bg)' : (isToday ? '#0891B2' : 'var(--text-hint)');
+    var fw      = isToday ? '600' : '400';
+    svg += '<text x="'+xs[i].toFixed(1)+'" y="'+(pT+cH+16)+'" text-anchor="middle" font-size="9" style="fill:'+fill+';font-weight:'+fw+';">'+WEEK_DAYS[i]+'</text>';
+  });
+  svg += '</svg>';
+
+  // pill selector
+  var pills = '<div style="display:flex;gap:3px;background:var(--surface2);border-radius:8px;padding:3px;">';
+  UPH_MODES.forEach(function(m){
+    var isActive = m.key === _uphMode;
+    var bg = isActive ? m.color : 'transparent';
+    var fg = isActive ? '#fff' : 'var(--text-hint)';
+    pills += '<button onclick="switchUphMode(\''+m.key+'\')" style="font-family:inherit;font-size:10px;font-weight:'+(isActive?'600':'400')+';padding:3px 9px;border:none;border-radius:6px;background:'+bg+';color:'+fg+';cursor:pointer;transition:all 0.15s;white-space:nowrap;">'+m.label+'</button>';
+  });
+  pills += '</div>';
+
+  var h  = '<div class="card" style="margin-bottom:1rem;">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">';
+  h += '<div style="display:flex;align-items:baseline;gap:8px;">';
+  h += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:'+color+';">UPH &mdash; '+mode.label+'</div>';
+  h += '<div style="font-size:18px;font-weight:600;color:'+color+';">'+avgV+'</div>';
+  h += '<div style="font-size:11px;color:var(--text-hint);">avg this week</div>';
+  h += '</div>';
+  h += pills;
+  h += '</div>';
+  h += svg;
+  h += '</div>';
+  return h;
 }
 
 // ── main render ────────────────────────────────────────
@@ -341,24 +474,29 @@ function render() {
   html += '</div>';
 
   // ── day cards ──────────────────────────────────────
+  var hasCmp = !!(_selDay && _cmpDay);
   html += '<div class="day-strip">';
   dates.forEach(function(dk, i) {
     var snap    = weekly[dk];
     var isToday = dk === todayKey;
     var isSel   = dk === _selDay;
+    var isCmp   = dk === _cmpDay;
     var isEmpty = !snap;
     var grand   = snap ? (snap.pick||0)+(snap.replen||0)+(snap.putaway||0) : 0;
     var barPct  = maxGrand > 0 ? Math.round(grand/maxGrand*100) : 0;
-    var cls = 'day-card' + (isEmpty?' empty':'') + (isSel?' active':'') + (isToday?' today':'');
+    var cls = 'day-card' + (isEmpty?' empty':'') + (isSel?' active':'') + (isCmp?' cmp':'') + (isToday?' today':'');
     var safeKey = dk.replace(/'/g,"\\'");
     html += '<div class="' + cls + '" onclick="' + (isEmpty ? '' : 'selectDay(\'' + safeKey + '\')') + '">';
     if (!isEmpty) html += '<button class="day-clear" onclick="event.stopPropagation();clearDay(\'' + safeKey + '\')" title="Remove">&#x00D7;</button>';
+    if (isSel) html += '<div style="position:absolute;top:4px;left:6px;font-size:8px;font-weight:700;color:#7F77DD;letter-spacing:0.04em;">A</div>';
+    if (isCmp) html += '<div style="position:absolute;top:4px;left:6px;font-size:8px;font-weight:700;color:#F59E0B;letter-spacing:0.04em;">B</div>';
+    if (!isEmpty && !isSel && _selDay) html += '<button class="day-vs" onclick="event.stopPropagation();setCmp(\'' + safeKey + '\')" title="Compare with this day">' + (isCmp ? '✕ vs' : 'vs') + '</button>';
     html += '<div class="day-name">' + WEEK_DAYS[i] + (isToday ? ' &#x25CF;' : '') + '</div>';
     if (isEmpty) {
       html += '<div class="day-total" style="font-size:14px;color:var(--text-hint);">–</div>';
     } else {
       html += '<div class="day-total">' + grand.toLocaleString() + '</div>';
-      html += '<div style="width:100%;background:var(--bar-bg);border-radius:3px;height:3px;margin-top:5px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:' + (isSel?'#7F77DD':'#0891B2') + ';width:' + barPct + '%;transition:width 0.3s;"></div></div>';
+      html += '<div style="width:100%;background:var(--bar-bg);border-radius:3px;height:3px;margin-top:5px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:' + (isCmp?'#F59E0B':isSel?'#7F77DD':'#0891B2') + ';width:' + barPct + '%;transition:width 0.3s;"></div></div>';
       if (snap.pick_f1 != null) {
         html += '<div class="day-sub">F1:' + (snap.pick_f1||0).toLocaleString() + ' F2:' + (snap.pick_f2||0).toLocaleString() + '</div>';
       }
@@ -382,13 +520,15 @@ function render() {
   function renderChart(title, weekTotal, color, maxV, barsFn, legendItems) {
     var h = '';
     h += '<div class="chart-card">';
-    h += '<div class="chart-title" style="color:'+color+';">'+title+'</div>';
-    h += '<div class="chart-week-total" style="color:'+color+';">'+weekTotal.toLocaleString()+'</div>';
-    h += '<div class="chart-legend">';
+    h += '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">';
+    h += '<div><div class="chart-title" style="color:'+color+';">'+title+'</div>';
+    h += '<div class="chart-week-total" style="color:'+color+';">'+weekTotal.toLocaleString()+'</div></div>';
     if (legendItems) {
+      h += '<div class="chart-legend" style="margin-top:2px;">';
       legendItems.forEach(function(l) {
         h += '<div class="chart-legend-item"><div class="chart-legend-dot" style="background:'+l.color+';"></div>'+l.label+'</div>';
       });
+      h += '</div>';
     }
     h += '</div>';
     h += '<div class="chart-bars">';
@@ -398,8 +538,11 @@ function render() {
   }
 
   function barDimCls(dk) {
-    var isSel = _selDay === dk, hasSel = !!_selDay;
-    return hasSel && !isSel ? ' dimmed' : (isSel ? ' focused' : '');
+    var isSel = _selDay === dk, isCmp = _cmpDay === dk;
+    var hasAny = !!(_selDay || _cmpDay);
+    if (isSel) return ' focused';
+    if (isCmp) return ' focused-cmp';
+    return hasAny ? ' dimmed' : '';
   }
 
   html += '<div class="charts-grid">';
@@ -423,9 +566,10 @@ function render() {
       out += '<div class="chart-bar-col" onclick="selectDay(\''+safeKey+'\')">';
       out += '<div class="chart-bar-wrap">';
       if (s && total > 0) {
-        out += '<div class="chart-bar'+dc+'" style="height:'+totalPct+'%;width:100%;display:flex;flex-direction:column;border-radius:3px 3px 0 0;overflow:hidden;">';
-        out += '<div style="flex:'+f2pct+';background:#67E8F9;min-height:2px;"></div>';
+        out += '<div class="chart-bar'+dc+'" style="height:'+totalPct+'%;width:100%;display:flex;flex-direction:column;border-radius:3px 3px 0 0;overflow:hidden;position:relative;">';
+        out += '<div style="flex:'+f2pct+';background:#0EA5E9;min-height:2px;"></div>';
         out += '<div style="flex:'+f1pct+';background:#0891B2;min-height:2px;"></div>';
+        if (totalPct > 15) out += '<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:9px;font-weight:600;color:rgba(255,255,255,0.92);pointer-events:none;line-height:1;">'+total.toLocaleString()+'</div>';
         out += '</div>';
       } else {
         out += '<div style="height:3px;width:100%;background:var(--bar-bg);border-radius:2px;align-self:flex-end;opacity:0.4;"></div>';
@@ -435,7 +579,7 @@ function render() {
       out += '</div>';
     });
     return out;
-  }, [{color:'#0891B2',label:'F1 — Floor 1'},{color:'#67E8F9',label:'F2 — Floor 2'}]);
+  }, [{color:'#0891B2',label:'F1 — Floor 1'},{color:'#0EA5E9',label:'F2 — Floor 2'}]);
 
   // Chart 2: Replen
   var replenWeekTotal = 0;
@@ -451,7 +595,9 @@ function render() {
       out += '<div class="chart-bar-col" onclick="selectDay(\''+safeKey+'\')">';
       out += '<div class="chart-bar-wrap">';
       if (v != null && v > 0) {
-        out += '<div class="chart-bar'+dc+'" style="height:'+pct+'%;background:#6366F1;width:100%;"></div>';
+        out += '<div class="chart-bar'+dc+'" style="height:'+pct+'%;background:#6366F1;width:100%;position:relative;">';
+        if (pct > 15) out += '<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:9px;font-weight:600;color:rgba(255,255,255,0.92);pointer-events:none;line-height:1;">'+v.toLocaleString()+'</div>';
+        out += '</div>';
       } else {
         out += '<div style="height:3px;width:100%;background:var(--bar-bg);border-radius:2px;align-self:flex-end;opacity:0.4;"></div>';
       }
@@ -476,7 +622,9 @@ function render() {
       out += '<div class="chart-bar-col" onclick="selectDay(\''+safeKey+'\')">';
       out += '<div class="chart-bar-wrap">';
       if (v != null && v > 0) {
-        out += '<div class="chart-bar'+dc+'" style="height:'+pct+'%;background:#059669;width:100%;"></div>';
+        out += '<div class="chart-bar'+dc+'" style="height:'+pct+'%;background:#059669;width:100%;position:relative;">';
+        if (pct > 15) out += '<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:9px;font-weight:600;color:rgba(255,255,255,0.92);pointer-events:none;line-height:1;">'+v.toLocaleString()+'</div>';
+        out += '</div>';
       } else {
         out += '<div style="height:3px;width:100%;background:var(--bar-bg);border-radius:2px;align-self:flex-end;opacity:0.4;"></div>';
       }
@@ -489,32 +637,147 @@ function render() {
 
   html += '</div>';
 
-  // ── selected day detail ────────────────────────────
-  var sel = _selDay ? weekly[_selDay] : null;
-  if (sel) {
-    var selIdx   = dates.indexOf(_selDay);
-    var selLabel = selIdx >= 0 ? WEEK_DAYS[selIdx] : _selDay;
-    var selGrand = (sel.pick||0)+(sel.replen||0)+(sel.putaway||0);
-    var shiftHrs = sel.shift_hours || 8;
-    var hcPick   = (sel.hc&&(sel.hc.pick||sel.hc.pick2)) ? (sel.hc.pick||0)+(sel.hc.pick2||0) : Math.max(1,Math.round((sel.headcount||1)*0.6));
-    var hcReplen = (sel.hc&&sel.hc.replen) ? sel.hc.replen : Math.max(1,Math.round((sel.headcount||1)*0.25));
-    var hcPut    = (sel.hc&&sel.hc.putaway) ? sel.hc.putaway : Math.max(1,Math.round((sel.headcount||1)*0.15));
-    function pph(u, hc) { return hc>0&&shiftHrs>0 ? Math.round(u/(hc*shiftHrs)) : null; }
+  // ── UPH trend line ─────────────────────────────────
+  html += renderUphTrend(weekly, dates, todayKey);
+
+  // ── day detail / compare ───────────────────────────
+  function dayStats(s) {
+    var hrs = s.shift_hours || 8;
+    var hcPick   = (s.hc&&(s.hc.pick||s.hc.pick2)) ? (s.hc.pick||0)+(s.hc.pick2||0) : Math.max(1,Math.round((s.headcount||1)*0.6));
+    var hcReplen = (s.hc&&s.hc.replen)  ? s.hc.replen  : Math.max(1,Math.round((s.headcount||1)*0.25));
+    var hcPut    = (s.hc&&s.hc.putaway) ? s.hc.putaway : Math.max(1,Math.round((s.headcount||1)*0.15));
+    return {
+      pick:    s.pick||0,  replen: s.replen||0,  putaway: s.putaway||0,
+      grand:   (s.pick||0)+(s.replen||0)+(s.putaway||0),
+      pphPick: hcPick&&hrs ? Math.round((s.pick||0)/(hcPick*hrs)) : null,
+      pphReplen: hcReplen&&hrs ? Math.round((s.replen||0)/(hcReplen*hrs)) : null,
+      pphPut:  hcPut&&hrs  ? Math.round((s.putaway||0)/(hcPut*hrs))  : null,
+      headcount: s.headcount||0, logged: s.logged||'?', hrs: hrs,
+      pick_f1: s.pick_f1||0, pick_f2: s.pick_f2||0, employees: s.employees||{}
+    };
+  }
+
+  function deltaChip(a, b) {
+    var d = b - a;
+    if (d === 0) return '<span style="font-size:10px;color:var(--text-hint);">—</span>';
+    var sign = d > 0 ? '+' : '';
+    var col  = d > 0 ? '#059669' : '#DC2626';
+    return '<span style="font-size:11px;font-weight:600;color:'+col+';">'+sign+d.toLocaleString()+'</span>';
+  }
+
+  var selData = _selDay ? weekly[_selDay] : null;
+  var cmpData = _cmpDay ? weekly[_cmpDay] : null;
+
+  if (selData && cmpData) {
+    // ── compare view ──
+    var A = dayStats(selData), B = dayStats(cmpData);
+    var selIdx = dates.indexOf(_selDay), cmpIdx = dates.indexOf(_cmpDay);
+    var lblA = selIdx>=0 ? WEEK_DAYS[selIdx] : _selDay;
+    var lblB = cmpIdx>=0 ? WEEK_DAYS[cmpIdx] : _cmpDay;
 
     html += '<div class="card">';
     // header
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">';
-    html += '<div><div style="font-size:15px;font-weight:600;color:var(--text);">' + selLabel + ' &nbsp;<span style="font-size:13px;color:var(--text-muted);font-weight:400;">' + selGrand.toLocaleString() + ' units</span></div>';
-    html += '<div style="font-size:11px;color:var(--text-hint);margin-top:2px;">Logged ' + (sel.logged||'?') + (sel.headcount ? ' &nbsp;·&nbsp; ' + sel.headcount + ' associates active' : '') + ' &nbsp;·&nbsp; ' + shiftHrs + 'h shift</div></div>';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">';
+    html += '<span style="font-size:8px;font-weight:700;background:#7F77DD;color:#fff;border-radius:4px;padding:2px 6px;">A</span>';
+    html += '<span style="font-size:15px;font-weight:600;">'+lblA+'</span>';
+    html += '<span style="font-size:12px;color:var(--text-hint);">vs</span>';
+    html += '<span style="font-size:8px;font-weight:700;background:#F59E0B;color:#fff;border-radius:4px;padding:2px 6px;">B</span>';
+    html += '<span style="font-size:15px;font-weight:600;">'+lblB+'</span>';
+    html += '<button onclick="_selDay=null;_cmpDay=null;render();" style="margin-left:auto;font-family:inherit;font-size:11px;color:var(--text-hint);background:none;border:0.5px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;">Clear</button>';
     html += '</div>';
 
-    // detail tabs
+    // dept tiles: 3 columns, each col = one dept
+    var deptRows = [
+      { label:'Picking',  colA:A.pick,    colB:B.pick,    pphA:A.pphPick,   pphB:B.pphReplen, color:'#0891B2',
+        subA: 'F1 '+A.pick_f1.toLocaleString()+' · F2 '+A.pick_f2.toLocaleString(),
+        subB: 'F1 '+B.pick_f1.toLocaleString()+' · F2 '+B.pick_f2.toLocaleString() },
+      { label:'Replen',   colA:A.replen,  colB:B.replen,  pphA:A.pphReplen, pphB:B.pphReplen, color:'#6366F1', subA:null, subB:null },
+      { label:'Putaway',  colA:A.putaway, colB:B.putaway, pphA:A.pphPut,    pphB:B.pphPut,    color:'#059669', subA:null, subB:null },
+      { label:'Total',    colA:A.grand,   colB:B.grand,   pphA:null,        pphB:null,         color:'var(--text-muted)', subA:null, subB:null },
+    ];
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">';
+    deptRows.forEach(function(d) {
+      html += '<div style="background:var(--surface2);border-radius:10px;padding:10px 8px;">';
+      html += '<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:'+d.color+';margin-bottom:6px;">'+d.label+'</div>';
+      // A row
+      html += '<div style="display:flex;align-items:baseline;gap:5px;margin-bottom:2px;">';
+      html += '<span style="font-size:8px;font-weight:700;background:#7F77DD;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">A</span>';
+      html += '<span style="font-size:16px;font-weight:600;color:var(--text);line-height:1;">'+d.colA.toLocaleString()+'</span>';
+      html += '</div>';
+      if (d.pphA!=null) html += '<div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;">'+d.pphA+' PPH</div>';
+      if (d.subA) html += '<div style="font-size:9px;color:var(--text-hint);margin-bottom:6px;">'+d.subA+'</div>';
+      // B row
+      html += '<div style="display:flex;align-items:baseline;gap:5px;margin-bottom:2px;">';
+      html += '<span style="font-size:8px;font-weight:700;background:#F59E0B;color:#fff;border-radius:3px;padding:1px 4px;flex-shrink:0;">B</span>';
+      html += '<span style="font-size:16px;font-weight:600;color:var(--text);line-height:1;">'+d.colB.toLocaleString()+'</span>';
+      html += '</div>';
+      if (d.pphB!=null) html += '<div style="font-size:9px;color:var(--text-hint);margin-bottom:4px;">'+d.pphB+' PPH</div>';
+      if (d.subB) html += '<div style="font-size:9px;color:var(--text-hint);margin-bottom:6px;">'+d.subB+'</div>';
+      // delta
+      html += '<div style="border-top:0.5px solid var(--border);padding-top:5px;margin-top:4px;">'+deltaChip(d.colA,d.colB)+'</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // associate diff table (only if both days have emp data)
+    var empsA = A.employees, empsB = B.employees;
+    var allEmails = {};
+    Object.keys(empsA).forEach(function(e){ allEmails[e]=1; });
+    Object.keys(empsB).forEach(function(e){ allEmails[e]=1; });
+    var empKeys = Object.keys(allEmails);
+    if (empKeys.length) {
+      var diffList = empKeys.map(function(email) {
+        var a = empsA[email]||{}, b = empsB[email]||{};
+        var totA = (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0);
+        var totB = (b.pick_f1||0)+(b.pick_f2||0)+(b.replen||0)+(b.putaway||0);
+        var pickA = (a.pick_f1||0)+(a.pick_f2||0), pickB = (b.pick_f1||0)+(b.pick_f2||0);
+        return { short:email.split('@')[0], totA:totA, totB:totB, diff:totB-totA, pickA:pickA, pickB:pickB, pickDiff:pickB-pickA };
+      }).filter(function(e){ return e.totA>0||e.totB>0; });
+      diffList.sort(function(a,b){ return Math.abs(b.diff)-Math.abs(a.diff); });
+
+      html += '<div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Associates — B vs A</div>';
+      html += '<table class="emp-table"><thead><tr>';
+      html += '<th>Associate</th>';
+      html += '<th class="r" style="color:#7F77DD;">A Total</th><th class="r" style="color:#F59E0B;">B Total</th><th class="r">&#916; Total</th>';
+      html += '<th class="r" style="color:#7F77DD;">A Pick</th><th class="r" style="color:#F59E0B;">B Pick</th><th class="r">&#916; Pick</th>';
+      html += '</tr></thead><tbody>';
+      diffList.forEach(function(e) {
+        html += '<tr>';
+        html += '<td style="font-weight:500;">'+e.short+'</td>';
+        html += '<td class="r" style="color:var(--text-muted);">'+(e.totA||'–')+'</td>';
+        html += '<td class="r" style="color:var(--text-muted);">'+(e.totB||'–')+'</td>';
+        html += '<td class="r">'+deltaChip(e.totA,e.totB)+'</td>';
+        html += '<td class="r" style="color:var(--text-muted);">'+(e.pickA||'–')+'</td>';
+        html += '<td class="r" style="color:var(--text-muted);">'+(e.pickB||'–')+'</td>';
+        html += '<td class="r">'+deltaChip(e.pickA,e.pickB)+'</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+    }
+    html += '</div>'; // card
+
+  } else if (selData) {
+    // ── single day detail ──
+    var sel = selData;
+    var selIdx   = dates.indexOf(_selDay);
+    var selLabel = selIdx >= 0 ? WEEK_DAYS[selIdx] : _selDay;
+    var S = dayStats(sel);
+    function pph(u, hc) { var hrs=sel.shift_hours||8; return hc>0&&hrs>0 ? Math.round(u/(hc*hrs)) : null; }
+    var hcPick   = (sel.hc&&(sel.hc.pick||sel.hc.pick2)) ? (sel.hc.pick||0)+(sel.hc.pick2||0) : Math.max(1,Math.round((sel.headcount||1)*0.6));
+    var hcReplen = (sel.hc&&sel.hc.replen) ? sel.hc.replen : Math.max(1,Math.round((sel.headcount||1)*0.25));
+    var hcPut    = (sel.hc&&sel.hc.putaway) ? sel.hc.putaway : Math.max(1,Math.round((sel.headcount||1)*0.15));
+
+    html += '<div class="card">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">';
+    html += '<div><div style="font-size:15px;font-weight:600;color:var(--text);">' + selLabel + ' &nbsp;<span style="font-size:13px;color:var(--text-muted);font-weight:400;">' + S.grand.toLocaleString() + ' units</span></div>';
+    html += '<div style="font-size:11px;color:var(--text-hint);margin-top:2px;">Logged ' + (sel.logged||'?') + (sel.headcount ? ' &nbsp;·&nbsp; ' + sel.headcount + ' associates active' : '') + ' &nbsp;·&nbsp; ' + (sel.shift_hours||8) + 'h shift</div></div>';
+    html += '</div>';
+
     html += '<div class="tabs">';
     html += '<button class="dtab' + (_detailTab==='dept'?' active':'') + '" onclick="switchDetailTab(\'dept\')">Dept Breakdown</button>';
     html += '<button class="dtab' + (_detailTab==='emp'?' active':'') + '" onclick="switchDetailTab(\'emp\')">Associates</button>';
     html += '</div>';
 
-    // ── dept tab ──
     html += '<div class="tab-panel' + (_detailTab==='dept'?' active':'') + '">';
     html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px;">';
     var deptTiles = [
@@ -524,7 +787,7 @@ function render() {
       { label:'Putaway', val:sel.putaway||0, color:'#059669', pphVal:pph(sel.putaway||0,hcPut), sub:null },
     ];
     deptTiles.forEach(function(d) {
-      var pct = selGrand > 0 ? Math.round(d.val/selGrand*100) : 0;
+      var pct = S.grand > 0 ? Math.round(d.val/S.grand*100) : 0;
       html += '<div style="background:var(--surface2);border-radius:10px;padding:12px 10px;">';
       html += '<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:'+d.color+';margin-bottom:5px;">'+d.label+'</div>';
       html += '<div style="font-size:22px;font-weight:600;color:var(--text);line-height:1;">'+d.val.toLocaleString()+'</div>';
@@ -533,9 +796,8 @@ function render() {
       html += '</div>';
     });
     html += '</div>';
-    html += '</div>'; // dept tab
+    html += '</div>';
 
-    // ── emp tab ──
     html += '<div class="tab-panel' + (_detailTab==='emp'?' active':'') + '">';
     var emps = sel.employees;
     if (!emps || !Object.keys(emps).length) {
@@ -551,7 +813,6 @@ function render() {
       var maxEmpTotal = empList[0] ? empList[0].total : 1;
 
       html += '<div style="margin-top:6px;">';
-      // summary counts
       html += '<div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;">';
       html += '<div style="font-size:12px;color:var(--text-muted);">'+empList.length+' associates</div>';
       var avgPick = empList.length ? Math.round(empList.reduce(function(s,e){return s+e.pick;},0)/empList.length) : 0;
@@ -580,7 +841,7 @@ function render() {
       html += '</tbody></table>';
       html += '</div>';
     }
-    html += '</div>'; // emp tab
+    html += '</div>';
     html += '</div>'; // card
   }
 
