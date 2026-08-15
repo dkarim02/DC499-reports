@@ -867,11 +867,6 @@
         <div class="tile-value green" id="tk-replen-done">--</div>
         <div class="tile-sub">this shift</div>
       </div>
-      <div class="tile" id="tk-pickdrop-tile" style="border-top-color:var(--red);cursor:pointer;" onclick="document.getElementById('tk-pickdrop-card').scrollIntoView({behavior:'smooth'})">
-        <div class="tile-label">Pick Drop Carts</div>
-        <div class="tile-value" id="tk-pickdrop-count" style="color:var(--red);">--</div>
-        <div class="tile-sub" id="tk-pickdrop-sub">-- iLPNs &nbsp;|&nbsp; -- units</div>
-      </div>
     </div>
 
     <!-- Picking + Replen side by side -->
@@ -2219,22 +2214,8 @@ function renderTasksData(data) {
 }
 
 function renderPickDropCarts(carts) {
-  var tile     = document.getElementById('tk-pickdrop-tile');
-  var countEl  = document.getElementById('tk-pickdrop-count');
-  var subEl    = document.getElementById('tk-pickdrop-sub');
-  var card     = document.getElementById('tk-pickdrop-card');
-  var body     = document.getElementById('tk-pickdrop-body');
-
-  var totalIlpns = 0, totalUnits = 0;
-  carts.forEach(function(c) { totalIlpns += c.ilpns.length; totalUnits += c.total_units; });
-
-  // Tile color: green if empty, amber if carts exist but none stale (>60 min), red if any stale
-  var anyStal = carts.some(function(c) { return c.oldest_min != null && c.oldest_min > 60; });
-  var tileColor = carts.length === 0 ? 'var(--green)' : (anyStal ? 'var(--red)' : 'var(--amber)');
-  countEl.textContent = carts.length;
-  countEl.style.color = tileColor;
-  tile.style.borderTopColor = tileColor;
-  subEl.textContent = totalIlpns + ' iLPN' + (totalIlpns !== 1 ? 's' : '') + '  |  ' + totalUnits.toLocaleString() + ' units';
+  var card = document.getElementById('tk-pickdrop-card');
+  var body = document.getElementById('tk-pickdrop-body');
 
   if (!carts.length) { card.style.display = 'none'; return; }
   card.style.display = '';
