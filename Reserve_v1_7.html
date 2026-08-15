@@ -1749,7 +1749,7 @@ function loadWeeklyData() {
     if (!raw) return {};
     var obj = JSON.parse(raw);
     // Reset if stored week doesn't match current week
-    var curMon = weekMonday(new Date());
+    var curMon = weekMonday(todayISO());
     if (obj._weekMon && obj._weekMon !== curMon) {
       if (isSunday()) { localStorage.removeItem(RS_WEEKLY_KEY); return {}; }
     }
@@ -1776,13 +1776,20 @@ function logDay(btn) {
   var shiftHrs = getShiftHoursRS ? getShiftHoursRS() : 8;
   var dateKey = todayISO();
   var weekly  = loadWeeklyData();
-  weekly._weekMon = weekMonday(new Date());
+  weekly._weekMon = weekMonday(todayISO());
+  var employees = {};
+  Object.keys(rsLiveData.associates).forEach(function(emp) {
+    if (!TEAM.has(emp)) return;
+    var a = rsLiveData.associates[emp];
+    employees[emp] = { pick_f1: a.pick_f1||0, pick_f2: a.pick_f2||0, replen: a.replen||0, putaway: a.putaway||0 };
+  });
   weekly[dateKey] = {
     pick: pick_f1 + pick_f2, pick_f1: pick_f1, pick_f2: pick_f2,
     replen: replen, putaway: putaway,
     headcount: headcount,
     hc: hcStored.counts || {},
     shift_hours: shiftHrs,
+    employees: employees,
     logged: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Los_Angeles'})
   };
   saveWeeklyData(weekly);
