@@ -413,7 +413,8 @@ const DEFAULT_TEAM = [
   {email:'dean.karim@nordstrom.com', enabled:true},
 
 ];
-const STORAGE_KEY = 'rs_roster_v1';
+function rosterKey() { return 'rs_roster_v1_' + getShift(); }
+const STORAGE_KEY = 'rs_roster_v1'; // legacy — kept so old saves aren't lost on first load
 const GOALS_KEY = 'rs_goals_v1';
 const PICK_TX   = ['Non Haz Retail Pick To oLPN Cart'];
 const PICK2_TX  = ['Non Haz Retail Pick To oLPN Cart Floor 2'];
@@ -453,6 +454,8 @@ function setShift(shift) {
   var sub = document.getElementById('main-subtitle');
   if (sub) sub.textContent = (shift === '1st' ? '1st Shift · 3:00 AM – 1:45 PM' : '2nd Shift · 2:15 PM – 1:00 AM') + ' · Upload a CSV to get started';
   renderRoster();
+  if (typeof renderHeadcountCard === 'function') renderHeadcountCard();
+  if (typeof renderPPHSection    === 'function') renderPPHSection();
 }
 const SHIFT_BOUNDS = SHIFT_BOUNDS_MAP['2nd'];
 
@@ -522,7 +525,10 @@ function openWeeklyRecap() {
 // ── ROSTER ──────────────────────────────────────────────
 function loadRoster() {
   try {
-    const s = localStorage.getItem(STORAGE_KEY);
+    var key = rosterKey();
+    var s = localStorage.getItem(key);
+    // Migrate legacy key for 2nd shift on first load
+    if (!s && getShift() === '2nd') s = localStorage.getItem(STORAGE_KEY);
     if (s) {
       const parsed = JSON.parse(s);
       return parsed.map(function(m) { return typeof m === 'string' ? {email:m, enabled:true} : m; });
@@ -530,7 +536,7 @@ function loadRoster() {
   } catch(e) {}
   return DEFAULT_TEAM.map(function(m) { return {email:m.email, enabled:m.enabled}; });
 }
-function saveRoster(r) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {} }
+function saveRoster(r) { try { localStorage.setItem(rosterKey(), JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {} }
 function getTeamSet() { return new Set(loadRoster().filter(function(m) { return m.enabled; }).map(function(m) { return m.email; })); }
 function flashBadge(id) { const b = document.getElementById(id); if (b) { b.style.opacity = '1'; setTimeout(function() { b.style.opacity = '0'; }, 1800); } }
 
@@ -630,22 +636,22 @@ function processFullFile(file) {
 // ── HEADCOUNT + PPH ────────────────────────────────────
 var HC_DEPTS = ['pick','pick2','replen','putaway'];
 var HC_LABELS = {pick:'Pick F1', pick2:'Pick F2', replen:'Replenishment', putaway:'Putaway'};
-var HC_KEY = 'rs_headcount_v1';
-var PPH_KEY_RS = 'rs_pph_v1';
-var SHIFT_HOURS_KEY_RS = 'rs_shift_hours_v1';
+function hcKey()         { return 'rs_headcount_v1_'  + getShift(); }
+function pphKeyRS()      { return 'rs_pph_v1_'         + getShift(); }
+function shiftHoursKey() { return 'rs_shift_hours_v1_' + getShift(); }
 
 var FIN_FCST_PPH_RS = {pick:93.1, pick2:93.1, replen:83.4, putaway:14.0};
 var MIN_TX_RS = {pick:5, pick2:5, replen:5, putaway:3};
 
 function loadHeadcount() {
-  try { var s = localStorage.getItem(HC_KEY); if (s) return JSON.parse(s); } catch(e) {}
+  try { var s = localStorage.getItem(hcKey()); if (s) return JSON.parse(s); } catch(e) {}
   return {date:'', counts:{pick:0,pick2:0,replen:0,putaway:0}};
 }
-function saveHeadcount(hc) { try { localStorage.setItem(HC_KEY, JSON.stringify(hc)); } catch(e) {} }
+function saveHeadcount(hc) { try { localStorage.setItem(hcKey(), JSON.stringify(hc)); } catch(e) {} }
 
 function loadPPH() {
   try {
-    var s = localStorage.getItem(PPH_KEY_RS);
+    var s = localStorage.getItem(pphKeyRS());
     if (s) {
       var p = JSON.parse(s);
       var merged = {};
@@ -655,7 +661,7 @@ function loadPPH() {
   } catch(e) {}
   return Object.assign({}, FIN_FCST_PPH_RS);
 }
-function savePPH(vals) { try { localStorage.setItem(PPH_KEY_RS, JSON.stringify(vals)); } catch(e) {} }
+function savePPH(vals) { try { localStorage.setItem(pphKeyRS(), JSON.stringify(vals)); } catch(e) {} }
 function getPPH(typ) { return loadPPH()[typ] || FIN_FCST_PPH_RS[typ] || 0; }
 function setPPHValue(typ, val) {
   var vals = loadPPH(), n = parseFloat(val);
@@ -665,13 +671,13 @@ function setPPHValue(typ, val) {
 function resetPPHToDefaults() { savePPH(Object.assign({}, FIN_FCST_PPH_RS)); renderPPHSection(); }
 
 function getShiftHoursRS() {
-  try { var v = parseFloat(localStorage.getItem(SHIFT_HOURS_KEY_RS)); if (v >= 6 && v <= 12) return v; } catch(e) {}
+  try { var v = parseFloat(localStorage.getItem(shiftHoursKey())); if (v >= 6 && v <= 12) return v; } catch(e) {}
   return 8;
 }
 function setShiftHours(val) {
   var v = parseFloat(val);
   if (isNaN(v) || v < 6 || v > 12) return;
-  try { localStorage.setItem(SHIFT_HOURS_KEY_RS, v); } catch(e) {}
+  try { localStorage.setItem(shiftHoursKey(), v); } catch(e) {}
   var el = document.getElementById('shift-hours-input');
   if (el) el.value = v;
 }
@@ -775,22 +781,25 @@ function renderPPHSection() {
 }
 
 // ── PPH PACE ───────────────────────────────────────────
-var PROD_SHIFT_START_RS = 14 + 15/60; // 2:15 PM
-var PROD_LUNCH_AFTER_RS = 18 + 15/60; // 6:15 PM
+var SHIFT_PACE_MAP = {
+  '1st': { start: 3 + 0/60,  lunch: 7 + 15/60 },  // 3:00 AM start, lunch after 7:15 AM
+  '2nd': { start: 14 + 15/60, lunch: 18 + 15/60 }  // 2:15 PM start, lunch after 6:15 PM
+};
+function getShiftPace() { return SHIFT_PACE_MAP[getShift()] || SHIFT_PACE_MAP['2nd']; }
 
 function getElapsedProdHrsRS() {
+  var pace = getShiftPace();
   var now = new Date(), nowH = now.getHours() + now.getMinutes()/60;
-  if (nowH < 5) nowH += 24;
-  if (nowH <= PROD_SHIFT_START_RS) return 0;
+  if (nowH < 5 && getShift() === '2nd') nowH += 24; // 2nd shift crosses midnight
+  if (nowH <= pace.start) return 0;
   var hrs = getShiftHoursRS();
-  var cap = PROD_SHIFT_START_RS + hrs + 0.5;
-  var elapsed = Math.min(nowH, cap) - PROD_SHIFT_START_RS;
-  if (nowH > PROD_LUNCH_AFTER_RS) elapsed -= 0.5;
+  var cap = pace.start + hrs + 0.5;
+  var elapsed = Math.min(nowH, cap) - pace.start;
+  if (nowH > pace.lunch) elapsed -= 0.5;
   return Math.max(0, Math.min(elapsed, hrs));
 }
 
 function getTilePaceRS(typ, grand) {
-  if (getShift() !== '2nd') return null;
   var pph = getPPH(typ);
   if (!pph) return null;
   var hcCounts = getHeadcounts(), headcount = hcCounts[typ];
@@ -1192,8 +1201,9 @@ function drawAssocChart(canvasId,emp,isDark){
     });
     if(!found)return;
     var d=parseDT(r['Activity Datetime']);if(!d)return;
-    var h=d.getHours();if(h<5)h+=24;
-    if(h<14||h>25)return;
+    var h=d.getHours(), bounds=SHIFT_BOUNDS_MAP[getShift()]||SHIFT_BOUNDS_MAP['2nd'];
+    if(getShift()==='2nd'&&h<5)h+=24;
+    if(h<bounds.start||h>bounds.end)return;
     var totalMins=h*60+d.getMinutes();
     var val=metricKey?(parseFloat(r[metricKey])||0):1;
     events.push({mins:totalMins,val:val});
@@ -1261,7 +1271,7 @@ function drawFullChart(filterTyp, typesOverride) {
         if(!txList||txList.indexOf((r['Transaction ID']||'').trim())===-1)return;
         var e=(r['Employee']||'').trim();if(!TEAM.has(e))return;
         var d=parseDT(r['Activity Datetime']);if(!d)return;
-        var h=d.getHours();if(h<5)h+=24;if(h<14||h>25)return;
+        var h=d.getHours(),bounds=SHIFT_BOUNDS_MAP[getShift()]||SHIFT_BOUNDS_MAP['2nd'];if(getShift()==='2nd'&&h<5)h+=24;if(h<bounds.start||h>bounds.end)return;
         map[h]=(map[h]||0)+(metricKey?(parseFloat(r[metricKey])||0):1);allHours.add(h);
       });
     });
@@ -1724,7 +1734,7 @@ function nailFromLiveRS(btn) {
 }
 
 // ── WEEKLY RECAP (data helpers — dashboard lives in Reserve_weekly.html) ──────
-var RS_WEEKLY_KEY = 'rs_weekly_v1';
+function rsWeeklyKey() { return 'rs_weekly_v1_' + getShift(); }
 var WEEK_DAYS = ['Mon','Tue','Wed','Thu','Fri'];
 
 function todayISO() {
@@ -1745,19 +1755,19 @@ function weekMonday(refISO) {
 }
 function loadWeeklyData() {
   try {
-    var raw = localStorage.getItem(RS_WEEKLY_KEY);
+    var key = rsWeeklyKey();
+    var raw = localStorage.getItem(key);
     if (!raw) return {};
     var obj = JSON.parse(raw);
-    // Reset if stored week doesn't match current week
     var curMon = weekMonday(todayISO());
     if (obj._weekMon && obj._weekMon !== curMon) {
-      if (isSunday()) { localStorage.removeItem(RS_WEEKLY_KEY); return {}; }
+      if (isSunday()) { localStorage.removeItem(key); return {}; }
     }
     return obj;
   } catch(e) { return {}; }
 }
 function saveWeeklyData(obj) {
-  try { localStorage.setItem(RS_WEEKLY_KEY, JSON.stringify(obj)); } catch(e) {}
+  try { localStorage.setItem(rsWeeklyKey(), JSON.stringify(obj)); } catch(e) {}
 }
 function logDay(btn) {
   if (!rsLiveData || !rsLiveData.associates) { alert('No live data — run Option 11 in dc499.bat first, then refresh.'); return; }
@@ -1789,6 +1799,7 @@ function logDay(btn) {
     headcount: headcount,
     hc: hcStored.counts || {},
     shift_hours: shiftHrs,
+    shift: getShift(),
     employees: employees,
     logged: new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/Los_Angeles'})
   };

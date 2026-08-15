@@ -135,6 +135,10 @@ h1{font-size:19px;font-weight:500;margin-bottom:3px;}
       <p class="subtitle" id="wk-subtitle">Loading...</p>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div style="display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:3px;">
+        <button id="wk-shift-1st" onclick="setWkShift('1st')" style="font-family:inherit;font-size:11px;font-weight:500;padding:4px 12px;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--text-hint);transition:all 0.15s;">&#9728; 1st</button>
+        <button id="wk-shift-2nd" onclick="setWkShift('2nd')" style="font-family:inherit;font-size:11px;font-weight:500;padding:4px 12px;border:none;border-radius:6px;cursor:pointer;background:#185FA5;color:#fff;transition:all 0.15s;">&#9790; 2nd</button>
+      </div>
       <button class="btn btn-seed" onclick="reseedDummy()">&#x1F9EA; Reseed Demo</button>
       <button class="btn btn-danger" onclick="clearAll()">&#x21BA; Clear Week</button>
       <button class="dark-toggle" onclick="toggleDark()">
@@ -151,7 +155,16 @@ h1{font-size:19px;font-weight:500;margin-bottom:3px;}
 </div>
 
 <script>
-var RS_WEEKLY_KEY = 'rs_weekly_v1';
+var _wkShift = (function(){ try { return localStorage.getItem('res_shift_v1') || '2nd'; } catch(e) { return '2nd'; } })();
+function rsWeeklyKey() { return 'rs_weekly_v1_' + _wkShift; }
+function setWkShift(s) {
+  _wkShift = s;
+  var btn1 = document.getElementById('wk-shift-1st'), btn2 = document.getElementById('wk-shift-2nd');
+  if (btn1) { btn1.style.background = s==='1st'?'#E67E22':'transparent'; btn1.style.color = s==='1st'?'#fff':'var(--text-hint)'; }
+  if (btn2) { btn2.style.background = s==='2nd'?'#185FA5':'transparent'; btn2.style.color = s==='2nd'?'#fff':'var(--text-hint)'; }
+  _selDay = null; _cmpDay = null;
+  render();
+}
 var WEEK_DAYS = ['Mon','Tue','Wed','Thu','Fri'];
 var _selDay = null; // selected ISO date key (base)
 var _cmpDay = null; // second day for comparison
@@ -194,18 +207,18 @@ function weekMonday(refISO) {
 // ── storage ────────────────────────────────────────────
 function loadWeeklyData() {
   try {
-    var raw = localStorage.getItem(RS_WEEKLY_KEY);
+    var raw = localStorage.getItem(rsWeeklyKey());
     if (!raw) return {};
     var obj = JSON.parse(raw);
     var curMon = weekMonday(todayISO());
     if (obj._weekMon && obj._weekMon !== curMon && isSunday()) {
-      localStorage.removeItem(RS_WEEKLY_KEY); return {};
+      localStorage.removeItem(rsWeeklyKey()); return {};
     }
     return obj;
   } catch(e) { return {}; }
 }
 function saveWeeklyData(obj) {
-  try { localStorage.setItem(RS_WEEKLY_KEY, JSON.stringify(obj)); } catch(e) {}
+  try { localStorage.setItem(rsWeeklyKey(), JSON.stringify(obj)); } catch(e) {}
 }
 
 // ── dummy data seed ─────────────────────────────────────
@@ -271,7 +284,7 @@ function reseedDummy() {
 }
 function clearAll() {
   if (!confirm('Clear all weekly data for this week?')) return;
-  try { localStorage.removeItem(RS_WEEKLY_KEY); } catch(e) {}
+  try { localStorage.removeItem(rsWeeklyKey()); } catch(e) {}
   _selDay = null; _cmpDay = null; render();
 }
 function clearDay(dk) {
@@ -433,7 +446,7 @@ function render() {
   var sub = document.getElementById('wk-subtitle');
   if (sub) {
     var mon = weekMonday(todayISO());
-    sub.textContent = 'Week of ' + new Date(mon + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · Reserve Stock';
+    sub.textContent = 'Week of ' + new Date(mon + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · Reserve Stock · ' + (_wkShift === '1st' ? '1st Shift' : '2nd Shift');
   }
 
   var content = document.getElementById('main-content');
@@ -910,7 +923,8 @@ function render() {
 
 // ── Auto-seed on first open ─────────────────────────
 (function() {
-  var existing = localStorage.getItem(RS_WEEKLY_KEY);
+  setWkShift(_wkShift); // sync buttons to stored preference
+  var existing = localStorage.getItem(rsWeeklyKey());
   if (!existing) reseedDummy();
   else render();
 })();
