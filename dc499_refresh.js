@@ -290,18 +290,43 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY hr
 ORDER BY hr ASC`.trim();
 
-  const [resp, respHourly] = await Promise.all([
+  const sqlAssocHourly = `
+SELECT
+    CREATED_BY,
+    HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS hr,
+    COUNT(DISTINCT LPN_ID) AS lpns
+FROM default_receiving.RCV_RECEIPT
+WHERE FACILITY_ID = '${FACILITY}'
+  AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
+  AND CREATED_BY != 'system-msg-user@${FACILITY}'
+GROUP BY CREATED_BY, hr
+ORDER BY CREATED_BY, hr ASC`.trim();
+
+  const [resp, respHourly, respAssocHourly] = await Promise.all([
     mcpQuery(accessToken, sqlAssociates),
     mcpQuery(accessToken, sqlHourly),
+    mcpQuery(accessToken, sqlAssocHourly),
   ]);
 
-  const associates = (resp.rows || []).map(r => ({
-    name:       (r.CREATED_BY.toLowerCase().split('@')[0]),
-    lpns:       Number(r.lpns),
-    units:      Math.round(Number(r.units)),
-    first_scan: fmtHHmm(r.first_scan),
-    last_scan:  fmtHHmm(r.last_scan),
-  }));
+  // Per-associate hourly map: name -> { hr: lpns }
+  const assocHourMap = {};
+  for (const r of (respAssocHourly.rows || [])) {
+    const name = r.CREATED_BY.toLowerCase().split('@')[0];
+    if (!assocHourMap[name]) assocHourMap[name] = {};
+    assocHourMap[name][Number(r.hr)] = Number(r.lpns);
+  }
+
+  const associates = (resp.rows || []).map(r => {
+    const name = r.CREATED_BY.toLowerCase().split('@')[0];
+    return {
+      name,
+      lpns:       Number(r.lpns),
+      units:      Math.round(Number(r.units)),
+      first_scan: fmtHHmm(r.first_scan),
+      last_scan:  fmtHHmm(r.last_scan),
+      hours:      assocHourMap[name] || {},
+    };
+  });
 
   const hourly = (respHourly.rows || []).map(r => ({
     hour:  Number(r.hr),
@@ -309,12 +334,15 @@ ORDER BY hr ASC`.trim();
     units: Math.round(Number(r.units)),
   }));
 
+  const hours = hourly.map(h => h.hour);
+
   return {
     generated:  new Date().toISOString().slice(0, 19),
     shift:      shiftLabel(),
     facility:   FACILITY,
     associates,
     hourly,
+    hours,
   };
 }
 
