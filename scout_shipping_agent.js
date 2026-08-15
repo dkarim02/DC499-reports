@@ -232,21 +232,21 @@ function ts() {
 function shiftStartUtc() {
   const nowUtc = new Date();
   const h = nowUtc.getUTCHours();
-  // 2nd shift: 2:15 PM PDT = 21:15 UTC
-  // 1st shift: not in scope for shipping — but keep consistent boundary
-  const is1st = h >= 10 && h < 21;
+  // 1st shift: 5 AM PST = 13:00 UTC (OT can start 3–4 AM PST = 11:00 UTC)
+  //            Use 11:00 UTC so OT hours are captured; 3 AM PDT = hour 3 PDT
+  // 2nd shift: 2:15 PM PST = 22:15 UTC
+  const is1st = h >= 11 && h < 22;
   const start = new Date(nowUtc);
   if (is1st) {
-    start.setUTCHours(10, 0, 0, 0);
+    start.setUTCHours(11, 0, 0, 0);  // 3 AM PST — covers OT starts
   } else {
-    start.setUTCHours(21, 15, 0, 0);
-    if (h < 10) start.setUTCDate(start.getUTCDate() - 1);
+    start.setUTCHours(22, 15, 0, 0); // 2:15 PM PST
+    if (h < 11) start.setUTCDate(start.getUTCDate() - 1);
   }
   return {
     utc: start.toISOString().replace('T', ' ').slice(0, 19),
     label: is1st ? '1st' : '2nd',
-    // PDT hour the shift starts (for hour-bucket headers)
-    pdtHour: is1st ? 10 : 14,
+    pdtHour: is1st ? 3 : 14,  // earliest display hour for each shift
   };
 }
 
@@ -267,28 +267,29 @@ ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 }
 
 // ── process rows into per-employee hourly buckets ──────────────────────────────
-function processRows(rows, shiftPdtHour) {
+function processRows(rows, shiftPdtHour, is1st) {
   // Dedup: each Employee + Container ID pair counts once, attributed to the earliest hour seen
-  const earliest = {}; // key: `employee|containerID` → PDT hour integer
+  const earliest = {}; // key: `employee|containerID` → local hour integer
   for (const row of rows) {
     const emp = (row['Employee'] || '').trim();
     const cid = (row['Container ID'] || '').trim();
     if (!emp || !cid) continue;
     const dtStr = row['Activity Datetime'];
     if (!dtStr) continue;
-    // Parse PDT hour from the already-converted timestamp string
-    const dt = new Date(String(dtStr).replace(' ', 'T') + '-07:00');
+    // Parse local hour from the already-converted timestamp string (PST = -08:00)
+    const dt = new Date(String(dtStr).replace(' ', 'T') + '-08:00');
     if (isNaN(dt.getTime())) continue;
-    const pdtHour = dt.getHours(); // 0–23 PDT
+    const localHour = dt.getHours(); // 0–23 PST
     const key = `${emp}|${cid}`;
-    if (earliest[key] === undefined || pdtHour < earliest[key]) {
-      earliest[key] = pdtHour;
+    if (earliest[key] === undefined || localHour < earliest[key]) {
+      earliest[key] = localHour;
     }
   }
 
   // Build per-employee buckets
-  // Shift hours 2 PM–10 PM PDT = hours 14..21 (9 possible hours on display)
-  const HOURS = [14, 15, 16, 17, 18, 19, 20, 21];
+  // 1st shift: 3 AM–2 PM PST = hours 3..13
+  // 2nd shift: 2 PM–10 PM PST = hours 14..21
+  const HOURS = is1st ? [3,4,5,6,7,8,9,10,11,12,13] : [14,15,16,17,18,19,20,21];
   const empMap = {}; // employee -> { hourBuckets: {14:n, 15:n,...}, total: n }
 
   for (const [key, pdtHour] of Object.entries(earliest)) {
@@ -325,6 +326,7 @@ function processRows(rows, shiftPdtHour) {
 // ── main fetch ─────────────────────────────────────────────────────────────────
 async function fetchShippingLive(accessToken) {
   const { utc: shiftStart, label: shift, pdtHour: shiftPdtHour } = shiftStartUtc();
+  const is1st = shift === '1st';
 
   console.log(`[${ts()}] Querying shipping transactions since ${shiftStart}...`);
   const resp = await mcpQuery(accessToken, buildSql(shiftStart));
@@ -332,7 +334,7 @@ async function fetchShippingLive(accessToken) {
   console.log(`[${ts()}] ${rows.length} rows`);
   if (rows.length >= 9500) console.warn(`[${ts()}] ⚠ Hit row cap — data may be truncated`);
 
-  const { employees, teamHours, teamTotal, hours } = processRows(rows, shiftPdtHour);
+  const { employees, teamHours, teamTotal, hours } = processRows(rows, shiftPdtHour, is1st);
 
   const output = {
     generated:     new Date().toISOString(),
