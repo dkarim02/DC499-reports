@@ -1611,7 +1611,7 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
   const detailMap  = {};
   for (let i = 0; i < openIds.length; i += BATCH_SZ) {
     const batchIds = openIds.slice(i, i + BATCH_SZ).map(id => `'${id}'`).join(',');
-    const sqlDetail = `SELECT TASK_ID, COUNT(*) AS detail_count, SUM(CASE WHEN STATUS='9000' THEN 1 ELSE 0 END) AS detail_done FROM default_task.TSK_TASK_DETAIL WHERE FACILITY_ID = '${FACILITY}' AND TASK_ID IN (${batchIds}) GROUP BY TASK_ID`;
+    const sqlDetail = `SELECT TASK_ID, COUNT(*) AS detail_count, SUM(CASE WHEN STATUS='8000' THEN 1 ELSE 0 END) AS detail_done FROM default_task.TSK_TASK_DETAIL WHERE FACILITY_ID = '${FACILITY}' AND TASK_ID IN (${batchIds}) GROUP BY TASK_ID`;
     try {
       const dr = await mcpQuery(accessToken, sqlDetail);
       for (const r of (dr.rows || [])) detailMap[r.TASK_ID] = { count: Number(r.detail_count), done: Number(r.detail_done) };
