@@ -192,7 +192,7 @@ Scheduled Task every 30 min. Checks for node.exe with `*dc499_refresh*`. If not 
 **1st shift (all pages):** workflows/a26c40b1c9ee4739abd0269aedbef04b
 **2nd shift — Batches:** workflows/d4415440c8004523a34336a1a21e6dae
 **2nd shift — Ecom/Backlog:** workflows/eacd8206a4274abb96f43be9d3d01256
-**Auth expiry alert:** cu/30/workflows/db4396647efa46f783e0ed9a5d09e32f... (TEAMS_WEBHOOK_AUTH_ALERT)
+**Auth expiry alert:** cu/30/workflows/db4396647efa46f783e0ed9a5d09e32f... (TEAMS_WEBHOOK_AUTH_ALERT) — sends `{"text":"..."}` plain body, NOT Adaptive Card. Flow confirmed working (202).
 
 Routing: `getShift()` — 1st = 6AM–2PM PDT, 2nd = 2PM–10PM PDT.
 
@@ -207,6 +207,8 @@ Routing: `getShift()` — 1st = 6AM–2PM PDT, 2nd = 2PM–10PM PDT.
 **Send dropdown (Backlog):** "Send to Teams" + "EOD Email" in expandable `↑ Send` dropdown (id=send-picker). Click-outside closes both `theme-picker` and `send-picker`. `sendToTeams(btn)` — btn may be a `<div>` not `<button>`, guard: `if(btn.disabled!==undefined) btn.disabled=true`.
 
 **Bridge card:** Units/Hour renamed "Bridge" (id=hourly-title). Two stacked sub-tables side-by-side.
+
+**Pick Drop Carts (Tasks tab):** `#tk-pickdrop-card` shows iLPNs sitting at `P1-PK-xx` locations that should be cleared by EOS. Query in `fetchTaskData()` — `DCI_ILPN LEFT JOIN DCI_INVENTORY WHERE CURRENT_LOCATION_ID LIKE 'P1-PK%' AND STATUS != '9000' AND IS_CLOSED = 0`. Written to `pick_drop_carts` in tasks_live.json. Groups by location, calculates `age_min` per iLPN, `oldest_min` per cart. Card hidden when empty. Age color: green <30m, amber 30–60m, red >60m. No summary tile — card only.
 
 **EOD Email:** `exportEodEmail()` reads lastBlData, lastBtData, lastRrData. Outlook compat: `width="600"` HTML attr (not CSS max-width), `bgcolor="#hex"` on every td/th. `addBgcolor()` post-pass injects bgcolor from computed style. Dark palette: #13172b bg, #1b2035/#232840 cells.
 
@@ -265,7 +267,7 @@ All four agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent
 
 **Dedup:** Employee + Container ID — earliest PDT hour attribution. Hourly target: 80 containers/person/hour.
 
-**Shift:** 2nd shift only (2:15 PM PDT start = 21:15 UTC). Hours 14–21 PDT.
+**Shift:** Both shifts supported. 1st: 11:00 UTC start (3 AM PST, covers OT), hours 3–13 PST. 2nd: 22:15 UTC start, hours 14–21 PST. Auto-detected from UTC hour — no manual switch needed.
 
 **4-tier color scale:** 0=grey (–), 1–39=red, 40–59=orange, 60–79=lime, 80+=green
 
@@ -281,9 +283,23 @@ All four agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent
 
 **Truncation:** `truncated: true` in JSON + amber meta line if any group hits 9,500 rows. Split further if needed.
 
-**Shift start (UTC):** 2nd = 21:10, 1st = 10:00. Boundary: `is1st = h >= 10 && h < 21`.
+**Shift start (UTC):** 2nd = 22:15, 1st = 11:00. Boundary: `is1st = h >= 11 && h < 22`. Timestamp offset: `-08:00` PST (fix to `-07:00` PDT around Oct 25, 2026 — see DST fix memory).
 
 **Pending TX type:** `Returns System Directed Putaway` — not yet assigned to a group. Decision pending.
+
+---
+
+## Receiving Live (Receiving_live.html v2.0)
+
+Rebuilt 2026-08-15 to match Shipping Live format.
+
+**Layout:** Color-coded hourly scoreboard (same 80/60/40/0 thresholds as Shipping). Settings in floating modal. Starr theme added. Dock board removed. No manual shift selector — auto-detects from `data.shift` in JSON.
+
+**Data:** `receiving_live.json` now includes per-associate `hours: {hr: lpns}` map (added `sqlAssocHourly` GROUP BY CREATED_BY, hr query). Team total footer row colored by avg LPNs/associate. Off-roster collapsible retained below main table.
+
+**Roster key:** `recv_live_roster_v2` (single key, no per-shift split — receiving roster is shift-agnostic). Migrates from old `recv_live_roster_v2_shift2` on first load.
+
+**Shift boundaries in dc499_refresh.js fetchReceiving():** 1st = 13:00 UTC (6 AM PDT), 2nd = 21:00 UTC (2 PM PDT). Timestamps converted with `-07:00` PDT offset (fix to `-08:00` PST ~Oct 25 — see DST fix memory).
 
 ---
 
@@ -336,6 +352,8 @@ for (let i = 0; i < ids.length; i += BATCH_SZ) {
 ```
 
 Used in: `fetchTaskData()` for TSK_TASK_DETAIL detail counts per open task. Safe at 15 IDs; try 25–30 if count is high.
+
+**TSK_TASK_DETAIL status codes:** 1000=open, 8000=completed, 9000=cancelled. Use `STATUS='8000'` for done count — NOT 9000 (that's cancelled).
 
 ---
 
@@ -417,7 +435,7 @@ Engineering manager proposed migrating the reporter to Metabase. Here is the agr
 - [ ] Timeclock report (default_timeclock)
 - [ ] GitHub Pro ($4/mo) for private repo + Pages
 - [ ] IT/Metabase: review eng manager's Metabase report, verify facility_id filter, REST API accessibility, and confirm Dean retains deploy access for HTML/JS updates
-- [ ] Reserve Weekly: UPH trend line + replen/pick ratio metrics (agreed, not yet built)
+- [ ] Reserve Weekly: replen/pick ratio metrics (UPH trend line done 2026-08-14)
 - [ ] Pack Line Order Locator: double conveyor line with diverter. Pizza totes hold 2 singles (T0 prefix) or 4 multis (S1 prefix) — tote capacity is a max, actual fill varies so position is a range estimate. Algorithm: pull all iLPNs at D1-SN-01 ordered by UPDATED_TIMESTAMP, bin-pack into tote slots in arrival order, find target order's tote window, convert to feet using tote footprint, determine Line 1 vs Line 2 by comparing against Line 1 capacity. Need from Dean before building: Line 1 tote capacity, Line 2 tote capacity, pizza tote footprint (inches), diverter trigger (sensor vs fixed count).
 
 ---
