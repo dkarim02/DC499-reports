@@ -867,6 +867,11 @@
         <div class="tile-value green" id="tk-replen-done">--</div>
         <div class="tile-sub">this shift</div>
       </div>
+      <div class="tile" id="tk-pickdrop-tile" style="border-top-color:var(--red);cursor:pointer;" onclick="document.getElementById('tk-pickdrop-card').scrollIntoView({behavior:'smooth'})">
+        <div class="tile-label">Pick Drop Carts</div>
+        <div class="tile-value" id="tk-pickdrop-count" style="color:var(--red);">--</div>
+        <div class="tile-sub" id="tk-pickdrop-sub">-- iLPNs &nbsp;|&nbsp; -- units</div>
+      </div>
     </div>
 
     <!-- Picking + Replen side by side -->
@@ -926,6 +931,15 @@
         <div id="tk-replen-empty" style="display:none;text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">No open replen tasks</div>
       </div>
 
+    </div>
+
+    <!-- Pick Drop Carts card -->
+    <div class="card" id="tk-pickdrop-card" style="display:none;margin-top:4px;">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Pick Drop Carts <span style="font-size:11px;font-weight:400;color:var(--text-muted);">P1-PK locations</span></span>
+        <span style="font-size:11px;color:var(--text-muted);">Should be empty by EOS</span>
+      </div>
+      <div id="tk-pickdrop-body"></div>
     </div>
 
     <div class="empty-state" id="tk-empty-state" style="display:none;">
@@ -2201,6 +2215,84 @@ function renderTasksData(data) {
 
   renderTaskTable('picking');
   renderTaskTable('replen');
+  renderPickDropCarts(data.pick_drop_carts || []);
+}
+
+function renderPickDropCarts(carts) {
+  var tile     = document.getElementById('tk-pickdrop-tile');
+  var countEl  = document.getElementById('tk-pickdrop-count');
+  var subEl    = document.getElementById('tk-pickdrop-sub');
+  var card     = document.getElementById('tk-pickdrop-card');
+  var body     = document.getElementById('tk-pickdrop-body');
+
+  var totalIlpns = 0, totalUnits = 0;
+  carts.forEach(function(c) { totalIlpns += c.ilpns.length; totalUnits += c.total_units; });
+
+  // Tile color: green if empty, amber if carts exist but none stale (>60 min), red if any stale
+  var anyStal = carts.some(function(c) { return c.oldest_min != null && c.oldest_min > 60; });
+  var tileColor = carts.length === 0 ? 'var(--green)' : (anyStal ? 'var(--red)' : 'var(--amber)');
+  countEl.textContent = carts.length;
+  countEl.style.color = tileColor;
+  tile.style.borderTopColor = tileColor;
+  subEl.textContent = totalIlpns + ' iLPN' + (totalIlpns !== 1 ? 's' : '') + '  |  ' + totalUnits.toLocaleString() + ' units';
+
+  if (!carts.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  function fmtAge(mins) {
+    if (mins == null) return '—';
+    if (mins < 60) return mins + 'm';
+    return Math.floor(mins/60) + 'h ' + (mins%60) + 'm';
+  }
+
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+  html += '<thead><tr style="border-bottom:1px solid var(--border-mid);">';
+  html += '<th style="text-align:left;padding:5px 8px;font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Location</th>';
+  html += '<th style="text-align:right;padding:5px 8px;font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">iLPNs</th>';
+  html += '<th style="text-align:right;padding:5px 8px;font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Units</th>';
+  html += '<th style="text-align:right;padding:5px 8px;font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">Oldest</th>';
+  html += '</tr></thead><tbody>';
+
+  carts.forEach(function(cart, ci) {
+    var stale   = cart.oldest_min != null && cart.oldest_min > 60;
+    var ageCol  = stale ? 'var(--red)' : (cart.oldest_min > 30 ? 'var(--amber)' : 'var(--text-muted)');
+    var rowId   = 'tkpd-row-' + ci;
+    var detId   = 'tkpd-det-' + ci;
+    html += '<tr id="' + rowId + '" style="border-bottom:1px solid var(--border-light);cursor:pointer;" onclick="tkpdToggle(\'' + detId + '\',this)">';
+    html += '<td style="padding:8px 8px;font-weight:600;color:var(--text);">&#x25B6; ' + cart.location + '</td>';
+    html += '<td style="text-align:right;padding:8px 8px;color:var(--text);">' + cart.ilpns.length + '</td>';
+    html += '<td style="text-align:right;padding:8px 8px;color:var(--text);">' + cart.total_units.toLocaleString() + '</td>';
+    html += '<td style="text-align:right;padding:8px 8px;font-weight:600;color:' + ageCol + ';">' + fmtAge(cart.oldest_min) + '</td>';
+    html += '</tr>';
+    // Expandable iLPN detail rows (hidden by default)
+    html += '<tr id="' + detId + '" style="display:none;">';
+    html += '<td colspan="4" style="padding:0 8px 8px 24px;">';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+    html += '<thead><tr><th style="text-align:left;color:var(--text-hint);font-weight:500;padding:3px 6px;">iLPN</th>';
+    html += '<th style="text-align:right;color:var(--text-hint);font-weight:500;padding:3px 6px;">Units</th>';
+    html += '<th style="text-align:right;color:var(--text-hint);font-weight:500;padding:3px 6px;">Age</th></tr></thead><tbody>';
+    cart.ilpns.forEach(function(ilpn) {
+      var ia = ilpn.age_min != null && ilpn.age_min > 60 ? 'color:var(--red);font-weight:600;' : 'color:var(--text-muted);';
+      html += '<tr style="border-top:0.5px solid var(--border-light);">';
+      html += '<td style="padding:4px 6px;font-family:monospace;color:var(--text-muted);">' + ilpn.ilpn_id + '</td>';
+      html += '<td style="text-align:right;padding:4px 6px;color:var(--text);">' + (ilpn.on_hand||0).toLocaleString() + '</td>';
+      html += '<td style="text-align:right;padding:4px 6px;' + ia + '">' + fmtAge(ilpn.age_min) + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></td></tr>';
+  });
+
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+function tkpdToggle(detId, row) {
+  var det = document.getElementById(detId);
+  if (!det) return;
+  var open = det.style.display !== 'none';
+  det.style.display = open ? 'none' : '';
+  var arrow = row.querySelector('td:first-child');
+  if (arrow) arrow.innerHTML = arrow.innerHTML.replace(open ? '▼' : '▶', open ? '▶' : '▼');
 }
 
 function renderTaskTable(type) {

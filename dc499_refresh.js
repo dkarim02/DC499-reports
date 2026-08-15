@@ -1562,9 +1562,27 @@ WHERE FACILITY_ID = '${FACILITY}'
   )
 ORDER BY CREATED_TIMESTAMP ASC`.trim();
 
-  const [pickResp, replenResp] = await Promise.all([
+  const sqlPickDrop = `
+SELECT
+  i.ILPN_ID,
+  i.CURRENT_LOCATION_ID AS location,
+  COALESCE(SUM(inv.ON_HAND), 0) AS on_hand,
+  CONVERT_TZ(i.UPDATED_TIMESTAMP, '+00:00', '-08:00') AS updated_pst
+FROM default_dcinventory.DCI_ILPN i
+LEFT JOIN default_dcinventory.DCI_INVENTORY inv
+  ON  inv.ILPN_ID     = i.ILPN_ID
+  AND inv.FACILITY_ID = '${FACILITY}'
+WHERE i.FACILITY_ID         = '${FACILITY}'
+  AND i.CURRENT_LOCATION_ID LIKE 'P1-PK%'
+  AND i.STATUS             != '9000'
+  AND i.IS_CLOSED           = 0
+GROUP BY i.ILPN_ID, i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP
+ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
+
+  const [pickResp, replenResp, pickDropResp] = await Promise.all([
     mcpQuery(accessToken, sqlPick),
     mcpQuery(accessToken, sqlReplen),
+    mcpQuery(accessToken, sqlPickDrop).catch(e => { console.warn(`  Pick-drop query failed: ${e.message}`); return { rows: [] }; }),
   ]);
 
   const STATUS_LABEL = { '3000':'Ready to Assign', '5000':'Assigned', '7000':'In Progress', '8000':'Completed' };
@@ -1619,6 +1637,21 @@ ORDER BY CREATED_TIMESTAMP ASC`.trim();
     return counts;
   }
 
+  // Build pick_drop_carts — group iLPNs by cart location
+  const cartMap = {};
+  for (const r of (pickDropResp.rows || [])) {
+    const loc = r.location;
+    if (!cartMap[loc]) cartMap[loc] = { location: loc, ilpns: [], total_units: 0 };
+    const ageMin = r.updated_pst ? Math.round((Date.now() - new Date(r.updated_pst.replace('T',' ').slice(0,19) + '-08:00').getTime()) / 60000) : null;
+    cartMap[loc].ilpns.push({ ilpn_id: r.ILPN_ID, on_hand: Number(r.on_hand) || 0, updated_pst: r.updated_pst, age_min: ageMin });
+    cartMap[loc].total_units += Number(r.on_hand) || 0;
+  }
+  const pick_drop_carts = Object.values(cartMap).sort((a, b) => a.location.localeCompare(b.location));
+  // age of oldest iLPN on each cart
+  for (const cart of pick_drop_carts) {
+    cart.oldest_min = cart.ilpns.reduce((mx, i) => i.age_min != null && i.age_min > mx ? i.age_min : mx, 0);
+  }
+
   return {
     generated:   new Date().toISOString(),
     shift:       shiftLabel,
@@ -1626,6 +1659,7 @@ ORDER BY CREATED_TIMESTAMP ASC`.trim();
     facility:    FACILITY,
     picking:  { ...summarize(pickTasks),   tasks: pickTasks   },
     replen:   { ...summarize(replenTasks), tasks: replenTasks },
+    pick_drop_carts,
   };
 }
 
