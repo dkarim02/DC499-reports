@@ -1450,31 +1450,11 @@ async function notifyAuthExpired() {
   const tsStr = (tsPdt.getUTCHours() % 12 || 12) + ':' +
                 String(tsPdt.getUTCMinutes()).padStart(2,'0') + ' ' +
                 (tsPdt.getUTCHours() >= 12 ? 'PM' : 'AM');
-  const card = {
-    type: 'message',
-    attachments: [{
-      contentType: 'application/vnd.microsoft.card.adaptive',
-      content: {
-        $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
-        type: 'AdaptiveCard', version: '1.4',
-        body: [
-          { type: 'Container', style: 'attention', items: [{ type: 'ColumnSet', columns: [
-            { type: 'Column', width: 'auto',    items: [{ type: 'TextBlock', text: 'DC499 · Live Server', weight: 'Bolder', size: 'Medium', color: 'Light' }] },
-            { type: 'Column', width: 'stretch', items: [{ type: 'TextBlock', text: tsStr, color: 'Light', isSubtle: true, horizontalAlignment: 'Right' }] },
-          ]}]},
-          { type: 'Container', spacing: 'Medium', items: [
-            { type: 'TextBlock', text: 'Auth token expired', weight: 'Bolder', size: 'Large', color: 'Attention' },
-            { type: 'TextBlock', text: 'The live server cannot query MAWM. To restore:', wrap: true, spacing: 'Small', isSubtle: true },
-            { type: 'TextBlock', text: '1. On the server PC, switch user (do not log out Dean)', wrap: true, spacing: 'Small', isSubtle: true },
-            { type: 'TextBlock', text: '2. Open Chrome and go to: localhost:3001/auth?pin=020405', wrap: true, spacing: 'Small', isSubtle: true, fontType: 'Monospace' },
-            { type: 'TextBlock', text: '3. Page will close automatically — done.', wrap: true, spacing: 'Small', isSubtle: true },
-          ]},
-        ],
-      },
-    }],
+  const body = {
+    text: `DC499 Live Server — Auth token expired at ${tsStr}. The server cannot query MAWM until re-authed. To restore: open Chrome on the server PC and go to localhost:3001/auth?pin=020405 — page closes automatically when done.`,
   };
   try {
-    await jsonPost(TEAMS_WEBHOOK_AUTH_ALERT, JSON.stringify(card), { 'Content-Type': 'application/json' });
+    await jsonPost(TEAMS_WEBHOOK_AUTH_ALERT, JSON.stringify(body), { 'Content-Type': 'application/json' });
     console.log(`[${ts()}] ✓ Teams — auth-expired notification sent`);
   } catch (e) {
     console.warn(`[${ts()}]   Teams auth notify failed: ${e.message}`);

@@ -418,6 +418,7 @@ Engineering manager proposed migrating the reporter to Metabase. Here is the agr
 - [ ] GitHub Pro ($4/mo) for private repo + Pages
 - [ ] IT/Metabase: review eng manager's Metabase report, verify facility_id filter, REST API accessibility, and confirm Dean retains deploy access for HTML/JS updates
 - [ ] Reserve Weekly: UPH trend line + replen/pick ratio metrics (agreed, not yet built)
+- [ ] Pack Line Order Locator: double conveyor line with diverter. Pizza totes hold 2 singles (T0 prefix) or 4 multis (S1 prefix) — tote capacity is a max, actual fill varies so position is a range estimate. Algorithm: pull all iLPNs at D1-SN-01 ordered by UPDATED_TIMESTAMP, bin-pack into tote slots in arrival order, find target order's tote window, convert to feet using tote footprint, determine Line 1 vs Line 2 by comparing against Line 1 capacity. Need from Dean before building: Line 1 tote capacity, Line 2 tote capacity, pizza tote footprint (inches), diverter trigger (sensor vs fixed count).
 
 ---
 
