@@ -1,5 +1,5 @@
 {
-    "generated": "2026-08-18T21:25:51.195Z",
+    "generated": "2026-08-18T21:27:50.946Z",
     "shift": "2nd",
     "shift_start": "2026-08-18 21:00:00",
     "facility": "499",
@@ -343,17 +343,17 @@
         ]
     },
     "replen": {
-        "queued": 3,
+        "queued": 2,
         "assigned": 0,
         "in_progress": 1,
-        "completed": 0,
-        "total_open": 4,
+        "completed": 1,
+        "total_open": 3,
         "tasks": [
             {
                 "task_id": "WRPICK0000226582",
                 "subtype": "REPLEN PULL",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1D0324A02",
                 "target": "F1D0115B02",
                 "created_pdt": "2026-08-18T13:15:56.097000",
@@ -363,13 +363,13 @@
             {
                 "task_id": "WRPICK0000226595",
                 "subtype": "REPLEN PULL",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "R1F0707C02",
                 "target": "F1D0413A02",
                 "created_pdt": "2026-08-18T14:00:25.541000",
-                "detail_count": 1,
-                "detail_done": 0
+                "detail_count": null,
+                "detail_done": null
             },
             {
                 "task_id": "WRPICK0000226596",
@@ -395,5 +395,19 @@
             }
         ]
     },
-    "pick_drop_carts": []
+    "pick_drop_carts": [
+        {
+            "location": "P1-PK-02",
+            "ilpns": [
+                {
+                    "ilpn_id": "00006499300003565158",
+                    "on_hand": 9,
+                    "updated_pst": "2026-08-18T13:26:16.188000",
+                    "age_min": 2
+                }
+            ],
+            "total_units": 9,
+            "oldest_min": 2
+        }
+    ]
 }
