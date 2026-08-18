@@ -21,7 +21,8 @@ const { execSync } = require('child_process');
 // ── config ─────────────────────────────────────────────────────────────────────
 const MCP_BASE      = 'https://mawm-data-mcp.nordstromaws.app';
 const TOKEN_FILE    = path.join(__dirname, '.mcp_token.json');
-const OUTPUT_FILE   = path.join(__dirname, 'reserve_live.json');
+const OUTPUT_FILE        = path.join(__dirname, 'reserve_live.json');
+const PUTAWAY_WIP_FILE   = path.join(__dirname, 'putaway_live.json');
 const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3120; // distinct from dc499_refresh (3118) and ecom agent (3119)
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
@@ -335,6 +336,112 @@ async function fetchReserveLive(accessToken) {
   console.log(`[${ts()}] reserve_live.json ready — dc499_refresh will push on next cycle`);
 }
 
+// ── putaway WIP fetch ──────────────────────────────────────────────────────────
+// Queries DCI_ILPN → DCI_INVENTORY → ITE_ITEM → RCV_RECEIPT for retail LPNs
+// in pending putaway status (STATUS=3000) at inbound staging locations.
+// Excludes: Z1Z (lost), shelf locations (R1H/R2H/R1B/R1C/R1D/R1E/R1F), 60-day cutoff.
+async function fetchPutawayWip(accessToken) {
+  console.log(`[${ts()}] Putaway WIP — querying retail pending putaway...`);
+
+  const nowUtc   = new Date();
+  const cutoff   = new Date(nowUtc.getTime() - 60 * 24 * 60 * 60 * 1000);
+  const cutoffStr = cutoff.toISOString().replace('T', ' ').slice(0, 19);
+  const nowStr    = nowUtc.toISOString().replace('T', ' ').slice(0, 19);
+
+  const sql = `
+SELECT
+  il.ILPN_ID                                                      AS carton_id,
+  il.CURRENT_LOCATION_ID                                          AS location,
+  il.CREATED_TIMESTAMP                                            AS received_utc,
+  TIMESTAMPDIFF(SECOND, il.CREATED_TIMESTAMP, '${nowStr}') / 86400.0 AS age_days,
+  SUM(inv.ON_HAND)                                                AS units,
+  MIN(inv.ITEM_ID)                                                AS item_id,
+  MIN(i.EXT_SUBDIVISION)                                         AS subdivision,
+  MIN(r.PURCHASE_ORDER_ID)                                        AS po_number
+FROM default_dcinventory.DCI_ILPN il
+JOIN default_dcinventory.DCI_INVENTORY inv
+  ON inv.ILPN_ID = il.ILPN_ID AND inv.FACILITY_ID = il.FACILITY_ID
+JOIN default_item_master.ITE_ITEM i
+  ON i.ITEM_ID = inv.ITEM_ID
+LEFT JOIN default_receiving.RCV_RECEIPT r
+  ON r.LPN_ID = il.ILPN_ID AND r.FACILITY_ID = il.FACILITY_ID
+WHERE il.FACILITY_ID = '${FACILITY}'
+  AND il.STATUS = '3000'
+  AND il.IS_CLOSED = 0
+  AND i.EXT_SUBDIVISION NOT IN ('740','750')
+  AND il.CREATED_TIMESTAMP >= '${cutoffStr}'
+  AND (il.CURRENT_LOCATION_ID IS NULL
+    OR (il.CURRENT_LOCATION_ID NOT LIKE 'R1H%'
+    AND il.CURRENT_LOCATION_ID NOT LIKE 'R2H%'
+    AND il.CURRENT_LOCATION_ID NOT LIKE 'R1B%'
+    AND il.CURRENT_LOCATION_ID NOT LIKE 'R1C%'
+    AND il.CURRENT_LOCATION_ID NOT LIKE 'R1D%'
+    AND il.CURRENT_LOCATION_ID NOT LIKE 'R1E%'
+    AND il.CURRENT_LOCATION_ID NOT LIKE 'R1F%'
+    AND il.CURRENT_LOCATION_ID NOT LIKE 'R1-SR%'
+    AND il.CURRENT_LOCATION_ID != 'Z1-Z-0499Z01'))
+GROUP BY il.ILPN_ID, il.CURRENT_LOCATION_ID, il.CREATED_TIMESTAMP
+ORDER BY il.CREATED_TIMESTAMP ASC
+`.trim();
+
+  let lpns = [];
+  let truncated = false;
+  try {
+    const resp = await mcpQuery(accessToken, sql);
+    lpns = (resp.rows || []).map(r => ({
+      carton_id:   r.carton_id,
+      location:    r.location || null,
+      received_utc: r.received_utc,
+      age_days:    Math.round(Number(r.age_days) * 100) / 100,
+      units:       Math.round(Number(r.units) || 0),
+      item_id:     r.item_id,
+      subdivision: r.subdivision,
+      po_number:   r.po_number || null,
+    }));
+    if ((resp.row_count || lpns.length) >= 9500) truncated = true;
+  } catch (e) {
+    console.error(`[${ts()}] Putaway WIP query failed:`, e.message);
+  }
+
+  const over5     = lpns.filter(l => l.age_days >= 5).length;
+  const totalUnits = lpns.reduce((s, l) => s + l.units, 0);
+  const oldestAge  = lpns.length ? Math.max(...lpns.map(l => l.age_days)) : 0;
+
+  const SUBDIV_LABEL = {
+    '702': 'Footwear', '705': 'Footwear', '707': 'Footwear', '710': 'Footwear',
+    '775': 'Apparel',  '780': 'Apparel',  '782': 'Apparel',  '787': 'Apparel', '795': 'Apparel',
+  };
+
+  const output = {
+    generated:   nowUtc.toISOString(),
+    facility:    FACILITY,
+    summary: {
+      total_lpns:  lpns.length,
+      total_units: totalUnits,
+      over_5_days: over5,
+      oldest_age_days: Math.round(oldestAge * 10) / 10,
+    },
+    truncated,
+    lpns: lpns.map(l => ({
+      ...l,
+      category: SUBDIV_LABEL[l.subdivision] || 'Other',
+      location_label: l.location
+        ? (l.location.startsWith('L1IB') ? 'Inbound Bay'
+          : l.location.startsWith('L1IP') ? 'Inbound Processing'
+          : l.location.startsWith('L2IP') ? 'L2 Inbound Processing'
+          : l.location.match(/^\d+$/)     ? `Dock Door ${l.location}`
+          : l.location.startsWith('S1-D') ? 'Staging'
+          : l.location.startsWith('P1-QA') ? 'QA Hold'
+          : l.location)
+        : 'Unplaced',
+    })),
+  };
+
+  fs.writeFileSync(PUTAWAY_WIP_FILE, JSON.stringify(output, null, 2));
+  console.log(`[${ts()}] ✓ putaway_live.json written — ${lpns.length} LPNs, ${over5} over 5 days`);
+  console.log(`[${ts()}] putaway_live.json ready — dc499_refresh will push on next cycle`);
+}
+
 // ── entry point ────────────────────────────────────────────────────────────────
 async function main() {
   if (MODE_AUTH) {
@@ -348,11 +455,13 @@ async function main() {
       if (e instanceof AuthError) return doAuthFlow();
       throw e;
     });
-    await fetchReserveLive(token);
+    console.log(`[${ts()}] Priming reserve_live + putaway_live in parallel...`);
+    await Promise.all([fetchReserveLive(token), fetchPutawayWip(token)]);
     setInterval(async () => {
       try {
         const t = await getAccessTokenSilent();
-        await fetchReserveLive(t);
+        console.log(`[${ts()}] Refreshing reserve_live + putaway_live in parallel...`);
+        await Promise.all([fetchReserveLive(t), fetchPutawayWip(t)]);
       } catch (e) {
         console.error(`[${ts()}] Error:`, e.message);
       }
@@ -361,7 +470,8 @@ async function main() {
   }
 
   const token = await getAccessToken();
-  await fetchReserveLive(token);
+  console.log(`[${ts()}] Priming reserve_live + putaway_live in parallel...`);
+  await Promise.all([fetchReserveLive(token), fetchPutawayWip(token)]);
 }
 
 main().catch(e => { console.error(e.message); process.exit(1); });

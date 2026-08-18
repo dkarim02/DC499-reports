@@ -1468,9 +1468,9 @@ function gitPush() {
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
   try {
-    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json putaway_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     const staged = execSync('git diff --cached --name-only', { cwd: REPORT_DIR, stdio: 'pipe' }).toString().trim().split('\n').filter(Boolean);
-    const LABELS = { 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve' };
+    const LABELS = { 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve', 'putaway_live.json': 'putaway' };
     const extras = staged.map(f => LABELS[f]).filter(Boolean);
     const suffix = extras.length ? ` [+${extras.join(', ')}]` : '';
     execSync(`git commit -m "Live update -- ${stamp}${suffix}"`,    { cwd: REPORT_DIR, stdio: 'pipe' });
@@ -1890,6 +1890,12 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       res.end(fs.existsSync(reserveFile) ? fs.readFileSync(reserveFile) : '{}');
       return;
     }
+    if (url.pathname === '/putaway_live.json') {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      const putawayFile = path.join(REPORT_DIR, 'putaway_live.json');
+      res.end(fs.existsSync(putawayFile) ? fs.readFileSync(putawayFile) : '{}');
+      return;
+    }
 
     // serve HTML files
     const fileMap = {
@@ -1905,8 +1911,9 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       '/Menu_v1.6.html':      'Menu_v1.6.html',
       '/Changelog.html':      'Changelog.html',
       '/EOS_live.html':       'EOS_live.html',
-      '/Reserve_v1_7.html':   'Reserve_v1_7.html',
-      '/Shipping_live.html':  'Shipping_live.html',
+      '/Reserve_v1_7.html':      'Reserve_v1_7.html',
+      '/Reserve_putaway.html':   'Reserve_putaway.html',
+      '/Shipping_live.html':     'Shipping_live.html',
     };
     const file = fileMap[url.pathname];
     if (file) {

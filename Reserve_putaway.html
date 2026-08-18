@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retail Putaway WIP v1.0 -- DC499</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* ── THEME VARS ── */
+  :root {
+    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e0e0e0;
+    --text:#111827;--text-muted:#555;--text-hint:#999;
+    --accent:#185FA5;--accent-bg:#e8f0fb;--accent-muted:#91b8e8;
+    --green:#15803d;--amber:#b45309;--red:#b91c1c;
+    --box-green:#16a34a;--box-amber:#d97706;--box-red:#dc2626;--box-grey:#9ca3af;
+  }
+  [data-theme="dark"]{
+    --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#404040;
+    --text:#f4f4f2;--text-muted:#aaa;--text-hint:#666;
+    --accent-bg:#0d2340;--accent-muted:#5B9BD5;
+    --green:#4ade80;--amber:#fbbf24;--red:#f87171;
+    --box-green:#22c55e;--box-amber:#f59e0b;--box-red:#ef4444;--box-grey:#6b7280;
+  }
+  [data-theme="solid"]{
+    --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;
+    --text:#edf0fa;--text-muted:#8090b0;--text-hint:#4a5570;
+    --accent-bg:#0d2340;--accent-muted:#5B9BD5;
+    --green:#4ade80;--amber:#fbbf24;--red:#f87171;
+    --box-green:#22c55e;--box-amber:#f59e0b;--box-red:#ef4444;--box-grey:#6b7280;
+  }
+  [data-theme="pastel"]{
+    --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
+    --text:#e8e4f8;--text-muted:#9b9aaa;--text-hint:#565670;
+    --accent:#7ecec4;--accent-bg:#152e2c;--accent-muted:#7ecec4;
+    --green:#86efac;--amber:#fde68a;--red:#fca5a5;
+    --box-green:#34d399;--box-amber:#fbbf24;--box-red:#f87171;--box-grey:#6b7280;
+  }
+  [data-theme="starr"]{
+    --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
+    --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;
+    --accent:#b0003a;--accent-bg:#f8d0e8;--accent-muted:#d06090;
+    --green:#1b5e20;--amber:#8b3000;--red:#7b0020;
+    --box-green:#16a34a;--box-amber:#c2410c;--box-red:#be123c;--box-grey:#9ca3af;
+  }
+  [data-theme="light"]{
+    --bg:#f9fafb;--surface:#fff;--surface2:#f3f4f6;--border:#e5e7eb;--border-light:#f3f4f6;--border-mid:#d1d5db;
+    --text:#111827;--text-muted:#4b5563;--text-hint:#9ca3af;
+    --accent:#185FA5;--accent-bg:#eff6ff;--accent-muted:#bfdbfe;
+    --green:#15803d;--amber:#b45309;--red:#b91c1c;
+    --box-green:#16a34a;--box-amber:#d97706;--box-red:#dc2626;--box-grey:#9ca3af;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'Nunito',system-ui,sans-serif;
+    background:var(--bg);color:var(--text);
+    min-height:100vh;padding:1.25rem 1.5rem;
+    transition:background 0.2s,color 0.2s;
+  }
+  .container{max-width:1100px;margin:0 auto;}
+
+  /* ── TOP BAR ── */
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.1rem;gap:12px;flex-wrap:wrap;}
+  .top-left{display:flex;flex-direction:column;gap:2px;}
+  .top-eyebrow{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1px;}
+  .top-title{display:flex;align-items:center;gap:7px;font-size:19px;font-weight:800;color:var(--text);line-height:1.15;}
+  .top-sub{font-size:12px;font-weight:600;color:var(--text-muted);margin-top:2px;}
+  .top-right{display:flex;align-items:center;gap:6px;padding-top:2px;}
+
+  .live-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;animation:livepulse 2s infinite;}
+  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.3;transform:scale(0.7);}}
+
+  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:13px;font-weight:700;padding:7px 14px;border-radius:6px;margin-bottom:0.9rem;text-align:center;}
+  [data-theme="light"] .stale-banner,[data-theme="starr"] .stale-banner{background:#FFF3CD;color:#7A4F00;}
+
+  /* ── BUTTONS ── */
+  .icon-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:7px;border:0.5px solid var(--border);background:none;cursor:pointer;color:var(--text-muted);font-size:16px;transition:background 0.12s,color 0.12s;font-family:inherit;}
+  .icon-btn:hover{background:var(--surface2);color:var(--text);}
+  .refresh-btn{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:5px 14px;border:0.5px solid var(--accent);border-radius:7px;background:var(--accent-bg);cursor:pointer;color:var(--accent);display:flex;align-items:center;gap:4px;}
+  .refresh-btn:hover{opacity:0.8;}
+
+  /* ── THEME PICKER ── */
+  .theme-picker{position:relative;}
+  .theme-btn{display:flex;align-items:center;gap:5px;font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:7px;padding:5px 11px;white-space:nowrap;}
+  .theme-btn:hover{background:var(--surface2);}
+  .theme-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
+  .theme-picker.open .theme-chevron{transform:rotate(180deg);}
+  .theme-menu{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;min-width:110px;box-shadow:0 8px 24px rgba(0,0,0,0.28);z-index:300;}
+  .theme-picker.open .theme-menu{display:block;}
+  .theme-option{padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
+  .theme-option:hover{background:var(--surface2);color:var(--text);}
+  .theme-option.active{color:var(--accent);}
+
+  /* ── SUMMARY TILES ── */
+  .tiles{display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;}
+  .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;min-width:130px;flex:1;}
+  .tile-label{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.09em;margin-bottom:4px;}
+  .tile-val{font-size:26px;font-weight:900;color:var(--text);line-height:1;}
+  .tile-val.warn{color:var(--amber);}
+  .tile-val.danger{color:var(--red);}
+  .tile-sub{font-size:11px;font-weight:600;color:var(--text-hint);margin-top:3px;}
+
+  /* ── FILTER BAR ── */
+  .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:0.9rem;flex-wrap:wrap;}
+  .filter-label{font-size:12px;font-weight:700;color:var(--text-muted);}
+  .pill-btn{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;border:0.5px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:background 0.12s,color 0.12s,border-color 0.12s;}
+  .pill-btn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent);}
+  .pill-btn.danger.active{background:#fee2e2;color:var(--box-red);border-color:var(--box-red);}
+  [data-theme="dark"] .pill-btn.danger.active,[data-theme="solid"] .pill-btn.danger.active,
+  [data-theme="pastel"] .pill-btn.danger.active{background:rgba(239,68,68,0.15);}
+
+  .sort-select{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:5px 10px;border-radius:7px;border:0.5px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;margin-left:auto;}
+
+  /* ── MAIN TABLE CARD ── */
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:1rem 1rem 0.75rem;margin-bottom:1rem;}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;gap:8px;flex-wrap:wrap;}
+  .card-title{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;}
+  .card-meta{font-size:11px;font-weight:600;color:var(--text-hint);}
+
+  .table-wrap{overflow-x:auto;}
+  .table-wrap::-webkit-scrollbar{height:4px;}
+  .table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+  table{width:100%;border-collapse:collapse;}
+  th{text-align:left;font-size:11px;font-weight:800;color:var(--text-muted);padding:6px 10px 8px;border-bottom:1.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;cursor:pointer;user-select:none;}
+  th:hover{color:var(--text);}
+  th.sorted{color:var(--accent);}
+  th.right{text-align:right;}
+  td{padding:8px 10px;border-bottom:0.5px solid var(--border-light);font-size:13px;font-weight:700;vertical-align:middle;white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:var(--surface2);}
+
+  /* age badge */
+  .age-badge{display:inline-flex;align-items:center;justify-content:center;min-width:52px;padding:3px 8px;border-radius:6px;font-size:13px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.18);}
+  .age-green {background:var(--box-green);}
+  .age-amber {background:var(--box-amber);}
+  .age-red   {background:var(--box-red);}
+
+  /* location chip */
+  .loc-chip{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:800;background:var(--surface2);color:var(--text-muted);border:0.5px solid var(--border);}
+  .loc-chip.inbound{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-muted);}
+  .loc-chip.unplaced{background:rgba(220,38,38,0.1);color:var(--red);border-color:var(--box-red);}
+
+  /* category chip */
+  .cat-chip{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:800;background:var(--surface2);color:var(--text-muted);}
+
+  .po-code{font-size:12px;color:var(--text-muted);font-weight:600;}
+  .carton-id{font-size:11px;font-family:monospace;color:var(--text-hint);}
+
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;font-weight:600;line-height:1.7;}
+
+  /* truncation warning */
+  .trunc-warn{font-size:12px;font-weight:700;color:var(--amber);padding:6px 10px;border-radius:6px;background:rgba(217,119,6,0.1);border:0.5px solid var(--amber);margin-bottom:0.75rem;}
+
+  /* footer */
+  .footer-note{font-size:11px;font-weight:600;color:var(--text-hint);text-align:center;margin-top:1.5rem;line-height:1.6;}
+  .nordstrom-tag{font-size:10.5px;font-weight:700;color:var(--text-hint);text-align:center;margin-top:0.4rem;letter-spacing:0.04em;}
+
+  /* row count badge */
+  .count-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:18px;padding:0 6px;border-radius:9px;font-size:10px;font-weight:800;background:var(--accent-bg);color:var(--accent);margin-left:6px;}
+</style>
+</head>
+<body data-theme="solid">
+<div class="container">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="top-eyebrow">DC499 Retail</div>
+      <div class="top-title">
+        <span class="live-dot" id="live-dot"></span>
+        Putaway WIP
+      </div>
+      <div class="top-sub" id="top-sub">Loading…</div>
+    </div>
+    <div class="top-right">
+      <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
+      <div class="theme-picker" id="theme-picker">
+        <button class="theme-btn" onclick="toggleThemePicker()">
+          Theme <span class="theme-chevron">&#9660;</span>
+        </button>
+        <div class="theme-menu" id="theme-menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stale-banner" id="stale-banner">Data may be stale — last update over 10 minutes ago</div>
+
+  <!-- SUMMARY TILES -->
+  <div class="tiles" id="tiles">
+    <div class="tile"><div class="tile-label">LPNs Pending</div><div class="tile-val" id="t-lpns">—</div><div class="tile-sub">retail containers</div></div>
+    <div class="tile"><div class="tile-label">Units Pending</div><div class="tile-val" id="t-units">—</div><div class="tile-sub">total on hand</div></div>
+    <div class="tile"><div class="tile-label">Over 5 Days</div><div class="tile-val" id="t-over5">—</div><div class="tile-sub" id="t-over5-pct">of total</div></div>
+    <div class="tile"><div class="tile-label">Oldest</div><div class="tile-val" id="t-oldest">—</div><div class="tile-sub">days since received</div></div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <span class="filter-label">Show:</span>
+    <button class="pill-btn active" id="f-all" onclick="setFilter('all')">All<span class="count-badge" id="cnt-all">0</span></button>
+    <button class="pill-btn danger" id="f-over5" onclick="setFilter('over5')">Over 5 Days<span class="count-badge" id="cnt-over5">0</span></button>
+    <span class="filter-label" style="margin-left:8px;">Category:</span>
+    <button class="pill-btn active" id="f-cat-all" onclick="setCatFilter('all')">All</button>
+    <button class="pill-btn" id="f-cat-foot" onclick="setCatFilter('Footwear')">Footwear</button>
+    <button class="pill-btn" id="f-cat-app"  onclick="setCatFilter('Apparel')">Apparel</button>
+    <select class="sort-select" id="sort-sel" onchange="setSort(this.value)">
+      <option value="age_desc">Sort: Oldest First</option>
+      <option value="age_asc">Sort: Newest First</option>
+      <option value="units_desc">Sort: Most Units</option>
+      <option value="loc">Sort: Location</option>
+    </select>
+  </div>
+
+  <!-- TABLE CARD -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title" id="card-title">Pending Putaway — Retail</span>
+      <span class="card-meta" id="card-meta"></span>
+    </div>
+    <div id="trunc-warn" class="trunc-warn" style="display:none;">
+      Results may be truncated — query hit the row cap. Data shown is a partial view.
+    </div>
+    <div class="table-wrap">
+      <table id="wip-table">
+        <thead>
+          <tr>
+            <th onclick="setSort('age_desc')" class="sorted" id="th-age">Age &#9660;</th>
+            <th onclick="setSort('loc')">Location</th>
+            <th>Category</th>
+            <th class="right" onclick="setSort('units_desc')">Units</th>
+            <th>PO #</th>
+            <th>Received (PDT)</th>
+            <th>Carton ID</th>
+          </tr>
+        </thead>
+        <tbody id="wip-body">
+          <tr><td colspan="7" class="empty-state">Loading data…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.
+  </div>
+  <div class="nordstrom-tag">SCOUT — DC499 Reporter &nbsp;|&nbsp; Retail Putaway WIP v1.0</div>
+</div>
+
+<script>
+// ── config ─────────────────────────────────────────────────────────────────────
+const THEME_VALS  = ['solid','dark','pastel','starr','light'];
+const THEME_NAMES = ['Solid','Dark','Pastel','Starr','Light'];
+const THEME_KEY   = 'dc499_putaway_theme_v1';
+const DATA_URL    = 'putaway_live.json';
+const STALE_MS    = 10 * 60 * 1000;
+
+let lastData   = null;
+let activeFilter    = 'all';
+let activeCatFilter = 'all';
+let activeSort  = 'age_desc';
+
+// ── theme ──────────────────────────────────────────────────────────────────────
+function applyTheme(t) {
+  document.body.setAttribute('data-theme', t);
+  localStorage.setItem(THEME_KEY, t);
+  document.querySelectorAll('.theme-option').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.theme === t);
+  });
+}
+function toggleThemePicker() {
+  document.getElementById('theme-picker').classList.toggle('open');
+}
+function buildThemeMenu() {
+  var menu = document.getElementById('theme-menu');
+  menu.innerHTML = THEME_VALS.map(function(v, i) {
+    return '<div class="theme-option" data-theme="' + v + '" onclick="applyTheme(\'' + v + '\')">' + THEME_NAMES[i] + '</div>';
+  }).join('');
+}
+document.addEventListener('click', function(e) {
+  var picker = document.getElementById('theme-picker');
+  if (!picker.contains(e.target)) picker.classList.remove('open');
+});
+
+// ── filters / sort ─────────────────────────────────────────────────────────────
+function setFilter(f) {
+  activeFilter = f;
+  document.getElementById('f-all').classList.toggle('active', f === 'all');
+  document.getElementById('f-over5').classList.toggle('active', f === 'over5');
+  render();
+}
+function setCatFilter(c) {
+  activeCatFilter = c;
+  ['all','Footwear','Apparel'].forEach(function(v) {
+    var id = 'f-cat-' + (v === 'all' ? 'all' : v === 'Footwear' ? 'foot' : 'app');
+    document.getElementById(id).classList.toggle('active', v === c);
+  });
+  render();
+}
+function setSort(s) {
+  activeSort = s;
+  document.getElementById('sort-sel').value = s;
+  // update header indicators
+  ['th-age'].forEach(function(id) { document.getElementById(id).classList.remove('sorted'); });
+  if (s === 'age_desc' || s === 'age_asc') document.getElementById('th-age').classList.add('sorted');
+  render();
+}
+
+// ── data load ──────────────────────────────────────────────────────────────────
+function getLiveBase() {
+  var loc = window.location.href;
+  if (loc.includes('github.io') || loc.includes('file://')) return '';
+  return '';
+}
+function loadData() {
+  var dot = document.getElementById('live-dot');
+  dot.style.background = '#f59e0b';
+  fetch(getLiveBase() + DATA_URL + '?t=' + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      lastData = d;
+      dot.style.background = '#22c55e';
+      render();
+    })
+    .catch(function(e) {
+      dot.style.background = '#ef4444';
+      document.getElementById('top-sub').textContent = 'Error loading data';
+      console.error(e);
+    });
+}
+
+// ── render ─────────────────────────────────────────────────────────────────────
+function render() {
+  if (!lastData) return;
+  var d = lastData;
+  var s = d.summary || {};
+  var lpns = d.lpns || [];
+  var gen = new Date(d.generated);
+
+  // stale check
+  var stale = (Date.now() - gen.getTime()) > STALE_MS;
+  document.getElementById('stale-banner').style.display = stale ? 'block' : 'none';
+
+  // sub line
+  document.getElementById('top-sub').textContent =
+    'Updated ' + gen.toLocaleTimeString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true}) + ' PDT';
+
+  // tiles
+  var over5 = s.over_5_days || 0;
+  var total  = s.total_lpns  || 0;
+  document.getElementById('t-lpns').textContent   = total.toLocaleString();
+  document.getElementById('t-units').textContent  = (s.total_units || 0).toLocaleString();
+  var o5el = document.getElementById('t-over5');
+  o5el.textContent = over5.toLocaleString();
+  o5el.className   = 'tile-val' + (over5 > 0 && over5 / Math.max(total,1) > 0.3 ? ' danger' : over5 > 0 ? ' warn' : '');
+  document.getElementById('t-over5-pct').textContent =
+    total > 0 ? (Math.round(over5 / total * 100)) + '% of total' : 'of total';
+  var oldest = document.getElementById('t-oldest');
+  oldest.textContent = s.oldest_age_days != null ? s.oldest_age_days.toFixed(1) : '—';
+  oldest.className   = 'tile-val' + (s.oldest_age_days >= 5 ? ' danger' : s.oldest_age_days >= 2 ? ' warn' : '');
+
+  // truncation warning
+  document.getElementById('trunc-warn').style.display = d.truncated ? 'block' : 'none';
+
+  // filter counts
+  var over5lpns = lpns.filter(function(l) { return l.age_days >= 5; });
+  document.getElementById('cnt-all').textContent   = lpns.length;
+  document.getElementById('cnt-over5').textContent = over5lpns.length;
+
+  // apply filters
+  var filtered = lpns.slice();
+  if (activeFilter === 'over5') filtered = filtered.filter(function(l) { return l.age_days >= 5; });
+  if (activeCatFilter !== 'all') filtered = filtered.filter(function(l) { return l.category === activeCatFilter; });
+
+  // sort
+  filtered.sort(function(a, b) {
+    if (activeSort === 'age_desc')  return b.age_days - a.age_days;
+    if (activeSort === 'age_asc')   return a.age_days - b.age_days;
+    if (activeSort === 'units_desc') return b.units - a.units;
+    if (activeSort === 'loc') {
+      var la = a.location || 'zzz', lb = b.location || 'zzz';
+      return la < lb ? -1 : la > lb ? 1 : b.age_days - a.age_days;
+    }
+    return 0;
+  });
+
+  // card meta
+  document.getElementById('card-meta').textContent = filtered.length + ' LPN' + (filtered.length !== 1 ? 's' : '');
+
+  // render rows
+  var tbody = document.getElementById('wip-body');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No pending putaway LPNs match the current filter.</td></tr>';
+    return;
+  }
+
+  var rows = filtered.map(function(l) {
+    var ageCls = l.age_days >= 5 ? 'age-red' : l.age_days >= 2 ? 'age-amber' : 'age-green';
+    var ageStr = l.age_days >= 1 ? l.age_days.toFixed(1) + 'd' : Math.round(l.age_days * 24) + 'h';
+
+    var locLabel = l.location_label || l.location || 'Unplaced';
+    var locCls   = !l.location ? 'loc-chip unplaced'
+                 : (l.location && (l.location.startsWith('L1') || l.location.startsWith('L2'))) ? 'loc-chip inbound'
+                 : 'loc-chip';
+
+    var catChip = '<span class="cat-chip">' + escHtml(l.category || '—') + '</span>';
+
+    var recvPdt = '—';
+    if (l.received_utc) {
+      recvPdt = new Date(l.received_utc).toLocaleString('en-US', {
+        timeZone:'America/Los_Angeles', month:'numeric', day:'numeric',
+        hour:'numeric', minute:'2-digit', hour12:true,
+      });
+    }
+
+    var cartonShort = l.carton_id ? l.carton_id.replace(/^0+/, '').slice(-12) : '—';
+
+    return '<tr>'
+      + '<td><span class="age-badge ' + ageCls + '">' + ageStr + '</span></td>'
+      + '<td><span class="' + locCls + '">' + escHtml(locLabel) + '</span>'
+      + (l.location && l.location !== l.location_label ? '<br><span class="carton-id">' + escHtml(l.location) + '</span>' : '')
+      + '</td>'
+      + '<td>' + catChip + '</td>'
+      + '<td style="text-align:right;font-size:14px;">' + (l.units || 0) + '</td>'
+      + '<td><span class="po-code">' + escHtml(l.po_number || '—') + '</span></td>'
+      + '<td style="font-size:12px;color:var(--text-muted);">' + recvPdt + '</td>'
+      + '<td><span class="carton-id">' + escHtml(cartonShort) + '</span></td>'
+      + '</tr>';
+  });
+
+  tbody.innerHTML = rows.join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── init ───────────────────────────────────────────────────────────────────────
+buildThemeMenu();
+var saved = localStorage.getItem(THEME_KEY);
+applyTheme(THEME_VALS.includes(saved) ? saved : 'solid');
+loadData();
+setInterval(loadData, 3 * 60 * 1000);
+</script>
+</body>
+</html>
