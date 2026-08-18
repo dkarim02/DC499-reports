@@ -350,21 +350,21 @@ async function fetchPutawayWip(accessToken) {
 
   const sql = `
 SELECT
-  il.ILPN_ID                                                      AS carton_id,
-  il.CURRENT_LOCATION_ID                                          AS location,
-  il.CREATED_TIMESTAMP                                            AS received_utc,
+  il.ILPN_ID                                                       AS carton_id,
+  il.CURRENT_LOCATION_ID                                           AS location,
+  il.CREATED_TIMESTAMP                                             AS received_utc,
   TIMESTAMPDIFF(SECOND, il.CREATED_TIMESTAMP, '${nowStr}') / 86400.0 AS age_days,
-  SUM(inv.ON_HAND)                                                AS units,
-  MIN(inv.ITEM_ID)                                                AS item_id,
-  MIN(i.EXT_SUBDIVISION)                                         AS subdivision,
-  MIN(r.PURCHASE_ORDER_ID)                                        AS po_number
+  SUM(inv.ON_HAND)                                                 AS units,
+  MIN(inv.ITEM_ID)                                                 AS item_id,
+  MIN(i.EXT_SUBDIVISION)                                          AS subdivision,
+  (SELECT r.PURCHASE_ORDER_ID FROM default_receiving.RCV_RECEIPT r
+   WHERE r.LPN_ID = il.ILPN_ID AND r.FACILITY_ID = il.FACILITY_ID
+   AND r.PURCHASE_ORDER_ID IS NOT NULL LIMIT 1)                    AS po_number
 FROM default_dcinventory.DCI_ILPN il
 JOIN default_dcinventory.DCI_INVENTORY inv
   ON inv.ILPN_ID = il.ILPN_ID AND inv.FACILITY_ID = il.FACILITY_ID
 JOIN default_item_master.ITE_ITEM i
   ON i.ITEM_ID = inv.ITEM_ID
-LEFT JOIN default_receiving.RCV_RECEIPT r
-  ON r.LPN_ID = il.ILPN_ID AND r.FACILITY_ID = il.FACILITY_ID
 WHERE il.FACILITY_ID = '${FACILITY}'
   AND il.STATUS = '3000'
   AND il.IS_CLOSED = 0
