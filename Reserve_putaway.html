@@ -124,6 +124,20 @@
 
   .sort-select{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:5px 10px;border-radius:7px;border:0.5px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;margin-left:auto;}
 
+  /* ── SEARCH BAR ── */
+  .search-wrap{display:flex;align-items:center;gap:7px;margin-bottom:0.75rem;}
+  .search-input{
+    font-family:'Nunito',system-ui,sans-serif;font-size:13px;font-weight:600;
+    flex:1;padding:7px 12px;border-radius:8px;
+    border:0.5px solid var(--border);background:var(--surface);
+    color:var(--text);
+  }
+  .search-input::placeholder{color:var(--text-hint);}
+  .search-input:focus{outline:none;border-color:var(--accent);}
+  .search-clear{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:5px 10px;border-radius:7px;border:0.5px solid var(--border);background:none;color:var(--text-muted);cursor:pointer;display:none;}
+  .search-clear.visible{display:block;}
+  .search-count{font-size:12px;font-weight:700;color:var(--text-hint);white-space:nowrap;}
+
   /* ── MAIN TABLE CARD ── */
   .card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:1rem 1rem 0.75rem;margin-bottom:1rem;}
   .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;gap:8px;flex-wrap:wrap;}
@@ -207,6 +221,13 @@
     <div class="tile"><div class="tile-label">Oldest</div><div class="tile-val" id="t-oldest">—</div><div class="tile-sub">days since received</div></div>
   </div>
 
+  <!-- SEARCH BAR -->
+  <div class="search-wrap">
+    <input type="text" class="search-input" id="search-input" placeholder="Search by iLPN, SKU, PO #, category, location…" oninput="setSearch(this.value)">
+    <button class="search-clear" id="search-clear" onclick="clearSearch()">&#x2715; Clear</button>
+    <span class="search-count" id="search-count"></span>
+  </div>
+
   <!-- FILTER BAR -->
   <div class="filter-bar">
     <span class="filter-label">Category:</span>
@@ -277,6 +298,7 @@ let activeCatFilter = 'all';
 let activeSort      = 'age_desc';
 let ageMaxDays      = 60;
 let ageMinDays      = 0;
+let searchTerm      = '';
 
 // ── theme ──────────────────────────────────────────────────────────────────────
 function applyTheme(t) {
@@ -301,6 +323,18 @@ document.addEventListener('click', function(e) {
 });
 
 // ── filters / sort ─────────────────────────────────────────────────────────────
+function setSearch(v) {
+  searchTerm = v.trim().toLowerCase();
+  document.getElementById('search-clear').classList.toggle('visible', searchTerm.length > 0);
+  render();
+}
+function clearSearch() {
+  searchTerm = '';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-clear').classList.remove('visible');
+  document.getElementById('search-count').textContent = '';
+  render();
+}
 function setAgeMin(v) {
   var n = parseInt(v, 10);
   if (isNaN(n) || n < 0) return;
@@ -390,6 +424,14 @@ function render() {
   var filtered = lpns.slice();
   filtered = filtered.filter(function(l) { return l.age_days >= ageMinDays && l.age_days <= ageMaxDays; });
   if (activeCatFilter !== 'all') filtered = filtered.filter(function(l) { return l.category === activeCatFilter; });
+  if (searchTerm) {
+    filtered = filtered.filter(function(l) {
+      return [l.carton_id, l.item_id, l.po_number, l.category, l.location, l.location_label]
+        .some(function(f) { return f && String(f).toLowerCase().includes(searchTerm); });
+    });
+  }
+  document.getElementById('search-count').textContent =
+    searchTerm ? filtered.length + ' match' + (filtered.length !== 1 ? 'es' : '') : '';
 
   // sort
   filtered.sort(function(a, b) {
