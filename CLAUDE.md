@@ -315,6 +315,26 @@ Rebuilt 2026-08-15 to match Shipping Live format.
 
 ---
 
+## Reserve Putaway WIP (Reserve_putaway.html)
+
+Standalone report for the Retail team. Entry point: orange "📦 Putaway WIP" pill in Reserve_v1_7.html top bar.
+
+**Data source:** `putaway_live.json` — written by `scout_reserve_agent.js` (`fetchPutawayWip()`), pushed by dc499_refresh on its 2-min cycle.
+
+**Scope:** DCI_ILPN STATUS=3000, IS_CLOSED=0, retail SKUs only (EXT_SUBDIVISION NOT IN ('740','750')), 60-day window. Excludes Z1-Z-0499Z01 (lost/fake location) and shelf locations (R1H/R2H/R1B/R1C/R1D/R1E/R1F/R1-SR).
+
+**Columns:** Age | Location | Carton ID | SKU | Category | Units | PO # | Received (PDT)
+
+**Age badges:** green <2d, amber 2–5d, red ≥5d. Summary tiles: LPNs Pending, Units Pending, Over 5 Days, Oldest.
+
+**Filters:** Category pills (All/Footwear/Apparel), Age range (min–max number inputs), search bar (iLPN/SKU/PO#/category/location).
+
+**PO number:** Correlated subquery on RCV_RECEIPT (LIMIT 1) — avoids unit-count fan-out from LEFT JOIN (one row per scan).
+
+**Shelf PP anomaly (deferred):** ~17k shelf LPNs (R1B/D/E/F/H, R2H) also at STATUS=3000 — excluded from this report pending team discussion. See Pending work.
+
+---
+
 ## Reserve Weekly (Reserve_weekly.html)
 
 Standalone file, opened via 📅 Weekly Recap button in Reserve_v1_7.html top-bar.
@@ -425,6 +445,7 @@ Engineering manager proposed migrating the reporter to Metabase. Here is the agr
 
 ## Pending work
 
+- [ ] **Shelf PP anomaly (Reserve):** ~17k LPNs on reserve shelves (R1B/D/E/F/H, R2H) still at STATUS=3000 — putaway scan never completed. Discuss process compliance with retail team before building tooling. Possible second tab in Reserve_putaway.html.
 - [ ] EOS: orders_not_released needs EOS time cap in captureSnapshot() — `AND CREATED_TIMESTAMP < '{captureTime}'`
 - [ ] **Backlog date bucketing (waiting on leader sign-off):** Cognos anchors an order's date to the oldest line including cancelled ones — SCOUT uses only active lines (`CANCELLED = 0`), so cancel+rerun orders appear on the rerun date instead of the original. Fix: in `fetchBacklog()` in `dc499_refresh.js`, replace the flat `DCO_ORDER_LINE` queries (`sqlOrders`, `sqlShipped`, `sqlDailyTotals`) with a version that joins a subquery to get `MIN(CREATED_TIMESTAMP)` across ALL lines (including cancelled) per order, then uses that as the bucket date while still filtering `CANCELLED = 0` for the status counts. Verified against Cognos 2026-08-17 — Ready was already an exact match; the ~10-line Allocated drift maps to the cancel+rerun orders. Dean needs to confirm with leaders that Cognos methodology is what they want before implementing.
 - [ ] EOD Email: verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass)
