@@ -214,7 +214,9 @@
     <button class="pill-btn" id="f-cat-foot" onclick="setCatFilter('Footwear')">Footwear</button>
     <button class="pill-btn" id="f-cat-app"  onclick="setCatFilter('Apparel')">Apparel</button>
     <div class="age-input-wrap">
-      <span>Max age:</span>
+      <span>Age:</span>
+      <input type="number" class="age-input" id="age-min-input" min="0" max="60" value="0" placeholder="0" oninput="setAgeMin(this.value)">
+      <span>–</span>
       <input type="number" class="age-input" id="age-input" min="1" max="60" value="60" placeholder="60" oninput="setAgeMax(this.value)">
       <span>days</span>
     </div>
@@ -273,6 +275,7 @@ let lastData        = null;
 let activeCatFilter = 'all';
 let activeSort      = 'age_desc';
 let ageMaxDays      = 60;
+let ageMinDays      = 0;
 
 // ── theme ──────────────────────────────────────────────────────────────────────
 function applyTheme(t) {
@@ -297,6 +300,12 @@ document.addEventListener('click', function(e) {
 });
 
 // ── filters / sort ─────────────────────────────────────────────────────────────
+function setAgeMin(v) {
+  var n = parseInt(v, 10);
+  if (isNaN(n) || n < 0) return;
+  ageMinDays = Math.min(n, 60);
+  render();
+}
 function setAgeMax(v) {
   var n = parseInt(v, 10);
   if (!n || n < 1) return;
@@ -363,7 +372,7 @@ function render() {
   var total  = s.total_lpns  || 0;
   document.getElementById('t-lpns').textContent   = total.toLocaleString();
   document.getElementById('t-units').textContent  = (s.total_units || 0).toLocaleString();
-  var over5 = lpns.filter(function(l) { return l.age_days >= 5 && l.age_days <= ageMaxDays; }).length;
+  var over5 = lpns.filter(function(l) { return l.age_days >= 5 && l.age_days >= ageMinDays && l.age_days <= ageMaxDays; }).length;
   var o5el = document.getElementById('t-over5');
   o5el.textContent = over5.toLocaleString();
   o5el.className   = 'tile-val' + (over5 > 0 && over5 / Math.max(total,1) > 0.3 ? ' danger' : over5 > 0 ? ' warn' : '');
@@ -378,7 +387,7 @@ function render() {
 
   // apply filters
   var filtered = lpns.slice();
-  filtered = filtered.filter(function(l) { return l.age_days <= ageMaxDays; });
+  filtered = filtered.filter(function(l) { return l.age_days >= ageMinDays && l.age_days <= ageMaxDays; });
   if (activeCatFilter !== 'all') filtered = filtered.filter(function(l) { return l.category === activeCatFilter; });
 
   // sort
