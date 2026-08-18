@@ -426,6 +426,7 @@ Engineering manager proposed migrating the reporter to Metabase. Here is the agr
 ## Pending work
 
 - [ ] EOS: orders_not_released needs EOS time cap in captureSnapshot() — `AND CREATED_TIMESTAMP < '{captureTime}'`
+- [ ] **Backlog date bucketing (waiting on leader sign-off):** Cognos anchors an order's date to the oldest line including cancelled ones — SCOUT uses only active lines (`CANCELLED = 0`), so cancel+rerun orders appear on the rerun date instead of the original. Fix: in `fetchBacklog()` in `dc499_refresh.js`, replace the flat `DCO_ORDER_LINE` queries (`sqlOrders`, `sqlShipped`, `sqlDailyTotals`) with a version that joins a subquery to get `MIN(CREATED_TIMESTAMP)` across ALL lines (including cancelled) per order, then uses that as the bucket date while still filtering `CANCELLED = 0` for the status counts. Verified against Cognos 2026-08-17 — Ready was already an exact match; the ~10-line Allocated drift maps to the cancel+rerun orders. Dean needs to confirm with leaders that Cognos methodology is what they want before implementing.
 - [ ] EOD Email: verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass)
 - [ ] Packed Not Shipped: build PackedNotShipped_live.html + fetchPackedNotShipped() in dc499_refresh.js
 - [ ] Putwall column in batch display — needs multi-PW shift to confirm TSK_TASK_DETAIL.RESOURCE_GROUP_ID populated

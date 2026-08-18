@@ -307,13 +307,11 @@ function loadRoster() {
       return migrated;
     }
   } catch(e) {}
-  return [
-    'eva.soto','alicia.garcia','gloria.miranda','myintmyint.than',
-    'harley.fox','carmen.caldwell','fayeshawn.davis','marlen.carrerabernal',
-    'gabrielle.borja','jordan.hill1','ginnie.pondler','cynthia.gomez',
-    'marina.martinez','angelina.raudales','karen.revuelta',
-    'berena.quiterio','cecilia.aguilar'
-  ].map(function(n) { return {name:n, enabled:true}; });
+  // No saved roster — seed from current JSON data if available, otherwise empty
+  if (lastData && lastData.associates && lastData.associates.length) {
+    return lastData.associates.map(function(a) { return {name: a.name, enabled: true}; });
+  }
+  return [];
 }
 
 function saveRoster(r) {
@@ -421,7 +419,7 @@ function renderScoreboard(data) {
   var nowHour  = new Date().getHours();
   var shift    = data.shift || '2nd';
   var allHours = shift === '1st' ? ALL_1ST : ALL_2ND;
-  var hours    = (data.hours && data.hours.length ? data.hours : allHours).filter(function(h) { return h <= nowHour; });
+  var hours    = allHours.filter(function(h) { return h <= nowHour; });
 
   // Stale check
   var staleEl = document.getElementById('stale-banner');
@@ -449,6 +447,15 @@ function renderScoreboard(data) {
     document.getElementById('empty-state').style.display = 'block';
     return;
   }
+
+  // Auto-add any new associates from JSON that aren't in the saved roster yet
+  var roster = loadRoster();
+  var rosterNames = new Set(roster.map(function(m) { return m.name; }));
+  var added = false;
+  (data.associates || []).forEach(function(a) {
+    if (!rosterNames.has(a.name)) { roster.push({name: a.name, enabled: true}); added = true; }
+  });
+  if (added) saveRoster(roster);
 
   var activeSet = getActiveSet();
   var allAssoc  = (data.associates || []);
