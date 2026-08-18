@@ -158,7 +158,7 @@
   .cat-chip{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:800;background:var(--surface2);color:var(--text-muted);}
 
   .po-code{font-size:12px;color:var(--text-muted);font-weight:600;}
-  .carton-id{font-size:11px;font-family:monospace;color:var(--text-hint);}
+  .carton-id{font-size:11px;font-family:monospace;color:var(--text-muted);}
 
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;font-weight:600;line-height:1.7;}
 
@@ -243,11 +243,11 @@
           <tr>
             <th onclick="setSort('age_desc')" class="sorted" id="th-age">Age &#9660;</th>
             <th onclick="setSort('loc')">Location</th>
+            <th>Carton ID</th>
             <th>Category</th>
             <th class="right" onclick="setSort('units_desc')">Units</th>
             <th>PO #</th>
             <th>Received (PDT)</th>
-            <th>Carton ID</th>
           </tr>
         </thead>
         <tbody id="wip-body">
@@ -438,11 +438,11 @@ function render() {
       + '<td><span class="' + locCls + '">' + escHtml(locLabel) + '</span>'
       + (l.location && l.location !== l.location_label ? '<br><span class="carton-id">' + escHtml(l.location) + '</span>' : '')
       + '</td>'
+      + '<td><span class="carton-id">' + escHtml(cartonShort) + '</span></td>'
       + '<td>' + catChip + '</td>'
       + '<td style="text-align:right;font-size:14px;">' + (l.units || 0) + '</td>'
       + '<td><span class="po-code">' + escHtml(l.po_number || '—') + '</span></td>'
       + '<td style="font-size:12px;color:var(--text-muted);">' + recvPdt + '</td>'
-      + '<td><span class="carton-id">' + escHtml(cartonShort) + '</span></td>'
       + '</tr>';
   });
 
