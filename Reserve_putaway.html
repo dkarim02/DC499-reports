@@ -111,20 +111,16 @@
   [data-theme="dark"] .pill-btn.danger.active,[data-theme="solid"] .pill-btn.danger.active,
   [data-theme="pastel"] .pill-btn.danger.active{background:rgba(239,68,68,0.15);}
 
-  /* ── SLIDER ── */
-  .slider-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:180px;}
-  .slider-label{font-size:12px;font-weight:700;color:var(--text-muted);white-space:nowrap;}
-  .slider-val{font-size:12px;font-weight:800;color:var(--accent);min-width:52px;white-space:nowrap;}
-  input[type=range]{
-    -webkit-appearance:none;appearance:none;
-    height:4px;border-radius:2px;background:var(--border-mid);
-    flex:1;cursor:pointer;accent-color:var(--accent);
+  /* ── AGE INPUT ── */
+  .age-input-wrap{display:flex;align-items:center;gap:6px;margin-left:8px;}
+  .age-input-wrap span{font-size:12px;font-weight:700;color:var(--text-muted);white-space:nowrap;}
+  .age-input{
+    font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:800;
+    width:52px;padding:4px 7px;border-radius:7px;
+    border:0.5px solid var(--border);background:var(--surface);
+    color:var(--accent);text-align:center;
   }
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
-    background:var(--accent);cursor:pointer;border:2px solid var(--surface);
-    box-shadow:0 1px 4px rgba(0,0,0,0.3);
-  }
+  .age-input:focus{outline:none;border-color:var(--accent);}
 
   .sort-select{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:5px 10px;border-radius:7px;border:0.5px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;margin-left:auto;}
 
@@ -217,10 +213,10 @@
     <button class="pill-btn active" id="f-cat-all" onclick="setCatFilter('all')">All</button>
     <button class="pill-btn" id="f-cat-foot" onclick="setCatFilter('Footwear')">Footwear</button>
     <button class="pill-btn" id="f-cat-app"  onclick="setCatFilter('Apparel')">Apparel</button>
-    <div class="slider-wrap" style="margin-left:8px;">
-      <span class="slider-label">Max age:</span>
-      <input type="range" id="age-slider" min="1" max="60" value="60" step="1" oninput="setAgeMax(this.value)">
-      <span class="slider-val" id="age-slider-val">All (60d)</span>
+    <div class="age-input-wrap">
+      <span>Max age:</span>
+      <input type="number" class="age-input" id="age-input" min="1" max="60" value="60" placeholder="60" oninput="setAgeMax(this.value)">
+      <span>days</span>
     </div>
     <select class="sort-select" id="sort-sel" onchange="setSort(this.value)">
       <option value="age_desc">Sort: Oldest First</option>
@@ -302,9 +298,9 @@ document.addEventListener('click', function(e) {
 
 // ── filters / sort ─────────────────────────────────────────────────────────────
 function setAgeMax(v) {
-  ageMaxDays = Number(v);
-  document.getElementById('age-slider-val').textContent =
-    ageMaxDays >= 60 ? 'All (60d)' : ageMaxDays + 'd';
+  var n = parseInt(v, 10);
+  if (!n || n < 1) return;
+  ageMaxDays = Math.min(n, 60);
   render();
 }
 function setCatFilter(c) {
