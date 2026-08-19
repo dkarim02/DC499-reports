@@ -283,9 +283,8 @@
   .nb-bar-fill.low{background:var(--accent);}
   .nb-bar-fill.mid{background:var(--amber,#f59e0b);}
   .nb-bar-fill.high{background:var(--green);}
-  .nb-units-overlay{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--surface);border:0.5px solid var(--border);border-radius:6px;padding:5px 10px;white-space:nowrap;font-size:11px;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.18);pointer-events:none;display:none;z-index:20;}
-  .nb-units-overlay.visible{display:block;}
-  .nb-units-overlay.pinned{pointer-events:auto;cursor:default;}
+  #nb-units-overlay{position:fixed;background:var(--surface);border:0.5px solid var(--border);border-radius:6px;padding:5px 10px;white-space:nowrap;font-size:11px;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.18);pointer-events:none;display:none;z-index:9999;}
+  #nb-units-overlay.visible{display:block;}
   .nb-footer{display:flex;align-items:center;gap:8px;flex-shrink:0;}
   .nb-count{font-size:12px;font-weight:700;color:var(--text);}
   .nb-meta{font-size:11px;color:var(--text-hint);white-space:nowrap;}
@@ -759,7 +758,6 @@
       <div class="next-batch-widget" id="next-batch-widget" style="flex:1;margin-bottom:0;border:none;background:none;padding:0;">
         <span class="nb-title">Next Batch</span>
         <div class="nb-bar-wrap" id="nb-bar-wrap">
-          <div class="nb-units-overlay" id="nb-units-overlay">—</div>
           <div class="nb-bar-track" id="nb-bar-track">
             <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%"></div>
           </div>
@@ -1734,21 +1732,26 @@ function renderBatchData(data) {
     var nbTrack = document.getElementById('nb-bar-track');
     if (!nbTrack._nbBound) {
       nbTrack._nbBound = true;
+      var nbPinned = false;
+      function positionOverlay() {
+        var r = nbTrack.getBoundingClientRect();
+        nbOverlay.style.left = Math.round(r.left + r.width / 2 - nbOverlay.offsetWidth / 2) + 'px';
+        nbOverlay.style.top  = Math.round(r.bottom + 6) + 'px';
+      }
       nbTrack.addEventListener('mouseenter', function() {
-        if (!nbOverlay.classList.contains('pinned')) nbOverlay.classList.add('visible');
+        if (!nbPinned) { nbOverlay.classList.add('visible'); positionOverlay(); }
       });
       nbTrack.addEventListener('mouseleave', function() {
-        if (!nbOverlay.classList.contains('pinned')) nbOverlay.classList.remove('visible');
+        if (!nbPinned) nbOverlay.classList.remove('visible');
       });
-      nbTrack.addEventListener('click', function() {
-        var pinned = nbOverlay.classList.toggle('pinned');
-        nbOverlay.classList.toggle('visible', pinned);
+      nbTrack.addEventListener('click', function(e) {
+        e.stopPropagation();
+        nbPinned = !nbPinned;
+        nbOverlay.classList.toggle('visible', nbPinned);
+        if (nbPinned) positionOverlay();
       });
-      // Click outside to unpin
-      document.addEventListener('click', function(e) {
-        if (!nbTrack.contains(e.target) && !nbOverlay.contains(e.target)) {
-          nbOverlay.classList.remove('pinned','visible');
-        }
+      document.addEventListener('click', function() {
+        if (nbPinned) { nbPinned = false; nbOverlay.classList.remove('visible'); }
       });
     }
 
@@ -2659,5 +2662,6 @@ function exportEodEmail() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 </script>
+<div id="nb-units-overlay"></div>
 </body>
 </html>
