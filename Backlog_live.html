@@ -277,11 +277,15 @@
   .next-batch-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:1rem;display:none;align-items:center;gap:10px;flex-wrap:wrap;}
   .next-batch-widget.visible{display:flex;}
   .nb-title{font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;flex-shrink:0;}
-  .nb-bar-track{height:10px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative;flex:1;min-width:80px;}
+  .nb-bar-wrap{position:relative;flex:1;min-width:80px;}
+  .nb-bar-track{height:10px;background:var(--surface2);border-radius:4px;overflow:hidden;cursor:pointer;}
   .nb-bar-fill{height:100%;border-radius:4px;transition:width 0.6s ease;}
   .nb-bar-fill.low{background:var(--accent);}
   .nb-bar-fill.mid{background:var(--amber,#f59e0b);}
   .nb-bar-fill.high{background:var(--green);}
+  .nb-units-overlay{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--surface);border:0.5px solid var(--border);border-radius:6px;padding:5px 10px;white-space:nowrap;font-size:11px;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.18);pointer-events:none;display:none;z-index:20;}
+  .nb-units-overlay.visible{display:block;}
+  .nb-units-overlay.pinned{pointer-events:auto;cursor:default;}
   .nb-footer{display:flex;align-items:center;gap:8px;flex-shrink:0;}
   .nb-count{font-size:12px;font-weight:700;color:var(--text);}
   .nb-meta{font-size:11px;color:var(--text-hint);white-space:nowrap;}
@@ -754,8 +758,11 @@
     <div class="bt-view-bar" id="bt-view-bar" style="display:none;">
       <div class="next-batch-widget" id="next-batch-widget" style="flex:1;margin-bottom:0;border:none;background:none;padding:0;">
         <span class="nb-title">Next Batch</span>
-        <div class="nb-bar-track">
-          <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%"></div>
+        <div class="nb-bar-wrap" id="nb-bar-wrap">
+          <div class="nb-units-overlay" id="nb-units-overlay">—</div>
+          <div class="nb-bar-track" id="nb-bar-track">
+            <div class="nb-bar-fill low" id="nb-bar-fill" style="width:0%"></div>
+          </div>
         </div>
         <div class="nb-footer">
           <span class="nb-count"><span id="nb-queued">—</span><span> queued / 96</span></span>
@@ -1717,6 +1724,33 @@ function renderBatchData(data) {
     fill.style.width = pct + '%';
     fill.className   = 'nb-bar-fill ' + (pct >= 100 ? 'high' : pct >= 60 ? 'mid' : 'low');
     document.getElementById('nb-queued').textContent = queued;
+
+    // Units overlay — update text every render
+    var nbOverlay = document.getElementById('nb-units-overlay');
+    var units = s.queued_units;
+    nbOverlay.textContent = (units != null) ? fmtN(units) + ' units queued' : 'units unavailable';
+
+    // Bind hover + click once
+    var nbTrack = document.getElementById('nb-bar-track');
+    if (!nbTrack._nbBound) {
+      nbTrack._nbBound = true;
+      nbTrack.addEventListener('mouseenter', function() {
+        if (!nbOverlay.classList.contains('pinned')) nbOverlay.classList.add('visible');
+      });
+      nbTrack.addEventListener('mouseleave', function() {
+        if (!nbOverlay.classList.contains('pinned')) nbOverlay.classList.remove('visible');
+      });
+      nbTrack.addEventListener('click', function() {
+        var pinned = nbOverlay.classList.toggle('pinned');
+        nbOverlay.classList.toggle('visible', pinned);
+      });
+      // Click outside to unpin
+      document.addEventListener('click', function(e) {
+        if (!nbTrack.contains(e.target) && !nbOverlay.contains(e.target)) {
+          nbOverlay.classList.remove('pinned','visible');
+        }
+      });
+    }
 
     var lastReleasedUtc = null;
     if (data.batches && data.batches.length) {

@@ -1245,16 +1245,44 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
       AND td.CREATED_TIMESTAMP   >= '${lookbackStart}'
   )`.trim();
 
+  const sqlQueuedUnits = `
+SELECT SUM(ol.ORDERED_QUANTITY) AS queued_units
+FROM default_dcorder.DCO_ORDER o
+JOIN default_dcorder.DCO_ORDER_LINE ol
+  ON ol.ORDER_ID    = o.ORDER_ID
+ AND ol.FACILITY_ID = o.FACILITY_ID
+ AND ol.CANCELLED   = 0
+WHERE o.FACILITY_ID     = '${FACILITY}'
+  AND o.ORDER_TYPE      = 'ECOM'
+  AND o.CANCELLED       = 0
+  AND o.SINGLE_LINE_ORDER = 0
+  AND o.MAXIMUM_STATUS  = '2090'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM default_task.TSK_TASK_DETAIL td
+    WHERE td.FACILITY_ID         = '${FACILITY}'
+      AND td.ORDER_ID            = o.ORDER_ID
+      AND td.RESOURCE_BATCH_ID   IS NOT NULL
+      AND td.CREATED_TIMESTAMP   >= '${lookbackStart}'
+  )`.trim();
+
   const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
 
-  // Run queued orders query after batch query to avoid parallel timeout
+  // Run queued orders + units queries after batch query to avoid parallel timeout
   let queuedOrders = null;
+  let queuedUnits  = null;
   try {
     const respQueued = await mcpQuery(accessToken, sqlQueued);
     queuedOrders = Math.round(Number(respQueued.rows?.[0]?.queued_orders || 0));
   } catch(e) {
     console.warn(`  Queued orders query failed: ${e.message}`);
+  }
+  try {
+    const respUnits = await mcpQuery(accessToken, sqlQueuedUnits);
+    queuedUnits = Math.round(Number(respUnits.rows?.[0]?.queued_units || 0));
+  } catch(e) {
+    console.warn(`  Queued units query failed: ${e.message}`);
   }
 
   // MAWM timestamps have no timezone marker — always force UTC before converting
@@ -1343,6 +1371,7 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
       avg_mins_to_clear:         avgClear,
       avg_release_interval_mins: avgInterval,
       queued_orders:             queuedOrders,
+      queued_units:              queuedUnits,
       batch_threshold:           96,
     },
     batches,
