@@ -845,6 +845,16 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
     mcpQuery(accessToken, sqlRfp),
   ]);
 
+  const rowCounts = [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respHazmat, respRfp]
+    .map(r => (r?.rows || []).length);
+  console.log(`[${ts()}]   backlog row counts [orders,shipped,totals,hourly,waves,hazmat,rfp]: ${rowCounts.join(',')}`);
+
+  // If the three core queries all came back empty, the MCP server throttled us — bail out
+  // so we don't overwrite a good backlog_live.json with zeros.
+  if (rowCounts[0] === 0 && rowCounts[1] === 0 && rowCounts[2] === 0) {
+    throw new Error('Backlog queries returned empty rows — likely throttled; skipping write');
+  }
+
   // Build hazmat map: ORDER_ID → highest-priority indicator (Y > LIT > E)
   const HAZ_RANK = { 'Y': 3, 'LIT': 2, 'E': 1 };
   const hazMap = {};
@@ -1722,8 +1732,13 @@ async function queryAndWrite(accessToken) {
   console.log(`[${ts()}] ✓ receiving_live.json — ${recvData.associates.length} associates`);
 
   if (dockData) {
-    fs.writeFileSync(DOCK_FILE, JSON.stringify(dockData, null, 4));
-    console.log(`[${ts()}] ✓ dock_live.json — ${dockData.doors.length} doors`);
+    const prevDoors = cache?.dockData?.doors?.length ?? null;
+    if (dockData.doors.length === 0 && prevDoors !== null && prevDoors > 0) {
+      console.warn(`[${ts()}] ⚠ dock_live.json — 0 doors (was ${prevDoors}), skipping write (likely throttled)`);
+    } else {
+      fs.writeFileSync(DOCK_FILE, JSON.stringify(dockData, null, 4));
+      console.log(`[${ts()}] ✓ dock_live.json — ${dockData.doors.length} doors`);
+    }
   }
 
   if (totesData) {
