@@ -1713,20 +1713,21 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
 // ── core: query + write ────────────────────────────────────────────────────────
 async function queryAndWrite(accessToken) {
   console.log(`[${ts()}] Querying...`);
-  // fetchBatchStatus runs TWO sequential MCP queries (WR_BATCH then DCO_ORDER).
-  // Running it inside Promise.all with 5 other concurrent queries causes the second
-  // query to time out. Run it after the parallel group instead.
-  const [recvData, dockData, totesData, backlogData, retailReplenData, tasksData, shippedData] = await Promise.all([
+  // fetchBacklog fires 7 internal queries; fetchBatchStatus fires 3.
+  // Running everything concurrently hits ~16 MCP requests at once and causes empty responses.
+  // Run the two heavy ones sequentially first, then fire the lighter ones in parallel.
+  const backlogData = await fetchBacklog(accessToken)
+    .catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; });
+  const batchStatusData = await fetchBatchStatus(accessToken)
+    .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; });
+  const [recvData, dockData, totesData, retailReplenData, tasksData, shippedData] = await Promise.all([
     fetchReceiving(accessToken),
     fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
-    fetchBacklog(accessToken).catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; }),
     fetchRetailReplen(accessToken).catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
     fetchTaskData(accessToken).catch(e => { console.warn(`  Tasks query failed: ${e.message}`); return null; }),
     fetchShipped(accessToken).catch(e => { console.warn(`  Shipped query failed: ${e.message}`); return null; }),
   ]);
-  const batchStatusData = await fetchBatchStatus(accessToken)
-    .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; });
 
   fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
   console.log(`[${ts()}] ✓ receiving_live.json — ${recvData.associates.length} associates`);
