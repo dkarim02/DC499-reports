@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * DC499 Reporter — Direct MCP Refresher
- * Writes receiving_live.json, dock_live.json, and totes_live.json without using Claude tokens.
+ * Writes receiving_live.json, totes_live.json, backlog_live.json, and more without using Claude tokens.
  *
  * node dc499_refresh.js --auth       first-time auth
  * node dc499_refresh.js              one-shot refresh
@@ -21,7 +21,6 @@ const MCP_BASE      = 'https://mawm-data-mcp.nordstromaws.app';
 const TOKEN_FILE    = path.join(__dirname, '.mcp_token.json');
 const REPORT_DIR    = __dirname;
 const RECV_FILE     = path.join(REPORT_DIR, 'receiving_live.json');
-const DOCK_FILE     = path.join(REPORT_DIR, 'dock_live.json');
 const TOTES_FILE    = path.join(REPORT_DIR, 'totes_live.json');
 const BACKLOG_FILE  = path.join(REPORT_DIR, 'backlog_live.json');
 const BATCH_STATUS_FILE = path.join(REPORT_DIR, 'batch_status.json');
@@ -346,110 +345,6 @@ ORDER BY CREATED_BY, hr ASC`.trim();
   };
 }
 
-// ── dock door query ────────────────────────────────────────────────────────────
-async function fetchDock(accessToken) {
-  const sqlDoors = `
-SELECT
-  d.DOCK_DOOR_ID,
-  d.DOCK_ID,
-  d.TRAILER_ID,
-  d.CARRIER_ID,
-  d.DOCK_DOOR_STATUS_ID,
-  a.APPOINTMENT_ID,
-  a.APPOINTMENT_TYPE_ID,
-  a.APPOINTMENT_STATUS_ID,
-  CONVERT_TZ(a.WINDOW_START_DATE_TIME, '+00:00', '-07:00') AS appt_start,
-  CONVERT_TZ(a.ARRIVAL_DATE_TIME,      '+00:00', '-07:00') AS arrived
-FROM default_dcinventory.DCI_DOCK_DOOR d
-LEFT JOIN default_appointment.APT_APPOINTMENT a
-  ON a.FACILITY_ID = '${FACILITY}'
-  AND a.TRAILER_ID = d.TRAILER_ID
-  AND a.TRAILER_ID IS NOT NULL
-  AND a.TRAILER_ID != ''
-  AND DATE(CONVERT_TZ(a.WINDOW_START_DATE_TIME, '+00:00', '-07:00'))
-      BETWEEN DATE(CONVERT_TZ(NOW(), '+00:00', '-07:00')) - INTERVAL 1 DAY
-          AND DATE(CONVERT_TZ(NOW(), '+00:00', '-07:00')) + INTERVAL 1 DAY
-WHERE d.FACILITY_ID = '${FACILITY}'
-ORDER BY d.DOCK_DOOR_ID`.trim();
-
-  // Pull active ASNs for the last 3 days — status 3000 = In Receiving
-  const sqlAsn = `
-SELECT
-  TRAILER_ID,
-  ASN_ID,
-  ASN_STATUS,
-  SHIPPED_LPNS,
-  RECEIVED_LPNS,
-  CONVERT_TZ(FIRST_RECEIPT_DATE, '+00:00', '-07:00') AS first_receipt,
-  CONVERT_TZ(LAST_RECEIPT_DATE,  '+00:00', '-07:00') AS last_receipt
-FROM default_receiving.RCV_ASN
-WHERE FACILITY_ID = '${FACILITY}'
-  AND TRAILER_ID IS NOT NULL
-  AND TRAILER_ID != ''
-  AND ASN_STATUS = '3000'
-  AND LAST_RECEIPT_DATE >= NOW() - INTERVAL 3 DAY`.trim();
-
-  const [respDoors, respAsn] = await Promise.all([
-    mcpQuery(accessToken, sqlDoors),
-    mcpQuery(accessToken, sqlAsn),
-  ]);
-
-  function fmtTime(ts) {
-    if (!ts) return null;
-    try {
-      const d = new Date(ts);
-      return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-    } catch { return null; }
-  }
-
-  // Build ASN lookup — key by normalized uppercase trailer ID
-  // Also build a suffix map for fuzzy matching (e.g. "151899" matches "SWFZ151899")
-  const asnByTrailer = {};
-  for (const r of (respAsn.rows || [])) {
-    const key = r.TRAILER_ID.toUpperCase();
-    if (!asnByTrailer[key]) asnByTrailer[key] = r; // keep most recent if dupes
-  }
-
-  function findAsn(trailerId) {
-    if (!trailerId) return null;
-    const norm = trailerId.toUpperCase();
-    // Exact match first
-    if (asnByTrailer[norm]) return asnByTrailer[norm];
-    // Suffix match: door "151899" → ASN "SWFZ151899"
-    for (const [key, row] of Object.entries(asnByTrailer)) {
-      if (key.endsWith(norm) || norm.endsWith(key)) return row;
-    }
-    return null;
-  }
-
-  const doors = (respDoors.rows || []).map(r => {
-    const asn = findAsn(r.TRAILER_ID);
-    return {
-      door:           r.DOCK_DOOR_ID,
-      dock:           r.DOCK_ID,
-      trailer:        r.TRAILER_ID            || null,
-      carrier:        r.CARRIER_ID            || null,
-      status:         r.DOCK_DOOR_STATUS_ID,
-      appt_id:        r.APPOINTMENT_ID        || null,
-      appt_type:      r.APPOINTMENT_TYPE_ID   || null,
-      appt_status:    r.APPOINTMENT_STATUS_ID || null,
-      appt_start:     fmtTime(r.appt_start),
-      arrived:        fmtTime(r.arrived),
-      asn_id:         asn ? asn.ASN_ID                         : null,
-      asn_status:     asn ? asn.ASN_STATUS                     : null,
-      shipped_lpns:   asn ? Math.round(Number(asn.SHIPPED_LPNS))  : null,
-      received_lpns:  asn ? Math.round(Number(asn.RECEIVED_LPNS)) : null,
-      first_receipt:  asn ? fmtTime(asn.first_receipt)         : null,
-      last_receipt:   asn ? fmtTime(asn.last_receipt)          : null,
-    };
-  });
-
-  return {
-    generated: new Date().toISOString().slice(0, 19),
-    facility:  FACILITY,
-    doors,
-  };
-}
 
 // ── open totes query ──────────────────────────────────────────────────────────
 async function fetchTotes(accessToken) {
@@ -1507,7 +1402,7 @@ function gitPush() {
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
   try {
-    execSync('git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json putaway_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json putaway_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     const staged = execSync('git diff --cached --name-only', { cwd: REPORT_DIR, stdio: 'pipe' }).toString().trim().split('\n').filter(Boolean);
     const LABELS = { 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve', 'putaway_live.json': 'putaway' };
     const extras = staged.map(f => LABELS[f]).filter(Boolean);
@@ -1720,9 +1615,8 @@ async function queryAndWrite(accessToken) {
     .catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; });
   const batchStatusData = await fetchBatchStatus(accessToken)
     .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; });
-  const [recvData, dockData, totesData, retailReplenData, tasksData, shippedData] = await Promise.all([
+  const [recvData, totesData, retailReplenData, tasksData, shippedData] = await Promise.all([
     fetchReceiving(accessToken),
-    fetchDock(accessToken).catch(e => { console.warn(`  Dock query failed: ${e.message}`); return null; }),
     fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
     fetchRetailReplen(accessToken).catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
     fetchTaskData(accessToken).catch(e => { console.warn(`  Tasks query failed: ${e.message}`); return null; }),
@@ -1732,15 +1626,6 @@ async function queryAndWrite(accessToken) {
   fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
   console.log(`[${ts()}] ✓ receiving_live.json — ${recvData.associates.length} associates`);
 
-  if (dockData) {
-    const prevDoors = cache?.dockData?.doors?.length ?? null;
-    if (dockData.doors.length === 0 && prevDoors !== null && prevDoors > 0) {
-      console.warn(`[${ts()}] ⚠ dock_live.json — 0 doors (was ${prevDoors}), skipping write (likely throttled)`);
-    } else {
-      fs.writeFileSync(DOCK_FILE, JSON.stringify(dockData, null, 4));
-      console.log(`[${ts()}] ✓ dock_live.json — ${dockData.doors.length} doors`);
-    }
-  }
 
   if (totesData) {
     fs.writeFileSync(TOTES_FILE, JSON.stringify(totesData, null, 4));
@@ -1777,7 +1662,7 @@ async function queryAndWrite(accessToken) {
   }
 
   gitPush();
-  return { recvData, dockData, totesData, backlogData, batchStatusData, retailReplenData, tasksData, shippedData };
+  return { recvData, totesData, backlogData, batchStatusData, retailReplenData, tasksData, shippedData };
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
@@ -1885,11 +1770,6 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
     if (url.pathname === '/receiving_live.json') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify(cache?.recvData || {}));
-      return;
-    }
-    if (url.pathname === '/dock_live.json') {
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify(cache?.dockData || {}));
       return;
     }
     if (url.pathname === '/totes_live.json') {
