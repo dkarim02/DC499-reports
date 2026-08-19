@@ -402,27 +402,11 @@ body.view-2nd .bshift.shift1{display:none}
       <button class="btn" id="btnPostMenu">Webhooks &#9660;</button>
       <div class="wh-menu" id="postMenu" style="min-width:220px;">
         <span class="wh-title">Webhooks</span>
-        <div class="wh-row">
-          <span class="wh-label">1st Shift</span>
-          <input class="wh-input" id="wh1st" placeholder="Paste 1st shift Teams URL…" />
-        </div>
-        <div class="wh-row">
-          <span class="wh-label">2nd Shift</span>
-          <input class="wh-input" id="wh2nd" placeholder="Paste 2nd shift Teams URL…" />
-        </div>
-        <div class="wh-row">
-          <span class="wh-label">Submit EOD</span>
-          <input class="wh-input" id="whSubmit" placeholder="Paste SharePoint flow URL…" />
-        </div>
-        <div class="wh-row">
-          <span class="wh-label">Send Report</span>
-          <input class="wh-input" id="whSendReport" placeholder="Paste send report flow URL…" />
-        </div>
-        <div class="wh-row">
-          <span class="wh-label">Check Status</span>
-          <input class="wh-input" id="whCheckStatus" placeholder="Paste check-status flow URL…" />
-        </div>
-        <button class="btn primary wh-save" id="btnWhSave">Save webhooks</button>
+        <div class="wh-row"><span class="wh-label">1st Shift</span><span class="wh-val">Configured</span></div>
+        <div class="wh-row"><span class="wh-label">2nd Shift</span><span class="wh-val">Configured</span></div>
+        <div class="wh-row"><span class="wh-label">Submit EOD</span><span class="wh-val">Configured</span></div>
+        <div class="wh-row"><span class="wh-label">Send Report</span><span class="wh-val">Configured</span></div>
+        <div class="wh-row"><span class="wh-label">Check Status</span><span class="wh-val">Configured</span></div>
       </div>
     </div>
     <button class="btn primary" id="btnSave">Save</button>
@@ -491,14 +475,7 @@ function reconcile(st){
     if(st.data[newA] && st.data[newA][oldP] && !st.data[newA][newA]){ st.data[newA][newA]=st.data[newA][oldP]; delete st.data[newA][oldP]; } }
   for(const a in SEED){ st.data[a]=st.data[a]||{};
     for(const p in SEED[a]){ if(!st.data[a][p]) st.data[a][p]=clone(SEED[a][p]); } }
-  if(st.meta.teamsWebhook===undefined) st.meta.teamsWebhook=DEFAULT_WEBHOOK_2ND; // legacy
-  if(!st.meta.teamsWebhooks) st.meta.teamsWebhooks={"1st":DEFAULT_WEBHOOK_1ST,"2nd":DEFAULT_WEBHOOK_2ND};
-  if(!st.meta.teamsWebhooks["1st"]) st.meta.teamsWebhooks["1st"]=DEFAULT_WEBHOOK_1ST;
-  if(!st.meta.teamsWebhooks["2nd"]) st.meta.teamsWebhooks["2nd"]=DEFAULT_WEBHOOK_2ND;
   if(st.meta.wordWebhook===undefined) st.meta.wordWebhook="";
-  if(st.meta.submitWebhook===undefined||!st.meta.submitWebhook) st.meta.submitWebhook=DEFAULT_WEBHOOK_SUBMIT;
-  if(st.meta.sendReportWebhook===undefined||!st.meta.sendReportWebhook) st.meta.sendReportWebhook=DEFAULT_WEBHOOK_SEND;
-  if(st.meta.checkStatusWebhook===undefined||!st.meta.checkStatusWebhook) st.meta.checkStatusWebhook=DEFAULT_WEBHOOK_CHECK;
   if(!st.meta.submitted) st.meta.submitted={};
   if(!st.meta.jsonBinUrl) st.meta.jsonBinUrl=DEFAULT_JSONBIN_URL;
   return st;
@@ -551,6 +528,7 @@ function planDayISO(){
   if(pst.getHours()<3){ pst.setDate(pst.getDate()-1); }
   return `${pst.getFullYear()}-${String(pst.getMonth()+1).padStart(2,"0")}-${String(pst.getDate()).padStart(2,"0")}`;
 }
+var _dayResetFired=false;
 function resetPersonHoursIfNewDay(){
   const today=planDayISO();
   if(STATE.meta.lastResetDate===today) return;
@@ -563,6 +541,7 @@ function resetPersonHoursIfNewDay(){
   STATE.notes={}; STATE.procNotes={};
   STATE.meta.autoSyncedBlocks={};
   STATE.meta.lastResetDate=today;
+  _dayResetFired=true;
 }
 let STATE=reconcile(load());
 if(STATE.notes){for(const _a in STATE.notes){if(typeof STATE.notes[_a]==="string")STATE.notes[_a]={"1st":STATE.notes[_a],"2nd":""};}}
@@ -1145,7 +1124,8 @@ function postToTeams(payload,label,url){
   if(!url){ toast("No Teams webhook set"); return; }
   fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:payload})
     .then(function(r){
-      if(r.ok||r.status===202||r.status===0) toast((label||"Bridge")+" sent \u2014 check the Teams chat");
+      if(r.ok||r.status===202) toast((label||"Bridge")+" sent \u2014 check the Teams chat");
+      else if(r.status===0) toast((label||"Bridge")+" sent \u2014 confirm it arrived in Teams");
       else toast("Teams post failed \u2014 HTTP "+r.status+". Check the webhook URL.");
     })
     .catch(function(e){ toast("Teams post failed \u2014 "+(e.message||"check the webhook URL")); });
@@ -1195,29 +1175,11 @@ function applyShiftView(sh){
 }
 
 function getTeamsWebhook(blockKey){
-  // blockKey is "1st_mid"/"1st_eod"/"2nd_mid"/"2nd_eod" \u2014 map to shift
   var shift = blockKey.startsWith("1st") ? "1st" : "2nd";
-  return (STATE.meta.teamsWebhooks && STATE.meta.teamsWebhooks[shift]) || "";
+  return shift === "1st" ? DEFAULT_WEBHOOK_1ST : DEFAULT_WEBHOOK_2ND;
 }
 function openWebhookMenu(){
-  STATE.meta.teamsWebhooks = STATE.meta.teamsWebhooks || {"1st":"","2nd":""};
-  document.getElementById("wh1st").value = STATE.meta.teamsWebhooks["1st"] || "";
-  document.getElementById("wh2nd").value = STATE.meta.teamsWebhooks["2nd"] || "";
-  document.getElementById("whSubmit").value = STATE.meta.submitWebhook || "";
-  document.getElementById("whSendReport").value = STATE.meta.sendReportWebhook || "";
-  document.getElementById("whCheckStatus").value = STATE.meta.checkStatusWebhook || "";
   document.getElementById("postMenu").classList.toggle("open");
-}
-function saveWebhooks(){
-  STATE.meta.teamsWebhooks = STATE.meta.teamsWebhooks || {};
-  STATE.meta.teamsWebhooks["1st"] = document.getElementById("wh1st").value.trim();
-  STATE.meta.teamsWebhooks["2nd"] = document.getElementById("wh2nd").value.trim();
-  STATE.meta.submitWebhook = document.getElementById("whSubmit").value.trim();
-  STATE.meta.sendReportWebhook = document.getElementById("whSendReport").value.trim();
-  STATE.meta.checkStatusWebhook = document.getElementById("whCheckStatus").value.trim();
-  document.getElementById("postMenu").classList.remove("open");
-  save(true);
-  toast("Webhooks saved");
 }
 
 /* ---- Adaptive Card builder ---- */
@@ -1455,7 +1417,7 @@ function buildSubmitPayload(area, sh){
   return JSON.stringify({ dept: area, shift: sh, plan_date: STATE.meta.date, bridge_text: areaShiftNotes(area,sh) });
 }
 function submitEODLate(area, sh){
-  const url = STATE.meta.submitWebhook || "";
+  const url = DEFAULT_WEBHOOK_SUBMIT;
   if(!url){ toast("No Submit EOD webhook set — add it in the Post menu"); return; }
   fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:buildSubmitPayload(area,sh)})
     .then(function(r){
@@ -1465,7 +1427,7 @@ function submitEODLate(area, sh){
     .catch(function(e){ toast("Submit failed — "+(e.message||"check webhook URL")); });
 }
 function submitEOD(area){
-  const url = STATE.meta.submitWebhook || "";
+  const url = DEFAULT_WEBHOOK_SUBMIT;
   if(!url){ toast("No Submit EOD webhook set — add it in the Post menu"); return; }
   const block = currentBlock();
   if(!block){ toast("Outside posting hours — no active shift block right now"); return; }
@@ -1558,7 +1520,7 @@ function showStatusLoading(){
 
 /* ---- Send Report ---- */
 function doSendReport(sh){
-  const url = STATE.meta.sendReportWebhook || "";
+  const url = DEFAULT_WEBHOOK_SEND;
   if(!url){ toast("No Send Report webhook set — add it in the Post menu"); return; }
   const shift = sh || (currentBlock()||{shift:'2nd'}).shift;
   fetch(url, {method:"POST", headers:{"Content-Type":"application/json"},
@@ -1571,7 +1533,7 @@ function doSendReport(sh){
 }
 
 function sendReport(){
-  const sendUrl = STATE.meta.sendReportWebhook || "";
+  const sendUrl = DEFAULT_WEBHOOK_SEND;
   if(!sendUrl){ toast("No Send Report webhook set — add it in the Post menu"); return; }
   const block=currentBlock();
   const sh=block?block.shift:"2nd";
@@ -1639,7 +1601,7 @@ function showLateEmailModal(){
   }
 
   function fetchDeptStatus(sh){
-    var checkUrl=STATE.meta.checkStatusWebhook||"";
+    var checkUrl=DEFAULT_WEBHOOK_CHECK;
     if(!checkUrl){ renderDeptRows([]); return; }
     deptRows.innerHTML='<div class="modal-checking">Checking…</div>';
     fetch(checkUrl,{method:"POST",headers:{"Content-Type":"application/json"},
@@ -1967,7 +1929,7 @@ function renderTimer(){
   for(var i=0;i<BLOCKS.length;i++){
     var e=toMins(BLOCKS[i].endH,BLOCKS[i].endM);
     var s=toMins(BLOCKS[i].startH,BLOCKS[i].startM);
-    if(e<curAdj && curAdj>s) missed.push(BLOCKS[i]);
+    if(e<curAdj) missed.push(BLOCKS[i]);
   }
   // Always show late button if there are missed blocks
   if(lateBtn){
@@ -2083,6 +2045,7 @@ function showLateModal(missedBlocks){
     var card=buildLateCard(block, just.value.trim());
     overlay.remove();
     postToTeams(card, block.label+" (late)", url);
+    pushToJsonBin(current);
   };
   footTeams.appendChild(teamsBtn);
   box.appendChild(footTeams);
@@ -2108,7 +2071,7 @@ function buildLateCard(block, justification){
       {type:"ColumnSet",columns:[
         {type:"Column",width:"stretch",items:[
           {type:"TextBlock",text:"DC 499",size:"Small",weight:"Bolder",color:"Light",spacing:"None"},
-          {type:"TextBlock",text:"LATE SUBMISSION — "+block.label.toUpperCase(),size:"Large",weight:"Bolder",spacing:"None",wrap:true},
+          {type:"TextBlock",text:current.toUpperCase()+" — LATE SUBMISSION — "+block.label.toUpperCase(),size:"Large",weight:"Bolder",spacing:"None",wrap:true},
         ]},
         {type:"Column",width:"auto",items:[
           {type:"TextBlock",text:"[ LATE ]",size:"Small",weight:"Bolder",spacing:"None",color:"Light"},
@@ -2128,6 +2091,7 @@ renderTimer();
 checkAutoSync();
 setInterval(function(){ renderTimer(); checkAutoSync(); }, 60000);
 resetPersonHoursIfNewDay();
+if(_dayResetFired){ save(true); setTimeout(function(){ toast("New day — all entries cleared for "+planDayISO()); },400); }
 STATE.meta.date=planDayISO();
 $("#planDate").value=STATE.meta.date;
 $("#planDate").onchange=e=>{STATE.meta.date=e.target.value;save(true);renderMain();};
@@ -2142,7 +2106,6 @@ $("#fabSubmitEod").onclick=function(){ document.getElementById("fabMenu").classL
 $("#fabSendReport").onclick=function(){ document.getElementById("fabMenu").classList.remove("open"); sendReport(); };
 document.addEventListener("click",function(e){ var fw=document.getElementById("fabWrap"); if(fw&&!fw.contains(e.target)) document.getElementById("fabMenu").classList.remove("open"); });
 $("#btnPostMenu").onclick=function(e){ e.stopPropagation(); openWebhookMenu(); };
-$("#btnWhSave").onclick=saveWebhooks;
 document.addEventListener("click",function(e){
   var wrap=document.getElementById("postWrap");
   if(wrap && !wrap.contains(e.target)) document.getElementById("postMenu").classList.remove("open");
