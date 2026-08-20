@@ -763,7 +763,7 @@
           </div>
         </div>
         <div class="nb-footer">
-          <span class="nb-count"><span id="nb-queued">—</span><span> queued / 96</span></span>
+          <span class="nb-count"><span id="nb-queued">—</span><span> queued / 36</span></span>
           <span id="nb-eta-wrap" class="nb-eta"></span>
           <span class="nb-meta" id="nb-since-wrap"></span>
         </div>
@@ -1714,7 +1714,7 @@ function renderBatchData(data) {
   // Next batch progress widget
   var nbWidget  = document.getElementById('next-batch-widget');
   var queued    = s.queued_orders;
-  var threshold = s.batch_threshold || 96;
+  var threshold = s.batch_threshold || 36;
   if (queued != null) {
     nbWidget.style.display = 'flex';
     var pct  = Math.min(Math.round((queued / threshold) * 100), 100);
