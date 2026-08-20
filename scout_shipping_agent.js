@@ -50,6 +50,7 @@ function b64url(buf) {
   return buf.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
 const LOCK_FILE = TOKEN_FILE + '.lock';
+const QUERY_LOCK_FILE = TOKEN_FILE + '.query_lock';
 const TOKEN_TTL = 55 * 60 * 1000;
 
 function loadToken() {
@@ -208,20 +209,35 @@ function jsonPost(url, body, headers = {}) {
     req.end();
   });
 }
+async function acquireQueryLock() {
+  const deadline = Date.now() + 60000;
+  while (Date.now() < deadline) {
+    try { fs.writeFileSync(QUERY_LOCK_FILE, String(process.pid), { flag: 'wx' }); return true; } catch {}
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return false;
+}
+function releaseQueryLock() { try { fs.unlinkSync(QUERY_LOCK_FILE); } catch {} }
+
 async function mcpQuery(accessToken, sql) {
-  const result = await jsonPost(`${MCP_BASE}/mcp`, JSON.stringify({
-    jsonrpc: '2.0', id: 1, method: 'tools/call',
-    params: { name: 'query_database', arguments: { query: sql } },
-  }), {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json, text/event-stream',
-    'Authorization': `Bearer ${accessToken}`,
-  });
-  if (!result) throw new Error('MCP returned no data');
-  if (result.error) throw new Error(JSON.stringify(result.error));
-  const text = result?.result?.content?.[0]?.text;
-  if (!text) throw new Error('Empty MCP response');
-  return JSON.parse(text);
+  await acquireQueryLock();
+  try {
+    const result = await jsonPost(`${MCP_BASE}/mcp`, JSON.stringify({
+      jsonrpc: '2.0', id: 1, method: 'tools/call',
+      params: { name: 'query_database', arguments: { query: sql } },
+    }), {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream',
+      'Authorization': `Bearer ${accessToken}`,
+    });
+    if (!result) throw new Error('MCP returned no data');
+    if (result.error) throw new Error(JSON.stringify(result.error));
+    const text = result?.result?.content?.[0]?.text;
+    if (!text) throw new Error('Empty MCP response');
+    return JSON.parse(text);
+  } finally {
+    releaseQueryLock();
+  }
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────────
