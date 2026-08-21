@@ -1,14 +1,14 @@
 {
-    "generated": "2026-08-21T21:54:40.943Z",
+    "generated": "2026-08-21T21:57:01.160Z",
     "shift": "2nd",
     "shift_start": "2026-08-21 21:00:00",
     "facility": "499",
     "picking": {
-        "queued": 7,
+        "queued": 6,
         "assigned": 0,
         "in_progress": 2,
         "completed": 0,
-        "total_open": 9,
+        "total_open": 8,
         "tasks": [
             {
                 "task_id": "WRPICK0000230705",
@@ -22,21 +22,10 @@
                 "detail_done": 61
             },
             {
-                "task_id": "WRPICK0000230717",
+                "task_id": "WRPICK0000230718",
                 "subtype": "MEZZ",
                 "status": "7000",
                 "status_label": "In Progress",
-                "source": "F2C0437B03",
-                "target": null,
-                "created_pdt": "2026-08-21T13:40:51.632000",
-                "detail_count": 9,
-                "detail_done": 4
-            },
-            {
-                "task_id": "WRPICK0000230718",
-                "subtype": "MEZZ",
-                "status": "3000",
-                "status_label": "Ready to Assign",
                 "source": "F2C0262C06",
                 "target": null,
                 "created_pdt": "2026-08-21T13:40:51.750000",
@@ -112,9 +101,9 @@
         ]
     },
     "replen": {
-        "queued": 12,
+        "queued": 11,
         "assigned": 0,
-        "in_progress": 0,
+        "in_progress": 1,
         "completed": 0,
         "total_open": 12,
         "tasks": [
@@ -208,9 +197,9 @@
             },
             {
                 "task_id": "WRPICK0000230721",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "REPLEN PULL",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1F0501C02",
                 "target": "F1D1218C02",
                 "created_pdt": "2026-08-21T13:55:12.534000",
@@ -252,5 +241,25 @@
             }
         ]
     },
-    "pick_drop_carts": []
+    "pick_drop_carts": [
+        {
+            "location": "P1-PK-01",
+            "ilpns": [
+                {
+                    "ilpn_id": "00035229301007386254",
+                    "on_hand": 39,
+                    "updated_pst": "2026-08-21T13:56:42.085000",
+                    "age_min": 0
+                },
+                {
+                    "ilpn_id": "00038064100004800857",
+                    "on_hand": 6,
+                    "updated_pst": "2026-08-21T13:56:50.736000",
+                    "age_min": 0
+                }
+            ],
+            "total_units": 45,
+            "oldest_min": 0
+        }
+    ]
 }
