@@ -1,14 +1,14 @@
 {
-    "generated": "2026-08-24T15:33:56.601Z",
+    "generated": "2026-08-24T15:35:47.317Z",
     "shift": "1st",
     "shift_start": "2026-08-24 10:00:00",
     "facility": "499",
     "picking": {
-        "queued": 54,
+        "queued": 53,
         "assigned": 23,
-        "in_progress": 3,
-        "completed": 29,
-        "total_open": 80,
+        "in_progress": 2,
+        "completed": 32,
+        "total_open": 78,
         "tasks": [
             {
                 "task_id": "WRPICK0000231946",
@@ -525,7 +525,7 @@
                 "target": null,
                 "created_pdt": "2026-08-24T06:10:12.980000",
                 "detail_count": 53,
-                "detail_done": 22
+                "detail_done": 27
             },
             {
                 "task_id": "WRPICK0000231990",
@@ -552,13 +552,13 @@
             {
                 "task_id": "WRPICK0000231988",
                 "subtype": "NON MEZZ",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "F1A0116D04",
                 "target": null,
                 "created_pdt": "2026-08-24T06:10:13.604000",
-                "detail_count": 13,
-                "detail_done": 13
+                "detail_count": null,
+                "detail_done": null
             },
             {
                 "task_id": "WRPICK0000231997",
@@ -574,35 +574,35 @@
             {
                 "task_id": "WRPICK0000231999",
                 "subtype": "NON MEZZ",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "F1D0214B01",
                 "target": null,
                 "created_pdt": "2026-08-24T06:20:12.098000",
-                "detail_count": 6,
-                "detail_done": 3
+                "detail_count": null,
+                "detail_done": null
             },
             {
                 "task_id": "WRPICK0000232000",
                 "subtype": "NON MEZZ",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "F1D0616A01",
                 "target": null,
                 "created_pdt": "2026-08-24T06:25:12.004000",
-                "detail_count": 1,
-                "detail_done": 0
+                "detail_count": null,
+                "detail_done": null
             },
             {
                 "task_id": "WRPICK0000232001",
                 "subtype": "NON MEZZ",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "F1D0214A03",
                 "target": null,
                 "created_pdt": "2026-08-24T06:30:33.863000",
                 "detail_count": 2,
-                "detail_done": 0
+                "detail_done": 1
             },
             {
                 "task_id": "WRPICK0000232172",
@@ -1208,15 +1208,26 @@
                 "created_pdt": "2026-08-24T08:25:11.364000",
                 "detail_count": 3,
                 "detail_done": 0
+            },
+            {
+                "task_id": "WRPICK0000232255",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F1D0213B01",
+                "target": null,
+                "created_pdt": "2026-08-24T08:35:14.057000",
+                "detail_count": 5,
+                "detail_done": 0
             }
         ]
     },
     "replen": {
         "queued": 3,
         "assigned": 0,
-        "in_progress": 0,
+        "in_progress": 1,
         "completed": 61,
-        "total_open": 3,
+        "total_open": 4,
         "tasks": [
             {
                 "task_id": "WRPICK0000231907",
@@ -1903,8 +1914,8 @@
             {
                 "task_id": "WRPICK0000232250",
                 "subtype": "PICK FULL CASE",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1D0221A01",
                 "target": null,
                 "created_pdt": "2026-08-24T08:25:11.064000",
@@ -1921,8 +1932,39 @@
                 "created_pdt": "2026-08-24T08:25:11.456000",
                 "detail_count": null,
                 "detail_done": null
+            },
+            {
+                "task_id": "WRPICK0000232256",
+                "subtype": "Default Picking Activity",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "R1C0117A02",
+                "target": "F1B0213B02",
+                "created_pdt": "2026-08-24T08:35:13.911000",
+                "detail_count": 1,
+                "detail_done": 0
             }
         ]
     },
-    "pick_drop_carts": []
+    "pick_drop_carts": [
+        {
+            "location": "P1-PK-06",
+            "ilpns": [
+                {
+                    "ilpn_id": "00006499300003295888",
+                    "on_hand": 3,
+                    "updated_pst": "2026-08-24T07:35:01.590000",
+                    "age_min": 1
+                },
+                {
+                    "ilpn_id": "00006499300003295895",
+                    "on_hand": 1,
+                    "updated_pst": "2026-08-24T07:35:39.294000",
+                    "age_min": 0
+                }
+            ],
+            "total_units": 4,
+            "oldest_min": 1
+        }
+    ]
 }
