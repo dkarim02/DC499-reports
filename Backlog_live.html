@@ -169,6 +169,12 @@
   [data-theme="light"] .haz-tag.LIT{background:#f7fee7;color:#4d7c0f;}
   [data-theme="light"] .haz-tag.E  {background:#eff6ff;color:#3730a3;}
   .haz-mini{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;}
+  .rfp-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:0.04em;gap:4px;}
+  .rfp-tag.single{background:#0d2233;color:#38bdf8;}
+  .rfp-tag.multi {background:#1a1a00;color:#facc15;}
+  [data-theme="light"] .rfp-tag.single{background:#e0f2fe;color:#0369a1;}
+  [data-theme="light"] .rfp-tag.multi {background:#fefce8;color:#a16207;}
+  .rfp-split{display:inline-flex;gap:4px;align-items:center;justify-content:center;margin-top:2px;}
   .haz-mini .haz-tag{font-size:9px;padding:1px 5px;}
   .metric-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
   .metric-value{font-size:26px;font-weight:500;color:var(--text);}
@@ -595,7 +601,7 @@
           <div class="metric rfp">
             <div class="metric-label">Ready for Pack</div>
             <div class="metric-value" id="m-rfp">--</div>
-            <div class="metric-sub" id="m-rfp-split">Units at D1-SN-01</div>
+            <div class="metric-sub"><div class="rfp-split" id="m-rfp-split"><span style="color:var(--text-muted)">Units at D1-SN-01</span></div></div>
           </div>
           <div class="metric packed">
             <div class="metric-label">Packed</div>
@@ -1116,9 +1122,11 @@ function fetchBacklogData() {
       var rfpSplit = document.getElementById('m-rfp-split');
       if (rfpSplit) {
         if (data.rfp_single != null || data.rfp_multi != null) {
-          rfpSplit.textContent = fmt(data.rfp_single || 0) + ' single  |  ' + fmt(data.rfp_multi || 0) + ' multi';
+          rfpSplit.innerHTML =
+            '<span class="rfp-tag single">S: ' + fmt(data.rfp_single || 0) + '</span>' +
+            '<span class="rfp-tag multi">M: '  + fmt(data.rfp_multi  || 0) + '</span>';
         } else {
-          rfpSplit.textContent = 'Units at D1-SN-01';
+          rfpSplit.innerHTML = '<span style="color:var(--text-muted)">Units at D1-SN-01</span>';
         }
       }
       renderBacklogData(data);
