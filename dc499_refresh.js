@@ -738,8 +738,12 @@ WHERE ol.FACILITY_ID = '${FACILITY}'
 GROUP BY ol.ORDER_ID`.trim();
 
   // Query 7: units in allocated iLPNs at D1-SN-01 (picked, staged, ready to pack). STATUS 5000 = allocated/active.
+  // Split by T0 (single) vs S1 (multi) iLPN prefix.
   const sqlRfp = `
-SELECT SUM(inv.ON_HAND) AS unit_count
+SELECT
+  SUM(inv.ON_HAND) AS unit_count,
+  SUM(CASE WHEN ilpn.ILPN_ID LIKE 'T0%' THEN inv.ON_HAND ELSE 0 END) AS single_units,
+  SUM(CASE WHEN ilpn.ILPN_ID LIKE 'S1%' THEN inv.ON_HAND ELSE 0 END) AS multi_units
 FROM default_dcinventory.DCI_ILPN ilpn
 JOIN default_dcinventory.DCI_INVENTORY inv ON inv.ILPN_ID = ilpn.ILPN_ID AND inv.FACILITY_ID = ilpn.FACILITY_ID
 WHERE ilpn.FACILITY_ID = '${FACILITY}'
@@ -884,7 +888,10 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
     .filter(b => b.date === todayStr || (b.ready + b.allocated + b.packed) > 0)
     .sort((a, b) => b.date.localeCompare(a.date));
 
-  const rfpUnits = Number((respRfp.rows || [])[0]?.unit_count || 0);
+  const rfpRow   = (respRfp.rows || [])[0] || {};
+  const rfpUnits = Number(rfpRow.unit_count  || 0);
+  const rfpSingle = Number(rfpRow.single_units || 0);
+  const rfpMulti  = Number(rfpRow.multi_units  || 0);
 
   // Hazmat summary — count unique hazmat orders and their lines across today's open orders
   const hazBreakdown = {};
@@ -910,6 +917,8 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
     hourly,
     waves,
     rfp_units:         rfpUnits,
+    rfp_single:        rfpSingle,
+    rfp_multi:         rfpMulti,
     shift_label:       is1st ? '1st shift' : '2nd shift',
     hazmat_orders:     hazOrderCount,
     hazmat_lines:      hazLineCount,
@@ -1514,6 +1523,7 @@ FROM default_task.TSK_TASK
 WHERE FACILITY_ID = '${FACILITY}'
   AND STATUS != '9000'
   AND LEFT(SOURCE_LOCATION_ID, 3) IN ('R1B','R1C','R1D','R1E','R1F')
+  AND TASK_ID NOT LIKE 'CC%'
   AND (
     CREATED_TIMESTAMP >= '${startStr}'
     OR (STATUS IN ('3000','5000','7000') AND CREATED_TIMESTAMP >= NOW() - INTERVAL 2 DAY)

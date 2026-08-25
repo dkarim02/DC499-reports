@@ -595,7 +595,7 @@
           <div class="metric rfp">
             <div class="metric-label">Ready for Pack</div>
             <div class="metric-value" id="m-rfp">--</div>
-            <div class="metric-sub">Units at D1-SN-01</div>
+            <div class="metric-sub" id="m-rfp-split">Units at D1-SN-01</div>
           </div>
           <div class="metric packed">
             <div class="metric-label">Packed</div>
@@ -1113,6 +1113,14 @@ function fetchBacklogData() {
       lastBlData = data;
       lastRfpUnits = data.rfp_units != null ? data.rfp_units : lastRfpUnits;
       document.getElementById('m-rfp').textContent = lastRfpUnits != null ? fmt(lastRfpUnits) : '--';
+      var rfpSplit = document.getElementById('m-rfp-split');
+      if (rfpSplit) {
+        if (data.rfp_single != null || data.rfp_multi != null) {
+          rfpSplit.textContent = fmt(data.rfp_single || 0) + ' single  |  ' + fmt(data.rfp_multi || 0) + ' multi';
+        } else {
+          rfpSplit.textContent = 'Units at D1-SN-01';
+        }
+      }
       renderBacklogData(data);
       scheduleBlRefresh();
     })
