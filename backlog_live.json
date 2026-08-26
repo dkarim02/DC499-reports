@@ -1,13 +1,13 @@
 {
-    "generated": "2026-08-26T17:01:31",
+    "generated": "2026-08-26T17:03:28",
     "facility": "499",
     "today": "2026-08-26",
     "dates": [
         {
             "date": "2026-08-26",
-            "ready": 42,
+            "ready": 45,
             "allocated": 599,
-            "packed": 96,
+            "packed": 99,
             "shipped": 104,
             "orders": [
                 {
@@ -47,28 +47,28 @@
                 },
                 {
                     "order_id": "1058304969-50000",
-                    "status": "READY",
+                    "status": "ALLOCATING",
                     "line_count": 1,
                     "oldest_line_utc": "2026-08-26T13:47:51.166000",
                     "hazmat": null
                 },
                 {
                     "order_id": "1058306839-50000",
-                    "status": "READY",
+                    "status": "ALLOCATED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-08-26T13:47:50.895000",
                     "hazmat": null
                 },
                 {
                     "order_id": "1058307746-50000",
-                    "status": "READY",
+                    "status": "ALLOCATED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-08-26T13:47:50.557000",
                     "hazmat": "Y"
                 },
                 {
                     "order_id": "1058311449-50002",
-                    "status": "READY",
+                    "status": "ALLOCATED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-08-26T13:47:51.293000",
                     "hazmat": "Y"
@@ -495,7 +495,7 @@
                 },
                 {
                     "order_id": "1058337713-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 3,
                     "oldest_line_utc": "2026-08-26T09:14:47.151000",
                     "hazmat": null
@@ -2818,10 +2818,24 @@
                     "hazmat": "Y"
                 },
                 {
+                    "order_id": "1058362386-50000",
+                    "status": "READY",
+                    "line_count": 2,
+                    "oldest_line_utc": "2026-08-26T17:02:53.664000",
+                    "hazmat": null
+                },
+                {
                     "order_id": "1058362418-50000",
                     "status": "ALLOCATED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-08-26T15:51:09.244000",
+                    "hazmat": null
+                },
+                {
+                    "order_id": "1058362553-50000",
+                    "status": "READY",
+                    "line_count": 4,
+                    "oldest_line_utc": "2026-08-26T17:02:47.584000",
                     "hazmat": null
                 },
                 {
@@ -3271,15 +3285,22 @@
                     "line_count": 1,
                     "oldest_line_utc": "2026-08-26T16:59:09.854000",
                     "hazmat": "E"
+                },
+                {
+                    "order_id": "1058371025-50000",
+                    "status": "READY",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-08-26T17:01:13.510000",
+                    "hazmat": null
                 }
             ],
-            "daily_total": 842
+            "daily_total": 848
         },
         {
             "date": "2026-08-25",
             "ready": 0,
-            "allocated": 154,
-            "packed": 122,
+            "allocated": 149,
+            "packed": 127,
             "shipped": 3216,
             "orders": [
                 {
@@ -3354,7 +3375,7 @@
                 },
                 {
                     "order_id": "1058317353-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 3,
                     "oldest_line_utc": "2026-08-26T03:51:03.733000",
                     "hazmat": null
@@ -3410,7 +3431,7 @@
                 },
                 {
                     "order_id": "1058321582-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 2,
                     "oldest_line_utc": "2026-08-26T04:29:50.832000",
                     "hazmat": null
@@ -4288,7 +4309,7 @@
         },
         {
             "hour": 10,
-            "lines": 4
+            "lines": 10
         }
     ],
     "waves": [
@@ -4302,7 +4323,7 @@
         },
         {
             "type": "Single Chase",
-            "count": 7
+            "count": 11
         },
         {
             "type": "Fill/Kill",
@@ -4310,12 +4331,12 @@
         },
         {
             "type": "Total",
-            "count": 26
+            "count": 30
         }
     ],
-    "rfp_units": 357,
-    "rfp_single": 174,
-    "rfp_multi": 180,
+    "rfp_units": 348,
+    "rfp_single": 173,
+    "rfp_multi": 172,
     "shift_label": "1st shift",
     "hazmat_orders": 136,
     "hazmat_lines": 224,
