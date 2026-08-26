@@ -1,5 +1,5 @@
 {
-    "generated": "2026-08-26T18:48:59.116Z",
+    "generated": "2026-08-26T18:50:55.939Z",
     "shift": "1st",
     "shift_start": "2026-08-26 10:00:00",
     "facility": "499",
@@ -1306,7 +1306,7 @@
                 "target": null,
                 "created_pdt": "2026-08-26T10:51:39.930000",
                 "detail_count": 19,
-                "detail_done": 1
+                "detail_done": 7
             },
             {
                 "task_id": "WRPICK0000237275",
@@ -1641,11 +1641,11 @@
         ]
     },
     "replen": {
-        "queued": 1,
+        "queued": 0,
         "assigned": 0,
         "in_progress": 0,
-        "completed": 29,
-        "total_open": 1,
+        "completed": 30,
+        "total_open": 0,
         "tasks": [
             {
                 "task_id": "WRPICK0000236134",
@@ -1968,16 +1968,36 @@
             },
             {
                 "task_id": "WRPICK0000237420",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "REPLEN PULL",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "R1B0101A02",
                 "target": "F1D0709A03",
                 "created_pdt": "2026-08-26T11:31:30.190000",
-                "detail_count": 1,
-                "detail_done": 0
+                "detail_count": null,
+                "detail_done": null
             }
         ]
     },
-    "pick_drop_carts": []
+    "pick_drop_carts": [
+        {
+            "location": "P1-PK-09",
+            "ilpns": [
+                {
+                    "ilpn_id": "00006499300003545976",
+                    "on_hand": 15,
+                    "updated_pst": "2026-08-26T10:49:14.693000",
+                    "age_min": 2
+                },
+                {
+                    "ilpn_id": "00006703670002944095",
+                    "on_hand": 36,
+                    "updated_pst": "2026-08-26T10:49:57.755000",
+                    "age_min": 1
+                }
+            ],
+            "total_units": 51,
+            "oldest_min": 2
+        }
+    ]
 }
