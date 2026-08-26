@@ -1,5 +1,5 @@
 {
-    "generated": "2026-08-26T15:44:30.319Z",
+    "generated": "2026-08-26T15:46:37.305Z",
     "shift": "1st",
     "shift_start": "2026-08-26 10:00:00",
     "facility": "499",
@@ -789,7 +789,7 @@
                 "target": null,
                 "created_pdt": "2026-08-26T08:31:30.172000",
                 "detail_count": 12,
-                "detail_done": 7
+                "detail_done": 11
             },
             {
                 "task_id": "WRPICK0000236842",
@@ -959,10 +959,10 @@
         ]
     },
     "replen": {
-        "queued": 0,
+        "queued": 1,
         "assigned": 0,
-        "in_progress": 1,
-        "completed": 19,
+        "in_progress": 0,
+        "completed": 20,
         "total_open": 1,
         "tasks": [
             {
@@ -1177,15 +1177,40 @@
             {
                 "task_id": "WRPICK0000236885",
                 "subtype": "REPLEN PULL",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "R1B0102B01",
                 "target": "F1D1015B03",
                 "created_pdt": "2026-08-26T08:42:12.982000",
+                "detail_count": null,
+                "detail_done": null
+            },
+            {
+                "task_id": "WRPICK0000236914",
+                "subtype": "Default Picking Activity",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "R1B0210B02",
+                "target": "F1D0709D07",
+                "created_pdt": "2026-08-26T08:46:27.947000",
                 "detail_count": 1,
                 "detail_done": 0
             }
         ]
     },
-    "pick_drop_carts": []
+    "pick_drop_carts": [
+        {
+            "location": "P1-PK-01",
+            "ilpns": [
+                {
+                    "ilpn_id": "00008403064118508659",
+                    "on_hand": 9,
+                    "updated_pst": "2026-08-26T07:45:57.411000",
+                    "age_min": 1
+                }
+            ],
+            "total_units": 9,
+            "oldest_min": 1
+        }
+    ]
 }
