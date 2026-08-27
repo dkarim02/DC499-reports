@@ -60,6 +60,7 @@ const RS_GROUPS = [
     txIds:  ['iLPN Replen Fill', 'iLPN Replen Fill Large'],
     metric: 'COMPLETED_QUANTITY',
     zoneH:  true,
+    containerCount: true,
   },
   {
     key:    'putaway',
@@ -291,8 +292,11 @@ function shiftStartUtc() {
 function buildGroupSql(shiftStart, group) {
   const txList = group.txIds.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
   const zoneFilter = group.zoneH ? `  AND SUBSTR(TARGET_LOCATION_ID, 3, 1) = 'H'\n` : '';
+  const containerCol = group.containerCount
+    ? `,\n  COUNT(DISTINCT CASE WHEN COMPLETED_QUANTITY > 0 THEN CONTAINER_ID END) AS container_count`
+    : '';
   return [
-    `SELECT CREATED_BY AS Employee, SUM(${group.metric}) AS total_qty`,
+    `SELECT CREATED_BY AS Employee, SUM(${group.metric}) AS total_qty${containerCol}`,
     `FROM default_task.TSK_ACTIVITY_TRACKING`,
     `WHERE FACILITY_ID = '${FACILITY}'`,
     `  AND TRANSACTION_ID IN (${txList})`,
@@ -308,7 +312,7 @@ async function fetchReserveLive(accessToken) {
   console.log(`[${ts()}] Reserve Live — ${shift} shift, since ${shiftStart}`);
 
   const associates = {};
-  const totals     = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0 };
+  const totals     = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, replen_containers: 0 };
   const rowCounts  = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0 };
 
   console.log(`[${ts()}] Querying all groups in parallel...`);
@@ -331,6 +335,11 @@ async function fetchReserveLive(accessToken) {
       if (!associates[emp]) associates[emp] = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0 };
       associates[emp][group.key] = qty;
       totals[group.key] += qty;
+      if (group.containerCount) {
+        const cCount = Math.round(Number(row.container_count) || 0);
+        associates[emp].replen_containers = cCount;
+        totals.replen_containers += cCount;
+      }
     }
   }
 

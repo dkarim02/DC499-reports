@@ -1387,7 +1387,9 @@ function renderFullReport() {
   html+='<div class="full-grid">';
 
   // ── Helper: render one dept card ──────────────────────
-  function renderDeptCard(label, color, barClass, empKey_suffix, sorted, grand) {
+  function renderDeptCard(label, color, barClass, empKey_suffix, sorted, grand, empContainerCounts) {
+    var hasCounts = !!empContainerCounts;
+    var grandContainers = hasCounts ? sorted.reduce(function(s,v){return s+(empContainerCounts[v[0]]||0);},0) : 0;
     if(!grand){html+='<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total" style="color:var(--text-hint);">No data</span></div></div>';return;}
     html+='<div class="full-card"><div class="full-card-title" style="color:'+color+';">'+label+'<span class="full-card-total">'+grand.toLocaleString()+'</span></div>';
     html+='<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th></tr></thead><tbody>';
@@ -1399,8 +1401,10 @@ function renderFullReport() {
       empTimes.sort(function(a,b){return a-b;});
       for(var gi=1;gi<empTimes.length;gi++){if((empTimes[gi]-empTimes[gi-1])>10*60*1000)gapCount++;}
       var empKey=emp.replace(/[^a-z0-9]/gi,'_')+'_'+empKey_suffix;
+      var cCount=hasCounts?(empContainerCounts[emp]||0):0;
+      var totalCell=val.toLocaleString()+(hasCounts?'<div style="font-size:10px;color:var(--text-hint);font-weight:400;">'+cCount+' lpns</div>':'');
       html+='<tr class="assoc-row" data-empkey="'+empKey+'" onclick="toggleAssocDetail(this.dataset.empkey)">';
-      html+='<td>'+short+trophy+'</td><td style="text-align:right;font-weight:500;">'+val.toLocaleString()+'</td>';
+      html+='<td>'+short+trophy+'</td><td style="text-align:right;font-weight:500;">'+totalCell+'</td>';
       html+='<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill '+barClass+'" style="width:'+pct+'%"></div></div>';
       html+='<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+pct+'%</span></div></td></tr>';
       html+='<tr class="assoc-detail" id="assoc-detail-'+empKey+'" data-emp="'+emp+'" data-canvas="assoc-chart-'+empKey+'">';
@@ -1413,7 +1417,8 @@ function renderFullReport() {
       html+='</div><div id="assoc-gap-total-'+empKey+'" style="font-size:11px;color:#C0392B;font-weight:500;text-align:right;"></div></div>';
       html+='</div></td></tr>';
     });
-    html+='</tbody><tfoot><tr><td>Total</td><td style="text-align:right;">'+grand.toLocaleString()+'</td><td></td></tr></tfoot></table></div>';
+    var tfootTotal=grand.toLocaleString()+(hasCounts?'<div style="font-size:10px;color:var(--text-hint);font-weight:400;">'+grandContainers+' lpns</div>':'');
+    html+='</tbody><tfoot><tr><td>Total</td><td style="text-align:right;">'+tfootTotal+'</td><td></td></tr></tfoot></table></div>';
   }
 
   // ── Merged Picking card (Pick F1 + F2 combined per associate) ──
@@ -1429,11 +1434,19 @@ function renderFullReport() {
 
   // ── Replen card ──
   (function(){
-    var totals={};
+    var totals={},containerSets={};
     fullReportRows.filter(function(r){return RES_TX.replen.indexOf((r['Transaction ID']||'').trim())!==-1;})
-      .forEach(function(r){var e=(r['Employee']||'').trim();if(TEAM.has(e))totals[e]=(totals[e]||0)+(parseFloat(r['Completed Quantity'])||0);});
+      .forEach(function(r){
+        var e=(r['Employee']||'').trim();
+        if(!TEAM.has(e))return;
+        totals[e]=(totals[e]||0)+(parseFloat(r['Completed Quantity'])||0);
+        var cq=parseFloat(r['Completed Quantity'])||0;
+        var cid=(r['Container ID']||'').trim();
+        if(cq>0&&cid){if(!containerSets[e])containerSets[e]=new Set();containerSets[e].add(cid);}
+      });
     var sorted=Object.entries(totals).sort(function(a,b){return b[1]-a[1];}),grand=sorted.reduce(function(s,v){return s+v[1];},0);
-    renderDeptCard('Replenishment',RES_COLORS.replen,'full-bar-replen','replen',sorted,grand);
+    var empContainerCounts={};Object.keys(containerSets).forEach(function(e){empContainerCounts[e]=containerSets[e].size;});
+    renderDeptCard('Replenishment',RES_COLORS.replen,'full-bar-replen','replen',sorted,grand,empContainerCounts);
   })();
 
   // ── Putaway card ──
@@ -1541,9 +1554,14 @@ function renderLiveReport(d) {
   (function() {
     var isActive = _activeLiveTile === 'replen';
     var pace = getTilePaceRS('replen', replenGrand);
+    var replenContainersGrand = 0;
+    Object.keys(d.associates).forEach(function(emp) {
+      if (TEAM.has(emp)) replenContainersGrand += (d.associates[emp].replen_containers || 0);
+    });
     html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="replen" onclick="clickLiveTile(this.dataset.livtyp)" style="color:#6366F1;cursor:pointer;">';
     html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Replenishment</div>';
     html += '<div style="font-size:18px;font-weight:500;color:var(--text);">' + replenGrand.toLocaleString() + '</div>';
+    if (replenContainersGrand > 0) html += '<div style="font-size:10px;color:var(--text-hint);margin-top:2px;">' + replenContainersGrand + ' lpns</div>';
     if (pace) {
       html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:' + pace.color + ';width:' + pace.barPct + '%;"></div></div>';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
@@ -1579,7 +1597,8 @@ function renderLiveReport(d) {
     { key:'picking', label:'Picking', color:'#0891B2', barClass:'full-bar-pick',
       getVal: function(assoc) { return (assoc.pick_f1||0) + (assoc.pick_f2||0); } },
     { key:'replen',  label:'Replenishment', color:'#6366F1', barClass:'full-bar-replen',
-      getVal: function(assoc) { return assoc.replen||0; } },
+      getVal: function(assoc) { return assoc.replen||0; },
+      getSubVal: function(assoc) { return assoc.replen_containers||0; } },
     { key:'putaway', label:'Putaway', color:'#059669', barClass:'full-bar-putaway',
       getVal: function(assoc) { return assoc.putaway||0; } },
   ];
@@ -1618,9 +1637,11 @@ function renderLiveReport(d) {
         var trophy = enabledIdx === 0 && grand > 0 ? ' &#x1F3C6;' : '';
         enabledIdx++;
         var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        var subVal = def.getSubVal ? def.getSubVal(d.associates[emp]) : 0;
+        var totalCell = val.toLocaleString() + (subVal > 0 ? '<div style="font-size:10px;color:var(--text-hint);font-weight:400;">' + subVal + ' lpns</div>' : '');
         html += '<tr>';
         html += '<td>' + short + trophy + '</td>';
-        html += '<td style="text-align:right;font-weight:500;">' + val.toLocaleString() + '</td>';
+        html += '<td style="text-align:right;font-weight:500;">' + totalCell + '</td>';
         html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill ' + barClass + '" style="width:' + pct + '%"></div></div>';
         html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">' + pct + '%</span></div></td>';
         html += '<td><button class="full-side-disable-btn" onclick="toggleTMFromLive(\'' + safeEmp + '\')">Disable</button></td>';
@@ -1648,7 +1669,9 @@ function renderLiveReport(d) {
           html += '<td><button class="full-side-add-btn" onclick="addTMFromLive(\'' + safeEmp + '\')">+ Add</button></td></tr>';
         });
       }
-      html += '</tbody><tfoot><tr><td>Total (active)</td><td style="text-align:right;">' + grand.toLocaleString() + '</td><td></td><td></td></tr></tfoot></table>';
+      var grandSubVal = def.getSubVal ? enabledRows.reduce(function(s,e){return s+(def.getSubVal(d.associates[e[0]])||0);},0) : 0;
+      var tfootTotal = grand.toLocaleString() + (grandSubVal > 0 ? '<div style="font-size:10px;color:var(--text-hint);font-weight:400;">' + grandSubVal + ' lpns</div>' : '');
+      html += '</tbody><tfoot><tr><td>Total (active)</td><td style="text-align:right;">' + tfootTotal + '</td><td></td><td></td></tr></tfoot></table>';
     }
     html += '</div></div>';
   });
