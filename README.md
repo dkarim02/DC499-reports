@@ -171,20 +171,6 @@ eos.bat options:
 
 ---
 
-## Key design decisions
-
-**Dedup key:** Employee + Transaction ID + Activity Datetime. Never CP Trace Id.
-
-**Zone routing (shared transaction IDs):** Putaway and replen rows are attributed to Reserve Stock if the location's 3rd character is `H`, otherwise Ecom. Checked in Current Location first, Previous Location as fallback, defaults to Ecom.
-
-**Timestamps:** All MAWM timestamps are stored UTC. DC499 is PDT (UTC−7). All queries convert before filtering; all display values convert before rendering.
-
-**Facility ID:** Always `'499'` — never `'0499'`.
-
-**Row cap:** MAWM MCP connector returns up to ~10,000 rows per query. High-volume groups are split into parallel sub-queries to stay under the cap.
-
----
-
 ## Metrics reference
 
 ### Ecom
