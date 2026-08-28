@@ -524,7 +524,7 @@ refresh();                     // immediate on load
 
 `?t=Date.now()` cache-busts the CDN. Without this, GitHub's CDN can serve a stale file for several minutes.
 
-`BASE` is derived from the current page URL — it points to the same GitHub Pages origin in production, or `localhost:3001` when the PC server is running locally.
+`BASE` is derived from the current page URL — it points to the SharePoint origin in production (or NordTech GitHub Pages once that is established), or `localhost:3001` when the PC server is running locally.
 
 ---
 
