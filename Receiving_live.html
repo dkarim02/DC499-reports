@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Receiving Live v2.0 -- DC499</title>
+<title>Receiving Live v2.1 -- DC499</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -108,34 +108,50 @@
   /* Settings modal */
   .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(2px);z-index:300;align-items:center;justify-content:center;}
   .modal-backdrop.open{display:flex;}
-  .modal{background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:1.5rem;width:min(480px,92vw);max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:modalIn 0.18s ease;}
+  .modal{background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:1.5rem;width:min(520px,92vw);max-height:82vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:modalIn 0.18s ease;display:flex;flex-direction:column;gap:0;}
   @keyframes modalIn{from{opacity:0;transform:scale(0.94);}to{opacity:1;transform:scale(1);}}
+  .modal::-webkit-scrollbar{width:4px;}
+  .modal::-webkit-scrollbar-track{background:transparent;}
+  .modal::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
   .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
   .modal-title{font-size:16px;font-weight:800;color:var(--text);}
-  .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);font-family:'Nunito',sans-serif;line-height:1;padding:0 4px;}
-  .modal-close:hover{color:var(--text);}
-  .roster-scroll{max-height:260px;overflow-y:auto;border:0.5px solid var(--border);border-radius:8px;margin-bottom:1rem;}
-  .roster-member{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:0.5px solid var(--border-light);font-size:14px;}
-  .roster-member:last-child{border-bottom:none;}
-  .member-email{flex:1;font-size:13px;font-weight:700;color:var(--text);}
-  .member-email.disabled{color:var(--text-hint);text-decoration:line-through;opacity:0.5;}
-  .enable-toggle{position:relative;width:32px;height:18px;flex-shrink:0;}
-  .enable-toggle input{opacity:0;width:0;height:0;position:absolute;}
-  .enable-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--border-mid);border-radius:18px;transition:background 0.2s;}
-  .enable-slider:before{position:absolute;content:"";height:12px;width:12px;left:3px;bottom:3px;background:white;border-radius:50%;transition:transform 0.2s;}
-  .enable-toggle input:checked + .enable-slider{background:var(--accent);}
-  .enable-toggle input:checked + .enable-slider:before{transform:translateX(14px);}
-  .roster-remove{background:none;border:none;cursor:pointer;color:var(--text-hint);font-size:20px;padding:0 4px;font-family:inherit;line-height:1;}
-  .roster-remove:hover{color:#ef4444;}
-  .add-row{display:flex;gap:8px;margin-bottom:0.75rem;}
-  .add-row input{flex:1;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);outline:none;}
-  .add-row input:focus{border-color:var(--accent);}
-  .add-btn{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:8px 14px;border:0.5px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;cursor:pointer;white-space:nowrap;}
-  .add-btn:hover{opacity:0.85;}
-  .saved-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.15);color:#22c55e;margin-left:8px;opacity:0;transition:opacity 0.3s;}
-  .roster-count{font-size:12px;color:var(--text-muted);}
-  .roster-notice{font-size:11px;color:var(--text-hint);margin-top:6px;}
+  .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);font-family:'Nunito',sans-serif;line-height:1;padding:0 4px;border-radius:5px;}
+  .modal-close:hover{color:var(--text);background:var(--surface2);}
 
+  /* Search */
+  .settings-search{width:100%;font-family:'Nunito',sans-serif;font-size:13px;font-weight:600;padding:8px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);outline:none;margin-bottom:10px;}
+  .settings-search:focus{border-color:var(--accent);}
+  .settings-search::placeholder{color:var(--text-hint);font-weight:500;}
+
+  /* Bulk actions row */
+  .modal-bulk{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .btn-save{font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:7px 18px;border:none;border-radius:7px;background:var(--accent);cursor:pointer;color:#fff;margin-left:auto;}
+  .btn-save:hover{opacity:0.85;}
+  .btn-reset{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;padding:7px 14px;border:1px solid var(--border-mid);border-radius:7px;background:none;cursor:pointer;color:var(--text-muted);}
+  .btn-reset:hover{color:var(--red);border-color:var(--red);}
+  .btn-bulk{font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;padding:6px 12px;border:0.5px solid var(--border-mid);border-radius:7px;background:var(--surface2);cursor:pointer;color:var(--text-muted);}
+  .btn-bulk:hover{color:var(--text);background:var(--border);}
+  .save-toast{font-size:12px;font-weight:700;color:var(--green);display:none;padding:0 4px;}
+  .save-toast.show{display:inline;}
+
+  /* Settings rows */
+  .settings-list{display:flex;flex-direction:column;gap:5px;overflow-y:auto;max-height:320px;padding-right:2px;}
+  .settings-list::-webkit-scrollbar{width:4px;}
+  .settings-list::-webkit-scrollbar-track{background:transparent;}
+  .settings-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .settings-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border-radius:7px;flex-shrink:0;}
+  .settings-email{font-size:12px;font-weight:600;color:var(--text-muted);font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .settings-arrow{font-size:12px;color:var(--text-hint);flex-shrink:0;}
+  .settings-input{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text);outline:none;width:120px;flex-shrink:0;}
+  .settings-input:focus{border-color:var(--accent);}
+  .settings-input::placeholder{font-weight:500;color:var(--text-hint);}
+  .settings-toggle{display:inline-flex;align-items:center;width:32px;height:17px;border-radius:9px;background:var(--border);position:relative;transition:background 0.2s;flex-shrink:0;cursor:pointer;}
+  .settings-toggle::after{content:'';position:absolute;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.25);}
+  .settings-toggle.on{background:var(--accent);}
+  .settings-toggle.on::after{left:17px;}
+  .settings-empty{font-size:13px;font-weight:600;color:var(--text-hint);padding:2rem 0;text-align:center;}
+
+  .roster-notice{font-size:11px;color:var(--text-hint);margin-top:10px;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .meta-line{font-size:11px;color:var(--text-muted);margin-bottom:0.75rem;}
@@ -210,7 +226,7 @@
     No data yet. Click <strong>Refresh</strong> to reload.
   </div>
 
-  <p class="nordstrom-tag">Nordstrom &middot; Receiving Live v2.0 &middot; DC499</p>
+  <p class="nordstrom-tag">Nordstrom &middot; Receiving Live v2.1 &middot; DC499</p>
   <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
 </div>
 
@@ -218,25 +234,27 @@
 <div class="modal-backdrop" id="settings-modal" onclick="modalBackdropClick(event)">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Settings <span class="saved-badge" id="saved-badge">Saved &#x2713;</span></div>
+      <div class="modal-title">Settings <span class="save-toast" id="save-toast">Saved &#x2713;</span></div>
       <button class="modal-close" onclick="closeSettings()">&#x2715;</button>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <div class="roster-count" id="roster-count"></div>
+    <input type="text" class="settings-search" id="settings-search" placeholder="Search associates&#x2026;" oninput="filterSettings()">
+    <div class="modal-bulk">
+      <button class="btn-bulk" onclick="enableAll()">Enable All</button>
+      <button class="btn-bulk" onclick="disableAll()">Disable All</button>
+      <button class="btn-reset" onclick="resetSettings()">Reset</button>
+      <button class="btn-save" onclick="saveSettings()">Save</button>
     </div>
-    <div class="roster-scroll"><div id="roster-list"></div></div>
-    <div class="add-row" style="margin-top:1rem;">
-      <input type="text" id="new-email" placeholder="first.last or first.last@nordstrom.com" />
-      <button class="add-btn" onclick="addMember()">+ Add</button>
+    <div class="settings-list" id="settings-rows">
+      <div class="settings-empty">No associates yet. Run a refresh after shift starts.</div>
     </div>
-    <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
+    <p class="roster-notice">&#x26A0; LAN ID mappings save to this browser only.</p>
   </div>
 </div>
 
 <script>
-var DATA_URL   = 'https://dkarim02.github.io/DC499-reports/receiving_live.json';
-var THEME_KEY  = 'dc499_receiving_theme_v2';
-var ROSTER_KEY = 'recv_live_roster_v2';
+var DATA_URL    = 'https://dkarim02.github.io/DC499-reports/receiving_live.json';
+var THEME_KEY   = 'dc499_receiving_theme_v2';
+var SETTINGS_KEY = 'recv_lan_map_v1';
 var INTERVAL_MS = 5 * 60 * 1000;
 
 var ALL_1ST = [3,4,5,6,7,8,9,10,11,12,13];
@@ -288,91 +306,126 @@ document.addEventListener('click', function(e) {
     : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 })();
 
-// -- Roster -------------------------------------------------------------------
-function loadRoster() {
+// -- Settings -----------------------------------------------------------------
+function loadSettings() {
   try {
-    var s = localStorage.getItem(ROSTER_KEY);
-    if (s) {
-      var p = JSON.parse(s);
-      return p.map(function(m) { return typeof m === 'string' ? {name:m, enabled:true} : m; });
-    }
+    var s = localStorage.getItem(SETTINGS_KEY);
+    if (s) return JSON.parse(s);
   } catch(e) {}
-  // Migrate from old v2 per-shift key for 2nd shift
+  // Migrate from old roster key
   try {
-    var old = localStorage.getItem('recv_live_roster_v2_shift2');
+    var old = localStorage.getItem('recv_live_roster_v2');
     if (old) {
-      var parsed = JSON.parse(old);
-      var migrated = parsed.map(function(m) { return typeof m === 'string' ? {name:m, enabled:true} : m; });
-      saveRoster(migrated);
-      return migrated;
+      var roster = JSON.parse(old);
+      var map = {};
+      roster.forEach(function(m) {
+        var name    = typeof m === 'string' ? m : m.name;
+        var enabled = typeof m === 'string' ? true : (m.enabled !== false);
+        map[name] = { lanId: '', enabled: enabled };
+      });
+      saveSettingsRaw(map);
+      return map;
     }
   } catch(e) {}
-  // No saved roster — seed from current JSON data if available, otherwise empty
-  if (lastData && lastData.associates && lastData.associates.length) {
-    return lastData.associates.map(function(a) { return {name: a.name, enabled: true}; });
+  return {};
+}
+
+function saveSettingsRaw(map) {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(map)); } catch(e) {}
+}
+
+function encodeId(s) { return s.replace(/[^a-zA-Z0-9]/g, '_'); }
+
+function displayName(name, settings) {
+  var s = settings[name];
+  return (s && s.lanId) ? s.lanId : name;
+}
+
+function isEnabled(name, settings) {
+  var s = settings[name];
+  return s ? s.enabled !== false : true;
+}
+
+// -- Settings modal render ----------------------------------------------------
+function renderSettings(associates) {
+  var settings  = loadSettings();
+  var container = document.getElementById('settings-rows');
+  var searchEl  = document.getElementById('settings-search');
+  var filter    = searchEl ? searchEl.value.trim().toLowerCase() : '';
+
+  if (!associates || !associates.length) {
+    container.innerHTML = '<div class="settings-empty">No associates yet. Run a refresh after shift starts.</div>';
+    return;
   }
-  return [];
+
+  var list = filter ? associates.filter(function(a) {
+    var alias = (settings[a.name] && settings[a.name].lanId) ? settings[a.name].lanId : '';
+    return a.name.toLowerCase().indexOf(filter) !== -1 ||
+           alias.toLowerCase().indexOf(filter) !== -1;
+  }) : associates;
+
+  if (!list.length) {
+    container.innerHTML = '<div class="settings-empty">No matches for "' + escHtml(filter) + '"</div>';
+    return;
+  }
+
+  container.innerHTML = list.map(function(a) {
+    var s   = settings[a.name] || {};
+    var eid = encodeId(a.name);
+    var on  = s.enabled !== false;
+    return '<div class="settings-row">' +
+      '<span class="settings-email" title="' + escHtml(a.name) + '">' + escHtml(a.name) + '</span>' +
+      '<span class="settings-arrow">&#8594;</span>' +
+      '<input class="settings-input" id="lan-' + eid + '" placeholder="Display name" value="' + escHtml(s.lanId || '') + '">' +
+      '<span class="settings-toggle' + (on ? ' on' : '') + '" id="tog-' + eid + '" data-name="' + escHtml(a.name) + '" onclick="toggleEmp(this)"></span>' +
+      '</div>';
+  }).join('');
 }
 
-function saveRoster(r) {
-  try { localStorage.setItem(ROSTER_KEY, JSON.stringify(r)); flashBadge(); } catch(e) {}
+function filterSettings() {
+  if (lastData) renderSettings(lastData.associates || []);
 }
 
-function getActiveSet() {
-  return new Set(loadRoster().filter(function(m) { return m.enabled; }).map(function(m) { return m.name; }));
-}
+function toggleEmp(el) { el.classList.toggle('on'); }
 
-function flashBadge() {
-  var b = document.getElementById('saved-badge');
-  if (b) { b.style.opacity = '1'; setTimeout(function() { b.style.opacity = '0'; }, 1800); }
-}
+function enableAll()  { document.querySelectorAll('.settings-toggle').forEach(function(el){ el.classList.add('on'); }); }
+function disableAll() { document.querySelectorAll('.settings-toggle').forEach(function(el){ el.classList.remove('on'); }); }
 
-function renderRoster() {
-  var roster = loadRoster();
-  var list   = document.getElementById('roster-list');
-  list.innerHTML = '';
-  var active = roster.filter(function(m) { return m.enabled; }).length;
-  document.getElementById('roster-count').textContent = active + ' active / ' + roster.length + ' total';
-  roster.forEach(function(m, i) {
-    var div = document.createElement('div'); div.className = 'roster-member';
-    var label = document.createElement('label'); label.className = 'enable-toggle';
-    var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = m.enabled;
-    cb.addEventListener('change', (function(idx) { return function() { toggleMember(idx); }; })(i));
-    var slider = document.createElement('span'); slider.className = 'enable-slider';
-    label.appendChild(cb); label.appendChild(slider);
-    var nameSpan = document.createElement('span');
-    nameSpan.className = 'member-email' + (m.enabled ? '' : ' disabled');
-    nameSpan.textContent = m.name;
-    var removeBtn = document.createElement('button'); removeBtn.className = 'roster-remove';
-    removeBtn.textContent = '\xd7';
-    removeBtn.addEventListener('click', (function(idx) { return function() { removeMember(idx); }; })(i));
-    div.appendChild(label); div.appendChild(nameSpan); div.appendChild(removeBtn);
-    list.appendChild(div);
+function saveSettings() {
+  var map = loadSettings();
+  // Only update rows currently rendered (preserves filtered-out entries)
+  document.querySelectorAll('#settings-rows .settings-row').forEach(function(row) {
+    var tog  = row.querySelector('.settings-toggle');
+    var inp  = row.querySelector('.settings-input');
+    if (!tog) return;
+    var name = tog.dataset.name;
+    if (!name) return;
+    map[name] = {
+      lanId:   inp ? inp.value.trim() : (map[name] ? map[name].lanId || '' : ''),
+      enabled: tog.classList.contains('on'),
+    };
   });
-}
-
-function addMember() {
-  var input = document.getElementById('new-email');
-  var raw   = input.value.trim().toLowerCase();
-  var name  = raw.includes('@') ? raw.split('@')[0] : raw;
-  if (!name) { input.style.borderColor='#ef4444'; setTimeout(function(){input.style.borderColor='';},1000); return; }
-  var roster = loadRoster();
-  if (roster.find(function(m){return m.name===name;})) {
-    input.style.borderColor='#f59e0b'; setTimeout(function(){input.style.borderColor='';},1000); return;
-  }
-  roster.push({name:name, enabled:true}); saveRoster(roster); input.value=''; renderRoster();
+  saveSettingsRaw(map);
   if (lastData) renderScoreboard(lastData);
+  var toast = document.getElementById('save-toast');
+  if (toast) { toast.classList.add('show'); setTimeout(function(){ toast.classList.remove('show'); }, 1800); }
 }
 
-function removeMember(idx)  { var r=loadRoster(); r.splice(idx,1); saveRoster(r); renderRoster(); if(lastData) renderScoreboard(lastData); }
-function toggleMember(idx)  { var r=loadRoster(); r[idx].enabled=!r[idx].enabled; saveRoster(r); renderRoster(); if(lastData) renderScoreboard(lastData); }
+function resetSettings() {
+  if (!confirm('Clear all LAN ID mappings and enable everyone?')) return;
+  localStorage.removeItem(SETTINGS_KEY);
+  if (lastData) { renderSettings(lastData.associates || []); renderScoreboard(lastData); }
+}
 
-document.getElementById('new-email').addEventListener('keydown', function(e){if(e.key==='Enter') addMember();});
-
-// -- Settings modal -----------------------------------------------------------
-function openSettings()  { renderRoster(); document.getElementById('settings-modal').classList.add('open'); }
+// -- Settings modal open/close ------------------------------------------------
+function openSettings()  {
+  renderSettings(lastData ? lastData.associates || [] : []);
+  document.getElementById('settings-modal').classList.add('open');
+}
 function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
 function modalBackdropClick(e) { if (e.target === document.getElementById('settings-modal')) closeSettings(); }
+
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeSettings(); });
 
 // -- Off-roster toggle --------------------------------------------------------
 function toggleOffRoster() {
@@ -404,7 +457,18 @@ function fetchData(isManual) {
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data) {
       lastData = data;
+      // Auto-populate settings for any new associate
+      var settings = loadSettings();
+      var added = false;
+      (data.associates || []).forEach(function(a) {
+        if (!(a.name in settings)) { settings[a.name] = { lanId: '', enabled: true }; added = true; }
+      });
+      if (added) saveSettingsRaw(settings);
       renderScoreboard(data);
+      // Refresh settings list if modal is open
+      if (document.getElementById('settings-modal').classList.contains('open')) {
+        renderSettings(data.associates || []);
+      }
       scheduleAutoRefresh();
     })
     .catch(function(err) {
@@ -416,6 +480,7 @@ function fetchData(isManual) {
 
 // -- Render -------------------------------------------------------------------
 function renderScoreboard(data) {
+  var settings = loadSettings();
   var nowHour  = new Date().getHours();
   var shift    = data.shift || '2nd';
   var allHours = shift === '1st' ? ALL_1ST : ALL_2ND;
@@ -448,19 +513,9 @@ function renderScoreboard(data) {
     return;
   }
 
-  // Auto-add any new associates from JSON that aren't in the saved roster yet
-  var roster = loadRoster();
-  var rosterNames = new Set(roster.map(function(m) { return m.name; }));
-  var added = false;
-  (data.associates || []).forEach(function(a) {
-    if (!rosterNames.has(a.name)) { roster.push({name: a.name, enabled: true}); added = true; }
-  });
-  if (added) saveRoster(roster);
-
-  var activeSet = getActiveSet();
-  var allAssoc  = (data.associates || []);
-  var onRoster  = allAssoc.filter(function(a) { return activeSet.has(a.name); });
-  var offRoster = allAssoc.filter(function(a) { return !activeSet.has(a.name); });
+  var allAssoc  = data.associates || [];
+  var onRoster  = allAssoc.filter(function(a) { return isEnabled(a.name, settings); });
+  var offRoster = allAssoc.filter(function(a) { return !isEnabled(a.name, settings); });
 
   // Build header
   var headHtml = '<tr><th class="col-emp">Associate</th>';
@@ -473,12 +528,12 @@ function renderScoreboard(data) {
   function buildRows(associates) {
     var html = '';
     associates.forEach(function(a) {
-      html += '<tr><td class="td-emp">' + escHtml(a.name) + '</td>';
+      var label = escHtml(displayName(a.name, settings));
+      html += '<tr><td class="td-emp" title="' + escHtml(a.name) + '">' + label + '</td>';
       hours.forEach(function(h) {
         var n = (a.hours && a.hours[h]) ? a.hours[h] : 0;
         html += '<td style="text-align:center;"><div class="' + hvalCls(n) + '">' + (n > 0 ? n : '&mdash;') + '</div></td>';
       });
-      // Total color based on average over active hours
       var activeHours = hours.filter(function(h) { return a.hours && a.hours[h] > 0; }).length || 1;
       var avg = Math.round(a.lpns / activeHours);
       html += '<td class="td-total"><div class="' + totalCls(avg) + '" style="width:48px;">' + a.lpns + '</div></td>';
@@ -501,11 +556,10 @@ function renderScoreboard(data) {
   footHtml += '</tr>';
   document.getElementById('scoreboard-foot').innerHTML = footHtml;
 
-  // Off-roster
+  // Off-roster (explicitly disabled)
   var offWrap = document.getElementById('off-roster-wrap');
   if (offRoster.length) {
     document.getElementById('off-roster-count').textContent = offRoster.length;
-    // Same header for off-roster table
     document.getElementById('off-roster-head').innerHTML = headHtml;
     document.getElementById('tb-off-roster').innerHTML = buildRows(offRoster);
     offWrap.style.display = 'block';
@@ -519,12 +573,11 @@ function renderScoreboard(data) {
 
 function escHtml(s) {
   if (s == null) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // -- Init ---------------------------------------------------------------------
 fetchData(false);
-scheduleAutoRefresh();
 </script>
 </body>
 </html>
