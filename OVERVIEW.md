@@ -7,7 +7,7 @@ Prepared for: Manhattan Network Reporting Suite integration review
 
 ## What it is
 
-SCOUT (Shift Centralized Output Utilization Tracker) is a real-time operational reporting suite built and maintained by the DC499 operations team. It surfaces associate throughput data from the warehouse management system (MAWM) for 2nd shift supervisors — live, by department, by hour, by person — without requiring manual exports or spreadsheet work.
+SCOUT (Shift Centralized Output Utilization Tracker) is a real-time operational reporting suite built and maintained by the DC499 operations team. It surfaces associate throughput data from the warehouse management system (MAWM) for the support team — live, by department, by hour, by person — without requiring manual exports or spreadsheet work.
 
 The suite covers five departments:
 
@@ -54,7 +54,7 @@ The JSON result files live in a NordTech GitHub repository. The static web pages
 
 **Current state:** The repository is hosted under a personal NordTech account while the organization-level repository under the DC499 reporting structure is being established. SharePoint is the target host for the static pages as part of the Nordstrom intranet rollout.
 
-**Future state (Pages):** Once the NordTech organization repository is confirmed, the static pages will be published via GitHub Pages on the Nordstrom intranet domain — supervisor access via a standard intranet URL, no local file access required.
+**Future state (Pages):** Once the NordTech organization repository is confirmed, the static pages will be published via GitHub Pages on the Nordstrom intranet domain — accessible to the support team via a standard intranet URL, no local file access required.
 
 ---
 
@@ -88,9 +88,9 @@ No data transits any third-party service. The browser's only network call is fet
 
 The floor PC agent authenticates to MAWM via Nordstrom's standard OIDC/SSO flow. OAuth tokens are stored locally on the floor PC only — never committed to the repository, never sent to the browser, never transmitted externally.
 
-Token refresh is automatic. If a session expires, the agent detects it, sends a Teams alert to the supervisor, and re-authentication is completed through a local browser prompt. No IT ticket or password reset is required for routine session renewal.
+Token refresh is automatic. If a session expires, the agent detects it, sends a Teams alert to the support team, and re-authentication is completed through a local browser prompt. No IT ticket or password reset is required for routine session renewal.
 
-The supervisor-facing dashboards have no authentication of their own — access is controlled by the SharePoint permissions of the hosting document library.
+The dashboards have no authentication of their own — access is controlled by the SharePoint permissions of the hosting document library.
 
 ---
 
@@ -101,7 +101,7 @@ SCOUT sends automated summary cards to Microsoft Teams via Power Automate webhoo
 | Event | Trigger | Content |
 |---|---|---|
 | Batch cleared | Automatic, on status change | Wave/batch summary card |
-| Shift summary | Manual, supervisor-initiated | Department totals card |
+| Shift summary | Manual, support team-initiated | Department totals card |
 | Auth expiry | Automatic, agent-detected | Plain text alert |
 
 All notifications contain aggregate operational data only — no associate-level detail.
