@@ -3,8 +3,6 @@
 
 Prepared for: Manhattan Network Reporting Suite integration review
 
-> **For engineering partners:** This document is the recommended starting point. For full implementation detail — query architecture, token mechanics, SQL patterns, JSON schemas — see `ENGINEERING.md`. For the full file inventory and agent launcher reference, see `README.md`.
-
 ---
 
 ## What it is
