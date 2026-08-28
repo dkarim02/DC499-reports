@@ -1,5 +1,5 @@
 {
-    "generated": "2026-08-28T14:37:54",
+    "generated": "2026-08-28T14:39:53",
     "facility": "499",
     "today": "2026-08-28",
     "dates": [
@@ -1241,8 +1241,8 @@
         {
             "date": "2026-08-27",
             "ready": 8,
-            "allocated": 409,
-            "packed": 337,
+            "allocated": 406,
+            "packed": 340,
             "shipped": 1777,
             "orders": [
                 {
@@ -2221,7 +2221,14 @@
                 {
                     "order_id": "1058602730-50001",
                     "status": "ALLOCATED",
-                    "line_count": 4,
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-08-28T02:07:11.956000",
+                    "hazmat": null
+                },
+                {
+                    "order_id": "1058602730-50001",
+                    "status": "PACKED",
+                    "line_count": 3,
                     "oldest_line_utc": "2026-08-28T02:07:11.948000",
                     "hazmat": null
                 },
@@ -3773,13 +3780,6 @@
                     "hazmat": null
                 },
                 {
-                    "order_id": "1058621363-50004",
-                    "status": "ALLOCATING",
-                    "line_count": 1,
-                    "oldest_line_utc": "2026-08-28T05:01:07.952000",
-                    "hazmat": null
-                },
-                {
                     "order_id": "1058621477-50000",
                     "status": "PACKED",
                     "line_count": 1,
@@ -4450,13 +4450,17 @@
             "count": 1
         },
         {
+            "type": "Fill/Kill",
+            "count": 1
+        },
+        {
             "type": "Total",
-            "count": 8
+            "count": 9
         }
     ],
-    "rfp_units": 253,
+    "rfp_units": 247,
     "rfp_single": 117,
-    "rfp_multi": 135,
+    "rfp_multi": 129,
     "shift_label": "1st shift",
     "hazmat_orders": 49,
     "hazmat_lines": 92,
