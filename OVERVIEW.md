@@ -7,7 +7,7 @@ Prepared for: Manhattan Network Reporting Suite integration review
 
 ## What it is
 
-SCOUT (Shift Centralized Output Utilization Tracker) is a real-time operational reporting suite built and maintained by the DC499 operations team. It surfaces associate throughput data from the warehouse management system (MAWM) for the support team — live, by department, by hour, by person — without requiring manual exports or spreadsheet work.
+SCOUT (Shift Centralized Output Utilization Tracker) is a real-time operational reporting suite built and maintained by Dean Karim, Warehouse Trainer and 2nd Shift Supervisor at DC499. It surfaces associate throughput data from the warehouse management system (MAWM) for the support team — live, by department, by hour, by person — without requiring manual exports or spreadsheet work.
 
 The suite covers five departments:
 
