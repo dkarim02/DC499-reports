@@ -1,7 +1,7 @@
 # SCOUT — Shift Centralized Output Utilization Tracker
 ### DC499 Reporter Suite · Nordstrom DC499 Operations
 
-A browser-based reporting suite that delivers real-time associate throughput visibility across multiple departments. Built and maintained by the DC499 operations team. All data sourced from MAWM (warehouse management system).
+A browser-based reporting suite that delivers real-time associate throughput visibility across multiple departments. Built and maintained by Dean Karim, Warehouse Trainer at DC499. All data sourced from MAWM (warehouse management system).
 
 ---
 
@@ -18,7 +18,7 @@ Static HTML/CSS/JS — no build system, no backend. Files are served directly; a
 
 The suite has two modes:
 
-**CSV mode** — supervisor exports an activity tracking CSV from MAWM, drops it into the tool, and gets an instant leaderboard, hourly chart, and shift summary in under 30 seconds.
+**CSV mode** — a support team member exports an activity tracking CSV from MAWM, drops it into the tool, and gets an instant leaderboard, hourly chart, and shift summary in under 30 seconds.
 
 **Live mode** — a Node.js agent running on a DC floor PC queries MAWM directly via an MCP connector, writes JSON payloads, and pushes them to the repo on a 2-minute cycle. Live pages poll the JSON automatically — no CSV needed, no page reload.
 
@@ -119,7 +119,7 @@ DC Floor PC
 
 Each agent authenticates to MAWM via OIDC SSO (Nordstrom account). A file-based lock (`mcp_token.lock`) prevents token collisions when sub-agents run concurrently.
 
-The coordinator pushes all updated JSON files to the GitHub repo in a single commit every 2 minutes. Sub-agents write their JSON locally and rely on the coordinator to pick them up — they never push directly.
+The coordinator pushes all updated JSON files to the NordTech GitHub repo in a single commit every 2 minutes. Sub-agents write their JSON locally and rely on the coordinator to pick them up — they never push directly.
 
 ### Data flow
 
@@ -249,4 +249,4 @@ Operational throughput data only. No customer data, no payment information. Asso
 
 ## Contact
 
-Internal operational tool — DC499 Operations team, 2nd Shift.
+Dean Karim — Warehouse Trainer, Nordstrom DC499
