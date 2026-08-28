@@ -77,7 +77,7 @@ The suite has two modes:
 
 | File | Role |
 |---|---|
-| `dc499_refresh.js` | Coordinator — queries MAWM, writes all primary JSON, pushes to GitHub every 2 min |
+| `dc499_refresh.js` | Coordinator — queries MAWM, writes all primary JSON, pushes to NordTech GitHub every 2 min |
 | `scout_ecom_agent.js` | Sub-agent — Ecom metrics |
 | `scout_reserve_agent.js` | Sub-agent — Reserve metrics + putaway WIP |
 | `scout_shipping_agent.js` | Sub-agent — Shipping metrics |
@@ -97,9 +97,15 @@ The suite has two modes:
 
 ## Architecture
 
-### Static layer (SharePoint / NordTech GitHub)
+### Static layer
 
-Pure HTML/CSS/JS — no framework, no build step. CDN dependencies:
+The front end is pure HTML/CSS/JS — no framework, no build step. Report pages are served from SharePoint (Nordstrom intranet). The live JSON data files are hosted separately in the NordTech GitHub repository and fetched by the browser over HTTPS.
+
+This split-host model means the pages and the data live in two different places:
+- **SharePoint** — hosts the HTML/CSS/JS report files
+- **NordTech GitHub** — hosts the live JSON data payloads
+
+CDN dependencies loaded at runtime:
 - **PapaParse 5.4.1** — CSV parsing
 - **Chart.js 4.4.1** — charts
 
@@ -107,30 +113,31 @@ User preferences (roster, goals, headcount, PPH targets, theme) are stored in `l
 
 ### Agent layer (DC floor PC)
 
+Four Node.js agents run independently on the floor PC:
+
 ```
 DC Floor PC
-├── dc499_refresh.js  ← coordinator (every 2 min)
-│   ├── scout_ecom_agent.js      ← parallel sub-agent
-│   ├── scout_reserve_agent.js   ← parallel sub-agent
-│   └── scout_shipping_agent.js  ← parallel sub-agent
-│
-└── eos_agent.js  ← manual, run at shift boundaries
+├── dc499_refresh.js       ← coordinator (every 2 min, only process that pushes to git)
+├── scout_ecom_agent.js    ← sub-agent, writes ecom_live.json
+├── scout_reserve_agent.js ← sub-agent, writes reserve_live.json + putaway_live.json
+├── scout_shipping_agent.js← sub-agent, writes shipping_live.json
+└── eos_agent.js           ← manual, run at shift boundaries
 ```
 
-Each agent authenticates to MAWM via OIDC SSO (Nordstrom account). A file-based lock (`mcp_token.lock`) prevents token collisions when sub-agents run concurrently.
+Sub-agents run independently and write their JSON files locally. The coordinator picks them up on its next 2-minute cycle and pushes everything to NordTech GitHub in a single commit. Only the coordinator ever touches git — this prevents concurrent push collisions.
 
-The coordinator pushes all updated JSON files to the NordTech GitHub repo in a single commit every 2 minutes. Sub-agents write their JSON locally and rely on the coordinator to pick them up — they never push directly.
+Each agent authenticates to MAWM via OIDC SSO. A file-based lock (`mcp_token.lock`) prevents token collisions when multiple agents refresh credentials simultaneously.
 
 ### Data flow
 
 ```
 MAWM database
-    ↓  (MCP connector, OIDC auth)
-Node.js agents  →  *.json files
-    ↓  (git push, every 2 min)
-NordTech GitHub repo
-    ↓  (SharePoint static site or CDN)
-Browser  ←  fetch JSON every 60s
+    ↓  (OIDC auth, MCP connector)
+DC Floor PC agents  →  *.json files (local disk)
+    ↓  (git push, every 2 min — coordinator only)
+NordTech GitHub repo  (live JSON data)
+    ↓  (HTTPS fetch, every 60s)
+Browser  →  SharePoint-hosted HTML pages
 ```
 
 ### Watchdog

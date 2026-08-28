@@ -3,6 +3,8 @@
 
 Prepared for: Manhattan Network Reporting Suite integration review
 
+> **For engineering partners:** This document is the recommended starting point. For full implementation detail — query architecture, token mechanics, SQL patterns, JSON schemas — see `ENGINEERING.md`. For the full file inventory and agent launcher reference, see `README.md`.
+
 ---
 
 ## What it is
@@ -117,11 +119,15 @@ A single batch menu that launches all agents, handles authentication, and starts
 
 ### Layer 3 — Shared data repository
 
-The JSON result files written by the agents are stored in a NordTech GitHub repository. The static web pages fetch these files on a 60-second polling interval. This creates a clean separation: the agent writes data, the browser reads data, and the repository is the shared handoff point between the two.
+The JSON result files are stored in a NordTech GitHub repository. The static web pages fetch those files on a 60-second polling interval. This creates a clean handoff point: the agent writes, the browser reads, and neither layer needs to know anything about the other beyond the file format.
 
-**Current state:** The repository is under a personal NordTech account while the DC499 organization-level repository is being established. SharePoint is the active host for the static pages as part of the Nordstrom intranet rollout.
+**Split-host model:** SCOUT uses two separate hosts — one for the pages, one for the data:
+- **SharePoint** (Nordstrom intranet) — hosts the HTML/CSS/JS report files, accessible to the support team via intranet URL
+- **NordTech GitHub** — hosts the live JSON data payloads, fetched by the browser over HTTPS
 
-**Future state:** Once the NordTech organization repository is confirmed, the static pages will be published via GitHub Pages on the Nordstrom intranet domain — accessible to the support team via a standard intranet URL with no local file access required.
+This separation means the agent only needs to push JSON to one place, and the front end only needs to fetch from one place. Neither depends on the other's host.
+
+**Repository state:** The repository is currently under a personal NordTech account while the DC499 organization-level repository is being established. Once confirmed, the static pages can optionally be published via GitHub Pages on the Nordstrom intranet domain as an alternative to SharePoint — the agent layer and data flow are identical either way.
 
 ---
 
@@ -133,19 +139,20 @@ MAWM Database  (warehouse management system)
        |  OIDC authenticated query — Nordstrom SSO
        ↓
  Floor PC — Agent Layer
- ├── dc499_refresh.js     (coordinator, every 2 min)
- ├── scout_ecom_agent.js  (sub-agent)
- ├── scout_reserve_agent.js  (sub-agent)
- └── scout_shipping_agent.js (sub-agent)
+ ├── dc499_refresh.js       (coordinator — only process that pushes to git, every 2 min)
+ ├── scout_ecom_agent.js    (sub-agent → ecom_live.json)
+ ├── scout_reserve_agent.js (sub-agent → reserve_live.json, putaway_live.json)
+ └── scout_shipping_agent.js(sub-agent → shipping_live.json)
        |
        |  structured JSON  →  local disk
        |  git push  →  every 2 minutes (coordinator only)
        ↓
- NordTech GitHub Repository  (shared data handoff)
+ NordTech GitHub Repository
+ (live JSON data payloads)
        |
        |  HTTPS fetch  →  every 60 seconds
-       ↓
- Browser  (SharePoint-hosted static pages)
+       ↓                                    ↑ pages served from SharePoint (intranet)
+ Browser  ←───────────────────────────── SharePoint (HTML/CSS/JS)
        |
        ↓
  Support team  —  live department dashboards
