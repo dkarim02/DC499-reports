@@ -1,117 +1,266 @@
-# DC499 Report Processor Suite
+# SCOUT — Shift Centralized Output Utilization Tracker
+### DC499 Reporter Suite · Nordstrom DC499 Operations
 
-A browser-based reporting suite that processes warehouse management system CSV exports and delivers real-time associate throughput visibility across multiple departments. Built and maintained by the DC499 operations team.
+A browser-based reporting suite that delivers real-time associate throughput visibility across multiple departments. Built and maintained by the DC499 operations team. All data sourced from MAWM (warehouse management system).
+
+---
+
+## Hosting
+
+**Primary:** SharePoint static site (Nordstrom intranet)
+**Source:** NordTech GitHub — `DC499-reports` repository
+
+Static HTML/CSS/JS — no build system, no backend. Files are served directly; any static file host works.
 
 ---
 
 ## What it does
 
-The suite eliminates manual CSV filtering and spreadsheet work by automatically processing activity tracking exports from the warehouse management system. Supervisors drop a CSV file into the tool and get an instant leaderboard, hourly activity chart, and shift summary — in under 30 seconds.
+The suite has two modes:
 
-**Departments covered:**
-- Ecom (Replenishment, Putaway, Picking, Packing, Shipping, Sorting)
-- Reserve Stock (Pick F1, Pick F2, Replenishment, Putaway)
-- Item Prep (Item Level Receive, Condition Code)
-- Receiving (LPN Receive — live data via MAWM connector)
+**CSV mode** — supervisor exports an activity tracking CSV from MAWM, drops it into the tool, and gets an instant leaderboard, hourly chart, and shift summary in under 30 seconds.
+
+**Live mode** — a Node.js agent running on a DC floor PC queries MAWM directly via an MCP connector, writes JSON payloads, and pushes them to the repo on a 2-minute cycle. Live pages poll the JSON automatically — no CSV needed, no page reload.
 
 ---
 
-## Features
+## Departments covered
 
-- **Full Report** — shift summary tiles, hourly activity chart, associate leaderboard with expandable 5-min interval charts, clickable department tiles with side panel
-- **PPH goal projection** — projects end-of-shift totals based on configurable headcount and Fin Fcst PPH values, with on-pace/behind indicators per department
-- **Location-based department attribution** — shared transaction IDs (putaway, replen) are attributed to the correct department based on warehouse location zone
-- **Shift selector** — 1st and 2nd shift support with separate rosters and time-window filtering
-- **Teams webhook** — one-click shift summary card posted to Teams channel, shift-aware routing
-- **Roster management** — add, remove, enable, disable associates per department; persists across sessions
-- **Live Receiving dashboard** — queries the warehouse database directly via MCP connector, updated on a configurable interval, no CSV export needed
-- **Cross-file deduplication** — multiple CSV files can be uploaded simultaneously; duplicates removed automatically
-- **Disclaimer footer** — present on all pages per HR guidance
-
----
-
-## Architecture
-
-**No build system required.** Pure HTML, CSS, and JavaScript. Open any file directly in a browser or serve via GitHub Pages.
-
-**Dependencies (loaded from CDN):**
-- [PapaParse 5.4.1](https://www.papaparse.com/) — CSV parsing
-- [Chart.js 4.4.1](https://www.chartjs.org/) — charts
-
-**Storage:** All user preferences (roster, goals, headcount, PPH targets, theme, shift) are stored in `localStorage`. No backend, no database, no authentication required for the CSV-based tools.
-
-**Deployment:** GitHub Pages — push to `main` branch, live within ~60 seconds.
+| Department | Metrics tracked |
+|---|---|
+| Ecom | Replenishment, Putaway, Picking, Packing, Shipping, Sorting |
+| Reserve Stock | Pick F1, Pick F2, Replenishment, Putaway, Putaway WIP |
+| Item Prep | Item Level Receive, Condition Code Removal |
+| Receiving | LPN Receive (live, hourly scoreboard) |
+| Shipping | Palletize oLPN (live, hourly scoreboard) |
 
 ---
 
 ## Files
 
+### HTML — menus and reports
+
 | File | Description |
 |---|---|
 | `index.html` | Redirects to Menu |
 | `Menu_v1.6.html` | Department selection menu |
-| `Ecom_v2_9.html` | Ecom report processor |
-| `Reserve_v1_7.html` | Reserve Stock report processor |
-| `ItemPrep_v2.0.html` | Item Prep report processor |
-| `Receiving_v2.0.html` | Receiving report processor (CSV-based) |
-| `Receiving_live.html` | Receiving live dashboard (database-connected) |
-| `receiving_live.json` | Live receiving data payload (auto-updated by agent) |
-| `receiving_live_agent.ps1` | PowerShell agent — queries MAWM, writes JSON, pushes to GitHub |
-| `Changelog.html` | Changelog viewer |
-| `changelog.json` | Changelog data source |
-| `DC499_Handoff_Guide.md` | Full developer reference |
+| `Ecom_v3.html` | Ecom report processor (CSV + live) |
+| `Reserve_v1_7.html` | Reserve Stock report processor (CSV + live) |
+| `Reserve_putaway.html` | Reserve putaway WIP report (live) |
+| `Reserve_weekly.html` | Reserve weekly recap (bar charts, per-day detail) |
+| `ItemPrep_v2.0.html` | Item Prep report processor (CSV) |
+| `Receiving_live.html` | Receiving live dashboard (hourly scoreboard) |
+| `Shipping_live.html` | Shipping live dashboard (hourly scoreboard) |
+| `Backlog_live.html` | Backlog + PPH projection dashboard |
+| `Batches_live.html` | Wave/batch status dashboard |
+| `Totes_live.html` | Tote status live view |
+| `RetailReplen_live.html` | Retail replenishment live view |
+| `EOS_live.html` | End-of-Shift report viewer |
+
+### JSON — live data payloads (auto-updated by agents)
+
+| File | Written by | Contents |
+|---|---|---|
+| `ecom_live.json` | `scout_ecom_agent.js` | Ecom associate metrics, hourly breakdown |
+| `reserve_live.json` | `scout_reserve_agent.js` | Reserve associate metrics |
+| `putaway_live.json` | `scout_reserve_agent.js` | Reserve putaway WIP (pending iLPNs) |
+| `shipping_live.json` | `scout_shipping_agent.js` | Shipping associate metrics, hourly breakdown |
+| `receiving_live.json` | `dc499_refresh.js` | Receiving associate metrics, hourly breakdown |
+| `backlog_live.json` | `dc499_refresh.js` | Open orders, PPH pace, backlog by date |
+| `batch_status.json` | `dc499_refresh.js` | Wave/batch status, release cadence |
+| `tasks_live.json` | `dc499_refresh.js` | Open tasks, pick-drop carts |
+| `totes_live.json` | `dc499_refresh.js` | Tote status counts |
+| `retail_replen.json` | `dc499_refresh.js` | Retail replenishment metrics |
+| `shipped_live.json` | `dc499_refresh.js` | Shipped oLPN counts |
+
+### Node.js agents (run on the DC floor PC)
+
+| File | Role |
+|---|---|
+| `dc499_refresh.js` | Coordinator — queries MAWM, writes all primary JSON, pushes to GitHub every 2 min |
+| `scout_ecom_agent.js` | Sub-agent — Ecom metrics |
+| `scout_reserve_agent.js` | Sub-agent — Reserve metrics + putaway WIP |
+| `scout_shipping_agent.js` | Sub-agent — Shipping metrics |
+| `eos_agent.js` | End-of-Shift snapshot agent (run manually at shift boundaries) |
+
+### Launchers and utilities
+
+| File | Description |
+|---|---|
+| `dc499.bat` | Main launcher — all agents, auth, and server options in one menu |
+| `eos.bat` | EOS agent launcher |
+| `dc499_watchdog.ps1` | Watchdog — restarts coordinator if process dies (runs as Scheduled Task) |
+| `dc499_watchdog_setup.bat` | One-time setup for the Scheduled Task |
+| `SETUP_NEW_PC.md` | New PC setup walkthrough |
 
 ---
 
-## Live Receiving Dashboard
+## Architecture
 
-The `Receiving_live.html` dashboard queries the warehouse management system database directly via a Claude Code MCP connector, without requiring a CSV export.
+### Static layer (SharePoint / NordTech GitHub)
 
-**How it works:**
-1. `receiving_live_agent.ps1` runs on a loop (configurable interval)
-2. Each cycle it queries the WMS database for current shift receiving activity
-3. Results are written to `receiving_live.json` and pushed to GitHub
-4. `Receiving_live.html` fetches the JSON automatically every 60 seconds
-5. All users who open the page see the same live data
+Pure HTML/CSS/JS — no framework, no build step. CDN dependencies:
+- **PapaParse 5.4.1** — CSV parsing
+- **Chart.js 4.4.1** — charts
 
-**To run the agent:**
-```powershell
-cd "path\to\DC499 Reporter"
-.\receiving_live_agent.ps1          # loop mode
-.\receiving_live_agent.ps1 -RunOnce # single refresh
+User preferences (roster, goals, headcount, PPH targets, theme) are stored in `localStorage`. No backend needed for CSV-mode features.
+
+### Agent layer (DC floor PC)
+
+```
+DC Floor PC
+├── dc499_refresh.js  ← coordinator (every 2 min)
+│   ├── scout_ecom_agent.js      ← parallel sub-agent
+│   ├── scout_reserve_agent.js   ← parallel sub-agent
+│   └── scout_shipping_agent.js  ← parallel sub-agent
+│
+└── eos_agent.js  ← manual, run at shift boundaries
 ```
 
-**Requirements:**
-- Claude Code installed with MAWM MCP connector configured
-- Git installed and repo cloned locally
-- Valid SSO credentials
+Each agent authenticates to MAWM via OIDC SSO (Nordstrom account). A file-based lock (`mcp_token.lock`) prevents token collisions when sub-agents run concurrently.
+
+The coordinator pushes all updated JSON files to the GitHub repo in a single commit every 2 minutes. Sub-agents write their JSON locally and rely on the coordinator to pick them up — they never push directly.
+
+### Data flow
+
+```
+MAWM database
+    ↓  (MCP connector, OIDC auth)
+Node.js agents  →  *.json files
+    ↓  (git push, every 2 min)
+NordTech GitHub repo
+    ↓  (SharePoint static site or CDN)
+Browser  ←  fetch JSON every 60s
+```
+
+### Watchdog
+
+`dc499_watchdog.ps1` runs as a Windows Scheduled Task every 30 minutes. If the coordinator process is not running, it relaunches it automatically. **Lock the PC (Win+L) when leaving — do not log out.**
+
+---
+
+## Running the agents
+
+Always use `dc499.bat` — never invoke Node directly.
+
+```
+dc499.bat options:
+  1  Refresh data once (all primary JSON)
+  2  Start live server on :3001
+  3  Start live server + open Receiving Live
+  4  Re-authenticate (dc499_refresh)
+  5  Ecom Live — one-shot refresh
+  6  Ecom Live — auto-refresh every 3 min
+  7  Ecom Live — auth
+  8  Shipping Live — one-shot refresh
+  9  Shipping Live — auto-refresh every 3 min
+  10 Shipping Live — auth
+  11 Reserve Live — one-shot refresh
+  12 Reserve Live — auto-refresh every 3 min
+  13 Reserve Live — auth
+```
+
+**EOS (End of Shift):**
+```
+eos.bat options:
+  1  SOS snapshot (run at 2:10 PM, start of 2nd shift)
+  2  EOS + finalize (run at shift end)
+  3  Reconstruct SOS (if option 1 was missed)
+  4  Auth
+```
+
+---
+
+## Key design decisions
+
+**Dedup key:** Employee + Transaction ID + Activity Datetime. Never CP Trace Id.
+
+**Zone routing (shared transaction IDs):** Putaway and replen rows are attributed to Reserve Stock if the location's 3rd character is `H`, otherwise Ecom. Checked in Current Location first, Previous Location as fallback, defaults to Ecom.
+
+**Timestamps:** All MAWM timestamps are stored UTC. DC499 is PDT (UTC−7). All queries convert before filtering; all display values convert before rendering.
+
+**Facility ID:** Always `'499'` — never `'0499'`.
+
+**Row cap:** MAWM MCP connector returns up to ~10,000 rows per query. High-volume groups are split into parallel sub-queries to stay under the cap.
+
+---
+
+## Metrics reference
+
+### Ecom
+
+| Activity | Metric |
+|---|---|
+| iLPN Replen Fill / Pull (all variants) | Sum Completed Quantity |
+| System / User Directed Putaway | Row count (zone-filtered) |
+| Ecom Mezz / Non-Mezz Pick To Putwall Cart | Sum Quantity |
+| NRDR CORE PACK FOR ECOM PACK STATION | Sum Quantity |
+| OB Putaway By Ship Via | Sum Quantity, dedup by Container ID |
+| NRDR Load Parcel Packages | Sum Quantity, dedup by Container ID |
+| OB Sort To Putwall Cubby + NRDR_SORT criteria | Sum Quantity |
+
+### Reserve Stock
+
+| Activity | Metric |
+|---|---|
+| Non Haz Retail Pick To oLPN Cart (F1 / F2) | Sum Quantity |
+| iLPN Replen Fill / Fill Large | Sum Completed Quantity |
+| System / User Directed Putaway | Sum Completed Quantity (zone-filtered) |
+
+### Receiving
+
+| Activity | Metric |
+|---|---|
+| LPN Level Receive, Small Parcel LPN Level Receive | Count unique Container IDs |
+
+### Shipping
+
+| Activity | Metric |
+|---|---|
+| NRDR CORE PALLETIZE OLPN, FLOOR LOAD PALLETIZE OLPN | Sum Quantity, dedup by Container ID |
+
+---
+
+## PPH projection (Ecom)
+
+- Shift start: 2:15 PM, end cap: 10:45 PM (8 productive hours)
+- Lunch: 30 min deducted after 6:15 PM
+- Headcount and PPH targets configurable in Settings
+- On pace = current units ≥ projected units at this point in shift
+
+---
+
+## Notifications
+
+Teams webhooks fire on:
+- New batch cleared (auto, Batches_live)
+- Manual shift summary send (all live pages)
+- Agent auth expiry (background alert)
+
+Routing is shift-aware: 1st shift (6 AM–2 PM PDT) and 2nd shift (2 PM–10 PM PDT) post to separate channels.
 
 ---
 
 ## Versioning
 
-- **Patch** (e.g. v2.8 → v2.9): bug fixes, small features, logic changes
-- **Minor** (e.g. v1.9 → v2.0): new major feature added
+**Patch** (v2.8 → v2.9): bug fix, small feature, logic change
+**Minor** (v1.9 → v2.0): new major feature
 
-When bumping a version update three places:
-1. Settings footer tag in the HTML file
-2. Menu card version badge
-3. Menu `openApp()` filename call
+Three places to update on every version bump:
+1. HTML `<title>` tag
+2. Settings footer tag in the HTML
+3. Menu card badge + `openApp()` filename in Menu
 
 ---
 
 ## Data & Privacy
 
-This tool processes operational throughput data only. No customer data, no payment information, no personally identifiable information beyond associate usernames used for productivity tracking.
+Operational throughput data only. No customer data, no payment information. Associate usernames (email) are used for productivity tracking and are subject to standard Nordstrom data handling policies.
 
-**Disclaimer:** This tool measures throughput only and may not be used independently to evaluate, coach, or hold team members accountable on performance.
-
----
-
-## Contributing
-
-This is an internal operational tool. For changes, bug reports, or feature requests contact the DC499 operations team.
+> **Disclaimer:** This tool measures throughput only and may not be used independently to evaluate, coach, or hold team members accountable on performance.
 
 ---
 
-*Built with Claude AI · Nordstrom DC499*
+## Contact
+
+Internal operational tool — DC499 Operations team, 2nd Shift.
