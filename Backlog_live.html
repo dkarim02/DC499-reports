@@ -2285,11 +2285,8 @@ function renderPickDropCarts(carts) {
   var card = document.getElementById('tk-pickdrop-card');
   var body = document.getElementById('tk-pickdrop-body');
 
-  var threshold = agingThreshold(carts);
-  var aged = carts.filter(function(c) { return c.oldest_min >= threshold; });
-  if (!aged.length) { card.style.display = 'none'; return; }
+  if (!carts.length) { card.style.display = 'none'; return; }
   card.style.display = '';
-  carts = aged;
 
   function fmtAge(mins) {
     if (mins == null) return '—';
