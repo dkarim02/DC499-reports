@@ -514,10 +514,16 @@ function switchTab(tab) {
   ['full','live','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
+  try { localStorage.setItem('dc499_reserve_tab_v1', tab); } catch(e) {}
   if (tab === 'settings') { renderRoster(); renderGoalsCard(); }
   if (tab === 'full') { renderFullReport(); }
   if (tab === 'live') { loadLiveData(); }
 }
+(function() {
+  var saved;
+  try { saved = localStorage.getItem('dc499_reserve_tab_v1'); } catch(e) {}
+  if (saved && saved !== 'full') { switchTab(saved); }
+})();
 function openWeeklyRecap() {
   var base = window.location.href.replace(/\/[^\/]*$/, '/');
   window.open(base + 'Reserve_weekly.html', '_blank');
