@@ -1302,7 +1302,7 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
       avg_release_interval_mins: avgInterval,
       queued_orders:             queuedOrders,
       queued_units:              queuedUnits,
-      batch_threshold:           96,
+      batch_threshold:           36,
     },
     batches,
   };
