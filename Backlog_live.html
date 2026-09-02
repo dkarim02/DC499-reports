@@ -596,7 +596,7 @@
           <div class="metric alloc">
             <div class="metric-label">Allocated</div>
             <div class="metric-value" id="m-alloc">--</div>
-            <div class="metric-sub">In wave, unpicked</div>
+            <div class="metric-sub">Inventory allocated</div>
           </div>
           <div class="metric rfp">
             <div class="metric-label">Ready for Pack</div>
@@ -1895,7 +1895,7 @@ async function sendToTeams(btn) {
             "type": "ColumnSet",
             "columns": [
               {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"READY","size":"Small","weight":"Bolder","color":"Good"},{"type":"TextBlock","text":ready.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"},{"type":"TextBlock","text":"not yet in wave","size":"Small","isSubtle":true,"spacing":"None"}]},
-              {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"ALLOCATED","size":"Small","weight":"Bolder","color":"Warning"},{"type":"TextBlock","text":allocated.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"},{"type":"TextBlock","text":"in wave, unpicked","size":"Small","isSubtle":true,"spacing":"None"}]},
+              {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"ALLOCATED","size":"Small","weight":"Bolder","color":"Warning"},{"type":"TextBlock","text":allocated.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"},{"type":"TextBlock","text":"Inventory allocated","size":"Small","isSubtle":true,"spacing":"None"}]},
               {"type":"Column","width":"stretch","style":"emphasis","items":[{"type":"TextBlock","text":"PACKED","size":"Small","weight":"Bolder","color":"Accent"},{"type":"TextBlock","text":packed.toLocaleString(),"size":"ExtraLarge","weight":"Bolder","spacing":"None"},{"type":"TextBlock","text":"awaiting ship","size":"Small","isSubtle":true,"spacing":"None"}]}
             ]
           },
