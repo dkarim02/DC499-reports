@@ -1,14 +1,14 @@
 {
-    "generated": "2026-09-03T22:05:19.312Z",
+    "generated": "2026-09-03T22:07:42.346Z",
     "shift": "2nd",
     "shift_start": "2026-09-03 21:00:00",
     "facility": "499",
     "picking": {
         "queued": 23,
         "assigned": 0,
-        "in_progress": 0,
+        "in_progress": 1,
         "completed": 0,
-        "total_open": 23,
+        "total_open": 24,
         "tasks": [
             {
                 "task_id": "WRPICK0000242047",
@@ -23,8 +23,8 @@
             {
                 "task_id": "WRPICK0000242045",
                 "subtype": "NON MEZZ",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "F1D1212C01",
                 "target": null,
                 "created_pdt": "2026-09-03T13:15:12.192000",
@@ -239,6 +239,16 @@
                 "target": null,
                 "created_pdt": "2026-09-03T15:00:12.569000",
                 "detail_count": 1
+            },
+            {
+                "task_id": "WRPICK0000242075",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F1D0511B02",
+                "target": null,
+                "created_pdt": "2026-09-03T15:05:06.571000",
+                "detail_count": 1
             }
         ]
     },
@@ -302,25 +312,5 @@
         ]
     },
     "pick_drop_carts": [],
-    "flow_carts": [
-        {
-            "location": "P1-FC-010007",
-            "ilpns": [
-                {
-                    "ilpn_id": "00006499300003611572",
-                    "on_hand": 1,
-                    "updated_pst": "2026-09-03T11:21:43.814000",
-                    "age_min": 164
-                },
-                {
-                    "ilpn_id": "00006499300003611541",
-                    "on_hand": 2,
-                    "updated_pst": "2026-09-03T14:04:36.828000",
-                    "age_min": 1
-                }
-            ],
-            "total_units": 3,
-            "oldest_min": 164
-        }
-    ]
+    "flow_carts": []
 }
