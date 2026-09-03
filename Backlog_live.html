@@ -581,6 +581,9 @@
             <span class="total-capsule-label">Total Open</span>
             <span class="total-capsule-value" id="m-total">--</span>
             <span class="total-capsule-date" id="m-date">Today</span>
+            <span style="color:var(--border-mid);font-size:18px;margin:0 4px;">|</span>
+            <span class="total-capsule-label">Total Allocated</span>
+            <span class="total-capsule-value" id="m-total-alloc" style="color:var(--alloc);">--</span>
           </div>
           <div class="total-capsule-right" id="m-last-wave-cap" style="display:none;">
             <span style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Last wave</span>
@@ -596,7 +599,7 @@
           <div class="metric alloc">
             <div class="metric-label">Allocated</div>
             <div class="metric-value" id="m-alloc">--</div>
-            <div class="metric-sub">In wave, unpicked</div>
+            <div class="metric-sub">Not in Packing</div>
           </div>
           <div class="metric rfp">
             <div class="metric-label">Ready for Pack</div>
@@ -1492,7 +1495,9 @@ function renderBacklogData(data) {
   var totGrand = (data.dates||[]).reduce(function(s,d){return s+(d.daily_total||0);},0);
   document.getElementById('ft-grand').textContent   = fmt(totGrand);
   document.getElementById('m-ready').textContent    = fmt(totR);
-  document.getElementById('m-alloc').textContent    = fmt(totA);
+  var prePackLine = lastRfpUnits != null ? Math.max(0, totA - lastRfpUnits) : totA;
+  document.getElementById('m-alloc').textContent    = fmt(prePackLine);
+  document.getElementById('m-total-alloc').textContent = fmt(totA);
   if (lastRfpUnits != null) document.getElementById('m-rfp').textContent = fmt(lastRfpUnits);
   document.getElementById('m-packed').textContent   = fmt(totP);
   document.getElementById('m-total').textContent   = fmt(totO);
