@@ -1,5 +1,5 @@
 {
-    "generated": "2026-09-03T12:26:07.648Z",
+    "generated": "2026-09-03T12:27:51.505Z",
     "shift": "1st",
     "shift_start": "2026-09-03 10:00:00",
     "facility": "499",
@@ -33,11 +33,11 @@
         ]
     },
     "replen": {
-        "queued": 18,
+        "queued": 16,
         "assigned": 0,
-        "in_progress": 1,
+        "in_progress": 2,
         "completed": 0,
-        "total_open": 19,
+        "total_open": 18,
         "tasks": [
             {
                 "task_id": "WRPICK0000241699",
@@ -80,20 +80,10 @@
                 "detail_count": 2
             },
             {
-                "task_id": "WRPICK0000241723",
+                "task_id": "WRPICK0000241725",
                 "subtype": "REPLEN PULL",
                 "status": "7000",
                 "status_label": "In Progress",
-                "source": "R1F0708A03",
-                "target": "F1D0813E07",
-                "created_pdt": "2026-09-02T20:55:11.845000",
-                "detail_count": 1
-            },
-            {
-                "task_id": "WRPICK0000241725",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
                 "source": "R1E0105A01",
                 "target": "F1D0814C03",
                 "created_pdt": "2026-09-02T20:55:11.929000",
@@ -101,9 +91,9 @@
             },
             {
                 "task_id": "WRPICK0000241729",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "REPLEN PULL",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1B0113B02",
                 "target": "F1D0813E07",
                 "created_pdt": "2026-09-02T20:55:12.700000",
@@ -231,6 +221,20 @@
             }
         ]
     },
-    "pick_drop_carts": [],
+    "pick_drop_carts": [
+        {
+            "location": "P1-PK-09",
+            "ilpns": [
+                {
+                    "ilpn_id": "00006499300003630085",
+                    "on_hand": 18,
+                    "updated_pst": "2026-09-03T04:26:17.688000",
+                    "age_min": 2
+                }
+            ],
+            "total_units": 18,
+            "oldest_min": 2
+        }
+    ],
     "flow_carts": []
 }
