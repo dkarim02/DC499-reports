@@ -1,5 +1,5 @@
 {
-    "generated": "2026-09-03T22:49:24.900Z",
+    "generated": "2026-09-03T22:51:25.024Z",
     "shift": "2nd",
     "shift_start": "2026-09-03 21:00:00",
     "facility": "499",
@@ -203,9 +203,9 @@
         ]
     },
     "replen": {
-        "queued": 1,
+        "queued": 0,
         "assigned": 0,
-        "in_progress": 0,
+        "in_progress": 1,
         "completed": 3,
         "total_open": 1,
         "tasks": [
@@ -221,9 +221,9 @@
             },
             {
                 "task_id": "WRPICK0000242064",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "PICK FULL CASE",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1C0101B01",
                 "target": null,
                 "created_pdt": "2026-09-03T14:25:12.069000",
@@ -251,6 +251,44 @@
             }
         ]
     },
-    "pick_drop_carts": [],
+    "pick_drop_carts": [
+        {
+            "location": "P1-PK-02",
+            "ilpns": [
+                {
+                    "ilpn_id": "00006854281045974951",
+                    "on_hand": 3,
+                    "updated_pst": "2026-09-03T14:50:21.820000",
+                    "age_min": 1
+                },
+                {
+                    "ilpn_id": "00006854281045975033",
+                    "on_hand": 3,
+                    "updated_pst": "2026-09-03T14:50:28.773000",
+                    "age_min": 1
+                },
+                {
+                    "ilpn_id": "00006854281045974937",
+                    "on_hand": 3,
+                    "updated_pst": "2026-09-03T14:50:45.099000",
+                    "age_min": 1
+                },
+                {
+                    "ilpn_id": "00006854281045974876",
+                    "on_hand": 3,
+                    "updated_pst": "2026-09-03T14:50:59.648000",
+                    "age_min": 0
+                },
+                {
+                    "ilpn_id": "00006854281045975026",
+                    "on_hand": 3,
+                    "updated_pst": "2026-09-03T14:51:22.339000",
+                    "age_min": 0
+                }
+            ],
+            "total_units": 15,
+            "oldest_min": 1
+        }
+    ],
     "flow_carts": []
 }
