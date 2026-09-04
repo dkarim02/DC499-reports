@@ -198,6 +198,20 @@ Routing: `getShift()` — 1st = 6AM–2PM PDT, 2nd = 2PM–10PM PDT.
 
 ---
 
+## Ecom_v3.html — per-transaction TM disable
+
+**Disable button scoped to transaction:** Clicking Disable on a TM in the live table removes them from that transaction card only. State stored in `disabled_tx[]` array on each roster member. A smaller "all" button next to Disable sets `enabled = false` globally (same as roster toggle).
+
+**`isTMEnabledForTx(roster, emp, typ)`:** Returns false if `!m.enabled` OR if `typ` is in `m.disabled_tx`. Used in `renderLiveReport` enabled/disabled row splits and `renderSidePanel`.
+
+**`toggleTMFromLive(emp, typ)` / `toggleTMFromPanel(emp, typ)`:** Toggle `typ` in/out of `disabled_tx`. Enable button on a disabled row re-adds them for that tx only.
+
+**`disableTMAllFromLive(emp)` / `disableTMAllFromPanel(emp)`:** Set `enabled = false`, clear `disabled_tx` — removes TM from all cards.
+
+**`loadRoster` normalization:** Always ensures `disabled_tx: []` is present, backward-compatible with saved rosters that predate this field.
+
+---
+
 ## Batches_live.html / Backlog_live.html
 
 **Themes:** dark, solid, pastel, starr, light. CSS `data-theme` attribute + custom properties. `starr` = pink glamour (Dean's boss). THEME_VALS and THEME_NAMES arrays must stay in sync with CSS and dropdown HTML.
@@ -207,6 +221,8 @@ Routing: `getShift()` — 1st = 6AM–2PM PDT, 2nd = 2PM–10PM PDT.
 **Send dropdown (Backlog):** "Send to Teams" + "EOD Email" in expandable `↑ Send` dropdown (id=send-picker). Click-outside closes both `theme-picker` and `send-picker`. `sendToTeams(btn)` — btn may be a `<div>` not `<button>`, guard: `if(btn.disabled!==undefined) btn.disabled=true`.
 
 **Bridge card:** Units/Hour renamed "Bridge" (id=hourly-title). Two stacked sub-tables side-by-side.
+
+**Allocated tile (banner):** Shows `totA - rfp_units` (units allocated but not yet at D1-SN-01 = "Not in Packing"). Ecom order lines are always 1 unit so line count and unit count are equal — subtraction is clean. `m-total-alloc` in the top capsule shows the full `totA` as "Total Allocated". RFP tile stays separate and unchanged.
 
 **Pick Drop Carts (Tasks tab):** `#tk-pickdrop-card` shows iLPNs sitting at `P1-PK-xx` locations that should be cleared by EOS. Query in `fetchTaskData()` — `DCI_ILPN LEFT JOIN DCI_INVENTORY WHERE CURRENT_LOCATION_ID LIKE 'P1-PK%' AND STATUS != '9000' AND IS_CLOSED = 0`. Written to `pick_drop_carts` in tasks_live.json. Groups by location, calculates `age_min` per iLPN, `oldest_min` per cart. Card hidden when empty. Age color: green <30m, amber 30–60m, red >60m. No summary tile — card only.
 
@@ -311,7 +327,11 @@ Rebuilt 2026-08-15 to match Shipping Live format.
 
 **Metrics:** pick_f1 (Non Haz Retail Pick To oLPN Cart), pick_f2 (Non Haz Retail Pick To oLPN Cart Floor 2), replen (iLPN Replen Fill/Large), putaway (System/User Directed Putaway). Zone H filter on replen + putaway.
 
-**NAIL button:** `nailFromLiveRS(btn)` in Reserve_v1_7.html — writes to NTP Retail tab (`ntp_dc499_v1` localStorage). Picking → "Retail OUT", Replen + Putaway → "Retail IN".
+**Shift detection (agent):** `is1st = h >= 10 && h < 22` (UTC) — covers 3 AM–2:59 PM PDT. 1st shift start: 10:00 UTC. 2nd shift start: 21:10 UTC (previous day if h < 10).
+
+**Shift sync (HTML):** `loadLiveData()` auto-syncs app shift to match `d.shift` from JSON before calling `renderLiveReport`. This ensures roster/PPH storage keys are correct before rendering. Never call `setShift()` from inside `renderLiveReport` — it flips storage keys mid-render and crashes headcount reads.
+
+**NAIL button:** `nailFromLiveRS(btn)` in Reserve_v1_7.html — writes to NTP Retail tab (`ntp_dc499_v1` localStorage). Picking → "Retail OUT", Replen + Putaway → "Retail IN". `ntpCurrentBlockRS()` filters `NTP_BLOCKS` by `getShift()` before matching — prevents 1st|EOD block being matched on 2nd shift during the 3 PM–8 PM overlap window.
 
 ---
 
