@@ -672,8 +672,8 @@ function renderLiveReport(d) {
     if (!allSorted.length) {
       html += '<div class="full-empty" style="padding:1rem;">No '+label+' transactions found</div>';
     } else {
-      var enabledRows  = allSorted.filter(function(e){ var m=roster.find(function(r){return r.email===e[0];}); return m ? m.enabled : false; });
-      var disabledRows = allSorted.filter(function(e){ var m=roster.find(function(r){return r.email===e[0];}); return m && !m.enabled; });
+      var enabledRows  = allSorted.filter(function(e){ return isTMEnabledForTx(roster, e[0], typ); });
+      var disabledRows = allSorted.filter(function(e){ var m=roster.find(function(r){return r.email===e[0];}); return m && !isTMEnabledForTx(roster, e[0], typ); });
       html += '<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th><th></th></tr></thead><tbody>';
       var enabledIdx = 0;
       enabledRows.forEach(function(entry) {
@@ -690,7 +690,7 @@ function renderLiveReport(d) {
         html += '<td style="text-align:right;font-weight:500;">'+totalCell+'</td>';
         html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill '+barClass+'" style="width:'+pct+'%"></div></div>';
         html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">'+pct+'%</span></div></td>';
-        html += '<td><button class="full-side-disable-btn" onclick="toggleTMFromLive(\''+safeEmp+'\')">Disable</button></td>';
+        html += '<td style="white-space:nowrap;"><button class="full-side-disable-btn" onclick="toggleTMFromLive(\''+safeEmp+'\',\''+typ+'\')">Disable</button> <button class="full-side-disable-btn" style="opacity:0.55;font-size:10px;" onclick="disableTMAllFromLive(\''+safeEmp+'\')">all</button></td>';
         html += '</tr>';
       });
       if (disabledRows.length) {
@@ -704,7 +704,7 @@ function renderLiveReport(d) {
           html += '<td style="text-align:right;font-weight:500;"><span style="color:var(--text-hint);">'+val.toLocaleString()+'</span></td>';
           html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"></div>';
           html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">—</span></div></td>';
-          html += '<td><button class="full-side-disable-btn" onclick="toggleTMFromLive(\''+safeEmp+'\')">Enable</button></td>';
+          html += '<td><button class="full-side-disable-btn" onclick="toggleTMFromLive(\''+safeEmp+'\',\''+typ+'\')">Enable</button></td>';
           html += '</tr>';
         });
       }
@@ -718,11 +718,23 @@ function renderLiveReport(d) {
   if (content) content.innerHTML = html;
 }
 
-function toggleTMFromLive(emp) {
+function toggleTMFromLive(emp, typ) {
   var roster = loadRoster();
   var idx = roster.findIndex(function(m){ return m.email === emp; });
   if (idx === -1) return;
-  roster[idx].enabled = !roster[idx].enabled;
+  var dt = roster[idx].disabled_tx || [];
+  var pos = dt.indexOf(typ);
+  if (pos === -1) { dt.push(typ); } else { dt.splice(pos, 1); }
+  roster[idx].disabled_tx = dt;
+  saveRoster(roster);
+  if (liveData) renderLiveReport(liveData);
+}
+function disableTMAllFromLive(emp) {
+  var roster = loadRoster();
+  var idx = roster.findIndex(function(m){ return m.email === emp; });
+  if (idx === -1) return;
+  roster[idx].enabled = false;
+  roster[idx].disabled_tx = [];
   saveRoster(roster);
   if (liveData) renderLiveReport(liveData);
 }
@@ -853,11 +865,19 @@ function loadRoster() {
     const s = localStorage.getItem(getRosterKey());
     if (s) {
       const parsed = JSON.parse(s);
-      return parsed.map(function(m) { return typeof m === 'string' ? {email: m, enabled: true} : m; });
+      return parsed.map(function(m) {
+        if (typeof m === 'string') return {email: m, enabled: true, disabled_tx: []};
+        return {email: m.email, enabled: m.enabled !== false, disabled_tx: m.disabled_tx || []};
+      });
     }
   } catch(e) {}
   const defaults = getShift() === '1st' ? DEFAULT_TEAM_1ST : DEFAULT_TEAM_2ND;
-  return defaults.map(function(m) { return {email: m.email, enabled: m.enabled}; });
+  return defaults.map(function(m) { return {email: m.email, enabled: m.enabled, disabled_tx: []}; });
+}
+function isTMEnabledForTx(roster, emp, typ) {
+  var m = roster.find(function(r){ return r.email === emp; });
+  if (!m || !m.enabled) return false;
+  return !m.disabled_tx || m.disabled_tx.indexOf(typ) === -1;
 }
 function saveRoster(r) { try { localStorage.setItem(getRosterKey(), JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {} }
 function getTeamSet() { return new Set(loadRoster().filter(function(m) { return m.enabled; }).map(function(m) { return m.email; })); }
@@ -1573,7 +1593,7 @@ function renderSidePanel(typ) {
   Object.keys(empTotals).forEach(function(emp) {
     var rosterEntry = roster.find(function(m){ return m.email === emp; });
     if (rosterEntry) {
-      onRoster.push({emp:emp, val:empTotals[emp], enabled:rosterEntry.enabled});
+      onRoster.push({emp:emp, val:empTotals[emp], enabled:isTMEnabledForTx(roster, emp, typ), globalEnabled:rosterEntry.enabled});
     } else {
       offRoster.push({emp:emp, val:empTotals[emp]});
     }
@@ -1593,6 +1613,9 @@ function renderSidePanel(typ) {
       html += '<div style="display:flex;align-items:center;gap:6px;">';
       html += '<span class="full-side-tm-units">'+item.val.toLocaleString()+'</span>';
       html += '<button class="full-side-disable-btn" data-emp="'+item.emp+'" data-typ="'+typ+'" onclick="toggleTMFromPanel(this.dataset.emp,this.dataset.typ)">'+btnLabel+'</button>';
+      if (item.enabled && item.globalEnabled) {
+        html += '<button class="full-side-disable-btn" style="opacity:0.55;font-size:10px;" data-emp="'+item.emp+'" onclick="disableTMAllFromPanel(this.dataset.emp)">all</button>';
+      }
       html += '</div></div>';
     });
     html += '</div>';
@@ -1631,7 +1654,21 @@ function toggleTMFromPanel(emp, typ) {
   var roster = loadRoster();
   var idx = roster.findIndex(function(m){ return m.email === emp; });
   if (idx === -1) return;
-  roster[idx].enabled = !roster[idx].enabled;
+  var dt = roster[idx].disabled_tx || [];
+  var pos = dt.indexOf(typ);
+  if (pos === -1) { dt.push(typ); } else { dt.splice(pos, 1); }
+  roster[idx].disabled_tx = dt;
+  saveRoster(roster);
+  renderFullReport();
+  if (_activeTile) setTimeout(function(){ renderSidePanel(_activeTile); }, 50);
+  if (liveData && document.getElementById('panel-live').className.includes('active')) renderLiveReport(liveData);
+}
+function disableTMAllFromPanel(emp) {
+  var roster = loadRoster();
+  var idx = roster.findIndex(function(m){ return m.email === emp; });
+  if (idx === -1) return;
+  roster[idx].enabled = false;
+  roster[idx].disabled_tx = [];
   saveRoster(roster);
   renderFullReport();
   if (_activeTile) setTimeout(function(){ renderSidePanel(_activeTile); }, 50);
