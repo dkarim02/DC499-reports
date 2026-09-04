@@ -274,7 +274,7 @@ function ts() {
 function shiftStartUtc() {
   const nowUtc = new Date();
   const h = nowUtc.getUTCHours();
-  const is1st = h >= 10 && h < 21;
+  const is1st = h >= 10 && h < 22; // 3 AM–2:59 PM PDT (21:59 UTC covers 1st shift end at ~2:15 PM)
   const start = new Date(nowUtc);
   if (is1st) {
     start.setUTCHours(10, 0, 0, 0);

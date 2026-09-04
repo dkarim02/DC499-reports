@@ -458,7 +458,6 @@ function setShift(shift) {
   if (typeof renderHeadcountCard === 'function') renderHeadcountCard();
   if (typeof renderPPHSection    === 'function') renderPPHSection();
 }
-const SHIFT_BOUNDS = SHIFT_BOUNDS_MAP['2nd'];
 
 let charts = {pick:null,pick2:null,replen:null,putaway:null};
 const chartModes = {pick:'smooth',pick2:'smooth',replen:'smooth',putaway:'smooth'};
@@ -1511,7 +1510,9 @@ function renderLiveReport(d) {
   }
 
   var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
-  if (meta) meta.textContent = (d.shift || '2nd') + ' shift \xb7 updated ' + gen;
+  var dataShift = d.shift || '2nd';
+  if (dataShift !== getShift()) { setShift(dataShift); }
+  if (meta) meta.textContent = dataShift + ' shift \xb7 updated ' + gen;
 
   var roster = loadRoster();
   var TEAM   = getTeamSet();
@@ -1720,8 +1721,10 @@ function ntpCurrentBlockRS() {
   var pst = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
   var cur = pst.getHours() * 60 + pst.getMinutes();
   var curAdj = pst.getHours() < 2 ? cur + 24 * 60 : cur;
+  var shift = getShift();
   for (var i = 0; i < NTP_BLOCKS.length; i++) {
     var b = NTP_BLOCKS[i];
+    if (b.shift !== shift) continue;
     var s = b.startH * 60 + b.startM, e = b.endH * 60 + b.endM;
     if (curAdj >= s && curAdj <= e) return b;
   }
