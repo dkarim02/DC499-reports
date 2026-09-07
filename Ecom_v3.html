@@ -722,10 +722,15 @@ function toggleTMFromLive(emp, typ) {
   var roster = loadRoster();
   var idx = roster.findIndex(function(m){ return m.email === emp; });
   if (idx === -1) return;
-  var dt = roster[idx].disabled_tx || [];
-  var pos = dt.indexOf(typ);
-  if (pos === -1) { dt.push(typ); } else { dt.splice(pos, 1); }
-  roster[idx].disabled_tx = dt;
+  if (!roster[idx].enabled) {
+    roster[idx].enabled = true;
+    roster[idx].disabled_tx = [];
+  } else {
+    var dt = roster[idx].disabled_tx || [];
+    var pos = dt.indexOf(typ);
+    if (pos === -1) { dt.push(typ); } else { dt.splice(pos, 1); }
+    roster[idx].disabled_tx = dt;
+  }
   saveRoster(roster);
   if (liveData) renderLiveReport(liveData);
 }
@@ -1654,10 +1659,15 @@ function toggleTMFromPanel(emp, typ) {
   var roster = loadRoster();
   var idx = roster.findIndex(function(m){ return m.email === emp; });
   if (idx === -1) return;
-  var dt = roster[idx].disabled_tx || [];
-  var pos = dt.indexOf(typ);
-  if (pos === -1) { dt.push(typ); } else { dt.splice(pos, 1); }
-  roster[idx].disabled_tx = dt;
+  if (!roster[idx].enabled) {
+    roster[idx].enabled = true;
+    roster[idx].disabled_tx = [];
+  } else {
+    var dt = roster[idx].disabled_tx || [];
+    var pos = dt.indexOf(typ);
+    if (pos === -1) { dt.push(typ); } else { dt.splice(pos, 1); }
+    roster[idx].disabled_tx = dt;
+  }
   saveRoster(roster);
   renderFullReport();
   if (_activeTile) setTimeout(function(){ renderSidePanel(_activeTile); }, 50);
