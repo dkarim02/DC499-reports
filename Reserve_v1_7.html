@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reserve Stock Report Processor v1.8</title>
+<title>Reserve Stock Report Processor v1.9</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -290,6 +290,47 @@
   .pph-body.open{display:block;}
   .pph-input{width:100%;font-family:inherit;font-size:13px;padding:5px 8px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);outline:none;text-align:right;}
   .pph-input:focus{border-color:#9B4DCA;}
+
+  /* ── SCORECARD ── */
+  .sc-disclaimer{font-size:11px;color:var(--text-hint);background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:1rem;line-height:1.4;}
+  .sc-wrap{overflow-x:auto;border:0.5px solid var(--border);border-radius:10px;background:var(--surface);}
+  .sc-matrix{width:100%;border-collapse:collapse;font-size:13px;table-layout:auto;}
+  .sc-matrix th{padding:9px 10px;background:var(--surface2);color:var(--text-muted);font-weight:500;white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:center;font-size:12px;}
+  .sc-matrix th:first-child{text-align:left;min-width:110px;}
+  .sc-matrix td{padding:8px 10px;border-bottom:0.5px solid var(--border-light);text-align:center;white-space:nowrap;font-size:13px;color:var(--text);}
+  .sc-matrix td:first-child{text-align:left;color:var(--text);font-size:13px;}
+  .sc-matrix tbody tr.sc-data-row:hover td{background:var(--drop-hover);cursor:pointer;}
+  .sc-matrix tbody tr.sc-data-row.sc-selected td{background:rgba(155,77,202,0.07);}
+  .sc-matrix tbody tr.sc-data-row.sc-selected td:first-child{border-left:2px solid #9B4DCA;}
+  .sc-matrix tfoot td{font-weight:600;border-top:1.5px solid var(--border);background:var(--surface2);font-size:11px;text-align:center;}
+  .sc-matrix tfoot td:first-child{text-align:left;}
+  .sc-v-0{color:var(--text-hint);}
+  .sc-v-lo{color:#dc2626;font-weight:500;}
+  .sc-v-mid{color:var(--text-muted);}
+  .sc-v-ok{color:#059669;font-weight:500;}
+  .sc-v-hi{color:#047857;font-weight:600;}
+  .sc-trend-up{color:#059669;font-size:10px;margin-left:3px;vertical-align:middle;}
+  .sc-trend-dn{color:#dc2626;font-size:10px;margin-left:3px;vertical-align:middle;}
+  .sc-drawer td{padding:0;border-bottom:1px solid var(--border);background:var(--surface);}
+  .sc-drawer-inner{padding:12px 14px;border-left:2px solid #9B4DCA;}
+  .sc-drawer-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .sc-drawer-name{font-size:13px;font-weight:600;color:var(--text);}
+  .sc-drawer-close{font-size:14px;cursor:pointer;color:var(--text-hint);background:none;border:none;font-family:inherit;line-height:1;padding:2px 6px;border-radius:4px;}
+  .sc-drawer-close:hover{background:var(--surface2);color:var(--text);}
+  .sc-stat-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .sc-stat{border:0.5px solid var(--border);border-radius:7px;padding:7px 10px;min-width:72px;}
+  .sc-stat-label{font-size:9px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;}
+  .sc-stat-val{font-size:13px;font-weight:600;color:var(--text);}
+  .sc-stat-sub{font-size:9px;color:var(--text-muted);margin-top:1px;}
+  .sc-ep-bar{height:5px;border-radius:3px;background:var(--bar-bg);margin-top:4px;overflow:hidden;}
+  .sc-ep-fill{height:100%;border-radius:3px;}
+  .sc-ep-lo{background:#dc2626;} .sc-ep-mid{background:#d97706;} .sc-ep-hi{background:#059669;}
+  .sc-dept-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .sc-dept-chip{font-size:11px;padding:3px 8px;border-radius:12px;border:0.5px solid var(--border);color:var(--text-muted);}
+  .sc-dept-chip strong{color:var(--text);}
+  /* per-card disable button */
+  .full-side-disable-all-btn{font-size:10px;padding:2px 6px;border-radius:4px;border:1.5px solid var(--border);background:none;color:var(--text-hint);cursor:pointer;font-family:inherit;}
+  .full-side-disable-all-btn:hover{background:var(--surface2);color:var(--text);}
 </style>
 </head>
 <body>
@@ -312,8 +353,9 @@
 
   <div class="tabs">
     <div class="tabs-left">
-      <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
+      <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; CSV</button>
       <button class="tab" id="tab-live" onclick="switchTab('live')" style="color:var(--text-muted);">&#x26A1; Live</button>
+      <button class="tab" id="tab-scorecard" onclick="switchTab('scorecard')" style="color:var(--text-muted);">&#x1F4CB; Scorecard</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -352,6 +394,19 @@
     </div>
   </div>
 
+
+  <!-- SCORECARD TAB -->
+  <div class="tab-panel" id="panel-scorecard">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);">&#x1F4CB; Hourly Scorecard</div>
+        <div style="font-size:12px;color:var(--text-hint);margin-top:2px;" id="sc-meta">Loading...</div>
+      </div>
+      <button onclick="loadScorecardData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
+    </div>
+    <div class="sc-disclaimer">&#x26A0;&#xFE0F; This report provides an outside view only. For coaching purposes, always refer to WMS directly.</div>
+    <div id="sc-content"><div class="full-empty">Loading scorecard...</div></div>
+  </div>
 
   <!-- SETTINGS TAB -->
   <div class="tab-panel" id="panel-settings">
@@ -401,7 +456,7 @@
       <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v1.8</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v1.9</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Reserve Stock &middot; Last updated: <span id="last-updated"></span></p>
@@ -509,14 +564,16 @@ function toggleDark() { applyTheme(document.documentElement.getAttribute('data-t
 function switchTab(tab) {
   document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
   document.getElementById('tab-live').className = 'tab' + (tab === 'live' ? ' active-full' : '');
+  document.getElementById('tab-scorecard').className = 'tab' + (tab === 'scorecard' ? ' active-full' : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['full','live','settings'].forEach(function(t) {
+  ['full','live','scorecard','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
   try { localStorage.setItem('dc499_reserve_tab_v1', tab); } catch(e) {}
   if (tab === 'settings') { renderRoster(); renderGoalsCard(); }
   if (tab === 'full') { renderFullReport(); }
   if (tab === 'live') { loadLiveData(); }
+  if (tab === 'scorecard') { loadScorecardData(); }
 }
 (function() {
   var saved;
@@ -537,13 +594,24 @@ function loadRoster() {
     if (!s && getShift() === '2nd') s = localStorage.getItem(STORAGE_KEY);
     if (s) {
       const parsed = JSON.parse(s);
-      return parsed.map(function(m) { return typeof m === 'string' ? {email:m, enabled:true} : m; });
+      return parsed.map(function(m) {
+        var obj = typeof m === 'string' ? {email:m, enabled:true} : m;
+        if (!obj.disabled_tx) obj.disabled_tx = [];
+        return obj;
+      });
     }
   } catch(e) {}
-  return DEFAULT_TEAM.map(function(m) { return {email:m.email, enabled:m.enabled}; });
+  return DEFAULT_TEAM.map(function(m) { return {email:m.email, enabled:m.enabled, disabled_tx:[]}; });
 }
 function saveRoster(r) { try { localStorage.setItem(rosterKey(), JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {} }
 function getTeamSet() { return new Set(loadRoster().filter(function(m) { return m.enabled; }).map(function(m) { return m.email; })); }
+function isTMEnabledForCard(roster, emp, cardKey) {
+  var m = roster.find(function(r){ return r.email === emp; });
+  if (!m) return false;
+  if (!m.enabled) return false;
+  if (m.disabled_tx && m.disabled_tx.indexOf(cardKey) !== -1) return false;
+  return true;
+}
 function flashBadge(id) { const b = document.getElementById(id); if (b) { b.style.opacity = '1'; setTimeout(function() { b.style.opacity = '0'; }, 1800); } }
 
 function renderRoster() {
@@ -1623,25 +1691,33 @@ function renderLiveReport(d) {
     });
     allEntries.sort(function(a,b){ return b[1]-a[1]; });
 
-    var enabledRows  = allEntries.filter(function(e){ var m=roster.find(function(r){return r.email===e[0];}); return m ? m.enabled : false; });
-    var disabledRows = allEntries.filter(function(e){ var m=roster.find(function(r){return r.email===e[0];}); return m && !m.enabled; });
-    var notOnRoster  = allEntries.filter(function(e){ return !roster.find(function(r){return r.email===e[0];}); });
-    var grand = enabledRows.reduce(function(s,e){return s+e[1];},0);
+    var cardKey  = def.key;
+    var activeRows      = allEntries.filter(function(e){ return isTMEnabledForCard(roster, e[0], cardKey); });
+    var cardDisabledRows = allEntries.filter(function(e){
+      var m = roster.find(function(r){return r.email===e[0];});
+      return m && m.enabled && m.disabled_tx && m.disabled_tx.indexOf(cardKey) !== -1;
+    });
+    var globalDisabledRows = allEntries.filter(function(e){
+      var m = roster.find(function(r){return r.email===e[0];});
+      return m && !m.enabled;
+    });
+    var notOnRoster = allEntries.filter(function(e){ return !roster.find(function(r){return r.email===e[0];}); });
+    var grand = activeRows.reduce(function(s,e){return s+e[1];},0);
 
-    html += '<div id="live-card-' + def.key + '" style="' + (isActive ? '' : 'display:none;') + 'margin-bottom:1rem;">';
+    html += '<div id="live-card-' + cardKey + '" style="' + (isActive ? '' : 'display:none;') + 'margin-bottom:1rem;">';
     html += '<div class="full-card"><div class="full-card-title" style="color:' + color + ';">' + label + '<span class="full-card-total">' + grand.toLocaleString() + '</span></div>';
 
     if (!allEntries.length) {
       html += '<div class="full-empty" style="padding:1rem;">No ' + label + ' data yet.</div>';
     } else {
       html += '<table class="full-table"><thead><tr><th>Associate</th><th style="text-align:right;">Total</th><th style="width:35%;">Share</th><th></th></tr></thead><tbody>';
-      var enabledIdx = 0;
-      enabledRows.forEach(function(entry) {
+      var activeIdx = 0;
+      activeRows.forEach(function(entry) {
         var emp = entry[0], val = entry[1];
         var pct   = grand > 0 ? Math.round((val/grand)*100) : 0;
         var short = emp.split('@')[0];
-        var trophy = enabledIdx === 0 && grand > 0 ? ' &#x1F3C6;' : '';
-        enabledIdx++;
+        var trophy = activeIdx === 0 && grand > 0 ? ' &#x1F3C6;' : '';
+        activeIdx++;
         var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         var subVal = def.getSubVal ? def.getSubVal(d.associates[emp]) : 0;
         var totalCell = val.toLocaleString() + (subVal > 0 ? '<div style="font-size:10px;color:var(--text-hint);font-weight:400;">' + subVal + ' lpns</div>' : '');
@@ -1650,18 +1726,32 @@ function renderLiveReport(d) {
         html += '<td style="text-align:right;font-weight:500;">' + totalCell + '</td>';
         html += '<td><div style="display:flex;align-items:center;gap:6px;"><div class="full-bar-wrap"><div class="full-bar-fill ' + barClass + '" style="width:' + pct + '%"></div></div>';
         html += '<span style="font-size:11px;color:var(--text-hint);min-width:28px;text-align:right;">' + pct + '%</span></div></td>';
-        html += '<td><button class="full-side-disable-btn" onclick="toggleTMFromLive(\'' + safeEmp + '\')">Disable</button></td>';
+        html += '<td style="white-space:nowrap;">';
+        html += '<button class="full-side-disable-btn" style="margin-right:3px;" data-empkey="' + safeEmp + '" data-card="' + cardKey + '" onclick="disableTMForCard(this.dataset.empkey,this.dataset.card)">This card</button>';
+        html += '<button class="full-side-disable-all-btn" data-empkey="' + safeEmp + '" onclick="disableTMAllFromLive(this.dataset.empkey)">All</button>';
+        html += '</td>';
         html += '</tr>';
       });
-      if (disabledRows.length) {
-        html += '<tr><td colspan="4" style="padding:6px 8px 3px;font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.05em;border-top:0.5px solid var(--border-mid);">Inactive</td></tr>';
-        disabledRows.forEach(function(entry) {
+      if (cardDisabledRows.length) {
+        html += '<tr><td colspan="4" style="padding:6px 8px 3px;font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.05em;border-top:0.5px solid var(--border-mid);">Hidden from this card</td></tr>';
+        cardDisabledRows.forEach(function(entry) {
           var emp = entry[0], val = entry[1], short = emp.split('@')[0];
           var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
           html += '<tr style="opacity:0.45;"><td>' + short + '</td>';
           html += '<td style="text-align:right;font-weight:500;"><span style="color:var(--text-hint);">' + val.toLocaleString() + '</span></td>';
           html += '<td></td>';
-          html += '<td><button class="full-side-enable-btn" onclick="toggleTMFromLive(\'' + safeEmp + '\')">Enable</button></td></tr>';
+          html += '<td><button class="full-side-enable-btn" data-empkey="' + safeEmp + '" data-card="' + cardKey + '" onclick="enableTMForCard(this.dataset.empkey,this.dataset.card)">Show</button></td></tr>';
+        });
+      }
+      if (globalDisabledRows.length) {
+        html += '<tr><td colspan="4" style="padding:6px 8px 3px;font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.05em;border-top:0.5px solid var(--border-mid);">Inactive (all cards)</td></tr>';
+        globalDisabledRows.forEach(function(entry) {
+          var emp = entry[0], val = entry[1], short = emp.split('@')[0];
+          var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          html += '<tr style="opacity:0.45;"><td>' + short + '</td>';
+          html += '<td style="text-align:right;font-weight:500;"><span style="color:var(--text-hint);">' + val.toLocaleString() + '</span></td>';
+          html += '<td></td>';
+          html += '<td><button class="full-side-enable-btn" data-empkey="' + safeEmp + '" onclick="enableTMAllFromLive(this.dataset.empkey)">Re-enable</button></td></tr>';
         });
       }
       if (notOnRoster.length) {
@@ -1672,10 +1762,10 @@ function renderLiveReport(d) {
           html += '<tr style="opacity:0.7;"><td>' + short + '</td>';
           html += '<td style="text-align:right;font-weight:500;">' + val.toLocaleString() + '</td>';
           html += '<td></td>';
-          html += '<td><button class="full-side-add-btn" onclick="addTMFromLive(\'' + safeEmp + '\')">+ Add</button></td></tr>';
+          html += '<td><button class="full-side-add-btn" data-empkey="' + safeEmp + '" onclick="addTMFromLive(this.dataset.empkey)">+ Add</button></td></tr>';
         });
       }
-      var grandSubVal = def.getSubVal ? enabledRows.reduce(function(s,e){return s+(def.getSubVal(d.associates[e[0]])||0);},0) : 0;
+      var grandSubVal = def.getSubVal ? activeRows.reduce(function(s,e){return s+(def.getSubVal(d.associates[e[0]])||0);},0) : 0;
       var tfootTotal = grand.toLocaleString() + (grandSubVal > 0 ? '<div style="font-size:10px;color:var(--text-hint);font-weight:400;">' + grandSubVal + ' lpns</div>' : '');
       html += '</tbody><tfoot><tr><td>Total (active)</td><td style="text-align:right;">' + tfootTotal + '</td><td></td><td></td></tr></tfoot></table>';
     }
@@ -1686,20 +1776,46 @@ function renderLiveReport(d) {
   if (content) content.innerHTML = html;
 }
 
-function toggleTMFromLive(emp) {
+function disableTMForCard(emp, cardKey) {
   var roster = loadRoster();
   var idx = roster.findIndex(function(m){ return m.email === emp; });
   if (idx === -1) return;
-  roster[idx].enabled = !roster[idx].enabled;
+  if (!roster[idx].disabled_tx) roster[idx].disabled_tx = [];
+  if (roster[idx].disabled_tx.indexOf(cardKey) === -1) roster[idx].disabled_tx.push(cardKey);
   saveRoster(roster);
   if (rsLiveData) renderLiveReport(rsLiveData);
 }
-
+function enableTMForCard(emp, cardKey) {
+  var roster = loadRoster();
+  var idx = roster.findIndex(function(m){ return m.email === emp; });
+  if (idx === -1) return;
+  if (roster[idx].disabled_tx) roster[idx].disabled_tx = roster[idx].disabled_tx.filter(function(k){ return k !== cardKey; });
+  saveRoster(roster);
+  if (rsLiveData) renderLiveReport(rsLiveData);
+}
+function disableTMAllFromLive(emp) {
+  var roster = loadRoster();
+  var idx = roster.findIndex(function(m){ return m.email === emp; });
+  if (idx === -1) return;
+  roster[idx].enabled = false;
+  roster[idx].disabled_tx = [];
+  saveRoster(roster);
+  if (rsLiveData) renderLiveReport(rsLiveData);
+}
+function enableTMAllFromLive(emp) {
+  var roster = loadRoster();
+  var idx = roster.findIndex(function(m){ return m.email === emp; });
+  if (idx === -1) return;
+  roster[idx].enabled = true;
+  roster[idx].disabled_tx = [];
+  saveRoster(roster);
+  if (rsLiveData) renderLiveReport(rsLiveData);
+}
 function addTMFromLive(emp) {
   if (!confirm('Add ' + emp.split('@')[0] + ' to roster?')) return;
   var roster = loadRoster();
   if (!roster.find(function(m){ return m.email === emp; })) {
-    roster.push({email: emp, enabled: true});
+    roster.push({email: emp, enabled: true, disabled_tx: []});
     saveRoster(roster);
   }
   if (rsLiveData) renderLiveReport(rsLiveData);
@@ -1847,7 +1963,328 @@ renderHeadcountCard();
 
 setInterval(function() {
   if (document.getElementById('panel-live').className.includes('active')) loadLiveData();
+  if (document.getElementById('panel-scorecard').className.includes('active')) loadScorecardData();
 }, 5 * 60 * 1000);
+
+// ── SCORECARD TAB ───────────────────────────────────────
+var scLiveData  = null;
+var scSelectedEmp = null;
+
+function loadScorecardData() {
+  var meta    = document.getElementById('sc-meta');
+  var content = document.getElementById('sc-content');
+  if (meta) meta.textContent = 'Fetching...';
+  fetch(getLiveBase() + '/reserve_live.json?_=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(d) {
+      scLiveData = d;
+      if (d.shift && d.shift !== getShift()) setShift(d.shift);
+      renderScorecard(d);
+    })
+    .catch(function(e) {
+      if (content) content.innerHTML = '<div class="full-empty">Could not load reserve_live.json — run Option 11 in dc499.bat first.<br><small style="color:var(--text-hint);">' + e.message + '</small></div>';
+      if (meta) meta.textContent = 'Error loading data';
+    });
+}
+
+function renderScorecard(d) {
+  var meta    = document.getElementById('sc-meta');
+  var content = document.getElementById('sc-content');
+  var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
+  if (meta) meta.textContent = (d.shift || '2nd') + ' shift \xb7 updated ' + gen;
+
+  var sc    = d.scorecard  || {};
+  var assoc = d.associates || {};
+  var shift = d.shift || getShift();
+
+  var hourStart = shift === '1st' ? 3  : 14;
+  var hourEnd   = shift === '1st' ? 14 : 22;
+  var nowPdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  var nowHr  = nowPdt.getHours();
+  var hours  = [];
+  for (var h = hourStart; h < hourEnd; h++) hours.push(h);
+
+  var colSpan = hours.length + 2; // name + hours + Total
+
+  function hrKey(h) {
+    var d2 = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+    var yr = d2.getFullYear(), mo = d2.getMonth()+1, dy = d2.getDate();
+    var hr24 = h % 24;
+    return yr + '-' + (mo<10?'0'+mo:mo) + '-' + (dy<10?'0'+dy:dy) + ' ' + (hr24<10?'0'+hr24:hr24) + ':00';
+  }
+  function hrLabel(h) { var h12 = h % 12 || 12; return h12 + (h < 12 || h === 24 ? 'a' : 'p'); }
+  function getHrUnits(emp, h) {
+    var key = hrKey(h);
+    return (sc[emp] && sc[emp].hours && sc[emp].hours[key]) ? sc[emp].hours[key] : 0;
+  }
+  function getTotalUnits(emp) {
+    var a = assoc[emp]; if (!a) return 0;
+    return (a.pick_f1||0) + (a.pick_f2||0) + (a.replen||0) + (a.putaway||0);
+  }
+  function vClass(v) {
+    if (!v) return 'sc-v-0';
+    if (v >= 80) return 'sc-v-hi';
+    if (v >= 60) return 'sc-v-ok';
+    if (v >= 40) return 'sc-v-mid';
+    return 'sc-v-lo';
+  }
+  function trendArrow(emp, h, hIdx) {
+    if (hIdx < 2) return '';
+    var prev = []; for (var i = 0; i < hIdx; i++) prev.push(getHrUnits(emp, hours[i]));
+    var avg = prev.reduce(function(s,v){return s+v;},0) / prev.length;
+    var cur = getHrUnits(emp, h);
+    if (avg === 0 && cur === 0) return '';
+    var diff = cur - avg;
+    if (Math.abs(diff) < 3) return '';
+    return diff > 0 ? '<span class="sc-trend-up">&#x25B2;</span>' : '<span class="sc-trend-dn">&#x25BC;</span>';
+  }
+
+  var rosterAll = loadRoster().filter(function(m) { return m.enabled; });
+  var rosterMembers = rosterAll.filter(function(m) { return getTotalUnits(m.email) > 0; });
+
+  var deptHrTotals = {}, activeHrCounts = {}, deptGrand = 0;
+  hours.forEach(function(h) { deptHrTotals[h] = 0; activeHrCounts[h] = 0; });
+  rosterMembers.forEach(function(m) {
+    var emp = m.email;
+    hours.forEach(function(h) { var u = getHrUnits(emp, h); deptHrTotals[h] += u; if (u > 0) activeHrCounts[h]++; });
+    deptGrand += getTotalUnits(emp);
+  });
+
+  function drawerHtml(emp) {
+    var s    = sc[emp]    || {};
+    var a    = assoc[emp] || {};
+    var short = emp.split('@')[0];
+    function fmtPdt(utcStr) {
+      if (!utcStr) return '—';
+      try { return new Date(utcStr.replace(' ','T')+'Z').toLocaleTimeString('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit',hour12:true}); } catch(e) { return utcStr; }
+    }
+    function minToHM(m) { if (m == null) return '—'; var hh=Math.floor(m/60),mm=Math.round(m%60); return hh+'h '+(mm<10?'0':'')+mm+'m'; }
+
+    var clockIn    = fmtPdt(s.clock_in);
+    var clockOut   = fmtPdt(s.clock_out);
+    var paidBrk    = Math.round(s.paid_break_min   || 0);
+    var unpdBrk    = Math.round(s.unpaid_break_min || 0);
+    var totalBrk   = paidBrk + unpdBrk;
+    var epPct      = s.ep_pct != null ? Number(s.ep_pct) : null;
+    var totalUnits = (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0);
+    var epColor = epPct == null ? '#888' : (epPct >= 80 ? '#059669' : epPct >= 60 ? '#d97706' : '#dc2626');
+    var epFill  = epPct == null ? '' : (epPct >= 80 ? 'sc-ep-hi' : epPct >= 60 ? 'sc-ep-mid' : 'sc-ep-lo');
+    var epW     = epPct != null ? Math.min(100,Math.round(epPct)) : 0;
+    var gaps       = s.gaps || [];
+    var totalGapMin = s.total_gap_min || 0;
+
+    var h = '<div class="sc-drawer-inner">';
+    h += '<div class="sc-drawer-header">';
+    h += '<span class="sc-drawer-name">' + short + '</span>';
+    h += '<button class="sc-drawer-close" onclick="closeScorecardDetail()" title="Close">&times;</button></div>';
+
+    h += '<div class="sc-stat-row">';
+    h += '<div class="sc-stat"><div class="sc-stat-label">Clock In</div><div class="sc-stat-val">' + clockIn + '</div></div>';
+    h += '<div class="sc-stat"><div class="sc-stat-label">Clock Out</div><div class="sc-stat-val">' + clockOut + '</div></div>';
+    var brkSub = (paidBrk > 0 ? paidBrk + 'm paid' : '') + (paidBrk > 0 && unpdBrk > 0 ? ' / ' : '') + (unpdBrk > 0 ? unpdBrk + 'm unpaid' : '');
+    h += '<div class="sc-stat"><div class="sc-stat-label">Break</div><div class="sc-stat-val">' + (totalBrk > 0 ? minToHM(totalBrk) : '—') + '</div>' + (brkSub ? '<div class="sc-stat-sub">' + brkSub + '</div>' : '') + '</div>';
+    h += '<div class="sc-stat"><div class="sc-stat-label">Units</div><div class="sc-stat-val">' + (totalUnits > 0 ? totalUnits.toLocaleString() : '—') + '</div></div>';
+    var gapStatStyle = totalGapMin > 0 ? 'border-color:rgba(220,38,38,0.35);' : '';
+    var gapValColor  = totalGapMin > 0 ? '#dc2626' : 'var(--text-hint)';
+    h += '<div class="sc-stat" style="' + gapStatStyle + '">';
+    h += '<div class="sc-stat-label">Gap Time</div>';
+    h += '<div class="sc-stat-val" style="color:' + gapValColor + ';">' + (totalGapMin > 0 ? minToHM(totalGapMin) : '—') + '</div>';
+    if (gaps.length > 0) h += '<div class="sc-stat-sub" style="color:#dc2626;">' + gaps.length + ' gap' + (gaps.length > 1 ? 's' : '') + ' &gt;10 min</div>';
+    h += '</div>';
+    h += '</div>';
+
+    if (gaps.length > 0) {
+      h += '<div style="margin-bottom:8px;">';
+      h += '<div style="font-size:10px;font-weight:500;color:#dc2626;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;">&#x26A0; Gaps &gt;10 min</div>';
+      gaps.forEach(function(g) {
+        var gFrom = fmtPdt(g.from), gTo = fmtPdt(g.to);
+        var gMins = g.dur_min;
+        var gStr  = gMins >= 60 ? Math.floor(gMins/60) + 'h ' + (gMins%60) + 'm' : gMins + ' min';
+        h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;border-radius:6px;background:rgba(220,38,38,0.05);border:0.5px solid rgba(220,38,38,0.18);margin-bottom:3px;">';
+        h += '<span style="font-size:11px;color:var(--text);">' + gFrom + ' &ndash; ' + gTo + '</span>';
+        h += '<span style="font-size:11px;font-weight:600;color:#dc2626;">' + gStr + '</span>';
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+
+    // Timeline chart — stock-style line with filled area; red segments where gaps occur
+    (function() {
+      var canvasId = 'sc-timeline-' + emp.replace(/[^a-z0-9]/gi, '_');
+      h += '<div style="margin-bottom:10px;">';
+      h += '<div style="font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">Hourly Activity &amp; Gaps</div>';
+      h += '<div style="overflow-x:auto;"><canvas id="' + canvasId + '" height="90" style="display:block;"></canvas></div>';
+      if (gaps.length > 0) {
+        h += '<div style="font-size:10px;color:var(--text-hint);margin-top:4px;">&#x25AC; <span style="color:#dc2626;">Red</span> = gap &gt;10 min</div>';
+      }
+      h += '</div>';
+      setTimeout(function() {
+        var canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        var gridC = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+        var tickC = isDark ? '#666' : '#999';
+        var hrData  = (sc[emp] && sc[emp].hours) ? sc[emp].hours : {};
+        var gapList = (sc[emp] && sc[emp].gaps)  ? sc[emp].gaps  : [];
+        var labels = [], data = [];
+        hours.forEach(function(h2) {
+          labels.push(hrLabel(h2));
+          data.push(hrData[hrKey(h2)] || 0);
+        });
+        var gapIdxSet = new Set();
+        hours.forEach(function(h2, idx) {
+          var hrStartMs = new Date(hrKey(h2).replace(' ','T')+':00:00-07:00').getTime();
+          var hrEndMs   = hrStartMs + 3600000;
+          gapList.forEach(function(g) {
+            var gF = new Date(g.from.replace(' ','T')+'Z').getTime();
+            var gT = new Date(g.to.replace(' ','T')+'Z').getTime();
+            if (gF < hrEndMs && gT > hrStartMs) gapIdxSet.add(idx);
+          });
+        });
+        var lineColor = isDark ? '#9B4DCA' : '#7C3AAD';
+        var fillColor = isDark ? 'rgba(155,77,202,0.12)' : 'rgba(155,77,202,0.09)';
+        var gapColor  = '#dc2626';
+        var gapFill   = 'rgba(220,38,38,0.10)';
+        var pointColors = data.map(function(_, idx) { return gapIdxSet.has(idx) ? gapColor : lineColor; });
+        var pointRadii  = data.map(function(v, idx) { return gapIdxSet.has(idx) ? 5 : (v > 0 ? 3 : 2); });
+        var cw = Math.max(labels.length * 44, 320);
+        canvas.style.width = cw + 'px'; canvas.width = cw;
+        canvas.style.height = '90px';   canvas.height = 90;
+        if (!window._scCharts) window._scCharts = {};
+        if (window._scCharts[canvasId]) { try { window._scCharts[canvasId].destroy(); } catch(e) {} }
+        window._scCharts[canvasId] = new Chart(canvas.getContext('2d'), {
+          type: 'line',
+          data: { labels: labels, datasets: [{
+            data: data,
+            segment: {
+              borderColor: function(ctx) { return (gapIdxSet.has(ctx.p0DataIndex)||gapIdxSet.has(ctx.p1DataIndex)) ? gapColor : lineColor; },
+              backgroundColor: function(ctx) { return (gapIdxSet.has(ctx.p0DataIndex)||gapIdxSet.has(ctx.p1DataIndex)) ? gapFill : fillColor; },
+            },
+            borderColor: lineColor, backgroundColor: fillColor,
+            borderWidth: 2,
+            pointBackgroundColor: pointColors, pointBorderColor: pointColors,
+            pointRadius: pointRadii, pointHoverRadius: 6,
+            fill: true, tension: 0.35, spanGaps: false,
+          }]},
+          options: {
+            responsive: false, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: {
+                title: function(ctx) { return labels[ctx[0].dataIndex]; },
+                label: function(ctx) {
+                  var idx = ctx.dataIndex;
+                  var lines = [ctx.parsed.y + ' units'];
+                  if (gapIdxSet.has(idx)) {
+                    var h2 = hours[idx], hrStartMs = new Date(hrKey(h2).replace(' ','T')+':00:00-07:00').getTime(), hrEndMs = hrStartMs + 3600000;
+                    var gap = gapList.find(function(g) {
+                      var gF = new Date(g.from.replace(' ','T')+'Z').getTime();
+                      var gT = new Date(g.to.replace(' ','T')+'Z').getTime();
+                      return gF < hrEndMs && gT > hrStartMs;
+                    });
+                    if (gap) lines.push('⚠ Gap: ' + fmtPdt(gap.from) + ' – ' + fmtPdt(gap.to) + ' (' + gap.dur_min + ' min)');
+                  }
+                  return lines;
+                }
+              }}
+            },
+            scales: {
+              x: { ticks: { color: tickC, font: { size: 9 }, maxRotation: 0 }, grid: { display: false }, border: { display: false } },
+              y: { ticks: { color: tickC, font: { size: 9 }, maxTicksLimit: 3, precision: 0 }, grid: { color: gridC }, border: { display: false }, beginAtZero: true }
+            }
+          }
+        });
+      }, 80);
+    })();
+
+    if (epPct != null) {
+      h += '<div style="margin-bottom:8px;">';
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">';
+      h += '<span style="font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">EP%</span>';
+      h += '<span style="font-size:13px;font-weight:600;color:' + epColor + ';">' + epPct.toFixed(1) + '%</span></div>';
+      h += '<div class="sc-ep-bar"><div class="sc-ep-fill ' + epFill + '" style="width:' + epW + '%;"></div></div>';
+      h += '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;">Outside view — verify in WMS for coaching.</div>';
+      h += '</div>';
+    }
+
+    var depts = [
+      {label:'Pick F1',val:a.pick_f1||0,color:'#0891B2'},
+      {label:'Pick F2',val:a.pick_f2||0,color:'#D97706'},
+      {label:'Replen', val:a.replen||0, color:'#6366F1'},
+      {label:'Putaway',val:a.putaway||0,color:'#059669'},
+    ].filter(function(x){return x.val>0;});
+    if (depts.length) {
+      h += '<div class="sc-dept-chips">';
+      depts.forEach(function(dep) {
+        h += '<span class="sc-dept-chip" style="border-color:' + dep.color + '22;">';
+        h += '<span style="color:' + dep.color + ';font-size:10px;">' + dep.label + '</span> <strong>' + dep.val.toLocaleString() + '</strong></span>';
+      });
+      h += '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  var html = '<div class="sc-wrap"><table class="sc-matrix"><thead><tr>';
+  html += '<th>Associate</th>';
+  hours.forEach(function(h) {
+    html += '<th style="' + (h === nowHr ? 'color:var(--text);font-weight:600;' : '') + '">' + hrLabel(h) + '</th>';
+  });
+  html += '<th>Total</th></tr></thead><tbody>';
+
+  rosterMembers.forEach(function(m) {
+    var emp   = m.email;
+    var short = emp.split('@')[0];
+    var isSel = (scSelectedEmp === emp);
+    var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var total = getTotalUnits(emp);
+
+    html += '<tr class="sc-data-row' + (isSel ? ' sc-selected' : '') + '" onclick="openScorecardDetail(\'' + safeEmp + '\')">';
+    html += '<td style="cursor:pointer;" title="' + emp + '">' + short + (isSel ? ' <span style="color:#9B4DCA;font-size:10px;">&#x25BE;</span>' : '') + '</td>';
+    hours.forEach(function(h, hIdx) {
+      var u = getHrUnits(emp, h);
+      var past = h < nowHr;
+      var cls = vClass(u);
+      var trend = past ? trendArrow(emp, h, hIdx) : '';
+      var txt = u > 0 ? ('<span class="' + cls + '">' + u + '</span>') : (past ? '<span class="sc-v-0">—</span>' : '');
+      html += '<td>' + txt + trend + '</td>';
+    });
+    html += '<td><strong>' + (total > 0 ? total.toLocaleString() : '—') + '</strong></td>';
+    html += '</tr>';
+
+    if (isSel) {
+      html += '<tr class="sc-drawer"><td colspan="' + colSpan + '">' + drawerHtml(emp) + '</td></tr>';
+    }
+  });
+
+  var activeHC = rosterMembers.filter(function(m) { return getTotalUnits(m.email) > 0; }).length;
+  html += '</tbody><tfoot><tr>';
+  html += '<td>Dept (' + activeHC + ')</td>';
+  hours.forEach(function(h) {
+    var u = deptHrTotals[h];
+    var hc = activeHrCounts[h];
+    var pph = hc > 0 ? Math.round(u / hc) : null;
+    var cls = pph != null ? vClass(pph) : 'sc-v-0';
+    html += '<td>';
+    if (u > 0) html += '<span class="' + cls + '">' + u + '</span>';
+    if (pph != null) html += '<div style="font-size:9px;color:var(--text-hint);">' + pph + '/h</div>';
+    html += '</td>';
+  });
+  html += '<td><strong>' + deptGrand.toLocaleString() + '</strong></td>';
+  html += '</tr></tfoot></table></div>';
+
+  if (content) content.innerHTML = html;
+}
+
+function openScorecardDetail(emp) {
+  scSelectedEmp = (scSelectedEmp === emp) ? null : emp;
+  if (scLiveData) renderScorecard(scLiveData);
+}
+
+function closeScorecardDetail() {
+  scSelectedEmp = null;
+  if (scLiveData) renderScorecard(scLiveData);
+}
 </script>
 </body>
 </html>
