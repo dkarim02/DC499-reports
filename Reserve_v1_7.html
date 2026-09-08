@@ -322,9 +322,6 @@
   .sc-stat-label{font-size:9px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;}
   .sc-stat-val{font-size:13px;font-weight:600;color:var(--text);}
   .sc-stat-sub{font-size:9px;color:var(--text-muted);margin-top:1px;}
-  .sc-ep-bar{height:5px;border-radius:3px;background:var(--bar-bg);margin-top:4px;overflow:hidden;}
-  .sc-ep-fill{height:100%;border-radius:3px;}
-  .sc-ep-lo{background:#dc2626;} .sc-ep-mid{background:#d97706;} .sc-ep-hi{background:#059669;}
   .sc-dept-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
   .sc-dept-chip{font-size:11px;padding:3px 8px;border-radius:12px;border:0.5px solid var(--border);color:var(--text-muted);}
   .sc-dept-chip strong{color:var(--text);}
@@ -2065,11 +2062,7 @@ function renderScorecard(d) {
     var paidBrk    = Math.round(s.paid_break_min   || 0);
     var unpdBrk    = Math.round(s.unpaid_break_min || 0);
     var totalBrk   = paidBrk + unpdBrk;
-    var epPct      = s.ep_pct != null ? Number(s.ep_pct) : null;
     var totalUnits = (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0);
-    var epColor = epPct == null ? '#888' : (epPct >= 80 ? '#059669' : epPct >= 60 ? '#d97706' : '#dc2626');
-    var epFill  = epPct == null ? '' : (epPct >= 80 ? 'sc-ep-hi' : epPct >= 60 ? 'sc-ep-mid' : 'sc-ep-lo');
-    var epW     = epPct != null ? Math.min(100,Math.round(epPct)) : 0;
     var gaps       = s.gaps || [];
     var totalGapMin = s.total_gap_min || 0;
 
@@ -2196,16 +2189,6 @@ function renderScorecard(d) {
         });
       }, 80);
     })();
-
-    if (epPct != null) {
-      h += '<div style="margin-bottom:8px;">';
-      h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">';
-      h += '<span style="font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;">EP%</span>';
-      h += '<span style="font-size:13px;font-weight:600;color:' + epColor + ';">' + epPct.toFixed(1) + '%</span></div>';
-      h += '<div class="sc-ep-bar"><div class="sc-ep-fill ' + epFill + '" style="width:' + epW + '%;"></div></div>';
-      h += '<div style="font-size:9px;color:var(--text-hint);margin-top:2px;">Outside view — verify in WMS for coaching.</div>';
-      h += '</div>';
-    }
 
     var depts = [
       {label:'Pick F1',val:a.pick_f1||0,color:'#0891B2'},
