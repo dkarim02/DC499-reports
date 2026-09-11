@@ -615,6 +615,7 @@ function renderLiveReport(d) {
       filtered.forEach(function(r) {
         var e = (r['Employee']||'').trim();
         if (!TEAM.has(e)) return;
+        if (/^P1-PK/i.test((r['Current Location']||'').trim())) return;
         var cid = (r['Container ID']||'').trim();
         if (cid && (parseFloat(r['Completed Quantity'])||0) > 0) replenContainerSeen.add(e + '|' + cid);
       });
@@ -656,6 +657,7 @@ function renderLiveReport(d) {
       var containerSets = {};
       filtered.forEach(function(r) {
         var e = (r['Employee']||'').trim();
+        if (/^P1-PK/i.test((r['Current Location']||'').trim())) return;
         var cid = (r['Container ID']||'').trim();
         if (cid && (parseFloat(r['Completed Quantity'])||0) > 0) {
           if (!containerSets[e]) containerSets[e] = new Set();
@@ -1055,6 +1057,7 @@ function sumRows(rows, typ, empFilter) {
     var e = (r['Employee']||'').trim();
     if (!e) return;
     if (empFilter && !empFilter(e)) return;
+    if (typ === 'replen' && /^P1-PK/i.test((r['Current Location']||'').trim())) return;
     if (dedupByContainer) {
       var cid = (r['Container ID']||'').trim();
       if (cid) {
