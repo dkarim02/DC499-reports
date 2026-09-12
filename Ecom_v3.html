@@ -1043,9 +1043,9 @@ var FULL_LABELS = {
 
 var FULL_METRIC = {
   replen: 'Completed Quantity', putaway: null,
-  picking: 'Quantity', packing: null, shipping: 'Quantity'
+  picking: 'Quantity', packing: 'Quantity', shipping: 'Quantity'
 };
-var FULL_COUNT_SKIP_ZERO = new Set(['packing']);
+var FULL_COUNT_SKIP_ZERO = new Set();
 // Dedup by Container ID within each employee for these types (prevents double-count when two TX IDs cover same box)
 var FULL_DEDUP_CONTAINER = new Set(['shipping']);
 function sumRows(rows, typ, empFilter) {
