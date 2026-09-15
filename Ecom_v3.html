@@ -273,7 +273,7 @@
   .assoc-gap-badge { font-size: 10px; padding: 2px 7px; border-radius: 4px; background: rgba(192,57,43,0.15); color: #C0392B; font-weight: 500; }
 
 
-  .full-tile { text-align:center; padding:10px 4px; background:var(--surface2); border-radius:8px; cursor:pointer; transition:all 0.15s; border:1.5px solid transparent; user-select:none; }
+  .full-tile { text-align:center; padding:10px 4px; background:var(--surface2); border-radius:8px; cursor:pointer; transition:all 0.15s; border:1.5px solid transparent; user-select:none; display:flex; flex-direction:column; }
   .full-tile:hover { filter:brightness(1.1); }
   .full-tile.active { border-color: currentColor; background:var(--surface); box-shadow:0 0 0 2px rgba(0,0,0,0.08); }
   .full-side-panel { display:none; background:var(--surface); border:0.5px solid var(--border); border-radius:12px; padding:1rem; margin-bottom:1rem; }
@@ -642,11 +642,12 @@ function renderLiveReport(d) {
     }
     if (typ === 'replen' && replenContainerCount > 0) html += '<div style="font-size:10px;color:var(--text-hint);margin-top:2px;">'+replenContainerCount+' lpns</div>';
     if (pace) {
-      html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
+      html += '<div style="margin-top:auto;padding-top:6px;">';
+      html += '<div style="background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
       html += '<span style="font-size:9px;color:'+pace.color+';font-weight:500;">'+pace.label+'</span>';
       html += '<span style="font-size:9px;color:var(--text-hint);">'+pace.pctOfFull+'% of '+pace.projFull.toLocaleString()+'</span>';
-      html += '</div>';
+      html += '</div></div>';
     }
     html += '</div>';
   });
@@ -1887,11 +1888,12 @@ function renderFullReport() {
       html += '</div>';
     }
     if (pace) {
-      html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
+      html += '<div style="margin-top:auto;padding-top:6px;">';
+      html += '<div style="background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';
       html += '<span style="font-size:9px;color:'+pace.color+';font-weight:500;">'+pace.label+'</span>';
       html += '<span style="font-size:9px;color:var(--text-hint);">'+pace.pctOfFull+'% of '+pace.projFull.toLocaleString()+'</span>';
-      html += '</div>';
+      html += '</div></div>';
     }
     html += '</div>';
   });
