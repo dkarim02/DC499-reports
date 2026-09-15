@@ -621,9 +621,25 @@ function renderLiveReport(d) {
       });
       replenContainerCount = replenContainerSeen.size;
     }
+    var pickSub = 0, bulkSub = 0;
+    if (typ === 'picking') {
+      var PICK_BULK_TX = 'Ecom Singles Bulk LPN Pick';
+      filtered.forEach(function(r) {
+        var e = (r['Employee']||'').trim();
+        if (!TEAM.has(e)) return;
+        var v = parseFloat(r['Quantity'])||0;
+        if ((r['Transaction ID']||'').trim() === PICK_BULK_TX) bulkSub += v; else pickSub += v;
+      });
+    }
     html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="'+typ+'" onclick="clickLiveTile(this.dataset.livtyp)" style="color:'+color+';cursor:pointer;">';
     html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">'+FULL_LABELS[typ]+'</div>';
     html += '<div style="font-size:18px;font-weight:500;color:var(--text);">'+grand.toLocaleString()+'</div>';
+    if (typ === 'picking') {
+      html += '<div style="display:flex;gap:12px;margin-top:4px;justify-content:center;">';
+      html += '<span style="font-size:10px;color:var(--text-hint);">Pick: <strong style="color:var(--text);">'+pickSub.toLocaleString()+'</strong></span>';
+      html += '<span style="font-size:10px;color:var(--text-hint);">Bulk: <strong style="color:var(--text);">'+bulkSub.toLocaleString()+'</strong></span>';
+      html += '</div>';
+    }
     if (typ === 'replen' && replenContainerCount > 0) html += '<div style="font-size:10px;color:var(--text-hint);margin-top:2px;">'+replenContainerCount+' lpns</div>';
     if (pace) {
       html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
@@ -1019,7 +1035,7 @@ function rowBelongsToEcom(r) {
 var FULL_TX = {
   replen:  ['iLPN Replen Fill','iLPN Replen Fill Large'],
   putaway: ['System Directed Putaway','User Directed Putaway'],
-  picking: ['Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart'],
+  picking: ['Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart','Ecom Singles Bulk LPN Pick'],
   packing: ['NRDR CORE PACK FOR ECOM PACK STATION'],
   shipping: ['OB Putaway By Ship Via'],
   sorting: ['OB Sort To Putwall Cubby']
@@ -1611,6 +1627,19 @@ function renderSidePanel(typ) {
 
   var html = '<div class="full-side-title" style="color:'+color+';">'+label+'</div>';
 
+  if (typ === 'picking') {
+    var PICK_BULK_TX_P = 'Ecom Singles Bulk LPN Pick';
+    var pickSubP = 0, bulkSubP = 0;
+    filtered.forEach(function(r) {
+      var val = parseFloat(r['Quantity'])||0;
+      if ((r['Transaction ID']||'').trim() === PICK_BULK_TX_P) bulkSubP += val; else pickSubP += val;
+    });
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">';
+    html += '<div style="background:var(--surface2);border-radius:6px;padding:8px;text-align:center;"><div style="font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Pick</div><div style="font-size:15px;font-weight:500;color:var(--text);">'+pickSubP.toLocaleString()+'</div></div>';
+    html += '<div style="background:var(--surface2);border-radius:6px;padding:8px;text-align:center;"><div style="font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Bulk</div><div style="font-size:15px;font-weight:500;color:var(--text);">'+bulkSubP.toLocaleString()+'</div></div>';
+    html += '</div>';
+  }
+
   if (onRoster.length) {
     html += '<div class="full-side-section"><div class="full-side-section-label">On roster ('+onRoster.length+')</div>';
     onRoster.forEach(function(item) {
@@ -1807,9 +1836,25 @@ function renderFullReport() {
       return s + (metricKey ? (parseFloat(r[metricKey])||0) : (FULL_COUNT_SKIP_ZERO.has(typ) && !(parseFloat(r['Quantity'])||0) ? 0 : 1));
     },0);
     var pace = getTilePace(typ, grand, filtered, TEAM);
+    var pickSubFull = 0, bulkSubFull = 0;
+    if (typ === 'picking') {
+      var PICK_BULK_TX_F = 'Ecom Singles Bulk LPN Pick';
+      filtered.forEach(function(r) {
+        var e = (r['Employee']||'').trim();
+        if (!TEAM.has(e)) return;
+        var v = parseFloat(r['Quantity'])||0;
+        if ((r['Transaction ID']||'').trim() === PICK_BULK_TX_F) bulkSubFull += v; else pickSubFull += v;
+      });
+    }
     html += '<div class="full-tile" id="tile-'+typ+'" data-typ="'+typ+'" onclick="clickTile(this.dataset.typ)" style="color:'+color+';">';
     html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">'+FULL_LABELS[typ]+'</div>';
     html += '<div style="font-size:18px;font-weight:500;color:var(--text);">'+grand.toLocaleString()+'</div>';
+    if (typ === 'picking') {
+      html += '<div style="display:flex;gap:12px;margin-top:4px;justify-content:center;">';
+      html += '<span style="font-size:10px;color:var(--text-hint);">Pick: <strong style="color:var(--text);">'+pickSubFull.toLocaleString()+'</strong></span>';
+      html += '<span style="font-size:10px;color:var(--text-hint);">Bulk: <strong style="color:var(--text);">'+bulkSubFull.toLocaleString()+'</strong></span>';
+      html += '</div>';
+    }
     if (pace) {
       html += '<div style="margin-top:6px;background:var(--bar-bg);border-radius:3px;height:3px;overflow:hidden;"><div style="height:100%;border-radius:3px;background:'+pace.color+';width:'+pace.barPct+'%;"></div></div>';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">';

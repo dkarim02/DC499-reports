@@ -53,6 +53,7 @@ const ECOM_TX_A = [
 const ECOM_TX_B = [
   'Ecom Mezz Pick To Putwall Cart',
   'Ecom Non-Mezz Pick To Putwall Cart',
+  'Ecom Singles Bulk LPN Pick',
 ];
 const ECOM_TX_C = [
   'NRDR CORE PACK FOR ECOM PACK STATION',
