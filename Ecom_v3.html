@@ -657,8 +657,9 @@ function renderLiveReport(d) {
     var elapsed = getElapsedProdHrs();
     if (elapsed > 0) {
       var pphTypes = ['replen','putaway','picking','packing','shipping','sorting'];
+      var hcNow = getHeadcounts();
       html += '<div class="card" style="margin-bottom:1rem;padding:10px 14px;">';
-      html += '<div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;">';
+      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px 12px;">';
       pphTypes.forEach(function(typ) {
         var txList = getTX()[typ];
         var filtered2 = d.rows.filter(function(r) {
@@ -667,9 +668,9 @@ function renderLiveReport(d) {
           return true;
         });
         var grand2 = Object.values(sumRows(filtered2, typ, function(e){ return TEAM.has(e); })).reduce(function(s,v){return s+v;},0);
-        var hc = getHeadcounts()[typ] || 0;
+        var hc = hcNow[typ] || 0;
         var target = getPPH(typ);
-        if (!hc || !target) return;
+        if (!hc || !target) { html += '<span></span>'; return; }
         var actual = Math.round(grand2 / (hc * elapsed));
         var color = actual >= target ? '#0F6E56' : (actual >= target * 0.8 ? '#C47B00' : '#C0392B');
         html += '<span style="font-size:11px;color:var(--text-muted);">' + FULL_LABELS[typ] + ': ';
