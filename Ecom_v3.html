@@ -652,6 +652,34 @@ function renderLiveReport(d) {
   });
   html += '</div></div>';
 
+  // ── Live PPH strip ─────────────────────────────────────────────────────────
+  if (getShift() === '2nd') {
+    var elapsed = getElapsedProdHrs();
+    if (elapsed > 0) {
+      var pphTypes = ['replen','putaway','picking','packing','shipping','sorting'];
+      html += '<div class="card" style="margin-bottom:1rem;padding:10px 14px;">';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;">';
+      pphTypes.forEach(function(typ) {
+        var txList = getTX()[typ];
+        var filtered2 = d.rows.filter(function(r) {
+          if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
+          if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
+          return true;
+        });
+        var grand2 = Object.values(sumRows(filtered2, typ, function(e){ return TEAM.has(e); })).reduce(function(s,v){return s+v;},0);
+        var hc = getHeadcounts()[typ] || 0;
+        var target = getPPH(typ);
+        if (!hc || !target) return;
+        var actual = Math.round(grand2 / (hc * elapsed));
+        var color = actual >= target ? '#0F6E56' : (actual >= target * 0.8 ? '#C47B00' : '#C0392B');
+        html += '<span style="font-size:11px;color:var(--text-muted);">' + FULL_LABELS[typ] + ': ';
+        html += '<strong style="color:' + color + ';">' + actual + '</strong>';
+        html += '<span style="color:var(--text-hint);"> / ' + target + ' PPH</span></span>';
+      });
+      html += '</div></div>';
+    }
+  }
+
   // ── Per-dept associate cards (hidden unless their tile is active) ───────────
   html += '<div>';
   types.forEach(function(typ) {
