@@ -1214,12 +1214,13 @@ function todayStr() {
 
 function detectHeadcounts() {
   var TEAM = getTeamSet();
+  var source = fullReportRows.length ? fullReportRows : (liveData && liveData.rows || []);
   var counts = {};
   HC_DEPTS.forEach(function(typ) {
     var txList = getTX()[typ];
     var threshold = MIN_TX[typ] || 0;
     var empCount = {};
-    fullReportRows.forEach(function(r) {
+    source.forEach(function(r) {
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return;
       if (typ === 'sorting' && (r['Criteria']||'').trim() !== SORT_CRITERIA) return;
       var e = (r['Employee']||'').trim();
@@ -1242,7 +1243,8 @@ function getHeadcounts() {
 }
 
 function resetHeadcountToDetected() {
-  if (!fullReportRows.length) { alert('Upload a CSV first to detect headcounts.'); return; }
+  var hasData = fullReportRows.length || (liveData && liveData.rows && liveData.rows.length);
+  if (!hasData) { alert('No data available — upload a CSV or load the Live tab first.'); return; }
   var hc = { date: todayStr(), counts: detectHeadcounts() };
   saveHeadcount(hc);
   renderHeadcountCard();
