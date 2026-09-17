@@ -36,11 +36,12 @@ const INTERVAL   = (() => {
   return f ? parseInt(f.split('=')[1]) * 60 * 1000 : 30 * 60 * 1000; // default 30 min
 })();
 
-// ── Ecom transaction IDs — four groups to stay under MCP ~10k row cap ───────────
+// ── Ecom transaction IDs — five groups to stay under MCP ~10k row cap ───────────
 // Group A: replen + putaway        (~2k rows typical)
 // Group B: picking                 (~4k rows typical)
 // Group C: packing alone           (~3k rows typical)
-// Group D: shipping + sorting      (~3k rows typical)
+// Group D: shipping only           (~3k rows typical)
+// Group E: sorting only            (~4k rows typical on busy days)
 const ECOM_TX_A = [
   'iLPN Replen Fill',
   'Retail iLPN Replen Pull',
@@ -61,6 +62,8 @@ const ECOM_TX_C = [
 const ECOM_TX_D = [
   'OB Putaway By Ship Via',
   'NRDR Load Parcel Packages',
+];
+const ECOM_TX_E = [
   'OB Sort To Putwall Cubby',
 ];
 
@@ -284,8 +287,9 @@ function shiftStartUtc() {
 }
 
 // ── SQL builder ────────────────────────────────────────────────────────────────
-function buildSql(shiftStart, txGroup) {
+function buildSql(shiftStart, txGroup, criteriaFilter = null) {
   const txList = txGroup.map(t => `'${t.replace(/'/g, "''")}'`).join(',');
+  const criteriaClause = criteriaFilter ? `\n  AND t.CRITERIA_ID = '${criteriaFilter}'` : '';
   return `
 SELECT
   t.USER_ID                                              AS \`Employee\`,
@@ -301,7 +305,7 @@ SELECT
 FROM default_task.TSK_ACTIVITY_TRACKING t
 WHERE t.FACILITY_ID = '${FACILITY}'
   AND t.CREATED_TIMESTAMP >= '${shiftStart}'
-  AND t.TRANSACTION_ID IN (${txList})
+  AND t.TRANSACTION_ID IN (${txList})${criteriaClause}
 ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 }
 
@@ -309,25 +313,28 @@ ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 async function fetchEcomLive(accessToken) {
   const { utc: shiftStart, label: shift } = shiftStartUtc();
 
-  console.log(`[${ts()}] Querying Groups A-D in parallel since ${shiftStart}...`);
-  const [respA, respB, respC, respD] = await Promise.all([
+  console.log(`[${ts()}] Querying Groups A-E in parallel since ${shiftStart}...`);
+  const [respA, respB, respC, respD, respE] = await Promise.all([
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_A)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_B)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_C)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_D)),
+    mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_E, 'NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA')),
   ]);
   const rowsA = respA.rows || [];
   const rowsB = respB.rows || [];
   const rowsC = respC.rows || [];
   const rowsD = respD.rows || [];
-  console.log(`[${ts()}] Group A: ${rowsA.length}  B: ${rowsB.length}  C: ${rowsC.length}  D: ${rowsD.length}`);
+  const rowsE = respE.rows || [];
+  console.log(`[${ts()}] Group A: ${rowsA.length}  B: ${rowsB.length}  C: ${rowsC.length}  D: ${rowsD.length}  E: ${rowsE.length}`);
   if (rowsA.length >= 9500) console.warn(`[${ts()}] ⚠ Group A hit row cap — replen/putaway may be truncated`);
   if (rowsB.length >= 9500) console.warn(`[${ts()}] ⚠ Group B hit row cap — picking may be truncated`);
   if (rowsC.length >= 9500) console.warn(`[${ts()}] ⚠ Group C hit row cap — packing may be truncated`);
-  if (rowsD.length >= 9500) console.warn(`[${ts()}] ⚠ Group D hit row cap — shipping/sorting may be truncated`);
+  if (rowsD.length >= 9500) console.warn(`[${ts()}] ⚠ Group D hit row cap — shipping may be truncated`);
+  if (rowsE.length >= 9500) console.warn(`[${ts()}] ⚠ Group E hit row cap — sorting (criteria-filtered) may be truncated`);
 
-  const rows = rowsA.concat(rowsB, rowsC, rowsD);
-  const truncated = rowsA.length >= 9500 || rowsB.length >= 9500 || rowsC.length >= 9500 || rowsD.length >= 9500;
+  const rows = rowsA.concat(rowsB, rowsC, rowsD, rowsE);
+  const truncated = rowsA.length >= 9500 || rowsB.length >= 9500 || rowsC.length >= 9500 || rowsD.length >= 9500 || rowsE.length >= 9500;
   console.log(`[${ts()}] Total: ${rows.length} rows combined${truncated ? ' ⚠ (truncated)' : ''}`);
 
   const output = {

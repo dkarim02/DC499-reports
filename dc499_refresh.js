@@ -425,6 +425,19 @@ WHERE td.FACILITY_ID            = '${FACILITY}'
   AND td.CREATED_TIMESTAMP   >= NOW() - INTERVAL 2 DAY
 GROUP BY td.TARGET_CONTAINER_ID`.trim();
 
+  // Query HP: individual oLPNs sitting at H1-PW-01 — powers the hospital detail modal.
+  const sqlHpOlpns = `
+SELECT
+  o.LPN_ID                                                          AS olpn_id,
+  o.STATUS                                                          AS status_code,
+  o.TOTAL_LPN_QTY                                                   AS units,
+  CONVERT_TZ(o.UPDATED_TIMESTAMP, '+00:00', '-07:00')               AS updated_pdt
+FROM default_pickpack.PPK_OLPN o
+WHERE o.FACILITY_ID        = '${FACILITY}'
+  AND o.CURRENT_LOCATION_ID LIKE 'H1-PW-01%'
+  AND o.STATUS NOT IN ('8000','9000')
+ORDER BY o.UPDATED_TIMESTAMP ASC`.trim();
+
   // Query A: true total oLPN count per putwall — ungrouped by tote so every oLPN is counted.
   const sqlPwOlpn = `
 SELECT
@@ -460,11 +473,12 @@ WHERE sla.FACILITY_ID = '${FACILITY}'
 GROUP BY pw_prefix, td.SOURCE_CONTAINER_ID
 ORDER BY pw_prefix, dz_count DESC`.trim();
 
-  const [respIlpn, respTasks, respPwOlpn, respPwActiveDz] = await Promise.all([
+  const [respIlpn, respTasks, respPwOlpn, respPwActiveDz, respHpOlpns] = await Promise.all([
     mcpQuery(accessToken, sqlIlpn),
     mcpQuery(accessToken, sqlTasks),
     mcpQuery(accessToken, sqlPwOlpn),
     mcpQuery(accessToken, sqlPwActiveDz),
+    mcpQuery(accessToken, sqlHpOlpns),
   ]);
 
   // Build task lookup keyed by tote_id
@@ -490,12 +504,12 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
       // Case 3 — at a drop location, timer = time since last update at that location
       caseNum  = 3;
       timerMin = idleMin;
-    } else if (task && task.task_ended_pdt && !isNaN(new Date(task.task_ended_pdt))) {
-      // Case 2 — pick task has an end time but tote never dropped (detail rows stay 8000 in MAWM)
+    } else if (task && task.task_ended_pdt && !isNaN(new Date(task.task_ended_pdt))
+               && new Date(task.task_ended_pdt).getTime() > new Date(r.created_pdt).getTime()) {
+      // Case 2 — pick task ended AFTER this iLPN was created (guards against stale tasks
+      // from a previous wave on a reused tote ID being used for a newly created tote)
       caseNum  = 2;
-      timerMin = (task.task_ended_pdt && !isNaN(new Date(task.task_ended_pdt)))
-        ? Math.round((nowMs - new Date(task.task_ended_pdt).getTime()) / 60000)
-        : idleMin;
+      timerMin = Math.round((nowMs - new Date(task.task_ended_pdt).getTime()) / 60000);
     } else {
       // Case 1 — pick still active or no task record yet, idle since last scan
       caseNum  = 1;
@@ -587,6 +601,23 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
     dz2_totes:   m.dz2 ? (dzToteCount[m.dz2] || 0) : 0,
   }));
 
+  const OLPN_STATUS_LABELS = {
+    '1000': 'Created', '7100': 'Packing', '7200': 'Packed',
+    '7600': 'Manifested', '7800': 'Loaded', '8000': 'Shipped', '9000': 'Cancelled',
+  };
+  const hospital_olpns = (respHpOlpns.rows || []).map(r => {
+    const updMs   = r.updated_pdt ? new Date(r.updated_pdt).getTime() : null;
+    const age_min = updMs ? Math.round((nowMs - updMs) / 60000) : null;
+    return {
+      olpn:        r.olpn_id,
+      status_code: r.status_code,
+      status:      OLPN_STATUS_LABELS[r.status_code] || r.status_code,
+      units:       Math.round(Number(r.units) || 0),
+      age_min,
+      updated:     r.updated_pdt ? r.updated_pdt.slice(11, 16) : null,
+    };
+  });
+
   return {
     generated: new Date().toISOString().slice(0, 19),
     facility:  FACILITY,
@@ -601,6 +632,7 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
     case2: byCase[2],
     case3: byCase[3],
     putwalls,
+    hospital_olpns,
   };
 }
 
@@ -750,7 +782,24 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
   AND ilpn.CURRENT_LOCATION_ID = 'D1-SN-01'
   AND ilpn.STATUS = '5000'`.trim();
 
-  const [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respHazmat, respRfp] = await Promise.all([
+  // Query 8: top 10 Ecom items by ordered quantity today — for replen sniping card
+  const sqlTopItems = `
+SELECT
+  DESCRIPTION,
+  SUM(ORDERED_QUANTITY) AS units_ordered,
+  COUNT(DISTINCT ORDER_ID) AS order_count
+FROM default_dcorder.DCO_ORDER_LINE
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_TYPE = 'ECOM'
+  AND CANCELLED = 0
+  AND DESCRIPTION NOT LIKE '%DUMMY%'
+  AND CREATED_TIMESTAMP >= '${todayUtcStart}'
+  AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
+GROUP BY DESCRIPTION
+ORDER BY units_ordered DESC
+LIMIT 10`.trim();
+
+  const [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respHazmat, respRfp, respTopItems] = await Promise.all([
     mcpQuery(accessToken, sqlOrders),
     mcpQuery(accessToken, sqlShipped),
     mcpQuery(accessToken, sqlDailyTotals),
@@ -758,11 +807,12 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
     mcpQuery(accessToken, sqlWaves),
     mcpQuery(accessToken, sqlHazmat).catch(() => ({ rows: [] })),
     mcpQuery(accessToken, sqlRfp),
+    mcpQuery(accessToken, sqlTopItems).catch(() => ({ rows: [] })),
   ]);
 
-  const rowCounts = [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respHazmat, respRfp]
+  const rowCounts = [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respHazmat, respRfp, respTopItems]
     .map(r => (r?.rows || []).length);
-  console.log(`[${ts()}]   backlog row counts [orders,shipped,totals,hourly,waves,hazmat,rfp]: ${rowCounts.join(',')}`);
+  console.log(`[${ts()}]   backlog row counts [orders,shipped,totals,hourly,waves,hazmat,rfp,topitems]: ${rowCounts.join(',')}`);
 
   // If the three core queries all came back empty, the MCP server throttled us — bail out
   // so we don't overwrite a good backlog_live.json with zeros.
@@ -909,6 +959,14 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
     }
   }
 
+  const GWP_PATTERNS = [/gift with purchase/i, /\bgwp\b/i];
+  const topItems = (respTopItems.rows || []).map(r => ({
+    description:  r.DESCRIPTION || '',
+    units:        Number(r.units_ordered),
+    orders:       Number(r.order_count),
+    gwp:          GWP_PATTERNS.some(re => re.test(r.DESCRIPTION || '')),
+  }));
+
   return {
     generated:         new Date().toISOString().slice(0, 19),
     facility:          FACILITY,
@@ -923,6 +981,7 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
     hazmat_orders:     hazOrderCount,
     hazmat_lines:      hazLineCount,
     hazmat_breakdown:  hazBreakdown,
+    top_items:         topItems,
   };
 }
 
