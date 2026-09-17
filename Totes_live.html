@@ -330,6 +330,30 @@
   /* HP special olpn chip */
   .hp-olpn-chip{display:inline-block;font-size:10px;font-weight:700;background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:1px 7px;margin-top:3px;}
 
+  /* Clickable hospital block */
+  .loc-block.hp-clickable{cursor:pointer;}
+  .loc-block.hp-clickable:hover{filter:brightness(1.15);}
+
+  /* Hospital detail modal */
+  .hp-modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;align-items:center;justify-content:center;}
+  .hp-modal-backdrop.open{display:flex;}
+  .hp-modal{background:var(--surface);border:1.5px solid var(--border-mid);border-radius:14px;width:min(760px,95vw);max-height:85vh;display:flex;flex-direction:column;overflow:hidden;}
+  .hp-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+  .hp-modal-title{font-size:15px;font-weight:700;color:var(--text);}
+  .hp-modal-close{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;line-height:1;padding:2px 6px;}
+  .hp-modal-close:hover{color:var(--text);}
+  .hp-modal-body{padding:16px 18px;overflow-y:auto;display:flex;gap:16px;flex-wrap:wrap;}
+  .hp-section{flex:1;min-width:260px;}
+  .hp-section-title{font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--text-hint);margin-bottom:8px;}
+  .hp-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .hp-table th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-hint);padding:4px 8px;border-bottom:1px solid var(--border);}
+  .hp-table td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text);}
+  .hp-table tr:last-child td{border-bottom:none;}
+  .hp-table td.age-green{color:var(--green);}
+  .hp-table td.age-yellow{color:var(--yellow);}
+  .hp-table td.age-red{color:var(--red);}
+  .hp-empty{color:var(--text-hint);font-size:13px;padding:12px 0;}
+
   /* Empty */
   .col-empty{padding:2rem 1rem;text-align:center;color:var(--text-hint);font-size:14px;}
   .col-empty span{font-size:28px;display:block;margin-bottom:6px;}
@@ -342,6 +366,18 @@
 </style>
 </head>
 <body>
+
+<!-- Hospital detail modal -->
+<div class="hp-modal-backdrop" id="hp-modal-backdrop" onclick="hpBackdropClick(event)">
+  <div class="hp-modal">
+    <div class="hp-modal-header">
+      <span class="hp-modal-title">Hospital — D1-HP-01 &amp; H1-PW-01</span>
+      <button class="hp-modal-close" onclick="closeHospitalModal()">&#10005;</button>
+    </div>
+    <div class="hp-modal-body" id="hp-modal-body"></div>
+  </div>
+</div>
+
 <div class="container">
 
   <div class="top-bar">
@@ -621,7 +657,10 @@ function startClientTicker() {
   }, 60000);
 }
 
+var lastTotesData = null;
+
 function render(data) {
+  lastTotesData = data;
   var staleEl = document.getElementById('stale-banner');
   var rtEl    = document.getElementById('run-time');
 
@@ -830,8 +869,8 @@ function makePwBubble(pw) {
   var hasLoad  = pw.olpn_count > 0;
   var dz1Tot   = pw.dz1_totes || 0;
   var dz2Tot   = pw.dz2_totes || 0;
-  // Mixed DZ: both drop zones have totes at the same time on the same putwall
-  var isMixed  = pw.dz2 && dz1Tot > 0 && dz2Tot > 0;
+  // Mixed DZ: both drop zones have totes AND the wall has oLPNs actively in it
+  var isMixed  = pw.dz2 && dz1Tot > 0 && dz2Tot > 0 && pw.olpn_count > 0;
 
   var bubble   = document.createElement('div');
   bubble.className = 'pw-bubble' + (hasLoad ? ' pw-active' : '') + (isMixed ? ' pw-mixed' : '');
@@ -942,7 +981,8 @@ function makeLocBlock(loc, totes, hpOlpn) {
   var state  = count === 0 ? 'empty' : oldest < 30 ? 'pw-green' : oldest < 60 ? 'pw-yellow' : 'pw-red';
 
   var block = document.createElement('div');
-  block.className = 'loc-block ' + state;
+  block.className = 'loc-block ' + state + (loc === 'D1-HP-01' ? ' hp-clickable' : '');
+  if (loc === 'D1-HP-01') block.onclick = openHospitalModal;
 
   var nameEl = document.createElement('div');
   nameEl.className = 'lb-name';
@@ -969,6 +1009,103 @@ function makeLocBlock(loc, totes, hpOlpn) {
   }
 
   return block;
+}
+
+function fmtAge(min) {
+  if (min === null || min === undefined) return '—';
+  if (min < 60) return min + 'm';
+  return Math.floor(min / 60) + 'h ' + (min % 60) + 'm';
+}
+
+function ageClass(min) {
+  if (min === null || min === undefined) return '';
+  if (min < 30) return 'age-green';
+  if (min < 60) return 'age-yellow';
+  return 'age-red';
+}
+
+function openHospitalModal() {
+  var data = lastTotesData || {};
+  var totes = [].concat(data.case1 || [], data.case2 || [], data.case3 || [])
+    .filter(function(t) { return t.location && t.location.indexOf('D1-HP') === 0; });
+  var olpns = data.hospital_olpns || [];
+
+  var body = document.getElementById('hp-modal-body');
+  body.innerHTML = '';
+
+  // ── Totes section ──
+  var toteSec = document.createElement('div');
+  toteSec.className = 'hp-section';
+  var toteTitle = document.createElement('div');
+  toteTitle.className = 'hp-section-title';
+  toteTitle.textContent = 'Totes at D1-HP-01 (' + totes.length + ')';
+  toteSec.appendChild(toteTitle);
+
+  if (totes.length === 0) {
+    var te = document.createElement('div');
+    te.className = 'hp-empty';
+    te.textContent = 'No totes at drop zone';
+    toteSec.appendChild(te);
+  } else {
+    var tTbl = document.createElement('table');
+    tTbl.className = 'hp-table';
+    tTbl.innerHTML = '<thead><tr><th>Tote</th><th>Type</th><th>Units</th><th>Age</th></tr></thead>';
+    var tBody = document.createElement('tbody');
+    totes.forEach(function(t) {
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + (t.olpn || '—') + '</td>' +
+        '<td>' + (t.type || '—') + '</td>' +
+        '<td>' + (t.units || 0) + '</td>' +
+        '<td class="' + ageClass(t.timer_min) + '">' + fmtAge(t.timer_min) + '</td>';
+      tBody.appendChild(tr);
+    });
+    tTbl.appendChild(tBody);
+    toteSec.appendChild(tTbl);
+  }
+  body.appendChild(toteSec);
+
+  // ── oLPNs section ──
+  var olpnSec = document.createElement('div');
+  olpnSec.className = 'hp-section';
+  var olpnTitle = document.createElement('div');
+  olpnTitle.className = 'hp-section-title';
+  olpnTitle.textContent = 'oLPNs at H1-PW-01 (' + olpns.length + ')';
+  olpnSec.appendChild(olpnTitle);
+
+  if (olpns.length === 0) {
+    var oe = document.createElement('div');
+    oe.className = 'hp-empty';
+    oe.textContent = 'No oLPNs at hospital putwall';
+    olpnSec.appendChild(oe);
+  } else {
+    var oTbl = document.createElement('table');
+    oTbl.className = 'hp-table';
+    oTbl.innerHTML = '<thead><tr><th>oLPN</th><th>Status</th><th>Units</th><th>Age</th></tr></thead>';
+    var oBody = document.createElement('tbody');
+    olpns.forEach(function(o) {
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + (o.olpn || '—') + '</td>' +
+        '<td>' + (o.status || '—') + '</td>' +
+        '<td>' + (o.units || 0) + '</td>' +
+        '<td class="' + ageClass(o.age_min) + '">' + fmtAge(o.age_min) + '</td>';
+      oBody.appendChild(tr);
+    });
+    oTbl.appendChild(oBody);
+    olpnSec.appendChild(oTbl);
+  }
+  body.appendChild(olpnSec);
+
+  document.getElementById('hp-modal-backdrop').classList.add('open');
+}
+
+function closeHospitalModal() {
+  document.getElementById('hp-modal-backdrop').classList.remove('open');
+}
+
+function hpBackdropClick(e) {
+  if (e.target === document.getElementById('hp-modal-backdrop')) closeHospitalModal();
 }
 
 function openBacklog() {

@@ -134,6 +134,8 @@ WHERE ilpn.FACILITY_ID = '499' AND ilpn.CURRENT_LOCATION_ID = 'D1-SN-01' AND ilp
 ```
 Writes `rfp_units` to backlog_live.json.
 
+**Top Items (backlog_live.json):** `top_items[]` array — top 10 Ecom items by `ORDERED_QUANTITY` today. Fields: `description`, `units`, `orders`, `gwp` (bool). Filtered: `ORDER_TYPE='ECOM'`, `CANCELLED=0`, `DESCRIPTION NOT LIKE '%DUMMY%'`, today UTC range. GWP detected in Node via `/gift with purchase/i` and `/\bgwp\b/i` — no SQL gymnastics. Rendered as numbered list in Backlog_live.html sidebar with orange GWP badge inline.
+
 ---
 
 ## dc499_refresh.js — Live server agent
@@ -154,6 +156,9 @@ Writes `rfp_units` to backlog_live.json.
 11. Reserve Live — one-shot refresh (scout_reserve_agent.js)
 12. Reserve Live — auto-refresh every 3 min
 13. Reserve Live — auth
+14. Item Prep Live — one-shot refresh (scout_itemprep_agent.js)
+15. Item Prep Live — auto-refresh every 3 min
+16. Item Prep Live — auth
 
 **Output JSON:** batch_status.json, backlog_live.json, shipped_live.json, tasks_live.json, retail_replen.json, totes_live.json, dock_live.json, receiving_live.json
 
@@ -222,9 +227,13 @@ Routing: `getShift()` — 1st = 6AM–2PM PDT, 2nd = 2PM–10PM PDT.
 
 **Bridge card:** Units/Hour renamed "Bridge" (id=hourly-title). Two stacked sub-tables side-by-side.
 
+**Top Items card (sidebar):** Numbered list of today's top 10 Ecom items by units ordered. Rendered by `renderTopItems()` from `data.top_items`. GWP entries get an inline orange GWP badge. Hidden when array is empty. Sits below the Bridge card in `.page-sidebar`.
+
 **Allocated tile (banner):** Shows `totA - rfp_units` (units allocated but not yet at D1-SN-01 = "Not in Packing"). Ecom order lines are always 1 unit so line count and unit count are equal — subtraction is clean. `m-total-alloc` in the top capsule shows the full `totA` as "Total Allocated". RFP tile stays separate and unchanged.
 
 **Pick Drop Carts (Tasks tab):** `#tk-pickdrop-card` shows iLPNs sitting at `P1-PK-xx` locations that should be cleared by EOS. Query in `fetchTaskData()` — `DCI_ILPN LEFT JOIN DCI_INVENTORY WHERE CURRENT_LOCATION_ID LIKE 'P1-PK%' AND STATUS != '9000' AND IS_CLOSED = 0`. Written to `pick_drop_carts` in tasks_live.json. Groups by location, calculates `age_min` per iLPN, `oldest_min` per cart. Card hidden when empty. Age color: green <30m, amber 30–60m, red >60m. No summary tile — card only.
+
+**Status pill panel (order detail):** Clicking a Ready / Allocated / Packed pill opens a detail panel. Title shows `{date} [Status] N orders · M lines`. Each order row is wrapped in `.order-entry` (not `.order-item`). Clicking a row expands an `.order-expand-row` showing line count + oldest line date (PDT). Chevron `▶`/`▼` rotates via `.order-entry.expanded`. State tracked in `expandedOrders` Set (order IDs). Panel + expanded rows survive auto-refresh: `renderBacklogData()` saves `prevSel`, rebuilds the table, then calls `openDetailPanel(..., true)` (silent=true skips filter reset + scroll). `toggleOrderExpand(el, orderId, event)` guards against expand-row re-click with `event.target.closest('.order-expand-row')`.
 
 **EOD Email:** `exportEodEmail()` reads lastBlData, lastBtData, lastRrData. Outlook compat: `width="600"` HTML attr (not CSS max-width), `bgcolor="#hex"` on every td/th. `addBgcolor()` post-pass injects bgcolor from computed style. Dark palette: #13172b bg, #1b2035/#232840 cells.
 
@@ -291,11 +300,12 @@ All four agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent
 
 **Query table:** TSK_ACTIVITY_TRACKING. Row columns aliased to CSV names: Employee, Transaction ID, Activity Datetime, Quantity, Completed Quantity, CP Trace Id, Container ID, Current Location, Previous Location, Criteria.
 
-**Four query groups (stay under ~10k row cap):**
+**Five query groups (stay under ~10k row cap):**
 - Group A: replen + putaway (iLPN Replen Fill/Pull variants, System/User Directed Putaway)
 - Group B: picking (Ecom Mezz/Non-Mezz Pick To Putwall Cart)
 - Group C: packing (NRDR CORE PACK FOR ECOM PACK STATION)
-- Group D: shipping + sorting (OB Putaway By Ship Via, NRDR Load Parcel Packages, OB Sort To Putwall Cubby)
+- Group D: shipping (OB Putaway By Ship Via, NRDR Load Parcel Packages)
+- Group E: sorting (OB Sort To Putwall Cubby) — SQL pre-filtered by CRITERIA_ID = NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA to stay under cap; safe because processData() discards non-criteria rows anyway
 
 **Truncation:** `truncated: true` in JSON + amber meta line if any group hits 9,500 rows. Split further if needed.
 
@@ -471,6 +481,8 @@ Engineering manager proposed migrating the reporter to Metabase. Here is the agr
 - [ ] EOD Email: verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass)
 - [ ] Packed Not Shipped: build PackedNotShipped_live.html + fetchPackedNotShipped() in dc499_refresh.js
 - [ ] Putwall column in batch display — needs multi-PW shift to confirm TSK_TASK_DETAIL.RESOURCE_GROUP_ID populated
+- [ ] **Mixed putwall detection (Totes_live.html) — improve precision:** Current condition: `dz1_totes > 0 && dz2_totes > 0 && olpn_count > 0`. Still fires false positive when a prior wave's totes left oLPNs in the wall while only one new tote is active. Better approach: add `dz1_last_active_min` / `dz2_last_active_min` fields to `totes_live.json` (from `MAX(DCI_ILPN.UPDATED_TIMESTAMP)` per DZ location), then flag mixed only when both DZs had tote activity within ~30–45 min. Threshold needs validating against a real mixed-DZ wave first.
+- [ ] **Tote Case 2 reuse bug (fixed 2026-09-16):** `task_ended_pdt > ilpn.created_pdt` guard added — stale completed tasks from previous waves on reused tote IDs were inflating Case 2 timers. Watch for any new variants of this pattern.
 - [ ] Lost Tote Lookup: verify PPK_OLPN_DETAIL schema + repick location join. Requires PC server endpoint.
 - [ ] PWA / iPad: add manifest.json + service worker; update getLiveBase() to LAN IP for iPad
 - [ ] Wave progress report (DCO_WAVE_AGGREGATE_ORDER)
@@ -490,3 +502,11 @@ Engineering manager proposed migrating the reporter to Metabase. Here is the agr
 - Always review before pushing to GitHub
 - Use descriptive commit messages: "Ecom v2.9 — PPH projection, headcount settings"
 - File size warning: HTML files 85-115KB, GitHub MCP times out at ~95KB+ — use git push directly
+
+---
+
+## DeanAgentGuide
+
+Field guide for building MAWM agents — invoke on demand only. Do NOT summarize or surface this section unprompted.
+
+**IMPORTANT — When the user's message is exactly `DeanAgentGuide`:** Stop what you are doing. Do not search for commands. Do not ask what they meant. Read `agent-guide/DEAN_AGENT_GUIDE.md` immediately using the Read tool, then follow the instructions inside it exactly.
