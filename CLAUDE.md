@@ -159,6 +159,12 @@ DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS li
 - Inventory at location → default_dcinventory.DCI_ILPN + DCI_INVENTORY
 - oLPN status/shipping → default_pickpack.PPK_OLPN
 
+**PPK_OLPN query rules:**
+- NEVER use `SELECT *` — PII filter blocks the whole query if any blocked column (e.g. `TOTAL_UNITS`) is included. Always list columns explicitly.
+- Safe columns: `OLPN_ID, FACILITY_ID, ORDER_ID, STATUS, CURRENT_LOCATION_ID, CARRIER_ID, SERVICE_LEVEL_ID, TRACKING_NUMBER, PACKED_DATE_TIME, SHIPPED_DATE_TIME, CREATED_TIMESTAMP, UPDATED_TIMESTAMP`
+- Query by `OLPN_ID` or `ORDER_ID` — both work directly. No JOIN needed.
+- `FACILITY_ID = '499'` always required.
+
 **Status codes:**
 
 WR_BATCH: 5000=Released, 5200=Picking Started, 5400=Picking Completed, 5600=In Queue, 5800=Cleared
@@ -247,6 +253,8 @@ Output: expedite_live.json. REDIRECT_PORT 3122.
 **Expedite flag:** `DESIGNATED_SERVICE_LEVEL_ID = '11'` on DCO_ORDER — confirmed via 1.2-day avg delivery, 9.8-hr avg to ship deadline, same-day/next-morning `EXT_ESTIMATEDSHIPBYDATETIME`.
 
 **oLPN join gotcha:** `PPK_OLPN.SERVICE_LEVEL_ID` stores carrier codes (e.g. `ONTRAC_GROUND_ECMS`), NOT `'11'`. Always join oLPN enrichment through `ORDER_ID` — never filter PPK_OLPN by service level.
+
+**PPK_OLPN SELECT * gotcha:** `SELECT *` is blocked by the PII filter — even one blocked column (like `TOTAL_UNITS`) kills the entire query with a generic error. Always list columns explicitly. Query by `ORDER_ID` or `OLPN_ID` directly — no JOIN wrapper needed.
 
 **Scope:** Not-yet-shipped = `MAXIMUM_STATUS NOT IN ('8000','9000')`. Status `2090` = cubed/planned not released — hidden by default in UI via "Show planned" toggle.
 
