@@ -1796,7 +1796,7 @@ function renderTopItems(items) {
     html += '<div class="ti-rank">' + (i + 1) + '</div>';
     html += '<div class="ti-body">';
     html += '<div class="ti-desc">' + escHtml(it.description) + gwpTag + '</div>';
-    html += '<div class="ti-meta">' + fmt(it.orders) + ' orders</div>';
+    html += '<div class="ti-meta">' + (it.item_id ? '<span style="font-family:monospace;opacity:0.7;">#' + escHtml(it.item_id) + '</span> &middot; ' : '') + fmt(it.orders) + ' orders</div>';
     html += '</div>';
     html += '<div class="ti-units">' + fmt(it.units) + '</div>';
     html += '</div>';

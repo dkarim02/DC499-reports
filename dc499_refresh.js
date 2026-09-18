@@ -786,6 +786,7 @@ WHERE ilpn.FACILITY_ID = '${FACILITY}'
   // Query 8: top 10 Ecom items by ordered quantity today — for replen sniping card
   const sqlTopItems = `
 SELECT
+  ITEM_ID,
   DESCRIPTION,
   SUM(ORDERED_QUANTITY) AS units_ordered,
   COUNT(DISTINCT ORDER_ID) AS order_count
@@ -796,7 +797,7 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND DESCRIPTION NOT LIKE '%DUMMY%'
   AND CREATED_TIMESTAMP >= '${todayUtcStart}'
   AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
-GROUP BY DESCRIPTION
+GROUP BY ITEM_ID, DESCRIPTION
 ORDER BY units_ordered DESC
 LIMIT 10`.trim();
 
@@ -962,6 +963,7 @@ LIMIT 10`.trim();
 
   const GWP_PATTERNS = [/gift with purchase/i, /\bgwp\b/i];
   const topItems = (respTopItems.rows || []).map(r => ({
+    item_id:      r.ITEM_ID || '',
     description:  r.DESCRIPTION || '',
     units:        Number(r.units_ordered),
     orders:       Number(r.order_count),
