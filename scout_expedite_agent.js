@@ -316,22 +316,18 @@ GROUP BY ol.ORDER_ID`.trim();
   for (const r of (respShipped.rows || [])) shippedMap[r.svc] = Number(r.shipped_count || 0);
   const shippedCount = (shippedMap['11'] || 0) + (shippedMap['42'] || 0);
 
-  // oLPN enrichment — LEFT JOIN via DCO_ORDER (more reliable than direct PPK_OLPN query)
-  // Collect all oLPNs per order (one order can have multiple oLPNs for multi-qty orders)
+  // oLPN enrichment — direct PPK_OLPN query by ORDER_ID
+  // Must list columns explicitly — SELECT * is blocked by PII filter
   let olpnMap = {}; // ORDER_ID -> array of olpn objects
   if (openOrders.length > 0) {
     const orderIds = openOrders.map(r => `'${r.ORDER_ID}'`).join(',');
     try {
       const respOlpn = await mcpQuery(accessToken, `
-SELECT o.ORDER_ID, p.OLPN_ID, p.STATUS AS olpn_status, p.TOTAL_UNITS, p.CURRENT_LOCATION_ID, p.CARRIER_ID
-FROM default_dcorder.DCO_ORDER o
-LEFT JOIN default_pickpack.PPK_OLPN p
-  ON p.ORDER_ID = o.ORDER_ID
-  AND p.FACILITY_ID = o.FACILITY_ID
-  AND p.STATUS NOT IN ('9000')
-WHERE o.FACILITY_ID = '${FACILITY}'
-  AND o.ORDER_ID IN (${orderIds})
-  AND p.OLPN_ID IS NOT NULL`.trim());
+SELECT OLPN_ID, ORDER_ID, STATUS AS olpn_status, CURRENT_LOCATION_ID, CARRIER_ID, SERVICE_LEVEL_ID, TRACKING_NUMBER
+FROM default_pickpack.PPK_OLPN
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_ID IN (${orderIds})
+  AND STATUS NOT IN ('9000')`.trim());
       for (const r of (respOlpn.rows || [])) {
         if (!olpnMap[r.ORDER_ID]) olpnMap[r.ORDER_ID] = [];
         olpnMap[r.ORDER_ID].push(r);
