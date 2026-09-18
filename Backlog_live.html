@@ -281,7 +281,7 @@
   #hourly-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;}
   #hourly-card .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.04em;}
   #hourly-card .card-sub{font-size:11px;color:var(--text-hint);margin-bottom:1rem;}
-  #top-items-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-top:1rem;display:none;}
+  #top-items-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;display:none;}
   #top-items-card .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.04em;}
   #top-items-card .card-sub{font-size:11px;color:var(--text-hint);margin-bottom:1rem;}
   .ti-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border-light);}
@@ -795,6 +795,13 @@
             <div id="rr-rows"></div>
           </div>
         </div>
+
+        <!-- Top Items leaderboard — below Retail Replen Watch -->
+        <div id="top-items-card" style="margin-top:1rem;">
+          <div class="card-title">Top Items</div>
+          <div class="card-sub">today &middot; ecom orders by units</div>
+          <div id="top-items-list"></div>
+        </div>
       </div>
 
       <div class="page-sidebar">
@@ -802,11 +809,6 @@
           <div class="card-title" id="hourly-title">Bridge</div>
           <div class="card-sub" id="hourly-sub">today &middot; order lines received per hour</div>
           <div id="hourly-bars"></div>
-        </div>
-        <div id="top-items-card">
-          <div class="card-title">Top Items</div>
-          <div class="card-sub">today &middot; ecom orders by units</div>
-          <div id="top-items-list"></div>
         </div>
       </div>
     </div>
