@@ -461,9 +461,11 @@
   .xpd-filter-btn.f-active{color:var(--text);border-color:var(--border-mid);background:var(--surface);}
   .xpd-filter-btn.f-active.f-1dd{background:var(--xpd-bg);color:var(--xpd);border-color:var(--xpd-border);}
   .xpd-filter-btn.f-active.f-2dd{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-muted);}
-  .xpd-stage-pill{display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;padding:4px 10px;cursor:pointer;transition:opacity 0.15s;user-select:none;}
+  .xpd-stage-pill{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;padding:2px 7px;cursor:pointer;transition:opacity 0.15s;user-select:none;}
   .xpd-stage-pill:hover{border-color:var(--border-mid);}
   .xpd-stage-pill.stp-off{opacity:0.3;}
+  .xpd-stage-pill .xpd-stage-badge{font-size:9px;padding:1px 5px;}
+  .xpd-stage-pill span[style]{font-size:11px !important;}
   .xpd-table-wrap{overflow-y:auto;max-height:480px;}
   .xpd-table-wrap::-webkit-scrollbar{width:4px;}
   .xpd-table-wrap::-webkit-scrollbar-track{background:transparent;}
@@ -1093,12 +1095,6 @@
       </div>
     </div>
 
-    <!-- Pipeline breakdown bar -->
-    <div class="card" id="xpd-pipeline-card" style="display:none;margin-bottom:1rem;">
-      <div class="card-title">Pipeline — Open Orders by Stage</div>
-      <div id="xpd-pipeline-bars" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"></div>
-    </div>
-
     <!-- Main table -->
     <div class="card" id="xpd-table-card" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem;">
@@ -1107,9 +1103,11 @@
           <button class="xpd-filter-btn f-active f-1dd" id="xpd-f-1dd" onclick="xpdToggleFilter('1DD')">1DD</button>
           <button class="xpd-filter-btn f-active f-2dd" id="xpd-f-2dd" onclick="xpdToggleFilter('2DD')">2DD</button>
           <span style="width:1px;height:14px;background:var(--border);display:inline-block;margin:0 2px;"></span>
+          <div id="xpd-pipeline-bars" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;"></div>
+          <span style="width:1px;height:14px;background:var(--border);display:inline-block;margin:0 2px;"></span>
           <label style="font-size:11px;color:var(--text-muted);cursor:pointer;white-space:nowrap;">
             <input type="checkbox" id="xpd-show-planned" onchange="renderExpediteTable()" style="margin-right:3px;" checked>
-            Show not released
+            Show ready
           </label>
         </div>
       </div>
@@ -3174,8 +3172,7 @@ function renderExpediteData(data) {
     });
     pipelineEl.innerHTML = html || '<span style="font-size:13px;color:var(--text-hint);">No open orders in pipeline</span>';
   }
-  document.getElementById('xpd-pipeline-card').style.display = open.length ? 'block' : 'none';
-  document.getElementById('xpd-table-card').style.display    = open.length ? 'block' : 'none';
+  document.getElementById('xpd-table-card').style.display = open.length ? 'block' : 'none';
 
   renderExpediteTable();
 }
