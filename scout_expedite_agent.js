@@ -286,12 +286,30 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStartStr}'
 GROUP BY DESIGNATED_SERVICE_LEVEL_ID`.trim();
 
-  const [respOpen, respShipped] = await Promise.all([
+  // Q3: order line counts (Ecom = 1 unit/line, so line count = unit count)
+  const sqlLines = `
+SELECT ol.ORDER_ID, COUNT(*) AS line_count
+FROM default_dcorder.DCO_ORDER_LINE ol
+JOIN default_dcorder.DCO_ORDER o ON o.ORDER_ID = ol.ORDER_ID AND o.FACILITY_ID = ol.FACILITY_ID
+WHERE ol.FACILITY_ID = '${FACILITY}'
+  AND ol.CANCELLED = 0
+  AND o.ORDER_TYPE = 'ECOM'
+  AND o.DESIGNATED_SERVICE_LEVEL_ID IN ('11','42')
+  AND o.MAXIMUM_STATUS NOT IN ('8000','9000')
+  AND o.CREATED_TIMESTAMP >= '${shiftStartStr}'
+GROUP BY ol.ORDER_ID`.trim();
+
+  const [respOpen, respShipped, respLines] = await Promise.all([
     mcpQuery(accessToken, sqlOpen),
     mcpQuery(accessToken, sqlShipped).catch(() => ({ rows: [] })),
+    mcpQuery(accessToken, sqlLines).catch(() => ({ rows: [] })),
   ]);
 
   const openOrders = respOpen.rows || [];
+
+  // line count map: ORDER_ID -> unit count
+  const lineMap = {};
+  for (const r of (respLines.rows || [])) lineMap[r.ORDER_ID] = Number(r.line_count || 0);
 
   // shipped counts broken out by service level
   const shippedMap = {};
@@ -327,10 +345,8 @@ WHERE o.FACILITY_ID = '${FACILITY}'
 
   const orders = openOrders.map(r => {
     const olpns = olpnMap[r.ORDER_ID] || [];
-    // highest-status oLPN for location/carrier display
     const topOlpn = olpns.reduce((best, o) =>
       (!best || Number(o.olpn_status) > Number(best.olpn_status)) ? o : best, null);
-    const totalUnits = olpns.reduce((s, o) => s + Number(o.TOTAL_UNITS || 0), 0);
     return {
       order_id:      r.ORDER_ID,
       order_status:  r.MAXIMUM_STATUS,
@@ -338,7 +354,7 @@ WHERE o.FACILITY_ID = '${FACILITY}'
       placed_utc:    r.placed_utc,
       ship_by_utc:   r.ship_by_utc,
       deliver_by_utc: r.deliver_by_utc,
-      quantity:      totalUnits || null,
+      quantity:      lineMap[r.ORDER_ID] || null,
       olpns:         olpns.map(o => o.OLPN_ID).filter(Boolean),
       olpn_status:   topOlpn?.olpn_status   || null,
       olpn_location: topOlpn?.CURRENT_LOCATION_ID || null,
