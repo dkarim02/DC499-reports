@@ -299,10 +299,26 @@ WHERE ol.FACILITY_ID = '${FACILITY}'
   AND o.CREATED_TIMESTAMP >= '${shiftStartStr}'
 GROUP BY ol.ORDER_ID`.trim();
 
-  const [respOpen, respShipped, respLines] = await Promise.all([
+  // Q4: pick task status per order — used to show sub-stage for allocated orders (2090)
+  // GROUP BY ORDER_ID, take the highest-status task per order (MAX numeric status)
+  const sqlPickStage = `
+SELECT td.ORDER_ID, MAX(t.STATUS) AS task_status
+FROM default_task.TSK_TASK t
+JOIN default_task.TSK_TASK_DETAIL td
+  ON  td.TASK_ID     = t.TASK_ID
+  AND td.FACILITY_ID = '${FACILITY}'
+  AND td.CREATED_TIMESTAMP >= '${shiftStartStr}'
+WHERE t.FACILITY_ID = '${FACILITY}'
+  AND t.TRANSACTION_ID IN ('Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart')
+  AND t.STATUS NOT IN ('8000','9000')
+  AND t.CREATED_TIMESTAMP >= '${shiftStartStr}'
+GROUP BY td.ORDER_ID`.trim();
+
+  const [respOpen, respShipped, respLines, respPickStage] = await Promise.all([
     mcpQuery(accessToken, sqlOpen),
     mcpQuery(accessToken, sqlShipped).catch(() => ({ rows: [] })),
     mcpQuery(accessToken, sqlLines).catch(() => ({ rows: [] })),
+    mcpQuery(accessToken, sqlPickStage).catch(() => ({ rows: [] })),
   ]);
 
   const openOrders = respOpen.rows || [];
@@ -315,6 +331,10 @@ GROUP BY ol.ORDER_ID`.trim();
   const shippedMap = {};
   for (const r of (respShipped.rows || [])) shippedMap[r.svc] = Number(r.shipped_count || 0);
   const shippedCount = (shippedMap['11'] || 0) + (shippedMap['42'] || 0);
+
+  // pick stage map: ORDER_ID -> highest task STATUS code string
+  const pickStageMap = {};
+  for (const r of (respPickStage.rows || [])) pickStageMap[r.ORDER_ID] = String(r.task_status || '').split('.')[0];
 
   // oLPN enrichment — direct PPK_OLPN query by ORDER_ID
   // Must list columns explicitly — SELECT * is blocked by PII filter
@@ -357,6 +377,7 @@ WHERE FACILITY_ID = '${FACILITY}'
       olpn_pallet:   topOlpn?.PALLET_ID           || null,
       olpn_svc:      topOlpn?.SERVICE_LEVEL_ID    || null,
       carrier:       topOlpn?.CARRIER_ID          || null,
+      pick_stage:    pickStageMap[r.ORDER_ID]     || null,
     };
   });
 

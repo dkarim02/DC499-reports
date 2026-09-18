@@ -477,6 +477,7 @@
   .xpd-sort-arrow.sa-active{opacity:1;color:var(--accent);}
   .xpd-stage-allocated{background:var(--green-bg,#f0fdf4);color:var(--green);border:0.5px solid var(--green);}
   .xpd-loc-sub{display:block;font-size:10px;font-family:monospace;color:var(--text-hint);margin-top:2px;}
+  .xpd-pick-stage{display:block;font-size:10px;color:var(--text-hint);margin-top:2px;font-style:italic;}
   .xpd-empty{text-align:center;padding:2.5rem 1rem;color:var(--text-hint);font-size:13px;}
   .tab-btn.xpd-tab-btn.active{color:var(--xpd);border-bottom-color:var(--xpd);}
   .tab-btn.xpd-tab-btn:not(.active):hover{color:var(--xpd);}
@@ -3274,19 +3275,27 @@ function renderExpediteTable() {
     };
     var carrierLabel = SVC_CARRIER[o.olpn_svc] || CARRIER_LABELS[carrierRaw] || carrierRaw || '—';
 
-    // oLPN + sub-line: pallet if at a dock/outbound location (P1*), otherwise last-seen location
+    // oLPN + sub-line: pallet if at dock (P1*), location otherwise.
+    // For allocated orders (2090) with no location, show pick task stage if known.
+    var PICK_STAGE_LABEL = { '3000': 'In Queue', '5000': 'Assigned', '7000': 'Picking' };
     var olpnHtml;
     if (o.olpns && o.olpns.length) {
       var loc = o.olpn_location || '';
       var subHtml = '';
       if (loc.startsWith('P1') && o.olpn_pallet) {
         subHtml = '<span class="xpd-loc-sub" title="Pallet">&#x1F4E6; ' + escHtml(o.olpn_pallet) + '</span>';
+      } else if (loc === 'D1-SN-01') {
+        subHtml = '<span class="xpd-loc-sub">Located to D1-SN-01</span>';
       } else if (loc) {
         subHtml = '<span class="xpd-loc-sub">' + escHtml(loc) + '</span>';
+      } else if (o.order_status === '2090' && o.pick_stage && PICK_STAGE_LABEL[o.pick_stage]) {
+        subHtml = '<span class="xpd-pick-stage">' + escHtml(PICK_STAGE_LABEL[o.pick_stage]) + '</span>';
       }
       olpnHtml = o.olpns.map(function(id){ return '<span class="xpd-olpn-loc">' + escHtml(id) + '</span>'; }).join('<br>') + subHtml;
     } else {
-      olpnHtml = '<span style="color:var(--text-hint);">—</span>';
+      var pickStageLabel = (o.order_status === '2090' && o.pick_stage) ? PICK_STAGE_LABEL[o.pick_stage] : null;
+      olpnHtml = '<span style="color:var(--text-hint);">—</span>'
+        + (pickStageLabel ? '<span class="xpd-pick-stage">' + escHtml(pickStageLabel) + '</span>' : '');
     }
 
     html += '<tr>'

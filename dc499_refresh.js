@@ -38,7 +38,6 @@ function b64url(buf) {
   return buf.toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
 const LOCK_FILE = TOKEN_FILE + '.lock';
-const QUERY_LOCK_FILE = TOKEN_FILE + '.query_lock';
 const TOKEN_TTL = 55 * 60 * 1000;
 
 function loadToken() {
@@ -211,18 +210,24 @@ function jsonPost(url, body, headers = {}) {
   });
 }
 
-async function acquireQueryLock() {
-  const deadline = Date.now() + 60000;
-  while (Date.now() < deadline) {
-    try { fs.writeFileSync(QUERY_LOCK_FILE, String(process.pid), { flag: 'wx' }); return true; } catch {}
-    await new Promise(r => setTimeout(r, 500));
-  }
-  return false;
+// Semaphore: allows 2 concurrent MCP queries. More than ~3 concurrent caused empty responses;
+// 2 is safe and roughly halves serial time vs the old single-lock approach.
+const QUERY_SLOTS = 2;
+let _queryActive = 0;
+const _queryQueue = [];
+function _acquireSlot() {
+  return new Promise(resolve => {
+    if (_queryActive < QUERY_SLOTS) { _queryActive++; resolve(); }
+    else _queryQueue.push(resolve);
+  });
 }
-function releaseQueryLock() { try { fs.unlinkSync(QUERY_LOCK_FILE); } catch {} }
+function _releaseSlot() {
+  if (_queryQueue.length) { _queryQueue.shift()(); }
+  else _queryActive--;
+}
 
 async function mcpQuery(accessToken, sql) {
-  await acquireQueryLock();
+  await _acquireSlot();
   try {
     const result = await jsonPost(`${MCP_BASE}/mcp`, JSON.stringify({
       jsonrpc: '2.0', id: 1, method: 'tools/call',
@@ -238,7 +243,7 @@ async function mcpQuery(accessToken, sql) {
     if (!text) throw new Error('Empty MCP response');
     return JSON.parse(text);
   } finally {
-    releaseQueryLock();
+    _releaseSlot();
   }
 }
 
@@ -1719,25 +1724,22 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
 // ── core: query + write ────────────────────────────────────────────────────────
 async function queryAndWrite(accessToken) {
   console.log(`[${ts()}] Querying...`);
-  // fetchBacklog fires 7 internal queries; fetchBatchStatus fires 3; fetchRetailReplen fires 4.
-  // Running everything concurrently hits ~16 MCP requests at once and causes empty responses.
-  // Run the three heavy ones sequentially first, then fire the lighter ones in parallel.
-  const backlogData = await fetchBacklog(accessToken)
-    .catch(e => { console.warn(`  Backlog query failed: ${e.message}`); return null; });
-  const batchStatusData = await fetchBatchStatus(accessToken)
-    .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; });
-  const retailReplenData = await fetchRetailReplen(accessToken)
-    .catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; });
-  const [recvData, totesData, shippedData] = await Promise.all([
-    fetchReceiving(accessToken),
-    fetchTotes(accessToken).catch(e => { console.warn(`  Totes query failed: ${e.message}`); return null; }),
-    fetchShipped(accessToken).catch(e => { console.warn(`  Shipped query failed: ${e.message}`); return null; }),
+  // All 7 fetch functions start together. The 2-slot semaphore inside mcpQuery() keeps
+  // concurrent in-flight requests at ≤2, preventing empty-response throttling from the server.
+  const [backlogData, batchStatusData, retailReplenData, recvData, totesData, shippedData, tasksData] = await Promise.all([
+    fetchBacklog(accessToken)      .catch(e => { console.warn(`  Backlog query failed: ${e.message}`);      return null; }),
+    fetchBatchStatus(accessToken)  .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; }),
+    fetchRetailReplen(accessToken) .catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
+    fetchReceiving(accessToken)    .catch(e => { console.warn(`  Receiving query failed: ${e.message}`);    return null; }),
+    fetchTotes(accessToken)        .catch(e => { console.warn(`  Totes query failed: ${e.message}`);        return null; }),
+    fetchShipped(accessToken)      .catch(e => { console.warn(`  Shipped query failed: ${e.message}`);      return null; }),
+    fetchTaskData(accessToken)     .catch(e => { console.warn(`  Tasks query failed: ${e.message}`);        return null; }),
   ]);
-  const tasksData = await fetchTaskData(accessToken)
-    .catch(e => { console.warn(`  Tasks query failed: ${e.message}`); return null; });
 
-  fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
-  console.log(`[${ts()}] ✓ receiving_live.json — ${recvData.associates.length} associates`);
+  if (recvData) {
+    fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
+    console.log(`[${ts()}] ✓ receiving_live.json — ${recvData.associates.length} associates`);
+  }
 
 
   if (totesData) {
