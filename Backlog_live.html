@@ -1125,7 +1125,7 @@
               <th class="r" onclick="xpdSort('qty')">Qty<span class="xpd-sort-arrow" id="xpd-sa-qty">&#x25B2;&#x25BC;</span></th>
               <th class="r" onclick="xpdSort('age')">Age<span class="xpd-sort-arrow" id="xpd-sa-age">&#x25B2;&#x25BC;</span></th>
               <th class="r" onclick="xpdSort('true_ship_by')">Ship By<span class="xpd-sort-arrow" id="xpd-sa-true_ship_by">&#x25B2;&#x25BC;</span></th>
-              <th class="r" onclick="xpdSort('ship_by')" style="font-size:11px;color:var(--text-hint);">DC Cutoff<span class="xpd-sort-arrow" id="xpd-sa-ship_by">&#x25B2;&#x25BC;</span></th>
+
               <th onclick="xpdSort('ordered')" style="font-size:11px;">Ordered<span class="xpd-sort-arrow" id="xpd-sa-ordered">&#x25B2;&#x25BC;</span></th>
             </tr>
           </thead>
@@ -3075,7 +3075,7 @@ function xpdSort(col) {
 }
 
 function xpdUpdateSortArrows() {
-  var cols = ['svc','order_id','status','carrier','qty','age','true_ship_by','ship_by','ordered'];
+  var cols = ['svc','order_id','status','carrier','qty','age','true_ship_by','ordered'];
   cols.forEach(function(c) {
     var el = document.getElementById('xpd-sa-' + c);
     if (!el) return;
@@ -3280,7 +3280,7 @@ function renderExpediteTable() {
       + '<td class="r" style="font-size:13px;">' + qty + '</td>'
       + '<td class="r"><span class="' + age.cls + '">' + age.text + '</span></td>'
       + '<td class="r"><span class="' + trueCountdown.cls + '">' + trueCountdown.text + '</span></td>'
-      + '<td class="r" style="font-size:11px;color:var(--text-hint);"><span>' + countdown.text + '</span></td>'
+
       + '<td style="font-size:11px;color:var(--text-muted);white-space:nowrap;">' + ordered + '</td>'
       + '</tr>';
   });
