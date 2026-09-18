@@ -3240,7 +3240,7 @@ function renderExpediteTable() {
     var ordered  = o.placed_utc ? fmtPdt(o.placed_utc) : '—';
 
     // Carrier — short friendly label
-    var CARRIER_LABELS = { 'FEDEX':'FedEx', 'UPS':'UPS', 'USPS':'USPS', 'ONTRAC':'OnTrac', 'DHL':'DHL', 'LSO':'LSO', 'AMAZON':'Amazon' };
+    var CARRIER_LABELS = { 'FEDEX':'FedEx', 'UPS':'UPS', 'USPS':'USPS', 'ONTRAC':'OnTrac', 'DHL':'DHL', 'LSO':'LSO', 'AMAZON':'Amazon', 'ECMS_GENERIC_SERVICE_PROVIDER':'ECMS' };
     var carrierRaw = o.carrier || '';
     // Derive short label from SERVICE_LEVEL_ID if CARRIER_ID missing (e.g. FEDEX_PRIORITY_OVERNIGHT_ECMS → FedEx 2Day)
     var SVC_CARRIER = {
