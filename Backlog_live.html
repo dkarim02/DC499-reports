@@ -1108,8 +1108,8 @@
           <button class="xpd-filter-btn f-active f-2dd" id="xpd-f-2dd" onclick="xpdToggleFilter('2DD')">2DD</button>
           <span style="width:1px;height:14px;background:var(--border);display:inline-block;margin:0 2px;"></span>
           <label style="font-size:11px;color:var(--text-muted);cursor:pointer;white-space:nowrap;">
-            <input type="checkbox" id="xpd-show-planned" onchange="renderExpediteTable()" style="margin-right:3px;">
-            Show planned
+            <input type="checkbox" id="xpd-show-planned" onchange="renderExpediteTable()" style="margin-right:3px;" checked>
+            Show not released
           </label>
         </div>
       </div>
@@ -3163,7 +3163,7 @@ function renderExpediteTable() {
   var showPlanned = document.getElementById('xpd-show-planned') && document.getElementById('xpd-show-planned').checked;
   var orders = (lastXpdOrders || []).filter(function(o) {
     if (o.shipped) return false;
-    if (!showPlanned && o.order_status === '2090') return false;
+    if (!showPlanned && o.order_status === '1000') return false;
     var svc = o.service_level || '';
     if (svc === '1DD' && !xpdSvcFilter['1DD']) return false;
     if (svc === '2DD' && !xpdSvcFilter['2DD']) return false;
