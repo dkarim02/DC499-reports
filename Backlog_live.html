@@ -2973,7 +2973,7 @@ function exportEodEmail() {
 // Stage label + CSS class from DCO_ORDER MAXIMUM_STATUS
 function xpdStage(status) {
   switch (String(status)) {
-    case '1000': return { label: 'Not Released', cls: 'xpd-stage-open' };
+    case '1000': return { label: 'Ready',        cls: 'xpd-stage-open' };
     case '2090': return { label: 'Allocated',    cls: 'xpd-stage-allocated' };
     case '7100': return { label: 'Packing',      cls: 'xpd-stage-planned' };
     case '7200': return { label: 'Packed',       cls: 'xpd-stage-packed' };
@@ -3153,7 +3153,7 @@ function renderExpediteData(data) {
     stageCounts[st] = (stageCounts[st] || 0) + 1;
   });
   var stageOrder = [
-    { code:'1000', label:'Not Released' },
+    { code:'1000', label:'Ready' },
     { code:'2090', label:'Allocated' },
     { code:'7100', label:'Packing' },
     { code:'7200', label:'Packed' },
