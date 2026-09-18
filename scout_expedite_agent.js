@@ -323,7 +323,7 @@ GROUP BY ol.ORDER_ID`.trim();
     const orderIds = openOrders.map(r => `'${r.ORDER_ID}'`).join(',');
     try {
       const respOlpn = await mcpQuery(accessToken, `
-SELECT OLPN_ID, ORDER_ID, STATUS AS olpn_status, CURRENT_LOCATION_ID, CARRIER_ID, SERVICE_LEVEL_ID, TRACKING_NUMBER
+SELECT OLPN_ID, ORDER_ID, STATUS AS olpn_status, CURRENT_LOCATION_ID, CARRIER_ID, SERVICE_LEVEL_ID, TRACKING_NUMBER, PALLET_ID
 FROM default_pickpack.PPK_OLPN
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_ID IN (${orderIds})
@@ -352,9 +352,11 @@ WHERE FACILITY_ID = '${FACILITY}'
       deliver_by_utc: r.deliver_by_utc,
       quantity:      lineMap[r.ORDER_ID] || null,
       olpns:         olpns.map(o => o.OLPN_ID).filter(Boolean),
-      olpn_status:   topOlpn?.olpn_status   || null,
+      olpn_status:   topOlpn?.olpn_status         || null,
       olpn_location: topOlpn?.CURRENT_LOCATION_ID || null,
-      carrier:       topOlpn?.CARRIER_ID    || null,
+      olpn_pallet:   topOlpn?.PALLET_ID           || null,
+      olpn_svc:      topOlpn?.SERVICE_LEVEL_ID    || null,
+      carrier:       topOlpn?.CARRIER_ID          || null,
     };
   });
 

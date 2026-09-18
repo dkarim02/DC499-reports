@@ -1120,6 +1120,7 @@
               <th onclick="xpdSort('svc')">SVC<span class="xpd-sort-arrow" id="xpd-sa-svc">&#x25B2;&#x25BC;</span></th>
               <th onclick="xpdSort('order_id')">Order #<span class="xpd-sort-arrow" id="xpd-sa-order_id">&#x25B2;&#x25BC;</span></th>
               <th onclick="xpdSort('status')">Status<span class="xpd-sort-arrow" id="xpd-sa-status">&#x25B2;&#x25BC;</span></th>
+              <th onclick="xpdSort('carrier')">Carrier<span class="xpd-sort-arrow" id="xpd-sa-carrier">&#x25B2;&#x25BC;</span></th>
               <th>oLPN / Location</th>
               <th class="r" onclick="xpdSort('qty')">Qty<span class="xpd-sort-arrow" id="xpd-sa-qty">&#x25B2;&#x25BC;</span></th>
               <th class="r" onclick="xpdSort('age')">Age<span class="xpd-sort-arrow" id="xpd-sa-age">&#x25B2;&#x25BC;</span></th>
@@ -3053,7 +3054,7 @@ function xpdSort(col) {
 }
 
 function xpdUpdateSortArrows() {
-  var cols = ['svc','order_id','status','qty','age','ship_by','ordered'];
+  var cols = ['svc','order_id','status','carrier','qty','age','ship_by','ordered'];
   cols.forEach(function(c) {
     var el = document.getElementById('xpd-sa-' + c);
     if (!el) return;
@@ -3184,6 +3185,7 @@ function renderExpediteTable() {
       case 'svc':      v = (a.service_level||'').localeCompare(b.service_level||''); break;
       case 'order_id': v = (a.order_id||'').localeCompare(b.order_id||''); break;
       case 'status':   v = (STATUS_RANK[a.order_status]||0) - (STATUS_RANK[b.order_status]||0); break;
+      case 'carrier':  v = (a.carrier||'').localeCompare(b.carrier||''); break;
       case 'qty':      v = (a.quantity||0) - (b.quantity||0); break;
       case 'age':      v = utcMs(a.placed_utc) - utcMs(b.placed_utc); break;  // older placed = larger age
       case 'ordered':  v = utcMs(a.placed_utc) - utcMs(b.placed_utc); break;
@@ -3214,11 +3216,34 @@ function renderExpediteTable() {
     var qty      = o.quantity != null ? o.quantity : '—';
     var ordered  = o.placed_utc ? fmtPdt(o.placed_utc) : '—';
 
-    // oLPN + last-seen location (allocated/in-progress orders have a location)
+    // Carrier — short friendly label
+    var CARRIER_LABELS = { 'FEDEX':'FedEx', 'UPS':'UPS', 'USPS':'USPS', 'ONTRAC':'OnTrac', 'DHL':'DHL', 'LSO':'LSO', 'AMAZON':'Amazon' };
+    var carrierRaw = o.carrier || '';
+    // Derive short label from SERVICE_LEVEL_ID if CARRIER_ID missing (e.g. FEDEX_PRIORITY_OVERNIGHT_ECMS → FedEx 2Day)
+    var SVC_CARRIER = {
+      'FEDEX_PRIORITY_OVERNIGHT_ECMS': 'FedEx 1Day',
+      'FEDEX_2_DAY_ECMS':              'FedEx 2Day',
+      'FEDEX_GROUND_ECMS':             'FedEx Ground',
+      'UPS_NEXT_DAY_AIR_ECMS':         'UPS 1Day',
+      'UPS_2ND_DAY_AIR_ECMS':          'UPS 2Day',
+      'UPS_GROUND_ECMS':               'UPS Ground',
+      'ONTRAC_GROUND_ECMS':            'OnTrac',
+      'USPS_ADVANTAGE_LW_ECMS':        'USPS',
+      'USPS_PRIORITY_ECMS':            'USPS Priority',
+    };
+    var carrierLabel = SVC_CARRIER[o.olpn_svc] || CARRIER_LABELS[carrierRaw] || carrierRaw || '—';
+
+    // oLPN + sub-line: pallet if at a dock/outbound location (P1*), otherwise last-seen location
     var olpnHtml;
     if (o.olpns && o.olpns.length) {
-      var loc = o.olpn_location ? '<span class="xpd-loc-sub">' + escHtml(o.olpn_location) + '</span>' : '';
-      olpnHtml = o.olpns.map(function(id){ return '<span class="xpd-olpn-loc">' + escHtml(id) + '</span>'; }).join('<br>') + loc;
+      var loc = o.olpn_location || '';
+      var subHtml = '';
+      if (loc.startsWith('P1') && o.olpn_pallet) {
+        subHtml = '<span class="xpd-loc-sub" title="Pallet">&#x1F4E6; ' + escHtml(o.olpn_pallet) + '</span>';
+      } else if (loc) {
+        subHtml = '<span class="xpd-loc-sub">' + escHtml(loc) + '</span>';
+      }
+      olpnHtml = o.olpns.map(function(id){ return '<span class="xpd-olpn-loc">' + escHtml(id) + '</span>'; }).join('<br>') + subHtml;
     } else {
       olpnHtml = '<span style="color:var(--text-hint);">—</span>';
     }
@@ -3227,6 +3252,7 @@ function renderExpediteTable() {
       + '<td><span class="' + svcCls + '">' + escHtml(svc) + '</span></td>'
       + '<td><span style="font-family:monospace;font-size:11px;">' + escHtml(o.order_id || '—') + '</span></td>'
       + '<td><span class="xpd-stage-badge ' + stg.cls + '">' + escHtml(stg.label) + '</span></td>'
+      + '<td style="font-size:12px;font-weight:600;white-space:nowrap;">' + escHtml(carrierLabel) + '</td>'
       + '<td>' + olpnHtml + '</td>'
       + '<td class="r" style="font-size:13px;">' + qty + '</td>'
       + '<td class="r"><span class="' + age.cls + '">' + age.text + '</span></td>'
