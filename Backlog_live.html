@@ -1124,7 +1124,8 @@
               <th>oLPN / Location</th>
               <th class="r" onclick="xpdSort('qty')">Qty<span class="xpd-sort-arrow" id="xpd-sa-qty">&#x25B2;&#x25BC;</span></th>
               <th class="r" onclick="xpdSort('age')">Age<span class="xpd-sort-arrow" id="xpd-sa-age">&#x25B2;&#x25BC;</span></th>
-              <th class="r" onclick="xpdSort('ship_by')">Ship By<span class="xpd-sort-arrow" id="xpd-sa-ship_by">&#x25B2;&#x25BC;</span></th>
+              <th class="r" onclick="xpdSort('true_ship_by')">Ship By<span class="xpd-sort-arrow" id="xpd-sa-true_ship_by">&#x25B2;&#x25BC;</span></th>
+              <th class="r" onclick="xpdSort('ship_by')" style="font-size:11px;color:var(--text-hint);">DC Cutoff<span class="xpd-sort-arrow" id="xpd-sa-ship_by">&#x25B2;&#x25BC;</span></th>
               <th onclick="xpdSort('ordered')" style="font-size:11px;">Ordered<span class="xpd-sort-arrow" id="xpd-sa-ordered">&#x25B2;&#x25BC;</span></th>
             </tr>
           </thead>
@@ -2995,6 +2996,26 @@ function xpdCountdown(shipByUtc) {
   return { text: text, cls: cls };
 }
 
+// True ship-by: placed_utc + 24h (1DD) or +48h (2DD)
+var XPD_SLA_HRS = { '1DD': 24, '2DD': 48 };
+function xpdTrueShipByMs(o) {
+  if (!o.placed_utc) return Infinity;
+  var s = String(o.placed_utc).replace(' ', 'T');
+  if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  var sla = XPD_SLA_HRS[o.service_level] || 24;
+  return new Date(s).getTime() + sla * 3600000;
+}
+function xpdTrueCountdown(o) {
+  var ms = xpdTrueShipByMs(o);
+  if (ms === Infinity) return { text: '—', cls: '' };
+  var diffMin = Math.round((ms - Date.now()) / 60000);
+  if (diffMin < 0) return { text: 'OVERDUE', cls: 'xpd-deadline-late' };
+  var h = Math.floor(diffMin / 60), m = diffMin % 60;
+  var text = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+  var cls = diffMin < 120 ? 'xpd-deadline-late' : diffMin < 360 ? 'xpd-deadline-warn' : 'xpd-deadline-ok';
+  return { text: text, cls: cls };
+}
+
 // Age string from ORDER_PLACED_DATE_TIME
 function xpdAge(placedUtc) {
   if (!placedUtc) return { text: '—', cls: '', mins: 0 };
@@ -3039,7 +3060,7 @@ function fetchExpediteData(manual) {
 var lastXpdOrders = [];
 var xpdSvcFilter  = { '1DD': true, '2DD': true };
 var xpdStgFilter  = {};
-var xpdSortCol    = 'ship_by';   // default sort
+var xpdSortCol    = 'true_ship_by';  // default sort
 var xpdSortDir    = 1;           // 1=asc, -1=desc, 0=default(ship_by asc)
 
 function xpdSort(col) {
@@ -3054,7 +3075,7 @@ function xpdSort(col) {
 }
 
 function xpdUpdateSortArrows() {
-  var cols = ['svc','order_id','status','carrier','qty','age','ship_by','ordered'];
+  var cols = ['svc','order_id','status','carrier','qty','age','true_ship_by','ship_by','ordered'];
   cols.forEach(function(c) {
     var el = document.getElementById('xpd-sa-' + c);
     if (!el) return;
@@ -3189,6 +3210,7 @@ function renderExpediteTable() {
       case 'qty':      v = (a.quantity||0) - (b.quantity||0); break;
       case 'age':      v = utcMs(a.placed_utc) - utcMs(b.placed_utc); break;  // older placed = larger age
       case 'ordered':  v = utcMs(a.placed_utc) - utcMs(b.placed_utc); break;
+      case 'true_ship_by': v = xpdTrueShipByMs(a) - xpdTrueShipByMs(b); break;
       case 'ship_by':
       default:         v = utcMs(a.ship_by_utc) - utcMs(b.ship_by_utc); break;
     }
@@ -3212,7 +3234,8 @@ function renderExpediteTable() {
     var svcCls   = svc === '1DD' ? 'xpd-svc-1dd' : svc === '2DD' ? 'xpd-svc-2dd' : '';
     var stg      = xpdStage(o.order_status);
     var age      = xpdAge(o.placed_utc);
-    var countdown= xpdCountdown(o.ship_by_utc);
+    var countdown    = xpdCountdown(o.ship_by_utc);
+    var trueCountdown= xpdTrueCountdown(o);
     var qty      = o.quantity != null ? o.quantity : '—';
     var ordered  = o.placed_utc ? fmtPdt(o.placed_utc) : '—';
 
@@ -3256,7 +3279,8 @@ function renderExpediteTable() {
       + '<td>' + olpnHtml + '</td>'
       + '<td class="r" style="font-size:13px;">' + qty + '</td>'
       + '<td class="r"><span class="' + age.cls + '">' + age.text + '</span></td>'
-      + '<td class="r"><span class="' + countdown.cls + '">' + countdown.text + '</span></td>'
+      + '<td class="r"><span class="' + trueCountdown.cls + '">' + trueCountdown.text + '</span></td>'
+      + '<td class="r" style="font-size:11px;color:var(--text-hint);"><span>' + countdown.text + '</span></td>'
       + '<td style="font-size:11px;color:var(--text-muted);white-space:nowrap;">' + ordered + '</td>'
       + '</tr>';
   });
