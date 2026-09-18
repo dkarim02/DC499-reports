@@ -250,19 +250,31 @@ Output: reserve_live.json + putaway_live.json. Pre-aggregated `GROUP BY CREATED_
 
 Output: expedite_live.json. REDIRECT_PORT 3122.
 
-**Expedite flag:** `DESIGNATED_SERVICE_LEVEL_ID = '11'` on DCO_ORDER — confirmed via 1.2-day avg delivery, 9.8-hr avg to ship deadline, same-day/next-morning `EXT_ESTIMATEDSHIPBYDATETIME`.
+**Service levels reported:** `'11'` = 1DD (1-day delivery), `'42'` = 2DD (2-day delivery). Standard ground (`'24'`) excluded. Both tagged with SVC badge in UI.
 
-**oLPN join gotcha:** `PPK_OLPN.SERVICE_LEVEL_ID` stores carrier codes (e.g. `ONTRAC_GROUND_ECMS`), NOT `'11'`. Always join oLPN enrichment through `ORDER_ID` — never filter PPK_OLPN by service level.
+**Expedite flag:** `DESIGNATED_SERVICE_LEVEL_ID = '11'` on DCO_ORDER — confirmed via 1.2-day avg delivery. `EXT_ESTIMATEDSHIPBYDATETIME` is a fixed daily noon PDT cutoff, NOT a per-order deadline — do not use it as the primary ship-by metric.
+
+**True Ship By (UI):** `placed_utc + 24h` (1DD) / `+48h` (2DD). SLA offsets in `XPD_SLA_HRS` — tweak there. DC Cutoff column removed.
+
+**oLPN enrichment:** Direct query on `PPK_OLPN` by `ORDER_ID`. Fetches `OLPN_ID, ORDER_ID, STATUS, CURRENT_LOCATION_ID, CARRIER_ID, SERVICE_LEVEL_ID, TRACKING_NUMBER, PALLET_ID`. Keeps highest-status oLPN per order as `topOlpn`.
+
+**oLPN join gotcha:** `PPK_OLPN.SERVICE_LEVEL_ID` stores carrier codes (e.g. `ONTRAC_GROUND_ECMS`), NOT `'11'`. Never filter PPK_OLPN by service level.
 
 **PPK_OLPN SELECT * gotcha:** `SELECT *` is blocked by the PII filter — even one blocked column (like `TOTAL_UNITS`) kills the entire query with a generic error. Always list columns explicitly. Query by `ORDER_ID` or `OLPN_ID` directly — no JOIN wrapper needed.
 
-**Scope:** Not-yet-shipped = `MAXIMUM_STATUS NOT IN ('8000','9000')`. Status `2090` = cubed/planned not released — hidden by default in UI via "Show planned" toggle.
+**Pallet ID:** `PALLET_ID` column on PPK_OLPN — reliably populated when oLPN is at a P1* (outbound dock) location. Multiple oLPNs share one pallet. UI shows 📦 + pallet ID when `CURRENT_LOCATION_ID LIKE 'P1%'`.
 
-**Queries:** Q1 open orders + Q2 shipped count fire in parallel, then oLPN enrichment batch by ORDER_ID. Keeps highest-status oLPN per order.
+**Carrier labels:** `CARRIER_ID` → friendly name (`ONTRAC`→OnTrac, `ECMS_GENERIC_SERVICE_PROVIDER`→ECMS, etc.). Falls back to `SERVICE_LEVEL_ID` parsing. Carrier assigned at manifest (status 7600) — null at pack time (7200).
+
+**Scope:** Not-yet-shipped = `MAXIMUM_STATUS NOT IN ('8000','9000')`. Quantity from `DCO_ORDER_LINE COUNT(*)` (1 unit/line for Ecom).
+
+**Queries:** Q1 open orders + Q2 shipped counts + Q3 line counts fire in parallel, then oLPN enrichment batch by ORDER_ID.
 
 **Shift:** `is1st = nowUtcHour >= 10 && nowUtcHour < 21`. 1st start: 10:00 UTC, 2nd start: 21:00 UTC.
 
-**Backlog_live.html Expedite tab:** 4 summary tiles, pipeline breakdown bar, sortable orders table. Ship-by countdown: green → amber → red → OVERDUE. Themed via `--xpd` CSS vars.
+**Status labels (UI):** 1000=Ready, 2090=Allocated, 7100=Packing, 7200=Packed, 7600=Manifested.
+
+**Backlog_live.html Expedite tab:** 4 summary tiles + inline filter bar (1DD/2DD toggles | stage pills | Show Ready checkbox). Sortable table: SVC | Order # | Status | Carrier | oLPN/Location | Qty | Age | Ship By | Ordered. Stage pills clickable to filter rows. Themed via `--xpd` CSS vars.
 
 ---
 
