@@ -281,9 +281,10 @@
   #hourly-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;}
   #hourly-card .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.04em;}
   #hourly-card .card-sub{font-size:11px;color:var(--text-hint);margin-bottom:1rem;}
-  #top-items-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;display:none;}
-  #top-items-card .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.04em;}
-  #top-items-card .card-sub{font-size:11px;color:var(--text-hint);margin-bottom:1rem;}
+  #top-items-card{display:none;}
+  .sidebar-tab-btn{flex:1;background:none;border:none;padding:5px 0;font-size:11px;font-weight:600;color:var(--text-muted);cursor:pointer;letter-spacing:0.04em;text-transform:uppercase;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.15s,border-color 0.15s;}
+  .sidebar-tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .sidebar-tab-btn:hover:not(.active){color:var(--text);}
   .ti-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border-light);}
   .ti-row:last-child{border-bottom:none;}
   .ti-rank{font-size:11px;font-weight:700;color:var(--text-hint);min-width:16px;padding-top:1px;}
@@ -796,20 +797,24 @@
           </div>
         </div>
 
-        <!-- Top Items leaderboard — below Retail Replen Watch -->
-        <div id="top-items-card" style="margin-top:1rem;">
-          <div class="card-title">Top Items</div>
-          <div class="card-sub">today &middot; ecom orders by units</div>
-          <div id="top-items-list"></div>
-        </div>
       </div>
 
       <div class="page-sidebar">
         <div id="hourly-card" style="display:none;">
-          <div class="card-title" id="hourly-title">Bridge</div>
-          <div class="card-sub" id="hourly-sub">today &middot; order lines received per hour</div>
-          <div id="hourly-bars"></div>
+          <div style="display:flex;gap:0;margin-bottom:0.75rem;border-bottom:1px solid var(--border);">
+            <button class="sidebar-tab-btn active" id="sbt-bridge" onclick="setSidebarTab('bridge')">Bridge</button>
+            <button class="sidebar-tab-btn" id="sbt-items" onclick="setSidebarTab('items')">Items</button>
+          </div>
+          <div id="sbt-bridge-pane">
+            <div class="card-sub" id="hourly-sub" style="margin-top:0;">today &middot; order lines received per hour</div>
+            <div id="hourly-bars"></div>
+          </div>
+          <div id="sbt-items-pane" style="display:none;">
+            <div class="card-sub">today &middot; ecom orders by units</div>
+            <div id="top-items-list"></div>
+          </div>
         </div>
+        <div id="top-items-card" style="display:none;"></div>
       </div>
     </div>
 
@@ -1764,11 +1769,25 @@ function renderBacklogData(data) {
   renderTopItems(data.top_items || []);
 }
 
+function setSidebarTab(tab) {
+  var bp = document.getElementById('sbt-bridge-pane');
+  var ip = document.getElementById('sbt-items-pane');
+  var bb = document.getElementById('sbt-bridge');
+  var ib = document.getElementById('sbt-items');
+  if (!bp) return;
+  var showBridge = tab === 'bridge';
+  bp.style.display = showBridge ? '' : 'none';
+  ip.style.display = showBridge ? 'none' : '';
+  bb.classList.toggle('active', showBridge);
+  ib.classList.toggle('active', !showBridge);
+}
+
 function renderTopItems(items) {
-  var card = document.getElementById('top-items-card');
   var list = document.getElementById('top-items-list');
-  if (!items.length) { card.style.display = 'none'; return; }
-  card.style.display = '';
+  var itemsPane = document.getElementById('sbt-items-pane');
+  if (!list) return;
+  if (!items.length) { if (itemsPane) itemsPane.dataset.hasItems = '0'; return; }
+  if (itemsPane) itemsPane.dataset.hasItems = '1';
   var html = '';
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
