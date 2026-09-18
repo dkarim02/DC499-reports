@@ -415,6 +415,54 @@
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
 
+  /* ── Expedite tab ─────────────────────────────────────────────────────────── */
+  :root {
+    --xpd:#c2410c;--xpd-bg:#fff7ed;--xpd-border:#fed7aa;
+    --xpd-urgent:#991b1b;--xpd-urgent-bg:#fef2f2;
+  }
+  [data-theme="dark"],[data-theme="solid"],[data-theme="pastel"],[data-theme="remi"] {
+    --xpd:#fb923c;--xpd-bg:#2a1400;--xpd-border:#7c3000;
+    --xpd-urgent:#fca5a5;--xpd-urgent-bg:#2e0a0a;
+  }
+  [data-theme="starr"] {
+    --xpd:#b0003a;--xpd-bg:#f8d0e8;--xpd-border:#d06090;
+    --xpd-urgent:#7b0020;--xpd-urgent-bg:#f8c8d8;
+  }
+  .xpd-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
+  @media(max-width:700px){.xpd-summary{grid-template-columns:repeat(2,1fr);}}
+  .xpd-tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;border-top:3px solid var(--border-mid);}
+  .xpd-tile.t-xpd   {border-top-color:var(--xpd);}
+  .xpd-tile.t-amber  {border-top-color:var(--amber);}
+  .xpd-tile.t-green  {border-top-color:var(--green);}
+  .xpd-tile.t-accent {border-top-color:var(--accent);}
+  .xpd-tile-label{font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;}
+  .xpd-tile-value{font-size:26px;font-weight:600;line-height:1;color:var(--text);}
+  .xpd-tile.t-xpd  .xpd-tile-value{color:var(--xpd);}
+  .xpd-tile.t-amber .xpd-tile-value{color:var(--amber);}
+  .xpd-tile.t-green .xpd-tile-value{color:var(--green);}
+  .xpd-tile.t-accent .xpd-tile-value{color:var(--accent);}
+  .xpd-tile-sub{font-size:11px;color:var(--text-hint);margin-top:4px;}
+  .xpd-stage-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:0.03em;text-transform:uppercase;white-space:nowrap;}
+  .xpd-stage-open   {background:var(--surface2);color:var(--text-muted);border:0.5px solid var(--border);}
+  .xpd-stage-planned{background:var(--accent-bg);color:var(--accent);border:0.5px solid var(--accent-muted);}
+  .xpd-stage-packed {background:var(--xpd-bg);color:var(--xpd);border:0.5px solid var(--xpd-border);}
+  .xpd-stage-manifested{background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber);}
+  .xpd-deadline-ok  {color:var(--green);font-weight:600;}
+  .xpd-deadline-warn{color:var(--amber);font-weight:600;}
+  .xpd-deadline-late{color:var(--red);font-weight:700;}
+  .xpd-age-ok   {color:var(--text-muted);}
+  .xpd-age-warn {color:var(--amber);font-weight:600;}
+  .xpd-age-late {color:var(--red);font-weight:700;}
+  .xpd-carrier{font-size:11px;color:var(--text-hint);font-family:monospace;}
+  .xpd-olpn-loc{font-size:11px;color:var(--text-muted);font-family:monospace;}
+  .xpd-table-wrap{overflow-y:auto;max-height:480px;}
+  .xpd-table-wrap::-webkit-scrollbar{width:4px;}
+  .xpd-table-wrap::-webkit-scrollbar-track{background:transparent;}
+  .xpd-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .xpd-empty{text-align:center;padding:2.5rem 1rem;color:var(--text-hint);font-size:13px;}
+  .tab-btn.xpd-tab-btn.active{color:var(--xpd);border-bottom-color:var(--xpd);}
+  .tab-btn.xpd-tab-btn:not(.active):hover{color:var(--xpd);}
+
   /* ── Retail Replen widget ─────────────────────────────────────────────── */
   .rr-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;margin-top:1rem;overflow:hidden;}
   .rr-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;}
@@ -564,6 +612,7 @@
     <button class="tab-btn active" id="tb-orders" onclick="setTab('orders')">Order Backlog</button>
     <button class="tab-btn"        id="tb-batches" onclick="setTab('batches')">Batches</button>
     <button class="tab-btn"        id="tb-tasks"   onclick="setTab('tasks')">Tasks</button>
+    <button class="tab-btn xpd-tab-btn" id="tb-expedite" onclick="setTab('expedite')">Expedite</button>
     <div style="flex:1;"></div>
     <a href="https://nrdrp.sce.manh.com/udc/dm-config/screen/dcorder/OrderPlanningStrategy" target="_blank"
        style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-muted);text-decoration:none;white-space:nowrap;margin-right:4px;transition:background 0.12s,color 0.12s,border-color 0.12s;"
@@ -993,6 +1042,85 @@
     </div>
   </div><!-- /#tab-tasks -->
 
+  <!-- ── Tab: Expedite ──────────────────────────────────────────────────────── -->
+  <div class="tab-pane" id="tab-expedite">
+    <div class="header-row">
+      <div>
+        <div id="xpd-run-time" class="run-time">Loading...</div>
+        <div id="xpd-shift-label" class="run-time" style="margin-top:2px;"></div>
+      </div>
+      <div class="header-btns">
+        <button class="refresh-btn" onclick="fetchExpediteData(true)">&#x21BA; Refresh</button>
+      </div>
+    </div>
+
+    <!-- Summary tiles -->
+    <div class="xpd-summary" id="xpd-summary-tiles" style="display:none;">
+      <div class="xpd-tile t-xpd">
+        <div class="xpd-tile-label">Not Yet Shipped</div>
+        <div class="xpd-tile-value" id="xpd-t-open">--</div>
+        <div class="xpd-tile-sub">expedite orders</div>
+      </div>
+      <div class="xpd-tile t-amber">
+        <div class="xpd-tile-label">Approaching Deadline</div>
+        <div class="xpd-tile-value" id="xpd-t-warn">--</div>
+        <div class="xpd-tile-sub">&lt; 2 hrs to ship-by</div>
+      </div>
+      <div class="xpd-tile t-green">
+        <div class="xpd-tile-label">Shipped This Shift</div>
+        <div class="xpd-tile-value" id="xpd-t-shipped">--</div>
+        <div class="xpd-tile-sub">expedite orders</div>
+      </div>
+      <div class="xpd-tile t-accent">
+        <div class="xpd-tile-label">Avg Age</div>
+        <div class="xpd-tile-value" id="xpd-t-avg-age">--</div>
+        <div class="xpd-tile-sub">open orders</div>
+      </div>
+    </div>
+
+    <!-- Pipeline breakdown bar -->
+    <div class="card" id="xpd-pipeline-card" style="display:none;margin-bottom:1rem;">
+      <div class="card-title">Pipeline — Open Orders by Stage</div>
+      <div id="xpd-pipeline-bars" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"></div>
+    </div>
+
+    <!-- Main table -->
+    <div class="card" id="xpd-table-card" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <div class="card-title" style="margin-bottom:0;">Open Expedite Orders — This Shift</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-size:12px;color:var(--text-muted);cursor:pointer;">
+            <input type="checkbox" id="xpd-show-planned" onchange="renderExpediteTable()" style="margin-right:4px;">
+            Show planned (not released)
+          </label>
+        </div>
+      </div>
+      <div class="xpd-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Stage</th>
+              <th class="r">Age</th>
+              <th class="r">Ship By</th>
+              <th class="r">Deliver By</th>
+              <th>oLPN</th>
+              <th>Location</th>
+              <th>Carrier</th>
+            </tr>
+          </thead>
+          <tbody id="xpd-tbody"></tbody>
+        </table>
+      </div>
+      <div id="xpd-table-empty" class="xpd-empty" style="display:none;">No open expedite orders found for this shift.</div>
+    </div>
+
+    <div class="empty-state" id="xpd-empty-state" style="display:none;">
+      <div style="font-size:32px;margin-bottom:10px;">&#x26A1;</div>
+      No expedite data loaded yet. Click <strong>Refresh</strong>.
+    </div>
+  </div><!-- /#tab-expedite -->
+
   <!-- Batch picker modal -->
   <div class="bp-overlay" id="bp-overlay" onclick="bpOverlayClick(event)">
     <div class="bp-modal" id="bp-modal">
@@ -1042,7 +1170,7 @@ var BL_INTERVAL_MS = 2 * 60 * 1000;
 var BT_INTERVAL_MS = 2 * 60 * 1000;
 var activeTab      = 'orders';
 
-var lastBlData = null, lastBtData = null, lastRrData = null, lastRfpUnits = null, lastTkData = null, lastShippedData = null;
+var lastBlData = null, lastBtData = null, lastRrData = null, lastRfpUnits = null, lastTkData = null, lastShippedData = null, lastXpdData = null;
 var blTimer = null, blCountdown = null, blNextAt = null;
 var btTimer = null, btCountdown = null, btNextAt = null;
 var viewMode = 'lines';
@@ -1090,15 +1218,18 @@ applyRemiToggle();
 // -- Tab switching ------------------------------------------------------------
 function setTab(tab) {
   activeTab = tab;
-  document.getElementById('tb-orders').classList.toggle('active',  tab === 'orders');
-  document.getElementById('tb-batches').classList.toggle('active', tab === 'batches');
-  document.getElementById('tb-tasks').classList.toggle('active',   tab === 'tasks');
-  document.getElementById('tab-orders').classList.toggle('active',  tab === 'orders');
-  document.getElementById('tab-batches').classList.toggle('active', tab === 'batches');
-  document.getElementById('tab-tasks').classList.toggle('active',   tab === 'tasks');
+  document.getElementById('tb-orders').classList.toggle('active',   tab === 'orders');
+  document.getElementById('tb-batches').classList.toggle('active',  tab === 'batches');
+  document.getElementById('tb-tasks').classList.toggle('active',    tab === 'tasks');
+  document.getElementById('tb-expedite').classList.toggle('active', tab === 'expedite');
+  document.getElementById('tab-orders').classList.toggle('active',   tab === 'orders');
+  document.getElementById('tab-batches').classList.toggle('active',  tab === 'batches');
+  document.getElementById('tab-tasks').classList.toggle('active',    tab === 'tasks');
+  document.getElementById('tab-expedite').classList.toggle('active', tab === 'expedite');
   document.getElementById('stale-banner').style.display = 'none';
-  if (tab === 'batches') { if (lastBtData) renderBatchData(lastBtData); else fetchBatchData(); }
-  if (tab === 'tasks')   { if (lastTkData) renderTasksData(lastTkData); else fetchTasksData(); }
+  if (tab === 'batches')  { if (lastBtData)  renderBatchData(lastBtData);     else fetchBatchData(); }
+  if (tab === 'tasks')    { if (lastTkData)  renderTasksData(lastTkData);     else fetchTasksData(); }
+  if (tab === 'expedite') { if (lastXpdData) renderExpediteData(lastXpdData); else fetchExpediteData(); }
 }
 
 // -- Shared helpers -----------------------------------------------------------
@@ -2815,6 +2946,192 @@ function exportEodEmail() {
 
   document.getElementById('eod-preview').innerHTML = html;
   document.getElementById('eod-overlay').style.display = 'flex';
+}
+
+// ── EXPEDITE TAB ─────────────────────────────────────────────────────────────
+
+// Stage label + CSS class from DCO_ORDER MAXIMUM_STATUS
+function xpdStage(status) {
+  switch (String(status)) {
+    case '1000': return { label: 'Open',      cls: 'xpd-stage-open' };
+    case '2090': return { label: 'Planned',   cls: 'xpd-stage-planned' };
+    case '7100': return { label: 'Packing',   cls: 'xpd-stage-planned' };
+    case '7200': return { label: 'Packed',    cls: 'xpd-stage-packed' };
+    case '7600': return { label: 'Manifested',cls: 'xpd-stage-manifested' };
+    default:     return { label: status || '?', cls: 'xpd-stage-open' };
+  }
+}
+
+// Countdown string for ship-by deadline
+function xpdCountdown(shipByUtc) {
+  if (!shipByUtc) return { text: '—', cls: '' };
+  var s = String(shipByUtc).replace(' ', 'T');
+  if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  var diffMs = new Date(s).getTime() - Date.now();
+  var diffMin = Math.round(diffMs / 60000);
+  if (diffMin < 0) return { text: 'OVERDUE', cls: 'xpd-deadline-late' };
+  var h = Math.floor(diffMin / 60), m = diffMin % 60;
+  var text = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+  var cls = diffMin < 60 ? 'xpd-deadline-late' : diffMin < 120 ? 'xpd-deadline-warn' : 'xpd-deadline-ok';
+  return { text: text, cls: cls };
+}
+
+// Age string from ORDER_PLACED_DATE_TIME
+function xpdAge(placedUtc) {
+  if (!placedUtc) return { text: '—', cls: '', mins: 0 };
+  var s = String(placedUtc).replace(' ', 'T');
+  if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  var mins = Math.round((Date.now() - new Date(s).getTime()) / 60000);
+  var h = Math.floor(mins / 60), m = mins % 60;
+  var text = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+  var cls = mins > 240 ? 'xpd-age-late' : mins > 120 ? 'xpd-age-warn' : 'xpd-age-ok';
+  return { text: text, cls: cls, mins: mins };
+}
+
+// PDT display for delivery deadline
+function xpdDeliverBy(utcStr) {
+  if (!utcStr) return '—';
+  var s = String(utcStr).replace(' ', 'T');
+  if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  try {
+    return new Date(s).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  } catch(e) { return utcStr; }
+}
+
+function fetchExpediteData(manual) {
+  var rtEl = document.getElementById('xpd-run-time');
+  if (rtEl) rtEl.textContent = manual ? 'Refreshing...' : 'Loading...';
+  fetch(getBase() + '/expedite_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      lastXpdData = data;
+      renderExpediteData(data);
+    })
+    .catch(function(err) {
+      var rtEl2 = document.getElementById('xpd-run-time');
+      if (rtEl2) rtEl2.textContent = 'Failed to load: ' + err.message;
+      document.getElementById('xpd-empty-state').style.display = 'block';
+      document.getElementById('xpd-summary-tiles').style.display = 'none';
+      document.getElementById('xpd-pipeline-card').style.display = 'none';
+      document.getElementById('xpd-table-card').style.display = 'none';
+    });
+}
+
+var lastXpdOrders = [];
+
+function renderExpediteData(data) {
+  if (!data) return;
+  var rtEl = document.getElementById('xpd-run-time');
+  if (rtEl) rtEl.textContent = 'Updated ' + (data.generated ? fmtPdt(data.generated) : '—');
+  var shiftEl = document.getElementById('xpd-shift-label');
+  if (shiftEl) shiftEl.textContent = data.shift_label || '';
+
+  var orders = data.orders || [];
+  lastXpdOrders = orders;
+
+  var open = orders.filter(function(o) { return !o.shipped; });
+  var shipped = orders.filter(function(o) { return o.shipped; });
+  var warnCount = open.filter(function(o) {
+    if (!o.ship_by_utc) return false;
+    var s = String(o.ship_by_utc).replace(' ','T');
+    if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+    return (new Date(s).getTime() - Date.now()) < 2 * 60 * 60 * 1000;
+  }).length;
+  var avgAgeMins = open.length ? Math.round(open.reduce(function(s, o) {
+    var a = xpdAge(o.placed_utc); return s + a.mins;
+  }, 0) / open.length) : 0;
+  var avgH = Math.floor(avgAgeMins / 60), avgM = avgAgeMins % 60;
+
+  document.getElementById('xpd-t-open').textContent    = open.length;
+  document.getElementById('xpd-t-warn').textContent    = warnCount;
+  document.getElementById('xpd-t-shipped').textContent = shipped.length;
+  document.getElementById('xpd-t-avg-age').textContent = open.length ? (avgH > 0 ? avgH + 'h ' + avgM + 'm' : avgM + 'm') : '—';
+
+  document.getElementById('xpd-summary-tiles').style.display = open.length || shipped.length ? 'grid' : 'none';
+  document.getElementById('xpd-empty-state').style.display  = (!open.length && !shipped.length) ? 'block' : 'none';
+
+  // Pipeline bar
+  var stageCounts = {};
+  open.forEach(function(o) {
+    var st = String(o.order_status || '1000');
+    stageCounts[st] = (stageCounts[st] || 0) + 1;
+  });
+  var stageOrder = [
+    { code:'1000', label:'Open' },
+    { code:'2090', label:'Planned' },
+    { code:'7100', label:'Packing' },
+    { code:'7200', label:'Packed' },
+    { code:'7600', label:'Manifested' },
+  ];
+  var pipelineEl = document.getElementById('xpd-pipeline-bars');
+  if (pipelineEl) {
+    var html = '';
+    stageOrder.forEach(function(s) {
+      var cnt = stageCounts[s.code] || 0;
+      if (!cnt) return;
+      var stg = xpdStage(s.code);
+      html += '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:0.5px solid var(--border);border-radius:20px;padding:4px 10px;">'
+            + '<span class="xpd-stage-badge ' + stg.cls + '">' + escHtml(stg.label) + '</span>'
+            + '<span style="font-size:13px;font-weight:700;color:var(--text);">' + cnt + '</span>'
+            + '</span>';
+    });
+    pipelineEl.innerHTML = html || '<span style="font-size:13px;color:var(--text-hint);">No open orders in pipeline</span>';
+  }
+  document.getElementById('xpd-pipeline-card').style.display = open.length ? 'block' : 'none';
+  document.getElementById('xpd-table-card').style.display    = open.length ? 'block' : 'none';
+
+  renderExpediteTable();
+}
+
+function renderExpediteTable() {
+  var showPlanned = document.getElementById('xpd-show-planned') && document.getElementById('xpd-show-planned').checked;
+  var orders = (lastXpdOrders || []).filter(function(o) {
+    if (o.shipped) return false;
+    if (!showPlanned && o.order_status === '2090') return false;
+    return true;
+  });
+
+  // Sort: overdue first, then by ship-by deadline ascending
+  orders.sort(function(a, b) {
+    var getMs = function(o) {
+      if (!o.ship_by_utc) return Infinity;
+      var s = String(o.ship_by_utc).replace(' ','T');
+      if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+      return new Date(s).getTime();
+    };
+    return getMs(a) - getMs(b);
+  });
+
+  var tbody = document.getElementById('xpd-tbody');
+  var emptyEl = document.getElementById('xpd-table-empty');
+  if (!orders.length) {
+    tbody.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  var html = '';
+  orders.forEach(function(o) {
+    var stg      = xpdStage(o.order_status);
+    var age      = xpdAge(o.placed_utc);
+    var countdown= xpdCountdown(o.ship_by_utc);
+    var delivBy  = xpdDeliverBy(o.deliver_by_utc);
+    var olpnId   = o.olpn_id ? escHtml(o.olpn_id) : '—';
+    var loc      = o.olpn_location ? escHtml(o.olpn_location) : '—';
+    var carrier  = o.carrier ? escHtml(o.carrier) : '—';
+    html += '<tr>'
+      + '<td><span style="font-family:monospace;font-size:12px;">' + escHtml(o.order_id || '—') + '</span></td>'
+      + '<td><span class="xpd-stage-badge ' + stg.cls + '">' + escHtml(stg.label) + '</span></td>'
+      + '<td class="r"><span class="' + age.cls + '">' + age.text + '</span></td>'
+      + '<td class="r"><span class="' + countdown.cls + '">' + countdown.text + '</span></td>'
+      + '<td class="r" style="font-size:12px;color:var(--text-muted);">' + delivBy + '</td>'
+      + '<td><span class="xpd-olpn-loc">' + olpnId + '</span></td>'
+      + '<td><span class="xpd-olpn-loc">' + loc + '</span></td>'
+      + '<td><span class="xpd-carrier">' + carrier + '</span></td>'
+      + '</tr>';
+  });
+  tbody.innerHTML = html;
 }
 
 // ── Remi sprite (next-batch bar) ─────────────────────────────────────────────

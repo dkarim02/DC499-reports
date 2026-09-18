@@ -36,6 +36,10 @@ echo  14 Item Prep Live - one-shot refresh
 echo  15 Item Prep Live - start auto-refresh (every 3 min)
 echo  16 Item Prep Live - auth
 echo ──────────────────────────────
+echo  17 Expedite Live - one-shot refresh
+echo  18 Expedite Live - start auto-refresh (every 3 min)
+echo  19 Expedite Live - auth
+echo ──────────────────────────────
 set /p choice="Select: "
 
 if "%choice%"=="1" (
@@ -148,6 +152,27 @@ if "%choice%"=="16" (
     echo.
     echo Starting Item Prep Live auth flow...
     "%NODE_EXE%" "%~dp0scout_itemprep_agent.js" --auth
+    pause
+    exit /b
+)
+if "%choice%"=="17" (
+    echo.
+    echo Running Expedite Live one-shot refresh...
+    "%NODE_EXE%" "%~dp0scout_expedite_agent.js"
+    pause
+    exit /b
+)
+if "%choice%"=="18" (
+    echo.
+    echo Starting Expedite Live auto-refresh every 3 min...
+    "%NODE_EXE%" "%~dp0scout_expedite_agent.js" --serve --interval=3
+    pause
+    exit /b
+)
+if "%choice%"=="19" (
+    echo.
+    echo Starting Expedite Live auth flow...
+    "%NODE_EXE%" "%~dp0scout_expedite_agent.js" --auth
     pause
     exit /b
 )
