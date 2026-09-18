@@ -468,6 +468,12 @@
   .xpd-table-wrap::-webkit-scrollbar{width:4px;}
   .xpd-table-wrap::-webkit-scrollbar-track{background:transparent;}
   .xpd-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .xpd-table-wrap thead th{position:sticky;top:0;background:var(--surface);z-index:2;box-shadow:0 1px 0 var(--border);cursor:pointer;user-select:none;white-space:nowrap;}
+  .xpd-table-wrap thead th:hover{color:var(--accent);}
+  .xpd-sort-arrow{font-size:9px;margin-left:3px;opacity:0.3;vertical-align:middle;}
+  .xpd-sort-arrow.sa-active{opacity:1;color:var(--accent);}
+  .xpd-stage-allocated{background:var(--green-bg,#f0fdf4);color:var(--green);border:0.5px solid var(--green);}
+  .xpd-loc-sub{display:block;font-size:10px;font-family:monospace;color:var(--text-hint);margin-top:2px;}
   .xpd-empty{text-align:center;padding:2.5rem 1rem;color:var(--text-hint);font-size:13px;}
   .tab-btn.xpd-tab-btn.active{color:var(--xpd);border-bottom-color:var(--xpd);}
   .tab-btn.xpd-tab-btn:not(.active):hover{color:var(--xpd);}
@@ -1111,14 +1117,14 @@
         <table>
           <thead>
             <tr>
-              <th>SVC</th>
-              <th>Order #</th>
-              <th>Status</th>
-              <th>oLPN(s)</th>
-              <th class="r">Qty</th>
-              <th class="r">Age</th>
-              <th class="r">Ship By</th>
-              <th style="font-size:11px;">Ordered</th>
+              <th onclick="xpdSort('svc')">SVC<span class="xpd-sort-arrow" id="xpd-sa-svc">&#x25B2;&#x25BC;</span></th>
+              <th onclick="xpdSort('order_id')">Order #<span class="xpd-sort-arrow" id="xpd-sa-order_id">&#x25B2;&#x25BC;</span></th>
+              <th onclick="xpdSort('status')">Status<span class="xpd-sort-arrow" id="xpd-sa-status">&#x25B2;&#x25BC;</span></th>
+              <th>oLPN / Location</th>
+              <th class="r" onclick="xpdSort('qty')">Qty<span class="xpd-sort-arrow" id="xpd-sa-qty">&#x25B2;&#x25BC;</span></th>
+              <th class="r" onclick="xpdSort('age')">Age<span class="xpd-sort-arrow" id="xpd-sa-age">&#x25B2;&#x25BC;</span></th>
+              <th class="r" onclick="xpdSort('ship_by')">Ship By<span class="xpd-sort-arrow" id="xpd-sa-ship_by">&#x25B2;&#x25BC;</span></th>
+              <th onclick="xpdSort('ordered')" style="font-size:11px;">Ordered<span class="xpd-sort-arrow" id="xpd-sa-ordered">&#x25B2;&#x25BC;</span></th>
             </tr>
           </thead>
           <tbody id="xpd-tbody"></tbody>
@@ -2966,7 +2972,7 @@ function exportEodEmail() {
 function xpdStage(status) {
   switch (String(status)) {
     case '1000': return { label: 'Not Released', cls: 'xpd-stage-open' };
-    case '2090': return { label: 'Planned',      cls: 'xpd-stage-planned' };
+    case '2090': return { label: 'Allocated',    cls: 'xpd-stage-allocated' };
     case '7100': return { label: 'Packing',      cls: 'xpd-stage-planned' };
     case '7200': return { label: 'Packed',       cls: 'xpd-stage-packed' };
     case '7600': return { label: 'Manifested',   cls: 'xpd-stage-manifested' };
@@ -3030,8 +3036,36 @@ function fetchExpediteData(manual) {
 }
 
 var lastXpdOrders = [];
-var xpdSvcFilter  = { '1DD': true, '2DD': true };  // active = shown
-var xpdStgFilter  = {};                              // empty = all shown; code present = toggled off
+var xpdSvcFilter  = { '1DD': true, '2DD': true };
+var xpdStgFilter  = {};
+var xpdSortCol    = 'ship_by';   // default sort
+var xpdSortDir    = 1;           // 1=asc, -1=desc, 0=default(ship_by asc)
+
+function xpdSort(col) {
+  if (xpdSortCol === col) {
+    // cycle: asc(1) → desc(-1) → default(0)
+    xpdSortDir = xpdSortDir === 1 ? -1 : xpdSortDir === -1 ? 0 : 1;
+    if (xpdSortDir === 0) { xpdSortCol = 'ship_by'; xpdSortDir = 1; }
+  } else {
+    xpdSortCol = col; xpdSortDir = 1;
+  }
+  renderExpediteTable();
+}
+
+function xpdUpdateSortArrows() {
+  var cols = ['svc','order_id','status','qty','age','ship_by','ordered'];
+  cols.forEach(function(c) {
+    var el = document.getElementById('xpd-sa-' + c);
+    if (!el) return;
+    if (c === xpdSortCol) {
+      el.classList.add('sa-active');
+      el.innerHTML = xpdSortDir === 1 ? '&#x25B2;' : '&#x25BC;';
+    } else {
+      el.classList.remove('sa-active');
+      el.innerHTML = '&#x25B2;&#x25BC;';
+    }
+  });
+}
 
 function xpdToggleFilter(svc) {
   xpdSvcFilter[svc] = !xpdSvcFilter[svc];
@@ -3097,8 +3131,8 @@ function renderExpediteData(data) {
     stageCounts[st] = (stageCounts[st] || 0) + 1;
   });
   var stageOrder = [
-    { code:'1000', label:'Open' },
-    { code:'2090', label:'Planned' },
+    { code:'1000', label:'Not Released' },
+    { code:'2090', label:'Allocated' },
     { code:'7100', label:'Packing' },
     { code:'7200', label:'Packed' },
     { code:'7600', label:'Manifested' },
@@ -3129,25 +3163,37 @@ function renderExpediteTable() {
   var orders = (lastXpdOrders || []).filter(function(o) {
     if (o.shipped) return false;
     if (!showPlanned && o.order_status === '2090') return false;
-    // SVC filter
     var svc = o.service_level || '';
     if (svc === '1DD' && !xpdSvcFilter['1DD']) return false;
     if (svc === '2DD' && !xpdSvcFilter['2DD']) return false;
-    // Stage filter — code toggled off = hidden
     if (xpdStgFilter[o.order_status]) return false;
     return true;
   });
 
-  // Sort: overdue first, then by ship-by deadline ascending
+  // Sort
+  var STATUS_RANK = { '1000':0, '2090':1, '7100':2, '7200':3, '7600':4 };
+  var utcMs = function(str) {
+    if (!str) return Infinity;
+    var s = String(str).replace(' ','T');
+    if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+    return new Date(s).getTime();
+  };
   orders.sort(function(a, b) {
-    var getMs = function(o) {
-      if (!o.ship_by_utc) return Infinity;
-      var s = String(o.ship_by_utc).replace(' ','T');
-      if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
-      return new Date(s).getTime();
-    };
-    return getMs(a) - getMs(b);
+    var v = 0;
+    switch (xpdSortCol) {
+      case 'svc':      v = (a.service_level||'').localeCompare(b.service_level||''); break;
+      case 'order_id': v = (a.order_id||'').localeCompare(b.order_id||''); break;
+      case 'status':   v = (STATUS_RANK[a.order_status]||0) - (STATUS_RANK[b.order_status]||0); break;
+      case 'qty':      v = (a.quantity||0) - (b.quantity||0); break;
+      case 'age':      v = utcMs(a.placed_utc) - utcMs(b.placed_utc); break;  // older placed = larger age
+      case 'ordered':  v = utcMs(a.placed_utc) - utcMs(b.placed_utc); break;
+      case 'ship_by':
+      default:         v = utcMs(a.ship_by_utc) - utcMs(b.ship_by_utc); break;
+    }
+    return v * xpdSortDir;
   });
+
+  xpdUpdateSortArrows();
 
   var tbody = document.getElementById('xpd-tbody');
   var emptyEl = document.getElementById('xpd-table-empty');
@@ -3165,14 +3211,23 @@ function renderExpediteTable() {
     var stg      = xpdStage(o.order_status);
     var age      = xpdAge(o.placed_utc);
     var countdown= xpdCountdown(o.ship_by_utc);
-    var olpns    = (o.olpns && o.olpns.length) ? o.olpns.map(function(id){ return '<span class="xpd-olpn-loc">' + escHtml(id) + '</span>'; }).join('<br>') : '<span style="color:var(--text-hint);">—</span>';
-    var qty      = o.quantity ? o.quantity : '—';
+    var qty      = o.quantity != null ? o.quantity : '—';
     var ordered  = o.placed_utc ? fmtPdt(o.placed_utc) : '—';
+
+    // oLPN + last-seen location (allocated/in-progress orders have a location)
+    var olpnHtml;
+    if (o.olpns && o.olpns.length) {
+      var loc = o.olpn_location ? '<span class="xpd-loc-sub">' + escHtml(o.olpn_location) + '</span>' : '';
+      olpnHtml = o.olpns.map(function(id){ return '<span class="xpd-olpn-loc">' + escHtml(id) + '</span>'; }).join('<br>') + loc;
+    } else {
+      olpnHtml = '<span style="color:var(--text-hint);">—</span>';
+    }
+
     html += '<tr>'
       + '<td><span class="' + svcCls + '">' + escHtml(svc) + '</span></td>'
       + '<td><span style="font-family:monospace;font-size:11px;">' + escHtml(o.order_id || '—') + '</span></td>'
       + '<td><span class="xpd-stage-badge ' + stg.cls + '">' + escHtml(stg.label) + '</span></td>'
-      + '<td>' + olpns + '</td>'
+      + '<td>' + olpnHtml + '</td>'
       + '<td class="r" style="font-size:13px;">' + qty + '</td>'
       + '<td class="r"><span class="' + age.cls + '">' + age.text + '</span></td>'
       + '<td class="r"><span class="' + countdown.cls + '">' + countdown.text + '</span></td>'
