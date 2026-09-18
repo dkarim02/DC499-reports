@@ -1491,7 +1491,7 @@ function gitPush() {
     try { fs.unlinkSync(path.join(REPORT_DIR, '.git', 'index.lock')); } catch {}
     execSync('git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     const staged = execSync('git diff --cached --name-only', { cwd: REPORT_DIR, stdio: 'pipe' }).toString().trim().split('\n').filter(Boolean);
-    const LABELS = { 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve', 'putaway_live.json': 'putaway' };
+    const LABELS = { 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve', 'putaway_live.json': 'putaway', 'expedite_live.json': 'expedite' };
     const extras = staged.map(f => LABELS[f]).filter(Boolean);
     const suffix = extras.length ? ` [+${extras.join(', ')}]` : '';
     execSync(`git commit -m "Live update -- ${stamp}${suffix}"`,    { cwd: REPORT_DIR, stdio: 'pipe' });

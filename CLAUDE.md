@@ -5,17 +5,51 @@ This file is read automatically at the start of every Claude Code session. Do no
 
 ---
 
-## Who I am
+## Quick Start
 
-Dean Karim — Warehouse Trainer and 2nd Shift Supervisor, Nordstrom DC499. I manage ~25+ Ecom associates across Ecom, Reserve Stock, Item Prep, and Receiving.
+**Entry point: always `dc499.bat` — never `node` directly.**
+
+- Main server: option 2 (`:3001`, auto-refresh every 2 min)
+- Sub-agents: options 5–19 (each dept has one-shot / auto-refresh / auth)
+- Git: dc499_refresh.js pushes for everyone — sub-agents only write JSON files locally
+
+**GitHub:** dkarim02/DC499-reports | **Live:** dkarim02.github.io/DC499-reports | **Local:** C:\Users\JLEO\OneDrive - Nordstrom\DC499 Reporter
 
 ---
 
-## What this project is
+## Architecture
 
-Browser-based reporting suite on GitHub Pages. Processes MAWM CSV exports for associate throughput visibility. No backend, no build system — pure HTML/CSS/JS.
+Browser-based reporting suite on GitHub Pages. No backend, no build system — pure HTML/CSS/JS. Node.js agents query MAWM directly via HTTPS, write JSON files, and push to GitHub. The browser fetches JSON from GitHub Pages CDN (or localhost:3001 in serve mode).
 
-**GitHub:** dkarim02/DC499-reports | **Live:** dkarim02.github.io/DC499-reports | **Local:** C:\Users\JLEO\OneDrive - Nordstrom\DC499 Reporter
+**Agent → JSON → HTML relationships:**
+
+| Agent | Output JSON | HTML report |
+|---|---|---|
+| dc499_refresh.js | receiving_live.json, totes_live.json, backlog_live.json, batch_status.json, retail_replen.json, tasks_live.json, shipped_live.json | Receiving_live.html, Totes_live.html, Backlog_live.html, Batches_live.html |
+| scout_ecom_agent.js | ecom_live.json | Ecom_v3.html |
+| scout_shipping_agent.js | shipping_live.json | Shipping_live.html |
+| scout_reserve_agent.js | reserve_live.json, putaway_live.json | Reserve_v1_7.html, Reserve_putaway.html |
+| scout_expedite_agent.js | expedite_live.json | Backlog_live.html (Expedite tab) |
+| scout_itemprep_agent.js | itemprep_live.json | ItemPrep_live.html |
+| eos_agent.js | eos_sos_snapshot.json, eos_report.json | EOS_live.html |
+
+---
+
+## dc499.bat Options
+
+| # | Action | Agent |
+|---|---|---|
+| 1 | Refresh data only (one-shot) | dc499_refresh.js |
+| 2 | Start live server on :3001 | dc499_refresh.js |
+| 3 | Start live server + open Receiving Live | dc499_refresh.js |
+| 4 | First-time auth / re-auth | dc499_refresh.js |
+| 5–7 | Ecom Live (one-shot / auto / auth) | scout_ecom_agent.js |
+| 8–10 | Shipping Live (one-shot / auto / auth) | scout_shipping_agent.js |
+| 11–13 | Reserve Live (one-shot / auto / auth) | scout_reserve_agent.js |
+| 14–16 | Item Prep Live (one-shot / auto / auth) | scout_itemprep_agent.js |
+| 17–19 | Expedite Live (one-shot / auto / auth) | scout_expedite_agent.js |
+
+**EOS:** separate launcher — `eos.bat` (options: 1=SOS snapshot, 2=EOS+finalize, 3=Reconstruct SOS, 4=Auth)
 
 ---
 
@@ -42,17 +76,25 @@ Browser-based reporting suite on GitHub Pages. Processes MAWM CSV exports for as
 2. Settings footer nordstrom-tag paragraph
 3. Menu card badge + openApp() filename
 
-**Git push pattern (dc499_refresh.js only — single coordinator):**
+---
+
+## Git push pattern
+
+dc499_refresh.js is the single coordinator — sub-agents never push.
+
 ```
-git add receiving_live.json dock_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json
+git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json
 git commit -m "Live update -- {stamp} [+ecom, +shipping, +reserve]"
 git fetch origin main
 git rebase --autostash origin/main
 git push origin main
 ```
-Note: use `git fetch origin main` + `git rebase origin/main` (not `git pull --rebase`) — Claude Code MCP's internal fetches populate FETCH_HEAD with multiple entries, causing `pull --rebase` to fail with "Cannot rebase onto multiple branches".
 
-**Sub-agents (ecom, shipping, reserve) do NOT push to git.** They write their JSON files and dc499_refresh picks them up on its next 2-min cycle. Commit message appends `[+ecom]` / `[+shipping]` / `[+reserve]` for any sub-agent files included. This prevents concurrent push collisions.
+**Why `fetch` + `rebase` (not `pull --rebase`):** Claude Code MCP's internal fetches populate FETCH_HEAD with multiple entries — `pull --rebase` fails with "Cannot rebase onto multiple branches".
+
+**index.lock cleanup:** `gitPush()` calls `fs.unlinkSync('.git/index.lock')` before every `git add` — silently clears stale locks left by killed/crashed cycles.
+
+**Commit message `[+label]` tags:** LABELS map in gitPush() — `ecom_live.json`→`ecom`, `shipping_live.json`→`shipping`, `reserve_live.json`→`reserve`, `putaway_live.json`→`putaway`, `expedite_live.json`→`expedite`. Any sub-agent file that changed gets its tag appended.
 
 ---
 
@@ -138,37 +180,172 @@ Writes `rfp_units` to backlog_live.json.
 
 ---
 
-## dc499_refresh.js — Live server agent
+## Token locking (all agents)
 
-**Entry point:** dc499.bat — ALWAYS use dc499.bat, never node directly.
+All agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent.js`, `scout_shipping_agent.js`, `scout_expedite_agent.js`, `scout_itemprep_agent.js`) share `.mcp_token.json`. Running concurrently caused token collision — one agent would consume the refresh token before another could use it, revoking the session.
 
-**Options:**
-1. Refresh data only (one-shot)
-2. Start live server on :3001
-3. Start live server + open Receiving Live
-4. First-time auth / re-auth (dc499_refresh)
-5. Ecom Live — one-shot refresh (scout_ecom_agent.js)
-6. Ecom Live — auto-refresh every 3 min
-7. Ecom Live — auth
-8. Shipping Live — one-shot refresh (scout_shipping_agent.js)
-9. Shipping Live — auto-refresh every 3 min
-10. Shipping Live — auth
-11. Reserve Live — one-shot refresh (scout_reserve_agent.js)
-12. Reserve Live — auto-refresh every 3 min
-13. Reserve Live — auth
-14. Item Prep Live — one-shot refresh (scout_itemprep_agent.js)
-15. Item Prep Live — auto-refresh every 3 min
-16. Item Prep Live — auth
+**Fix (2026-08-13):** File-based lock + freshness check in `getAccessTokenSilent()`:
+- `_saved_at` timestamp written to token file on every save
+- `TOKEN_TTL = 55 * 60 * 1000` — fallback TTL if `expires_in` missing
+- `isTokenFresh()` uses `stored.expires_in * 900` (90% of actual lifetime) when available, falls back to TOKEN_TTL
+- Fast path: if token is fresh, return immediately — no network call
+- Lock path: claim `.mcp_token.lock` (exclusive `wx` write), re-check freshness after acquiring, refresh once, release in `finally`
 
-**Output JSON:** batch_status.json, backlog_live.json, shipped_live.json, tasks_live.json, retail_replen.json, totes_live.json, dock_live.json, receiving_live.json
+**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122
 
-**Auth:** `AUTH_PIN = '020405'` → localhost:3001/auth?pin=020405 re-auths without PC password. On AuthError: auto-launches doAuthFlow() + Teams notification via TEAMS_WEBHOOK_AUTH_ALERT.
+---
 
-**Shift detection:** 1st shift: `nowUtcHour >= 10 && nowUtcHour < 21`; 2nd: all other hours. Written to `shift_label` in JSON.
+## Ecom Live (scout_ecom_agent.js)
 
-**batch_status.json key fields:** generated, facility, shift_label, shift_start_utc, summary {total/cleared/active_batches, avg_mins_to_clear, avg_release_interval_mins}, batches[] {batch_num, batch_id, work_release_batch_id, total_orders/olpns/tasks/task_details, status_code/label, released_pdt, cleared_pdt, mins_to_clear, is_cleared, mins_since_prev_release}
+Output: ecom_live.json. Query groups A/B/C/D/E fire in parallel (`Promise.all`).
 
-**Carryover batches:** 14-hour lookback arm: `OR (STATUS_ID != 5800 AND CREATED_TIMESTAMP >= '{lookbackStart}')` catches 1st-shift batches not yet cleared at 2nd-shift start.
+**Five query groups:**
+- Group A: replen + putaway (iLPN Replen Fill/Pull variants, System/User Directed Putaway)
+- Group B: picking (Ecom Mezz/Non-Mezz Pick To Putwall Cart)
+- Group C: packing (NRDR CORE PACK FOR ECOM PACK STATION)
+- Group D: shipping (OB Putaway By Ship Via, NRDR Load Parcel Packages)
+- Group E: sorting (OB Sort To Putwall Cubby) — SQL pre-filtered by CRITERIA_ID = NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA
+
+**Shift start (UTC):** 2nd = 22:15, 1st = 11:00. Boundary: `is1st = h >= 11 && h < 22`. Timestamp offset: `-07:00` PDT (fix to `-08:00` PST ~Oct 25, 2026 — see DST fix memory).
+
+**Truncation:** `truncated: true` in JSON + amber meta line if any group hits 9,500 rows.
+
+**Pending TX type:** `Returns System Directed Putaway` — not yet assigned to a group.
+
+---
+
+## Shipping Live (scout_shipping_agent.js)
+
+Output: shipping_live.json. Transaction types: NRDR CORE PALLETIZE OLPN, FLOOR LOAD PALLETIZE OLPN.
+
+**Dedup:** Employee + Container ID — earliest PDT hour attribution. Hourly target: 80 containers/person/hour.
+
+**Shift:** 1st: 11:00 UTC start, hours 3–13 PST. 2nd: 22:15 UTC start, hours 14–21 PST. Auto-detected from UTC hour.
+
+**4-tier color scale:** 0=grey (–), 1–39=red, 40–59=orange, 60–79=lime, 80+=green
+
+---
+
+## Reserve Live (scout_reserve_agent.js)
+
+Output: reserve_live.json + putaway_live.json. Pre-aggregated `GROUP BY CREATED_BY` — immune to 10k row cap. All 4 groups fire in parallel.
+
+**Metrics:** pick_f1, pick_f2, replen (iLPN Replen Fill/Large), putaway (System/User Directed Putaway). Zone H filter on replen + putaway.
+
+**Shift detection (agent):** `is1st = h >= 10 && h < 22` (UTC). 1st shift start: 10:00 UTC. 2nd shift start: 21:10 UTC (previous day if h < 10).
+
+**Shift sync (HTML):** `loadLiveData()` auto-syncs app shift to `d.shift` from JSON before calling `renderLiveReport`. Never call `setShift()` from inside `renderLiveReport` — flips storage keys mid-render and crashes headcount reads.
+
+**NAIL button:** `nailFromLiveRS(btn)` — writes to NTP Retail tab (`ntp_dc499_v1`). Picking → "Retail OUT", Replen + Putaway → "Retail IN". `ntpCurrentBlockRS()` filters `NTP_BLOCKS` by `getShift()` — prevents 1st|EOD block matching on 2nd shift during 3–8 PM overlap.
+
+---
+
+## Expedite Live (scout_expedite_agent.js)
+
+Output: expedite_live.json. REDIRECT_PORT 3122.
+
+**Expedite flag:** `DESIGNATED_SERVICE_LEVEL_ID = '11'` on DCO_ORDER — confirmed via 1.2-day avg delivery, 9.8-hr avg to ship deadline, same-day/next-morning `EXT_ESTIMATEDSHIPBYDATETIME`.
+
+**oLPN join gotcha:** `PPK_OLPN.SERVICE_LEVEL_ID` stores carrier codes (e.g. `ONTRAC_GROUND_ECMS`), NOT `'11'`. Always join oLPN enrichment through `ORDER_ID` — never filter PPK_OLPN by service level.
+
+**Scope:** Not-yet-shipped = `MAXIMUM_STATUS NOT IN ('8000','9000')`. Status `2090` = cubed/planned not released — hidden by default in UI via "Show planned" toggle.
+
+**Queries:** Q1 open orders + Q2 shipped count fire in parallel, then oLPN enrichment batch by ORDER_ID. Keeps highest-status oLPN per order.
+
+**Shift:** `is1st = nowUtcHour >= 10 && nowUtcHour < 21`. 1st start: 10:00 UTC, 2nd start: 21:00 UTC.
+
+**Backlog_live.html Expedite tab:** 4 summary tiles, pipeline breakdown bar, sortable orders table. Ship-by countdown: green → amber → red → OVERDUE. Themed via `--xpd` CSS vars.
+
+---
+
+## Receiving Live (Receiving_live.html v2.0)
+
+Rebuilt 2026-08-15. Color-coded hourly scoreboard (same 80/60/40/0 thresholds as Shipping). No manual shift selector — auto-detects from `data.shift` in JSON.
+
+**Roster key:** `recv_live_roster_v2` (single key, shift-agnostic). Migrates from old `recv_live_roster_v2_shift2` on first load.
+
+**Shift boundaries in fetchReceiving():** 1st = 13:00 UTC (6 AM PDT), 2nd = 21:00 UTC (2 PM PDT). Timestamps offset `-07:00` PDT (fix to `-08:00` PST ~Oct 25 — see DST fix memory).
+
+---
+
+## Reserve Putaway WIP (Reserve_putaway.html)
+
+Entry point: orange "📦 Putaway WIP" pill in Reserve_v1_7.html top bar. Data: `putaway_live.json`.
+
+**Scope:** DCI_ILPN STATUS=3000, IS_CLOSED=0, retail SKUs only (EXT_SUBDIVISION NOT IN ('740','750')), 60-day window. Excludes Z1-Z-0499Z01 and shelf locations (R1H/R2H/R1B/R1C/R1D/R1E/R1F/R1-SR).
+
+**PO number:** Correlated subquery on RCV_RECEIPT (LIMIT 1) — avoids unit-count fan-out from LEFT JOIN.
+
+**Age badges:** green <2d, amber 2–5d, red ≥5d.
+
+**Shelf PP anomaly (deferred):** ~17k shelf LPNs (R1B/D/E/F/H, R2H) at STATUS=3000 — putaway scan never completed. Excluded pending team discussion.
+
+---
+
+## Reserve Weekly (Reserve_weekly.html)
+
+Storage key: `rs_weekly_v1`. Per-day payload includes `employees: {email: {pick_f1, pick_f2, replen, putaway}}`.
+
+**Date helpers (UTC-safe):** `todayISO()` builds manually from `getFullYear/Month/Date`. `weekMonday(isoStr)` accepts ISO string only — never pass a Date object. `toLocaleDateString('en-CA')` and `new Date('YYYY-MM-DD')` both have UTC-shift bugs — always use these helpers.
+
+**Resets:** Sunday morning — clears if `_weekMon` doesn't match current week.
+
+---
+
+## Batches_live.html / Backlog_live.html
+
+**Themes:** dark, solid, pastel, starr, light. `starr` = pink glamour (Dean's boss). THEME_VALS and THEME_NAMES arrays must stay in sync with CSS and dropdown HTML.
+
+**Teams card:** `notifyNewCleared()` auto-fires on batch transitions. No emoji in card text.
+
+**Send dropdown (Backlog):** `sendToTeams(btn)` — btn may be a `<div>` not `<button>`, guard: `if(btn.disabled!==undefined) btn.disabled=true`.
+
+**Allocated tile:** Shows `totA - rfp_units` (units allocated but not yet at D1-SN-01). `m-total-alloc` shows full `totA` as "Total Allocated". RFP tile stays separate.
+
+**Status pill panel:** Clicking Ready/Allocated/Packed pill opens detail panel. Each order row = `.order-entry` (not `.order-item`). Expanding shows line count + oldest line date (PDT). State tracked in `expandedOrders` Set. Panel + expanded rows survive auto-refresh via `openDetailPanel(..., true)` (silent=true).
+
+**EOD Email:** `exportEodEmail()` reads lastBlData, lastBtData, lastRrData. Outlook compat: `width="600"` HTML attr, `bgcolor="#hex"` on every td/th. `addBgcolor()` post-pass injects bgcolor from computed style.
+
+---
+
+## Ecom_v3.html — per-transaction TM disable
+
+**Disable scoped to transaction:** State stored in `disabled_tx[]` on each roster member. `isTMEnabledForTx(roster, emp, typ)` returns false if `!m.enabled` OR if `typ` in `m.disabled_tx`.
+
+**Functions:** `toggleTMFromLive/Panel(emp, typ)` — toggle `typ` in/out of `disabled_tx`. `disableTMAllFromLive/Panel(emp)` — set `enabled = false`, clear `disabled_tx`.
+
+**`loadRoster` normalization:** Always ensures `disabled_tx: []` present — backward-compatible with pre-field rosters.
+
+---
+
+## Remi sprite
+
+Animated MP4 (`remi.mp4`) along top of progress bars. `mix-blend-mode:multiply` removes white bg. `clip-path:inset(4px 6px 6px 6px)`. Speed: 45px/s, `scaleX(-1)` on direction change. Toggle: `dc499_remi_enabled_v1` localStorage. **Video elements must be in DOM BEFORE `<script>` block.**
+
+---
+
+## Watchdog (dc499_watchdog.ps1)
+
+Scheduled Task every 30 min. Checks for node.exe with `*dc499_refresh*`. If not running: relaunches with `--serve`. Log: dc499_watchdog.log. Setup: run `dc499_watchdog_setup.bat` once. **Lock PC (Win+L) — do NOT log out.**
+
+---
+
+## Teams webhooks
+
+**1st shift (all pages):** workflows/a26c40b1c9ee4739abd0269aedbef04b
+**2nd shift — Batches:** workflows/d4415440c8004523a34336a1a21e6dae
+**2nd shift — Ecom/Backlog:** workflows/eacd8206a4274abb96f43be9d3d01256
+**Auth expiry alert:** cu/30/workflows/db4396647efa46f783e0ed9a5d09e32f... (TEAMS_WEBHOOK_AUTH_ALERT) — sends `{"text":"..."}` plain body, NOT Adaptive Card.
+
+Routing: `getShift()` — 1st = 6AM–2PM PDT, 2nd = 2PM–10PM PDT.
+
+---
+
+## batch_status.json key fields
+
+generated, facility, shift_label, shift_start_utc, summary {total/cleared/active_batches, avg_mins_to_clear, avg_release_interval_mins}, batches[] {batch_num, batch_id, work_release_batch_id, total_orders/olpns/tasks/task_details, status_code/label, released_pdt, cleared_pdt, mins_to_clear, is_cleared, mins_since_prev_release}
+
+**Carryover batches:** 14-hour lookback: `OR (STATUS_ID != 5800 AND CREATED_TIMESTAMP >= '{lookbackStart}')` catches 1st-shift batches not yet cleared at 2nd-shift start.
 
 **Wave labels (PLANNING_STRATEGY_ID → label):**
 
@@ -186,202 +363,21 @@ Wave shift start: 2nd = 20:40 UTC, 1st = 10:00 UTC.
 
 ---
 
-## Watchdog (dc499_watchdog.ps1)
-
-Scheduled Task every 30 min. Checks for node.exe with `*dc499_refresh*`. If not running: relaunches with `--serve`. Log: dc499_watchdog.log. Setup: run dc499_watchdog_setup.bat once. **Lock PC (Win+L) when leaving — do NOT log out.**
-
----
-
-## Teams webhooks
-
-**1st shift (all pages):** workflows/a26c40b1c9ee4739abd0269aedbef04b
-**2nd shift — Batches:** workflows/d4415440c8004523a34336a1a21e6dae
-**2nd shift — Ecom/Backlog:** workflows/eacd8206a4274abb96f43be9d3d01256
-**Auth expiry alert:** cu/30/workflows/db4396647efa46f783e0ed9a5d09e32f... (TEAMS_WEBHOOK_AUTH_ALERT) — sends `{"text":"..."}` plain body, NOT Adaptive Card. Flow confirmed working (202).
-
-Routing: `getShift()` — 1st = 6AM–2PM PDT, 2nd = 2PM–10PM PDT.
-
----
-
-## Ecom_v3.html — per-transaction TM disable
-
-**Disable button scoped to transaction:** Clicking Disable on a TM in the live table removes them from that transaction card only. State stored in `disabled_tx[]` array on each roster member. A smaller "all" button next to Disable sets `enabled = false` globally (same as roster toggle).
-
-**`isTMEnabledForTx(roster, emp, typ)`:** Returns false if `!m.enabled` OR if `typ` is in `m.disabled_tx`. Used in `renderLiveReport` enabled/disabled row splits and `renderSidePanel`.
-
-**`toggleTMFromLive(emp, typ)` / `toggleTMFromPanel(emp, typ)`:** Toggle `typ` in/out of `disabled_tx`. Enable button on a disabled row re-adds them for that tx only.
-
-**`disableTMAllFromLive(emp)` / `disableTMAllFromPanel(emp)`:** Set `enabled = false`, clear `disabled_tx` — removes TM from all cards.
-
-**`loadRoster` normalization:** Always ensures `disabled_tx: []` is present, backward-compatible with saved rosters that predate this field.
-
----
-
-## Batches_live.html / Backlog_live.html
-
-**Themes:** dark, solid, pastel, starr, light. CSS `data-theme` attribute + custom properties. `starr` = pink glamour (Dean's boss). THEME_VALS and THEME_NAMES arrays must stay in sync with CSS and dropdown HTML.
-
-**Teams card:** Send to Teams → batch picker modal → Adaptive Card. `notifyNewCleared()` auto-fires on batch transitions. No emoji in card text. `shiftLabel` read from `lastData.shift_label`.
-
-**Send dropdown (Backlog):** "Send to Teams" + "EOD Email" in expandable `↑ Send` dropdown (id=send-picker). Click-outside closes both `theme-picker` and `send-picker`. `sendToTeams(btn)` — btn may be a `<div>` not `<button>`, guard: `if(btn.disabled!==undefined) btn.disabled=true`.
-
-**Bridge card:** Units/Hour renamed "Bridge" (id=hourly-title). Two stacked sub-tables side-by-side.
-
-**Top Items card (sidebar):** Numbered list of today's top 10 Ecom items by units ordered. Rendered by `renderTopItems()` from `data.top_items`. GWP entries get an inline orange GWP badge. Hidden when array is empty. Sits below the Bridge card in `.page-sidebar`.
-
-**Allocated tile (banner):** Shows `totA - rfp_units` (units allocated but not yet at D1-SN-01 = "Not in Packing"). Ecom order lines are always 1 unit so line count and unit count are equal — subtraction is clean. `m-total-alloc` in the top capsule shows the full `totA` as "Total Allocated". RFP tile stays separate and unchanged.
-
-**Pick Drop Carts (Tasks tab):** `#tk-pickdrop-card` shows iLPNs sitting at `P1-PK-xx` locations that should be cleared by EOS. Query in `fetchTaskData()` — `DCI_ILPN LEFT JOIN DCI_INVENTORY WHERE CURRENT_LOCATION_ID LIKE 'P1-PK%' AND STATUS != '9000' AND IS_CLOSED = 0`. Written to `pick_drop_carts` in tasks_live.json. Groups by location, calculates `age_min` per iLPN, `oldest_min` per cart. Card hidden when empty. Age color: green <30m, amber 30–60m, red >60m. No summary tile — card only.
-
-**Status pill panel (order detail):** Clicking a Ready / Allocated / Packed pill opens a detail panel. Title shows `{date} [Status] N orders · M lines`. Each order row is wrapped in `.order-entry` (not `.order-item`). Clicking a row expands an `.order-expand-row` showing line count + oldest line date (PDT). Chevron `▶`/`▼` rotates via `.order-entry.expanded`. State tracked in `expandedOrders` Set (order IDs). Panel + expanded rows survive auto-refresh: `renderBacklogData()` saves `prevSel`, rebuilds the table, then calls `openDetailPanel(..., true)` (silent=true skips filter reset + scroll). `toggleOrderExpand(el, orderId, event)` guards against expand-row re-click with `event.target.closest('.order-expand-row')`.
-
-**EOD Email:** `exportEodEmail()` reads lastBlData, lastBtData, lastRrData. Outlook compat: `width="600"` HTML attr (not CSS max-width), `bgcolor="#hex"` on every td/th. `addBgcolor()` post-pass injects bgcolor from computed style. Dark palette: #13172b bg, #1b2035/#232840 cells.
-
----
-
-## Remi sprite
-
-Animated MP4 (`remi.mp4`) runs along top of progress bars. Files: Batches_live.html (#remi), Backlog_live.html (#bl-remi, #bl-remi2). `mix-blend-mode:multiply` removes white bg. `clip-path:inset(4px 6px 6px 6px)`. Speed: 45px/s, `scaleX(-1)` on direction change. Toggle: `dc499_remi_enabled_v1` localStorage. **Video elements must be in DOM BEFORE `<script>` block.**
-
----
-
 ## EOS (End of Shift) Report system
 
-**Files:** eos_agent.js (Node.js, queries MAWM), eos.bat (launcher — always use eos.bat), EOS_live.html (browser report).
+**Files:** eos_agent.js, eos.bat (launcher), EOS_live.html.
 
-**eos.bat options:** 1=SOS snapshot (run at 2:10 PM), 2=EOS+finalize (shift end), 3=Reconstruct SOS, 4=Auth.
+**eos.bat options:** 1=SOS snapshot (run at 2:10 PM), 2=EOS+finalize, 3=Reconstruct SOS, 4=Auth.
 
 **JSON:** eos_sos_snapshot.json (option 1/3), eos_report.json (option 2, contains {sos, eos}).
 
-**Key tables:** DCO_ORDER (open orders, MAXIMUM_STATUS='1000'), DCO_ORDER_LINE (open units), PPK_OLPN (hospital/packed/loaded), TSK_TASK (tasks — exclude OBPUTAWAY type), DCO_ORDER_PLAN_RUN_STRATEGY (waves), WR_BATCH (batches).
+**Key tables:** DCO_ORDER, DCO_ORDER_LINE, PPK_OLPN, TSK_TASK (exclude OBPUTAWAY type), DCO_ORDER_PLAN_RUN_STRATEGY, WR_BATCH.
 
-**Waves ≠ Batches.** Waves = planner runs (DCO_ORDER_PLAN_RUN_STRATEGY). Batches = work-release pools to putwalls (WR_BATCH). Different tables, different concepts.
+**Waves ≠ Batches.** Waves = planner runs (DCO_ORDER_PLAN_RUN_STRATEGY). Batches = work-release pools to putwalls (WR_BATCH).
 
-**Orders not released:** `MAXIMUM_STATUS = '1000' AND CREATED_TIMESTAMP < '{captureTime}'` — do NOT count all current '1000' orders (includes fresh customer inbound).
+**Orders not released:** `MAXIMUM_STATUS = '1000' AND CREATED_TIMESTAMP < '{captureTime}'` — do NOT use all current '1000' orders (includes fresh customer inbound).
 
 **Cannot reconstruct (option 3):** open_orders, open_units, hospital_orders, packed_not_shipped, loaded_virtually — current-state only, shown as null.
-
----
-
-## Token locking (all four agents)
-
-All four agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent.js`, `scout_shipping_agent.js`) share `.mcp_token.json`. Running them concurrently caused token collision — one agent would consume the refresh token before another could use it, revoking the session.
-
-**Fix (2026-08-13):** File-based lock + freshness check in `getAccessTokenSilent()`:
-- `_saved_at` timestamp written to token file on every save
-- `TOKEN_TTL = 55 * 60 * 1000` — fallback TTL if `expires_in` is missing from stored token
-- `isTokenFresh()` uses `stored.expires_in * 900` (90% of actual lifetime) when available, falls back to `TOKEN_TTL` — self-correcting regardless of Nordstrom's OIDC window
-- Fast path: if token is fresh, return immediately — no network call
-- Lock path: claim `.mcp_token.lock` (exclusive `wx` write), re-check freshness after acquiring (another agent may have just refreshed), then refresh once, release lock in `finally`
-
----
-
-## Ecom Live tab (scout_ecom_agent.js)
-
-**Agent:** scout_ecom_agent.js — launch via dc499.bat options 5/6/7 only. Output: ecom_live.json (written locally; dc499_refresh pushes to GitHub on next 2-min cycle).
-
-**Query pattern:** Groups A/B/C/D fire in parallel (`Promise.all`) — single round-trip time instead of 4 sequential queries.
-
----
-
-## Shipping Live tab (scout_shipping_agent.js)
-
-**Agent:** scout_shipping_agent.js — launch via dc499.bat options 8/9/10 only. Output: shipping_live.json (written locally; dc499_refresh pushes to GitHub on next 2-min cycle).
-
-**Transaction types:** NRDR CORE PALLETIZE OLPN, FLOOR LOAD PALLETIZE OLPN
-
-**Dedup:** Employee + Container ID — earliest PDT hour attribution. Hourly target: 80 containers/person/hour.
-
-**Shift:** Both shifts supported. 1st: 11:00 UTC start (3 AM PST, covers OT), hours 3–13 PST. 2nd: 22:15 UTC start, hours 14–21 PST. Auto-detected from UTC hour — no manual switch needed.
-
-**4-tier color scale:** 0=grey (–), 1–39=red, 40–59=orange, 60–79=lime, 80+=green
-
-**HOUR_LABELS bug (fixed):** Shipping_live.html was referencing undefined `HOUR_LABELS[h]` — corrected to call `hourLabel(h)` function.
-
-**Query table:** TSK_ACTIVITY_TRACKING. Row columns aliased to CSV names: Employee, Transaction ID, Activity Datetime, Quantity, Completed Quantity, CP Trace Id, Container ID, Current Location, Previous Location, Criteria.
-
-**Five query groups (stay under ~10k row cap):**
-- Group A: replen + putaway (iLPN Replen Fill/Pull variants, System/User Directed Putaway)
-- Group B: picking (Ecom Mezz/Non-Mezz Pick To Putwall Cart)
-- Group C: packing (NRDR CORE PACK FOR ECOM PACK STATION)
-- Group D: shipping (OB Putaway By Ship Via, NRDR Load Parcel Packages)
-- Group E: sorting (OB Sort To Putwall Cubby) — SQL pre-filtered by CRITERIA_ID = NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA to stay under cap; safe because processData() discards non-criteria rows anyway
-
-**Truncation:** `truncated: true` in JSON + amber meta line if any group hits 9,500 rows. Split further if needed.
-
-**Shift start (UTC):** 2nd = 22:15, 1st = 11:00. Boundary: `is1st = h >= 11 && h < 22`. Timestamp offset: `-08:00` PST (fix to `-07:00` PDT around Oct 25, 2026 — see DST fix memory).
-
-**Pending TX type:** `Returns System Directed Putaway` — not yet assigned to a group. Decision pending.
-
----
-
-## Receiving Live (Receiving_live.html v2.0)
-
-Rebuilt 2026-08-15 to match Shipping Live format.
-
-**Layout:** Color-coded hourly scoreboard (same 80/60/40/0 thresholds as Shipping). Settings in floating modal. Starr theme added. Dock board removed. No manual shift selector — auto-detects from `data.shift` in JSON.
-
-**Data:** `receiving_live.json` now includes per-associate `hours: {hr: lpns}` map (added `sqlAssocHourly` GROUP BY CREATED_BY, hr query). Team total footer row colored by avg LPNs/associate. Off-roster collapsible retained below main table.
-
-**Roster key:** `recv_live_roster_v2` (single key, no per-shift split — receiving roster is shift-agnostic). Migrates from old `recv_live_roster_v2_shift2` on first load.
-
-**Shift boundaries in dc499_refresh.js fetchReceiving():** 1st = 13:00 UTC (6 AM PDT), 2nd = 21:00 UTC (2 PM PDT). Timestamps converted with `-07:00` PDT offset (fix to `-08:00` PST ~Oct 25 — see DST fix memory).
-
----
-
-## Reserve Live tab (scout_reserve_agent.js)
-
-**Agent:** scout_reserve_agent.js — launch via dc499.bat options 11/12/13 only. Output: reserve_live.json (written locally; dc499_refresh pushes to GitHub on next 2-min cycle).
-
-**Queries:** Pre-aggregated `GROUP BY CREATED_BY` — immune to 10k row cap regardless of shift volume. Result rows = distinct employees. All 4 groups fire in parallel (`Promise.all`).
-
-**Metrics:** pick_f1 (Non Haz Retail Pick To oLPN Cart), pick_f2 (Non Haz Retail Pick To oLPN Cart Floor 2), replen (iLPN Replen Fill/Large), putaway (System/User Directed Putaway). Zone H filter on replen + putaway.
-
-**Shift detection (agent):** `is1st = h >= 10 && h < 22` (UTC) — covers 3 AM–2:59 PM PDT. 1st shift start: 10:00 UTC. 2nd shift start: 21:10 UTC (previous day if h < 10).
-
-**Shift sync (HTML):** `loadLiveData()` auto-syncs app shift to match `d.shift` from JSON before calling `renderLiveReport`. This ensures roster/PPH storage keys are correct before rendering. Never call `setShift()` from inside `renderLiveReport` — it flips storage keys mid-render and crashes headcount reads.
-
-**NAIL button:** `nailFromLiveRS(btn)` in Reserve_v1_7.html — writes to NTP Retail tab (`ntp_dc499_v1` localStorage). Picking → "Retail OUT", Replen + Putaway → "Retail IN". `ntpCurrentBlockRS()` filters `NTP_BLOCKS` by `getShift()` before matching — prevents 1st|EOD block being matched on 2nd shift during the 3 PM–8 PM overlap window.
-
----
-
-## Reserve Putaway WIP (Reserve_putaway.html)
-
-Standalone report for the Retail team. Entry point: orange "📦 Putaway WIP" pill in Reserve_v1_7.html top bar.
-
-**Data source:** `putaway_live.json` — written by `scout_reserve_agent.js` (`fetchPutawayWip()`), pushed by dc499_refresh on its 2-min cycle.
-
-**Scope:** DCI_ILPN STATUS=3000, IS_CLOSED=0, retail SKUs only (EXT_SUBDIVISION NOT IN ('740','750')), 60-day window. Excludes Z1-Z-0499Z01 (lost/fake location) and shelf locations (R1H/R2H/R1B/R1C/R1D/R1E/R1F/R1-SR).
-
-**Columns:** Age | Location | Carton ID | SKU | Category | Units | PO # | Received (PDT)
-
-**Age badges:** green <2d, amber 2–5d, red ≥5d. Summary tiles: LPNs Pending, Units Pending, Over 5 Days, Oldest.
-
-**Filters:** Category pills (All/Footwear/Apparel), Age range (min–max number inputs), search bar (iLPN/SKU/PO#/category/location).
-
-**PO number:** Correlated subquery on RCV_RECEIPT (LIMIT 1) — avoids unit-count fan-out from LEFT JOIN (one row per scan).
-
-**Shelf PP anomaly (deferred):** ~17k shelf LPNs (R1B/D/E/F/H, R2H) also at STATUS=3000 — excluded from this report pending team discussion. See Pending work.
-
----
-
-## Reserve Weekly (Reserve_weekly.html)
-
-Standalone file, opened via 📅 Weekly Recap button in Reserve_v1_7.html top-bar.
-
-**Storage key:** `rs_weekly_v1` — written by `logDay(btn)` in Reserve_v1_7.html, read by Reserve_weekly.html.
-
-**Per-day payload:** `{ pick, pick_f1, pick_f2, replen, putaway, headcount, hc: {pick, pick2, replen, putaway}, shift_hours, logged, employees: {email: {pick_f1, pick_f2, replen, putaway}} }`
-
-**Date helpers (UTC-safe):** `todayISO()` builds manually from `getFullYear/Month/Date`. `weekMonday(isoStr)` accepts ISO string only — never pass a Date object. `weekDates()` returns Mon–Fri ISO array using local constructor. Always use these; `toLocaleDateString('en-CA')` and `new Date('YYYY-MM-DD')` both have UTC-shift bugs.
-
-**Resets:** Sunday morning — `loadWeeklyData()` clears if `_weekMon` doesn't match current week and today is Sunday.
-
-**Charts:** 3 vertical bar charts (Picking stacked F1/F2, Replen, Putaway). Clicking a bar or day card selects that day — inactive bars dim. Clicking selected card deselects (shows week overview). No auto-select on load.
-
-**Day detail tabs:** Dept Breakdown (3 stat tiles: units + PPH) | Associates (ranked table with per-dept units).
-
-**Demo data:** `reseedDummy()` seeds Mon–Thu with `DUMMY_DAYS_BASE` templates + scaled per-associate breakdowns. Reseed Demo button always available.
 
 ---
 
@@ -401,9 +397,9 @@ for (let i = 0; i < ids.length; i += BATCH_SZ) {
 }
 ```
 
-Used in: `fetchTaskData()` for TSK_TASK_DETAIL detail counts per open task. Safe at 15 IDs; try 25–30 if count is high.
+Safe at 15 IDs; try 25–30 if count is high. Used in: `fetchTaskData()` for TSK_TASK_DETAIL counts per open task.
 
-**TSK_TASK_DETAIL status codes:** 1000=open, 8000=completed, 9000=cancelled. Use `STATUS='8000'` for done count — NOT 9000 (that's cancelled).
+**TSK_TASK_DETAIL status codes:** 1000=open, 8000=completed, 9000=cancelled. Use `STATUS='8000'` for done count — NOT 9000 (cancelled).
 
 ---
 
@@ -411,7 +407,7 @@ Used in: `fetchTaskData()` for TSK_TASK_DETAIL detail counts per open task. Safe
 
 **Never query:** ASSIGNED_USER_ID, PLANNED_START_TIME — PII-gated, crashes query.
 
-**Picking filter:** `TRANSACTION_ID IN ('Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart')` — NOT LABOR_ACTIVITY_ID (unreliable, usually shows Default Picking Activity).
+**Picking filter:** `TRANSACTION_ID IN ('Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart')` — NOT LABOR_ACTIVITY_ID (unreliable).
 
 **Replen filter:** `LEFT(SOURCE_LOCATION_ID,3) IN ('R1B','R1C','R1D','R1E','R1F')`
 
@@ -421,13 +417,31 @@ Used in: `fetchTaskData()` for TSK_TASK_DETAIL detail counts per open task. Safe
 
 ## Research notes
 
-**Putwall → batch mapping:** TSK_TASK_DETAIL.RESOURCE_GROUP_ID joined on `RESOURCE_BATCH_ID = WR_BATCH.BATCH_ID` is the verified join path. All rows showed S1-PW-01 on 2026-07-25 — possibly only PW1 was active. Verify on a shift with multiple putwalls before adding to batch_status.json.
+**Putwall → batch mapping:** TSK_TASK_DETAIL.RESOURCE_GROUP_ID joined on `RESOURCE_BATCH_ID = WR_BATCH.BATCH_ID` is the verified join path. All rows showed S1-PW-01 on 2026-07-25 — possibly only PW1 was active. Verify on a multi-putwall shift before adding to batch_status.json.
 
 **Condition codes:** Data visible in MA's Location Inventory is not accessible via MCP connector. Do not attempt to rebuild.
 
-**LAN fast-refresh (parked):** Built and reverted 2026-08-04. Blocked by Windows Firewall (needs admin to open port 3001) and mixed-content (HTTPS GitHub Pages vs HTTP local server). Needs IT firewall rule + HTTPS cert to unblock.
+**LAN fast-refresh (parked):** Built and reverted 2026-08-04. Blocked by Windows Firewall (port 3001 needs admin) and mixed-content (HTTPS Pages vs HTTP local). Needs IT firewall rule + HTTPS cert.
 
-**Packed Not Shipped (PPK_OLPN STATUS=7200):** ~6,500 oLPNs on a typical 2nd shift. CURRENT_LOCATION_ID shows dock door (P1-OB-010xxx), inbound locations, or numeric values. CARRIER_ID null at pack time (assigned at manifest/7600). Build pending: clarify report requirements (count by door? age flags? Ecom only?).
+**Packed Not Shipped (PPK_OLPN STATUS=7200):** ~6,500 oLPNs on a typical 2nd shift. CARRIER_ID null at pack time (assigned at manifest/7600). Report pending: clarify requirements (count by door? age flags? Ecom only?).
+
+---
+
+## Metabase migration (in evaluation — 2026-08-10)
+
+**Proposed architecture:** Metabase holds direct MAWM DB connection (IT manages creds, no OIDC expiry). Reporter HTML/CSS/JS hosted on Nordstrom intranet. PC agent shrinks to ~100 lines — polls Metabase REST API for operational events only.
+
+**Key blocking question:** Can Dean push HTML/JS updates himself without an IT ticket? Must be confirmed before migration begins.
+
+**What stays in PC agent:** Teams webhooks, EOD email, shift detection.
+
+**What cannot move to Metabase:** Teams notifications on row-level events, EOD email generation, PPH pace math, headcount settings, custom themes.
+
+**Metabase REST API pattern:** `GET /api/card/{id}/query` with `X-Metabase-Session` header. Agent polls every 5 min, maps to existing JSON format.
+
+**SQL translations needed:** Dedup via `ROW_NUMBER() OVER (PARTITION BY employee, transaction_id, activity_datetime)`, Zone H via `CASE WHEN SUBSTR(location,3,1)='H'`, shift bucketing via `CONVERT_TZ`. All existing TX ID filters and `facility_id='499'` rules apply unchanged.
+
+**Next step:** Review eng manager's Metabase report — verify facility_id='499' (not '0499'), REST API intranet accessibility, and deploy access terms.
 
 ---
 
@@ -439,69 +453,29 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 
 ---
 
-## Metabase migration (in evaluation — 2026-08-10)
-
-Engineering manager proposed migrating the reporter to Metabase. Here is the agreed direction and open questions.
-
-**Proposed architecture (best case):**
-- Metabase holds a direct DB connection to MAWM (same access as MA tool) — IT manages credentials, no OIDC token expiry
-- Reporter HTML/CSS/JS is hosted on Nordstrom intranet by IT (not GitHub Pages)
-- PC agent (dc499_refresh.js) shrinks to ~100 lines — polls Metabase REST API for operational events only
-- Teams notifications (batch clears, auth alerts) and EOD email remain in PC agent
-- Custom UI (themes, Remi, side panels, drill-downs) fully survives — Metabase is data source only, not UI host
-
-**Key question pending:** Can Dean push HTML/JS updates himself without an IT ticket? (Same deploy speed as GitHub today.) If not, this is a blocking concern. Eng manager should commit to this before migration begins.
-
-**What Metabase replaces:** MCP → all MAWM SQL queries → JSON push to GitHub → CDN. Fewer hops, faster refresh, no token rotation.
-
-**What stays in the PC agent:** Teams webhooks (batch clear notifications, auth expiry alert), EOD email assembly + Outlook HTML formatting, shift detection logic.
-
-**What cannot move to Metabase natively:** Teams notifications on row-level events, EOD email generation, PPH pace math, headcount settings, custom themes.
-
-**Metabase REST API pattern (for PC agent):**
-- Each saved question exposed as: `GET /api/card/{id}/query` with `X-Metabase-Session` header
-- Agent polls these endpoints every 5 min instead of querying MAWM via MCP
-- Returns JSON — agent maps fields to existing JSON output format (batch_status.json, backlog_live.json, etc.)
-
-**SQL translations needed when Metabase cards are shared:**
-- Dedup: `ROW_NUMBER() OVER (PARTITION BY employee, transaction_id, activity_datetime)`
-- Zone H: `CASE WHEN SUBSTR(location,3,1) = 'H' THEN 'Reserve' ELSE 'Ecom' END`
-- Shift bucketing: `DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP,'+00:00','-07:00'),'%Y-%m-%d')`
-- All existing transaction ID filters, shift boundaries, and facility_id='499' rules apply unchanged
-
-**Next step:** Review the Metabase report Dean receives from eng manager. Check: which tables it queries, whether facility_id filter is correct (must be '499' not '0499'), whether the REST API is intranet-accessible, and confirm deploy access terms.
-
----
-
 ## Pending work
 
-- [ ] **Shelf PP anomaly (Reserve):** ~17k LPNs on reserve shelves (R1B/D/E/F/H, R2H) still at STATUS=3000 — putaway scan never completed. Discuss process compliance with retail team before building tooling. Possible second tab in Reserve_putaway.html.
-- [ ] EOS: orders_not_released needs EOS time cap in captureSnapshot() — `AND CREATED_TIMESTAMP < '{captureTime}'`
-- [ ] **Backlog date bucketing (waiting on leader sign-off):** Cognos anchors an order's date to the oldest line including cancelled ones — SCOUT uses only active lines (`CANCELLED = 0`), so cancel+rerun orders appear on the rerun date instead of the original. Fix: in `fetchBacklog()` in `dc499_refresh.js`, replace the flat `DCO_ORDER_LINE` queries (`sqlOrders`, `sqlShipped`, `sqlDailyTotals`) with a version that joins a subquery to get `MIN(CREATED_TIMESTAMP)` across ALL lines (including cancelled) per order, then uses that as the bucket date while still filtering `CANCELLED = 0` for the status counts. Verified against Cognos 2026-08-17 — Ready was already an exact match; the ~10-line Allocated drift maps to the cancel+rerun orders. Dean needs to confirm with leaders that Cognos methodology is what they want before implementing.
-- [ ] EOD Email: verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass)
+**Urgent / active:**
+- [ ] **Backlog date bucketing** — waiting on leader sign-off. Fix: join subquery for `MIN(CREATED_TIMESTAMP)` across ALL lines (incl. cancelled) per order as bucket date, filter `CANCELLED=0` for status counts. Verified vs Cognos 2026-08-17.
+- [ ] **DST fix** — ~Oct 25, 2026: change `-07:00` PDT → `-08:00` PST in scout_ecom_agent.js, scout_reserve_agent.js (shift boundaries + timestamps). See DST fix memory.
+
+**Pending build:**
 - [ ] Packed Not Shipped: build PackedNotShipped_live.html + fetchPackedNotShipped() in dc499_refresh.js
+- [ ] EOS: add EOS time cap to orders_not_released — `AND CREATED_TIMESTAMP < '{captureTime}'`
+- [ ] EOD Email: verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass)
+- [ ] Pack Line Order Locator — need from Dean: Line 1/2 tote capacity, pizza tote footprint (inches), diverter trigger
+
+**Parked / needs info:**
+- [ ] **Shelf PP anomaly (Reserve):** ~17k shelf LPNs stuck at STATUS=3000. Discuss with retail team before building tooling.
 - [ ] Putwall column in batch display — needs multi-PW shift to confirm TSK_TASK_DETAIL.RESOURCE_GROUP_ID populated
-- [ ] **Mixed putwall detection (Totes_live.html) — improve precision:** Current condition: `dz1_totes > 0 && dz2_totes > 0 && olpn_count > 0`. Still fires false positive when a prior wave's totes left oLPNs in the wall while only one new tote is active. Better approach: add `dz1_last_active_min` / `dz2_last_active_min` fields to `totes_live.json` (from `MAX(DCI_ILPN.UPDATED_TIMESTAMP)` per DZ location), then flag mixed only when both DZs had tote activity within ~30–45 min. Threshold needs validating against a real mixed-DZ wave first.
-- [ ] **Tote Case 2 reuse bug (fixed 2026-09-16):** `task_ended_pdt > ilpn.created_pdt` guard added — stale completed tasks from previous waves on reused tote IDs were inflating Case 2 timers. Watch for any new variants of this pattern.
+- [ ] **Mixed putwall detection (Totes_live.html):** Add `dz1/dz2_last_active_min` fields from `MAX(UPDATED_TIMESTAMP)` per DZ location, flag mixed only when both DZs active within ~30–45 min.
 - [ ] Lost Tote Lookup: verify PPK_OLPN_DETAIL schema + repick location join. Requires PC server endpoint.
-- [ ] PWA / iPad: add manifest.json + service worker; update getLiveBase() to LAN IP for iPad
+- [ ] PWA / iPad: add manifest.json + service worker; update getLiveBase() to LAN IP
 - [ ] Wave progress report (DCO_WAVE_AGGREGATE_ORDER)
 - [ ] Timeclock report (default_timeclock)
 - [ ] GitHub Pro ($4/mo) for private repo + Pages
-- [ ] IT/Metabase: review eng manager's Metabase report, verify facility_id filter, REST API accessibility, and confirm Dean retains deploy access for HTML/JS updates
-- [ ] Reserve Weekly: replen/pick ratio metrics (UPH trend line done 2026-08-14)
-- [ ] Pack Line Order Locator: double conveyor line with diverter. Pizza totes hold 2 singles (T0 prefix) or 4 multis (S1 prefix) — tote capacity is a max, actual fill varies so position is a range estimate. Algorithm: pull all iLPNs at D1-SN-01 ordered by UPDATED_TIMESTAMP, bin-pack into tote slots in arrival order, find target order's tote window, convert to feet using tote footprint, determine Line 1 vs Line 2 by comparing against Line 1 capacity. Need from Dean before building: Line 1 tote capacity, Line 2 tote capacity, pizza tote footprint (inches), diverter trigger (sensor vs fixed count).
-
----
-
-## How Dean works
-
-- Confirms design decisions with mockups before building
-- Patch notes in plain supervisor language only — no technical details
-- Prefers targeted edits over full rewrites
-- Always review before pushing to GitHub
-- Use descriptive commit messages: "Ecom v2.9 — PPH projection, headcount settings"
-- File size warning: HTML files 85-115KB, GitHub MCP times out at ~95KB+ — use git push directly
+- [ ] IT/Metabase: review eng manager's report, confirm deploy access
+- [ ] Reserve Weekly: replen/pick ratio metrics
 
 ---
 

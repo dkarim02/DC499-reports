@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Item Prep Live v1.0 -- DC499</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* ── THEME VARS ── */
+  :root {
+    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e0e0e0;
+    --text:#111827;--text-muted:#555;--text-hint:#999;
+    --accent:#185FA5;--accent-bg:#e8f0fb;--accent-muted:#91b8e8;
+    --green:#15803d;--amber:#b45309;--red:#b91c1c;--blue:#1d4ed8;
+    --box-green:#16a34a;--box-lime:#84cc16;--box-orange:#f97316;--box-red:#dc2626;
+  }
+  [data-theme="dark"]{
+    --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#404040;
+    --text:#f4f4f2;--text-muted:#aaa;--text-hint:#666;
+    --accent-bg:#0d2340;--accent-muted:#5B9BD5;
+    --green:#4ade80;--amber:#fbbf24;--red:#f87171;--blue:#60a5fa;
+    --box-green:#22c55e;--box-lime:#a3e635;--box-orange:#fb923c;--box-red:#ef4444;
+  }
+  [data-theme="solid"]{
+    --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;
+    --text:#edf0fa;--text-muted:#8090b0;--text-hint:#4a5570;
+    --accent-bg:#0d2340;--accent-muted:#5B9BD5;
+    --green:#4ade80;--amber:#fbbf24;--red:#f87171;--blue:#60a5fa;
+    --box-green:#22c55e;--box-lime:#a3e635;--box-orange:#fb923c;--box-red:#ef4444;
+  }
+  [data-theme="pastel"]{
+    --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
+    --text:#e8e4f8;--text-muted:#9b9aaa;--text-hint:#565670;
+    --accent:#7ecec4;--accent-bg:#152e2c;--accent-muted:#7ecec4;
+    --green:#86efac;--amber:#fde68a;--red:#fca5a5;--blue:#93c5fd;
+    --box-green:#34d399;--box-lime:#bef264;--box-orange:#fdba74;--box-red:#f87171;
+  }
+  [data-theme="starr"]{
+    --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
+    --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;
+    --accent:#b0003a;--accent-bg:#f8d0e8;--accent-muted:#d06090;
+    --green:#1b5e20;--amber:#8b3000;--red:#7b0020;--blue:#1e3a8a;
+    --box-green:#16a34a;--box-lime:#65a30d;--box-orange:#c2410c;--box-red:#be123c;
+  }
+  [data-theme="light"]{
+    --bg:#f9fafb;--surface:#fff;--surface2:#f3f4f6;--border:#e5e7eb;--border-light:#f3f4f6;--border-mid:#d1d5db;
+    --text:#111827;--text-muted:#4b5563;--text-hint:#9ca3af;
+    --accent:#185FA5;--accent-bg:#eff6ff;--accent-muted:#bfdbfe;
+    --green:#15803d;--amber:#b45309;--red:#b91c1c;--blue:#1d4ed8;
+    --box-green:#16a34a;--box-lime:#84cc16;--box-orange:#f97316;--box-red:#dc2626;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Nunito',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem 1.5rem;transition:background 0.2s,color 0.2s;}
+  .container{max-width:1200px;margin:0 auto;}
+
+  /* ── TOP BAR ── */
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.1rem;gap:12px;flex-wrap:wrap;}
+  .top-left{display:flex;flex-direction:column;gap:2px;}
+  .top-eyebrow{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1px;}
+  .top-title{display:flex;align-items:center;gap:7px;font-size:19px;font-weight:800;color:var(--text);line-height:1.15;}
+  .top-sub{font-size:12px;font-weight:600;color:var(--text-muted);margin-top:2px;}
+  .top-right{display:flex;align-items:center;gap:6px;padding-top:2px;}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;animation:livepulse 2s infinite;}
+  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.3;transform:scale(0.7);}}
+
+  /* stale */
+  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:13px;font-weight:700;padding:7px 14px;border-radius:6px;margin-bottom:0.9rem;text-align:center;}
+  [data-theme="light"] .stale-banner,[data-theme="starr"] .stale-banner{background:#FFF3CD;color:#7A4F00;}
+
+  /* ── BUTTONS ── */
+  .icon-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:7px;border:0.5px solid var(--border);background:none;cursor:pointer;color:var(--text-muted);font-size:16px;transition:background 0.12s,color 0.12s;font-family:inherit;}
+  .icon-btn:hover{background:var(--surface2);color:var(--text);}
+  .refresh-btn{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:5px 14px;border:0.5px solid var(--accent);border-radius:7px;background:var(--accent-bg);cursor:pointer;color:var(--accent);display:flex;align-items:center;gap:4px;}
+  .refresh-btn:hover{opacity:0.8;}
+
+  /* ── THEME PICKER ── */
+  .theme-picker{position:relative;}
+  .theme-btn{display:flex;align-items:center;gap:5px;font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:7px;padding:5px 11px;white-space:nowrap;}
+  .theme-btn:hover{background:var(--surface2);}
+  .theme-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
+  .theme-picker.open .theme-chevron{transform:rotate(180deg);}
+  .theme-menu{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;min-width:110px;box-shadow:0 8px 24px rgba(0,0,0,0.28);z-index:300;}
+  .theme-picker.open .theme-menu{display:block;}
+  .theme-option{padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
+  .theme-option:hover{background:var(--surface2);color:var(--text);}
+  .theme-option.active{color:var(--accent);}
+
+  /* ── STAT TILES ── */
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:1rem;}
+  .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:0.85rem 1rem;}
+  .tile-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:5px;}
+  .tile-value{font-size:26px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;}
+  .tile-sub{font-size:11px;color:var(--text-muted);margin-top:3px;font-weight:600;}
+  .tv-green{color:var(--green);}
+  .tv-amber{color:var(--amber);}
+  .tv-red{color:var(--red);}
+  .tv-blue{color:var(--blue);}
+  .tv-default{color:var(--text);}
+
+  /* ── CAPACITY BAR ── */
+  .cap-card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem;}
+  .cap-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:8px;display:flex;justify-content:space-between;}
+  .bar-track{height:12px;background:var(--surface2);border-radius:6px;overflow:hidden;display:flex;}
+  .bar-seg-backlog{background:var(--box-orange);height:100%;transition:width 0.4s;}
+  .bar-seg-head{background:var(--box-green);height:100%;transition:width 0.4s;}
+  .bar-seg-over{background:var(--box-red);height:100%;transition:width 0.4s;}
+  .bar-legend{display:flex;gap:14px;margin-top:7px;flex-wrap:wrap;}
+  .bl-item{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--text-muted);}
+  .bl-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+
+  /* ── LEGEND ── */
+  .legend{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;margin-bottom:0.9rem;flex-wrap:wrap;}
+  .legend-chip{display:inline-flex;align-items:center;gap:0;border-radius:5px;overflow:hidden;border:0.5px solid var(--border);}
+  .lc-dot{width:10px;height:28px;flex-shrink:0;}
+  .lc-label{padding:0 8px;font-size:11px;font-weight:800;color:var(--text-muted);background:var(--surface2);height:28px;display:flex;align-items:center;}
+  .ls-green{background:var(--box-green);}
+  .ls-lime{background:var(--box-lime);}
+  .ls-orange{background:var(--box-orange);}
+  .ls-red{background:var(--box-red);}
+
+  /* ── CARD ── */
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:1rem 1rem 0.75rem;margin-bottom:1rem;}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;gap:8px;flex-wrap:wrap;}
+  .card-title{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;}
+  .card-meta{font-size:11px;font-weight:600;color:var(--text-hint);}
+
+  /* ── TABLE ── */
+  .score-wrap{overflow-x:auto;}
+  .score-wrap::-webkit-scrollbar{height:4px;}
+  .score-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  table{width:100%;border-collapse:collapse;}
+  th{text-align:center;font-size:11px;font-weight:800;color:var(--text-muted);padding:6px 3px 8px;border-bottom:1.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;}
+  th.col-emp{text-align:left;padding-left:8px;}
+  th.col-total{border-left:1.5px solid var(--border-mid);padding-left:8px;padding-right:8px;}
+  th.col-type{border-left:1.5px solid var(--border-mid);padding-left:8px;}
+  th.col-hour-active{color:var(--accent);background:var(--accent-bg);border-bottom-color:var(--accent);}
+  td{padding:0;border-bottom:0.5px solid var(--border-light);vertical-align:middle;white-space:nowrap;}
+  tr:last-child td{border-bottom:none;}
+  .td-emp{padding:6px 3px 6px 8px;font-size:15px;font-weight:800;color:var(--text);min-width:80px;max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+  .hcell{width:46px;min-width:46px;text-align:center;padding:5px 1px;}
+  td.col-hour-active{background:var(--accent-bg);}
+  .hval{display:inline-flex;align-items:center;justify-content:center;width:40px;height:34px;border-radius:7px;font-size:15px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.22);transition:transform 0.1s;}
+  .hval:hover{transform:scale(1.06);}
+  .hval.c-green{background:var(--box-green);}
+  .hval.c-lime{background:var(--box-lime);}
+  .hval.c-orange{background:var(--box-orange);}
+  .hval.c-red{background:var(--box-red);}
+  .hval.c-empty{background:var(--surface2);color:var(--text-muted);font-size:18px;font-weight:900;text-shadow:none;}
+  .hval.c-empty:hover{transform:none;}
+  .td-total{padding:5px 7px 5px 6px;text-align:center;border-left:1.5px solid var(--border-mid);}
+  .hval-total{display:inline-flex;align-items:center;justify-content:center;width:46px;height:34px;border-radius:7px;font-size:15px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.22);}
+  .hval-total.c-green{background:var(--box-green);}
+  .hval-total.c-lime{background:var(--box-lime);}
+  .hval-total.c-orange{background:var(--box-orange);}
+  .hval-total.c-red{background:var(--box-red);}
+  .hval-total.c-empty{background:var(--surface2);color:var(--text-hint);font-size:13px;font-weight:700;text-shadow:none;}
+  .td-type{padding:5px 8px;border-left:1.5px solid var(--border-mid);font-size:11px;font-weight:700;color:var(--text-muted);}
+  tfoot tr td{border-top:2px solid var(--border-mid);border-bottom:none;background:var(--surface2);}
+  tfoot .td-emp{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);}
+  .empty-state{text-align:center;padding:2.5rem 1rem;color:var(--text-hint);font-size:14px;font-weight:600;line-height:1.6;}
+  tr.row-inactive{opacity:0.38;}
+  .td-pph{padding:5px 8px;border-left:1.5px solid var(--border-mid);text-align:center;font-size:13px;font-weight:800;color:var(--text-muted);}
+  .td-cap-left{padding:5px 8px;text-align:center;font-size:13px;font-weight:800;color:var(--text);}
+  th.col-pph{border-left:1.5px solid var(--border-mid);padding-left:8px;}
+  .inactive-chip{display:inline-block;font-size:9px;font-weight:800;padding:1px 5px;border-radius:3px;background:var(--surface2);color:var(--text-hint);text-transform:uppercase;letter-spacing:0.06em;vertical-align:middle;margin-left:4px;}
+
+  /* ── SETTINGS MODAL ── */
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;backdrop-filter:blur(2px);}
+  .modal-backdrop.open{display:block;}
+  .modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.96);opacity:0;width:min(520px,calc(100vw - 2rem));max-height:calc(100vh - 4rem);overflow-y:auto;background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.5rem;z-index:500;box-shadow:0 20px 60px rgba(0,0,0,0.4);transition:transform 0.18s ease,opacity 0.18s ease;}
+  .modal.open{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  .modal::-webkit-scrollbar{width:4px;}
+  .modal::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;}
+  .modal-title{font-size:15px;font-weight:800;color:var(--text);}
+  .modal-close{background:none;border:none;cursor:pointer;font-size:20px;color:var(--text-hint);line-height:1;font-family:inherit;padding:2px 6px;border-radius:5px;}
+  .modal-close:hover{color:var(--text);background:var(--surface2);}
+  .modal-actions{display:flex;align-items:center;gap:8px;margin-bottom:1rem;}
+  .btn-save{font-family:'Nunito',system-ui,sans-serif;font-size:13px;font-weight:800;padding:7px 20px;border:none;border-radius:7px;background:var(--accent);cursor:pointer;color:#fff;}
+  .btn-save:hover{opacity:0.85;}
+  .btn-reset{font-family:'Nunito',system-ui,sans-serif;font-size:13px;font-weight:700;padding:7px 16px;border:1.5px solid var(--border-mid);border-radius:7px;background:none;cursor:pointer;color:var(--text-muted);}
+  .btn-reset:hover{color:var(--red);border-color:var(--box-red);}
+  .save-toast{font-size:12px;font-weight:700;color:var(--green);display:none;margin-left:4px;}
+  .save-toast.show{display:inline;}
+  .settings-list{display:flex;flex-direction:column;gap:5px;}
+  .settings-row{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--surface2);border-radius:7px;}
+  .settings-email{font-size:12px;font-weight:600;color:var(--text-muted);font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;}
+  .settings-arrow{font-size:12px;color:var(--text-hint);flex-shrink:0;}
+  .settings-input{font-family:'Nunito',system-ui,sans-serif;font-size:13px;font-weight:700;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text);outline:none;width:110px;flex-shrink:0;}
+  .settings-input:focus{border-color:var(--accent);}
+  .settings-input::placeholder{font-weight:500;color:var(--text-hint);}
+  .settings-toggle{display:inline-flex;align-items:center;width:32px;height:17px;border-radius:9px;background:var(--border);position:relative;transition:background 0.2s;flex-shrink:0;cursor:pointer;}
+  .settings-toggle::after{content:'';position:absolute;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.25);}
+  .settings-toggle.on{background:var(--accent);}
+  .settings-toggle.on::after{left:17px;}
+  .settings-empty{font-size:13px;font-weight:600;color:var(--text-hint);padding:1.75rem 0;text-align:center;}
+
+  .disclaimer{font-size:11px;font-weight:600;color:var(--text-hint);margin-top:1.5rem;padding-top:0.9rem;border-top:0.5px solid var(--border);}
+</style>
+</head>
+<body data-theme="dark">
+<div class="container">
+
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="top-eyebrow">DC499 &middot; Item Prep</div>
+      <div class="top-title"><span class="live-dot"></span>Item Prep Live</div>
+      <div class="top-sub" id="run-info">Loading...</div>
+    </div>
+    <div class="top-right">
+      <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
+      <div class="theme-picker" id="theme-picker">
+        <button class="theme-btn" onclick="toggleThemePicker()">
+          <span id="theme-label">Dark</span>
+          <span class="theme-chevron">&#9660;</span>
+        </button>
+        <div class="theme-menu">
+          <div class="theme-option" onclick="setTheme('dark')">Dark</div>
+          <div class="theme-option" onclick="setTheme('solid')">Solid</div>
+          <div class="theme-option" onclick="setTheme('pastel')">Pastel</div>
+          <div class="theme-option" onclick="setTheme('starr')">Starr</div>
+          <div class="theme-option" onclick="setTheme('light')">Light</div>
+        </div>
+      </div>
+      <button class="icon-btn" onclick="openSettings()" title="Settings">&#9881;</button>
+    </div>
+  </div>
+
+  <div class="stale-banner" id="stale-banner">Data is more than 15 minutes old — hit Refresh.</div>
+
+  <!-- Stat tiles -->
+  <div class="tiles" id="tiles" style="display:none;">
+    <div class="tile">
+      <div class="tile-label">Backlog — LPNs</div>
+      <div class="tile-value tv-default" id="tile-lpns">—</div>
+      <div class="tile-sub">at L1IP* locations</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Backlog — Units</div>
+      <div class="tile-value tv-default" id="tile-units">—</div>
+      <div class="tile-sub">units pending</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Team PPH</div>
+      <div class="tile-value tv-blue" id="tile-pph">—</div>
+      <div class="tile-sub" id="tile-pph-sub">cartons/hr</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Hours Left</div>
+      <div class="tile-value tv-default" id="tile-hrs">—</div>
+      <div class="tile-sub" id="tile-hrs-sub">until shift end</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Capacity Left</div>
+      <div class="tile-value tv-default" id="tile-cap">—</div>
+      <div class="tile-sub">cartons team can process</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Headroom</div>
+      <div class="tile-value tv-default" id="tile-headroom">—</div>
+      <div class="tile-sub">after clearing backlog</div>
+    </div>
+  </div>
+
+  <!-- Capacity bar -->
+  <div class="cap-card" id="cap-card" style="display:none;">
+    <div class="cap-label">
+      <span>Shift Capacity</span>
+      <span id="cap-label-right" style="color:var(--text-hint);font-size:10px;"></span>
+    </div>
+    <div class="bar-track" id="cap-bar"></div>
+    <div class="bar-legend">
+      <div class="bl-item"><div class="bl-dot" style="background:var(--box-orange)"></div><span id="leg-backlog">Backlog</span></div>
+      <div class="bl-item"><div class="bl-dot" style="background:var(--box-green)"></div><span id="leg-headroom">Headroom</span></div>
+      <div class="bl-item" id="leg-over-wrap" style="display:none;"><div class="bl-dot" style="background:var(--box-red)"></div><span id="leg-over">Over capacity</span></div>
+    </div>
+  </div>
+
+  <!-- Scoreboard -->
+  <div class="legend">
+    <span class="legend-chip"><span class="lc-dot ls-green"></span><span class="lc-label">80+</span></span>
+    <span class="legend-chip"><span class="lc-dot ls-lime"></span><span class="lc-label">60–79</span></span>
+    <span class="legend-chip"><span class="lc-dot ls-orange"></span><span class="lc-label">40–59</span></span>
+    <span class="legend-chip"><span class="lc-dot ls-red"></span><span class="lc-label">1–39</span></span>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Hourly Scoreboard</span>
+      <span class="card-meta" id="card-meta"></span>
+    </div>
+    <div class="score-wrap">
+      <div id="scoreboard-body"><div class="empty-state">Waiting for data…<br>Run dc499.bat → option 14.</div></div>
+    </div>
+  </div>
+
+  <div class="disclaimer">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="closeSettings()"></div>
+<div class="modal" id="settings-modal">
+  <div class="modal-header">
+    <span class="modal-title">LAN ID Mapping</span>
+    <button class="modal-close" onclick="closeSettings()">&#215;</button>
+  </div>
+  <div class="modal-actions">
+    <button class="btn-save" onclick="saveSettings()">Save</button>
+    <button class="btn-reset" onclick="resetSettings()">Reset all</button>
+    <span class="save-toast" id="save-toast">Saved</span>
+  </div>
+  <div class="settings-list" id="settings-rows">
+    <div class="settings-empty">No associates yet.<br>Run a refresh after shift starts.</div>
+  </div>
+</div>
+
+<script>
+function getLiveBase() {
+  return window.location.protocol === 'file:'
+    ? 'http://localhost:3001'
+    : (window.location.hostname === 'dkarim02.github.io'
+        ? 'https://dkarim02.github.io/DC499-reports'
+        : '');
+}
+
+const ALL_2ND    = [14,15,16,17,18,19,20,21,22];
+const ALL_1ST    = [6,7,8,9,10,11,12,13,14];
+const STALE_MS   = 15 * 60 * 1000;
+const SETTINGS_KEY = 'itemprep_lan_map_v1';
+const THEME_KEY    = 'itemprep_theme_v1';
+const THEME_NAMES  = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr',light:'Light'};
+
+let lastData = null;
+
+function hourLabel(h) {
+  if (h === 0)  return '12AM';
+  if (h < 12)   return h + 'AM';
+  if (h === 12) return '12PM';
+  return (h - 12) + 'PM';
+}
+
+// ── theme ──────────────────────────────────────────────────────────────────────
+function setTheme(t) {
+  document.body.dataset.theme = t;
+  localStorage.setItem(THEME_KEY, t);
+  document.getElementById('theme-label').textContent = THEME_NAMES[t] || t;
+  document.querySelectorAll('.theme-option').forEach(el => {
+    el.classList.toggle('active', el.textContent === (THEME_NAMES[t] || t));
+  });
+  document.getElementById('theme-picker').classList.remove('open');
+}
+function toggleThemePicker() {
+  document.getElementById('theme-picker').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#theme-picker')) document.getElementById('theme-picker').classList.remove('open');
+});
+
+// ── settings modal ─────────────────────────────────────────────────────────────
+function openSettings()  { document.getElementById('modal-backdrop').classList.add('open'); document.getElementById('settings-modal').classList.add('open'); }
+function closeSettings() { document.getElementById('modal-backdrop').classList.remove('open'); document.getElementById('settings-modal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+
+function loadSettings() { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch { return {}; } }
+function encodeId(s) { return s.replace(/[^a-zA-Z0-9]/g, '_'); }
+
+function saveSettings() {
+  if (!lastData) return;
+  const map = {};
+  Object.keys(lastData.associates || {}).forEach(emp => {
+    const inp = document.getElementById('lan-' + encodeId(emp));
+    const tog = document.getElementById('tog-' + encodeId(emp));
+    map[emp] = { lanId: inp ? inp.value.trim() : '', enabled: tog ? tog.classList.contains('on') : true };
+  });
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(map));
+  renderScoreboard(lastData);
+  const toast = document.getElementById('save-toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1800);
+}
+function resetSettings() {
+  if (!confirm('Clear all LAN ID mappings?')) return;
+  localStorage.removeItem(SETTINGS_KEY);
+  if (lastData) renderSettings(lastData);
+  renderScoreboard(lastData);
+}
+function displayName(email, settings) {
+  const s = settings[email];
+  return (s && s.lanId) ? s.lanId : email.split('@')[0];
+}
+function isEnabled(email, settings) {
+  const s = settings[email];
+  return s ? s.enabled !== false : true;
+}
+function toggleEmp(eid) {
+  const tog = document.getElementById('tog-' + eid);
+  if (tog) tog.classList.toggle('on');
+}
+
+function renderSettings(data) {
+  const settings   = loadSettings();
+  const container  = document.getElementById('settings-rows');
+  const associates = data ? Object.keys(data.associates || {}) : [];
+  if (!associates.length) {
+    container.innerHTML = '<div class="settings-empty">No associates yet.<br>Run a refresh after shift starts.</div>';
+    return;
+  }
+  container.innerHTML = associates.map(emp => {
+    const s   = settings[emp] || {};
+    const eid = encodeId(emp);
+    const on  = s.enabled !== false;
+    return `<div class="settings-row">
+      <span class="settings-email" title="${emp}">${emp}</span>
+      <span class="settings-arrow">→</span>
+      <input class="settings-input" id="lan-${eid}" placeholder="LAN ID" value="${s.lanId || ''}">
+      <span class="settings-toggle${on?' on':''}" id="tog-${eid}" onclick="toggleEmp('${eid}')"></span>
+    </div>`;
+  }).join('');
+}
+
+// ── color logic ────────────────────────────────────────────────────────────────
+function boxClass(n) {
+  if (n === 0)  return 'c-empty';
+  if (n >= 80)  return 'c-green';
+  if (n >= 60)  return 'c-lime';
+  if (n >= 40)  return 'c-orange';
+  return 'c-red';
+}
+function headroomClass(h) {
+  if (h > 50)  return 'tv-green';
+  if (h >= 0)  return 'tv-amber';
+  return 'tv-red';
+}
+function fmt(n) { return n >= 1000 ? (n/1000).toFixed(1) + 'k' : String(n); }
+
+// ── render tiles ───────────────────────────────────────────────────────────────
+function renderTiles(data) {
+  const b   = data.backlog   || {};
+  const cap = data.capacity  || {};
+
+  document.getElementById('tiles').style.display = '';
+  document.getElementById('cap-card').style.display = '';
+
+  const lpns  = b.lpns_pending  || 0;
+  const units = b.units_pending || 0;
+  const pph   = cap.team_pph    || 0;
+  const hrsLeft = cap.hours_remaining || 0;
+  const capLeft = cap.capacity_remaining || 0;
+  const headroom = cap.headroom != null ? cap.headroom : (capLeft - lpns);
+
+  // backlog color
+  document.getElementById('tile-lpns').textContent  = fmt(lpns);
+  document.getElementById('tile-units').textContent = fmt(units);
+  document.getElementById('tile-lpns').className    = 'tile-value ' + (lpns > capLeft ? 'tv-red' : lpns > capLeft * 0.8 ? 'tv-amber' : 'tv-default');
+
+  document.getElementById('tile-pph').textContent   = pph;
+  document.getElementById('tile-pph-sub').textContent = `${cap.active_headcount || 0} active · cartons/hr`;
+
+  document.getElementById('tile-hrs').textContent   = hrsLeft.toFixed(1) + 'h';
+
+  document.getElementById('tile-cap').textContent   = fmt(capLeft);
+
+  const hrEl = document.getElementById('tile-headroom');
+  hrEl.textContent  = (headroom >= 0 ? '+' : '') + fmt(headroom);
+  hrEl.className    = 'tile-value ' + headroomClass(headroom);
+
+  // capacity bar
+  const total = Math.max(lpns + Math.abs(headroom < 0 ? headroom : 0) + Math.max(headroom, 0), 1);
+  const backlogPct  = Math.min(lpns / capLeft * 100, 100);
+  const headroomPct = headroom > 0 ? Math.min(headroom / capLeft * 100, 100 - backlogPct) : 0;
+  const overPct     = headroom < 0 ? Math.min(Math.abs(headroom) / capLeft * 100, 50) : 0;
+
+  document.getElementById('cap-bar').innerHTML = headroom >= 0
+    ? `<div class="bar-seg-backlog" style="width:${backlogPct}%"></div><div class="bar-seg-head" style="width:${headroomPct}%"></div>`
+    : `<div class="bar-seg-backlog" style="width:${Math.min(backlogPct,100)}%"></div><div class="bar-seg-over" style="width:${overPct}%"></div>`;
+
+  document.getElementById('cap-label-right').textContent = `${fmt(capLeft)} cartons remaining capacity`;
+  document.getElementById('leg-backlog').textContent   = `Backlog (${fmt(lpns)})`;
+  document.getElementById('leg-headroom').textContent  = headroom >= 0 ? `Headroom (+${fmt(headroom)})` : 'On pace';
+  document.getElementById('leg-over-wrap').style.display = headroom < 0 ? '' : 'none';
+  document.getElementById('leg-over').textContent = `Over capacity (${fmt(Math.abs(headroom))})`;
+}
+
+// ── render scoreboard ──────────────────────────────────────────────────────────
+function renderScoreboard(data) {
+  if (!data) return;
+  const settings = loadSettings();
+  const nowPst   = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  const nowHour  = nowPst.getHours();
+
+  const associates = data.associates || {};
+  const empKeys    = Object.keys(associates).filter(e => isEnabled(e, settings));
+
+  if (!empKeys.length) {
+    document.getElementById('scoreboard-body').innerHTML =
+      '<div class="empty-state">No active associates.<br>Open Settings (⚙) to configure LAN IDs.</div>';
+    return;
+  }
+
+  const defaultHours = (data.shift === '1st') ? ALL_1ST : ALL_2ND;
+  const hours = defaultHours.filter(h => h <= nowHour);
+
+  if (!hours.length) {
+    document.getElementById('scoreboard-body').innerHTML =
+      '<div class="empty-state">Shift hasn\'t started yet.<br>Check back at 2:15 PM PST.</div>';
+    return;
+  }
+
+  // sort: active first, then by total descending
+  empKeys.sort((a, b) => {
+    const aActive = associates[a].active !== false;
+    const bActive = associates[b].active !== false;
+    if (aActive !== bActive) return aActive ? -1 : 1;
+    return (associates[b].total || 0) - (associates[a].total || 0);
+  });
+
+  let html = '<table><thead><tr>';
+  html += '<th class="col-emp">Associate</th>';
+  for (const h of hours) {
+    html += `<th class="hcell${h===nowHour?' col-hour-active':''}">${hourLabel(h)}</th>`;
+  }
+  html += '<th class="col-total">Total</th>';
+  html += '<th class="col-pph">PPH</th>';
+  html += '<th class="col-type">Cap Left</th>';
+  html += '<th class="col-type">Type</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const emp of empKeys) {
+    const a      = associates[emp];
+    const name   = displayName(emp, settings);
+    const active = a.active !== false;
+    html += `<tr class="${active ? '' : 'row-inactive'}"><td class="td-emp" title="${emp}">${name}${active ? '' : '<span class="inactive-chip">away</span>'}</td>`;
+    for (const h of hours) {
+      const hStr  = String(h).padStart(2, '0');
+      const count = (a.hours && a.hours[hStr]) || 0;
+      const cls   = boxClass(count);
+      const hActive = h === nowHour ? ' col-hour-active' : '';
+      html += `<td class="hcell${hActive}"><span class="hval ${cls}">${count === 0 ? '–' : count}</span></td>`;
+    }
+    const hoursWithData = hours.filter(h => { const hStr = String(h).padStart(2,'0'); return (a.hours && a.hours[hStr]) > 0; }).length;
+    const avgPace  = hoursWithData > 0 ? (a.total || 0) / hoursWithData : 0;
+    const totalCls = (a.total || 0) === 0 ? 'c-empty' : boxClass(Math.round(avgPace));
+    const typeStr  = a.receive > 0 && a.condcode > 0 ? 'Both'
+                   : a.receive > 0 ? 'Receive'
+                   : a.condcode > 0 ? 'Cond.Code' : '—';
+    const pph      = a.pph != null ? a.pph : '—';
+    const capLeft  = a.remaining_capacity != null ? fmt(a.remaining_capacity) : '—';
+    html += `<td class="td-total"><span class="hval-total ${totalCls}">${(a.total||0) === 0 ? '—' : a.total}</span></td>`;
+    html += `<td class="td-pph">${pph}</td>`;
+    html += `<td class="td-cap-left">${active ? capLeft : '—'}</td>`;
+    html += `<td class="td-type">${typeStr}</td></tr>`;
+  }
+
+  // footer — active only for capacity total
+  const activeKeys = empKeys.filter(e => associates[e].active !== false);
+  html += '</tbody><tfoot><tr><td class="td-emp">Team</td>';
+  for (const h of hours) {
+    const hStr     = String(h).padStart(2, '0');
+    const visCount = empKeys.reduce((s, e) => s + ((associates[e].hours && associates[e].hours[hStr]) || 0), 0);
+    const avg      = empKeys.length > 0 ? visCount / empKeys.length : 0;
+    const cls      = visCount === 0 ? 'c-empty' : boxClass(Math.round(avg));
+    const hActive  = h === nowHour ? ' col-hour-active' : '';
+    html += `<td class="hcell${hActive}"><span class="hval ${cls}">${visCount === 0 ? '–' : visCount}</span></td>`;
+  }
+  const visTotal   = empKeys.reduce((s, e) => s + (associates[e].total || 0), 0);
+  const teamAvg    = (empKeys.length > 0 && hours.length > 0) ? visTotal / (empKeys.length * hours.length) : 0;
+  const teamCls    = visTotal === 0 ? 'c-empty' : boxClass(Math.round(teamAvg));
+  const totalCapLeft = activeKeys.reduce((s, e) => s + (associates[e].remaining_capacity || 0), 0);
+  const avgPph     = activeKeys.length > 0 ? Math.round(activeKeys.reduce((s, e) => s + (associates[e].pph || 0), 0) / activeKeys.length * 10) / 10 : '—';
+  html += `<td class="td-total"><span class="hval-total ${teamCls}">${visTotal === 0 ? '—' : visTotal}</span></td>`;
+  html += `<td class="td-pph">${avgPph}</td>`;
+  html += `<td class="td-cap-left">${activeKeys.length > 0 ? fmt(totalCapLeft) : '—'}</td>`;
+  html += '<td class="td-type"></td></tr></tfoot></table>';
+
+  document.getElementById('scoreboard-body').innerHTML = html;
+}
+
+// ── load data ──────────────────────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('run-info').textContent = 'Refreshing...';
+  try {
+    const res = await fetch(getLiveBase() + '/itemprep_live.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    lastData = data;
+
+    const gen    = new Date(data.generated);
+    const ageMs  = Date.now() - gen.getTime();
+    const genStr = gen.toLocaleTimeString('en-US', {timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit',hour12:true});
+    const cap    = data.capacity || {};
+
+    document.getElementById('run-info').textContent =
+      `${data.shift||'2nd'} shift · ${cap.active_headcount||0} associates · updated ${genStr} PST`;
+    document.getElementById('card-meta').textContent =
+      `${cap.total_cartons||0} cartons${data.truncated?' ⚠ truncated':''}`;
+    document.getElementById('stale-banner').style.display = ageMs > STALE_MS ? 'block' : 'none';
+
+    renderTiles(data);
+    renderScoreboard(data);
+    renderSettings(data);
+
+  } catch (e) {
+    document.getElementById('run-info').textContent = 'Error — ' + e.message;
+    document.getElementById('scoreboard-body').innerHTML =
+      '<div class="empty-state">Could not load itemprep_live.json.<br>Run dc499.bat → option 14 first.</div>';
+  }
+}
+
+// ── init ───────────────────────────────────────────────────────────────────────
+(function init() {
+  setTheme(localStorage.getItem(THEME_KEY) || 'dark');
+  loadData();
+  setInterval(loadData, 5 * 60 * 1000);
+})();
+</script>
+</body>
+</html>
