@@ -165,6 +165,11 @@ DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS li
 - Query by `OLPN_ID` or `ORDER_ID` — both work directly. No JOIN needed.
 - `FACILITY_ID = '499'` always required.
 
+**DCI_ILPN query rules:**
+- No `CONTAINER_ID` column — carton ID is `ILPN_ID`. The Cognos "Receive to Putaway WIP" report calls it `carton_id` but maps to `ILPN_ID`.
+- Large IN() joins across DCI_ILPN + DCI_INVENTORY + ITE_ITEM time out. Query ITE_ITEM directly with known ITEM_IDs when subdivision lookups are needed.
+- Subdivision 740 = Cosmetics, 750 = Fragrance (Beauty/Ecom) — excluded from all Retail putaway queries.
+
 **Status codes:**
 
 WR_BATCH: 5000=Released, 5200=Picking Started, 5400=Picking Completed, 5600=In Queue, 5800=Cleared
@@ -296,7 +301,9 @@ Entry point: orange "📦 Putaway WIP" pill in Reserve_v1_7.html top bar. Data: 
 
 **PO number:** Correlated subquery on RCV_RECEIPT (LIMIT 1) — avoids unit-count fan-out from LEFT JOIN.
 
-**Age badges:** green <2d, amber 2–5d, red ≥5d.
+**Age badges (v1.1+):** green 5–7d, amber 7–14d, red ≥14d. Floor is 5 days — containers under 5 days are always hidden.
+
+**CSV upload mode (v1.1):** User uploads Cognos "Receive to Putaway WIP" xlsx. Carton IDs forward-filled (sparse Cognos format). Matched against live JSON by ILPN_ID. Unmatched cartons are mostly Beauty/Ecom (740/750) — not a data error. SheetJS loaded lazily on first upload. Works on GitHub Pages; requires :3001 server when opened as file://.
 
 **Shelf PP anomaly (deferred):** ~17k shelf LPNs (R1B/D/E/F/H, R2H) at STATUS=3000 — putaway scan never completed. Excluded pending team discussion.
 
