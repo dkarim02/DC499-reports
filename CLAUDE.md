@@ -195,6 +195,8 @@ Writes `rfp_units` to backlog_live.json.
 
 All agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent.js`, `scout_shipping_agent.js`, `scout_expedite_agent.js`, `scout_itemprep_agent.js`) share `.mcp_token.json`. Running concurrently caused token collision — one agent would consume the refresh token before another could use it, revoking the session.
 
+**MCP query concurrency (dc499_refresh.js):** Uses a 2-slot in-memory semaphore (`_queryActive`, `_queryQueue`) inside `mcpQuery()`. Do NOT add a file-based query lock — the old `.query_lock` approach serialized all queries and was replaced 2026-09-17. 3+ concurrent slots caused empty responses from the server; 2 is the safe max.
+
 **Fix (2026-08-13):** File-based lock + freshness check in `getAccessTokenSilent()`:
 - `_saved_at` timestamp written to token file on every save
 - `TOKEN_TTL = 55 * 60 * 1000` — fallback TTL if `expires_in` missing
@@ -328,6 +330,10 @@ Storage key: `rs_weekly_v1`. Per-day payload includes `employees: {email: {pick_
 **Send dropdown (Backlog):** `sendToTeams(btn)` — btn may be a `<div>` not `<button>`, guard: `if(btn.disabled!==undefined) btn.disabled=true`.
 
 **Allocated tile:** Shows `totA - rfp_units` (units allocated but not yet at D1-SN-01). `m-total-alloc` shows full `totA` as "Total Allocated". RFP tile stays separate.
+
+**Expedite oLPN sub-line priority (Backlog_live.html):** 4 cases in order: (1) `P1*` location + pallet → pallet badge, (2) `D1-SN-01` → "Located to D1-SN-01", (3) any other location → show raw, (4) allocated (2090) + no location + `pick_stage` → italic stage label. Never show pick_stage if a location is already known.
+
+**pick_stage field (expedite_live.json):** String TSK_TASK STATUS code (`'3000'`/`'5000'`/`'7000'`) for the highest-status open pick task tied to that ORDER_ID this shift. Null if no task yet. Rendered as: In Queue / Assigned / Picking. Only shown for `order_status='2090'` with no `olpn_location`. Source: Q4 in scout_expedite_agent.js — JOIN TSK_TASK + TSK_TASK_DETAIL on ORDER_ID, filter Ecom pick TX IDs.
 
 **Status pill panel:** Clicking Ready/Allocated/Packed pill opens detail panel. Each order row = `.order-entry` (not `.order-item`). Expanding shows line count + oldest line date (PDT). State tracked in `expandedOrders` Set. Panel + expanded rows survive auto-refresh via `openDetailPanel(..., true)` (silent=true).
 
