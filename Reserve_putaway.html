@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Retail Putaway WIP v1.0 -- DC499</title>
+<title>Retail Putaway WIP v1.1 -- DC499</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -93,6 +93,47 @@
   .theme-option:hover{background:var(--surface2);color:var(--text);}
   .theme-option.active{color:var(--accent);}
 
+  /* ── UPLOAD ZONE ── */
+  .upload-zone{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    border:2px dashed var(--border-mid);border-radius:12px;
+    padding:2.5rem 2rem;text-align:center;margin-bottom:1rem;
+    background:var(--surface);cursor:pointer;
+    transition:border-color 0.2s,background 0.2s;
+    min-height:160px;
+  }
+  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-bg);}
+  .upload-icon{font-size:2.25rem;margin-bottom:0.6rem;line-height:1;}
+  .upload-title{font-size:15px;font-weight:800;color:var(--text);margin-bottom:5px;}
+  .upload-sub{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:1rem;}
+  .upload-btn{
+    font-family:'Nunito',system-ui,sans-serif;font-size:13px;font-weight:800;
+    padding:7px 20px;border-radius:8px;border:0.5px solid var(--accent);
+    background:var(--accent-bg);color:var(--accent);cursor:pointer;
+  }
+  .upload-btn:hover{opacity:0.8;}
+
+  /* ── CSV STRIP ── */
+  .csv-strip{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:var(--surface);border:0.5px solid var(--border);
+    border-radius:10px;padding:10px 14px;margin-bottom:0.75rem;
+  }
+  .csv-icon{font-size:18px;line-height:1;flex-shrink:0;}
+  .csv-name{font-size:13px;font-weight:800;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .csv-count{font-size:12px;font-weight:700;color:var(--text-muted);white-space:nowrap;flex-shrink:0;}
+  .csv-clear{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px;border:0.5px solid var(--border);background:none;color:var(--text-muted);cursor:pointer;flex-shrink:0;}
+  .csv-clear:hover{background:var(--surface2);}
+  .csv-showall{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;white-space:nowrap;user-select:none;flex-shrink:0;}
+  .csv-showall input[type=checkbox]{cursor:pointer;width:14px;height:14px;accent-color:var(--accent);}
+  .not-found-warn{
+    width:100%;font-size:12px;font-weight:700;color:var(--amber);
+    padding:5px 10px;border-radius:6px;
+    background:rgba(217,119,6,0.1);border:0.5px solid var(--amber);
+    margin-top:4px;
+  }
+  [data-theme="light"] .not-found-warn,[data-theme="starr"] .not-found-warn{background:rgba(180,83,9,0.08);}
+
   /* ── SUMMARY TILES ── */
   .tiles{display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;}
   .tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 16px;min-width:130px;flex:1;}
@@ -107,11 +148,8 @@
   .filter-label{font-size:12px;font-weight:700;color:var(--text-muted);}
   .pill-btn{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:5px 13px;border-radius:20px;border:0.5px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;transition:background 0.12s,color 0.12s,border-color 0.12s;}
   .pill-btn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent);}
-  .pill-btn.danger.active{background:#fee2e2;color:var(--box-red);border-color:var(--box-red);}
-  [data-theme="dark"] .pill-btn.danger.active,[data-theme="solid"] .pill-btn.danger.active,
-  [data-theme="pastel"] .pill-btn.danger.active{background:rgba(239,68,68,0.15);}
 
-  /* ── AGE INPUT ── */
+  /* ── AGE MAX INPUT ── */
   .age-input-wrap{display:flex;align-items:center;gap:6px;margin-left:8px;}
   .age-input-wrap span{font-size:12px;font-weight:700;color:var(--text-muted);white-space:nowrap;}
   .age-input{
@@ -121,7 +159,6 @@
     color:var(--accent);text-align:center;
   }
   .age-input:focus{outline:none;border-color:var(--accent);}
-
   .sort-select{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;padding:5px 10px;border-radius:7px;border:0.5px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;margin-left:auto;}
 
   /* ── SEARCH BAR ── */
@@ -129,8 +166,7 @@
   .search-input{
     font-family:'Nunito',system-ui,sans-serif;font-size:13px;font-weight:600;
     flex:1;padding:7px 12px;border-radius:8px;
-    border:0.5px solid var(--border);background:var(--surface);
-    color:var(--text);
+    border:0.5px solid var(--border);background:var(--surface);color:var(--text);
   }
   .search-input::placeholder{color:var(--text-hint);}
   .search-input:focus{outline:none;border-color:var(--accent);}
@@ -151,7 +187,6 @@
   .table-scroll-body::-webkit-scrollbar{width:5px;}
   .table-scroll-body::-webkit-scrollbar-track{background:transparent;}
   .table-scroll-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
-  /* sticky header inside scroll box */
   .table-scroll-body table{border-collapse:collapse;width:100%;}
   .table-scroll-body thead th{position:sticky;top:0;background:var(--surface);z-index:2;box-shadow:0 1px 0 var(--border-mid);}
 
@@ -164,11 +199,11 @@
   tr:last-child td{border-bottom:none;}
   tr:hover td{background:var(--surface2);}
 
-  /* age badge */
+  /* age badge — thresholds: green 5–7d, amber 7–14d, red 14+d */
   .age-badge{display:inline-flex;align-items:center;justify-content:center;min-width:52px;padding:3px 8px;border-radius:6px;font-size:13px;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.18);}
-  .age-green {background:var(--box-green);}
-  .age-amber {background:var(--box-amber);}
-  .age-red   {background:var(--box-red);}
+  .age-green{background:var(--box-green);}
+  .age-amber{background:var(--box-amber);}
+  .age-red  {background:var(--box-red);}
 
   /* location chip */
   .loc-chip{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:800;background:var(--surface2);color:var(--text-muted);border:0.5px solid var(--border);}
@@ -179,7 +214,7 @@
   .cat-chip{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:800;background:var(--surface2);color:var(--text-muted);}
 
   .po-code{font-size:12px;color:var(--text-muted);font-weight:600;}
-  .carton-id{font-size:13px;font-family:monospace;color:var(--text-muted);}
+  .carton-id{font-size:12px;font-family:monospace;color:var(--text-muted);}
 
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;font-weight:600;line-height:1.7;}
 
@@ -189,9 +224,6 @@
   /* footer */
   .footer-note{font-size:11px;font-weight:600;color:var(--text-hint);text-align:center;margin-top:1.5rem;line-height:1.6;}
   .nordstrom-tag{font-size:10.5px;font-weight:700;color:var(--text-hint);text-align:center;margin-top:0.4rem;letter-spacing:0.04em;}
-
-  /* row count badge */
-  .count-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:18px;padding:0 6px;border-radius:9px;font-size:10px;font-weight:800;background:var(--accent-bg);color:var(--accent);margin-left:6px;}
 </style>
 </head>
 <body data-theme="solid">
@@ -205,10 +237,10 @@
         <span class="live-dot" id="live-dot"></span>
         Putaway WIP
       </div>
-      <div class="top-sub" id="top-sub">Loading…</div>
+      <div class="top-sub" id="top-sub">Loading live data…</div>
     </div>
     <div class="top-right">
-      <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
+      <button class="refresh-btn" onclick="fetchLiveData()">&#8635; Refresh</button>
       <div class="theme-picker" id="theme-picker">
         <button class="theme-btn" onclick="toggleThemePicker()">
           Theme <span class="theme-chevron">&#9660;</span>
@@ -220,17 +252,59 @@
 
   <div class="stale-banner" id="stale-banner">Data may be stale — last update over 10 minutes ago</div>
 
+  <!-- UPLOAD ZONE -->
+  <div class="upload-zone" id="upload-zone"
+       onclick="document.getElementById('file-input').click()"
+       ondragover="handleDragOver(event)"
+       ondragleave="handleDragLeave(event)"
+       ondrop="handleDrop(event)">
+    <div class="upload-icon">&#128194;</div>
+    <div class="upload-title">Upload Receive to Putaway WIP</div>
+    <div class="upload-sub">Drag &amp; drop an Excel file (.xlsx) or click to browse</div>
+    <button class="upload-btn" onclick="event.stopPropagation();document.getElementById('file-input').click()">Choose File</button>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileInput(event)">
+  </div>
+
+  <!-- CSV STRIP (hidden until file loaded) -->
+  <div class="csv-strip" id="csv-strip" style="display:none">
+    <span class="csv-icon">&#128196;</span>
+    <span class="csv-name" id="csv-name">—</span>
+    <span class="csv-count" id="csv-carton-count"></span>
+    <button class="csv-clear" onclick="clearCsv()">&#x2715; Clear</button>
+    <label class="csv-showall">
+      <input type="checkbox" id="show-all-cb" onchange="toggleShowAll(this)">
+      Show all live data
+    </label>
+    <div class="not-found-warn" id="not-found-warn" style="display:none"></div>
+  </div>
+
   <!-- SUMMARY TILES -->
-  <div class="tiles" id="tiles">
-    <div class="tile"><div class="tile-label">LPNs Pending</div><div class="tile-val" id="t-lpns">—</div><div class="tile-sub">retail containers</div></div>
-    <div class="tile"><div class="tile-label">Units Pending</div><div class="tile-val" id="t-units">—</div><div class="tile-sub">total on hand</div></div>
-    <div class="tile"><div class="tile-label">Over 5 Days</div><div class="tile-val" id="t-over5">—</div><div class="tile-sub" id="t-over5-pct">of total</div></div>
-    <div class="tile"><div class="tile-label">Oldest</div><div class="tile-val" id="t-oldest">—</div><div class="tile-sub">days since received</div></div>
+  <div class="tiles">
+    <div class="tile">
+      <div class="tile-label">LPNs Matched</div>
+      <div class="tile-val" id="t-lpns">—</div>
+      <div class="tile-sub" id="t-lpns-sub">upload file to begin</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Units Pending</div>
+      <div class="tile-val" id="t-units">—</div>
+      <div class="tile-sub">total on hand</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Over 14 Days</div>
+      <div class="tile-val" id="t-over14">—</div>
+      <div class="tile-sub" id="t-over14-pct">of total</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Oldest</div>
+      <div class="tile-val" id="t-oldest">—</div>
+      <div class="tile-sub">days since received</div>
+    </div>
   </div>
 
   <!-- SEARCH BAR -->
   <div class="search-wrap">
-    <input type="text" class="search-input" id="search-input" placeholder="Search by iLPN, SKU, PO #, category, location…" oninput="setSearch(this.value)">
+    <input type="text" class="search-input" id="search-input" placeholder="Search by carton ID, SKU, PO #, category, location…" oninput="setSearch(this.value)">
     <button class="search-clear" id="search-clear" onclick="clearSearch()">&#x2715; Clear</button>
     <span class="search-count" id="search-count"></span>
   </div>
@@ -238,19 +312,18 @@
   <!-- FILTER BAR -->
   <div class="filter-bar">
     <span class="filter-label">Category:</span>
-    <button class="pill-btn active" id="f-cat-all" onclick="setCatFilter('all')">All</button>
-    <button class="pill-btn" id="f-cat-foot" onclick="setCatFilter('Footwear')">Footwear</button>
-    <button class="pill-btn" id="f-cat-app"  onclick="setCatFilter('Apparel')">Apparel</button>
+    <button class="pill-btn active" id="f-cat-all"   onclick="setCatFilter('all')">All</button>
+    <button class="pill-btn"        id="f-cat-foot"  onclick="setCatFilter('Footwear')">Footwear</button>
+    <button class="pill-btn"        id="f-cat-app"   onclick="setCatFilter('Apparel')">Apparel</button>
+    <button class="pill-btn"        id="f-cat-other" onclick="setCatFilter('Other')">Other</button>
     <div class="age-input-wrap">
-      <span>Age:</span>
-      <input type="number" class="age-input" id="age-min-input" min="0" max="60" value="0" placeholder="0" oninput="setAgeMin(this.value)" onfocus="this.select()">
-      <span>–</span>
-      <input type="number" class="age-input" id="age-input" min="1" max="60" value="60" placeholder="60" oninput="setAgeMax(this.value)" onfocus="this.select()">
+      <span>Max age:</span>
+      <input type="number" class="age-input" id="age-input" min="5" max="60" value="60" placeholder="60" oninput="setAgeMax(this.value)" onfocus="this.select()">
       <span>days</span>
     </div>
     <select class="sort-select" id="sort-sel" onchange="setSort(this.value)">
+      <option value="age_asc" selected>Sort: 5 Days &#x2192; Oldest</option>
       <option value="age_desc">Sort: Oldest First</option>
-      <option value="age_asc">Sort: Newest First</option>
       <option value="units_desc">Sort: Most Units</option>
       <option value="loc">Sort: Location</option>
     </select>
@@ -259,7 +332,7 @@
   <!-- TABLE CARD -->
   <div class="card">
     <div class="card-header">
-      <span class="card-title" id="card-title">Pending Putaway — Retail</span>
+      <span class="card-title">Pending Putaway — Retail (&ge;5 Days)</span>
       <span class="card-meta" id="card-meta"></span>
     </div>
     <div id="trunc-warn" class="trunc-warn" style="display:none;">
@@ -270,7 +343,7 @@
         <table id="wip-table">
           <thead>
             <tr>
-              <th onclick="setSort('age_desc')" class="sorted" id="th-age">Age &#9660;</th>
+              <th onclick="setSort('age_asc')" class="sorted" id="th-age">Age &#9650;</th>
               <th onclick="setSort('loc')">Location</th>
               <th>Carton ID</th>
               <th>SKU</th>
@@ -281,7 +354,7 @@
             </tr>
           </thead>
           <tbody id="wip-body">
-            <tr><td colspan="8" class="empty-state">Loading data…</td></tr>
+            <tr><td colspan="8" class="empty-state">Upload a file to view putaway WIP.</td></tr>
           </tbody>
         </table>
       </div>
@@ -291,23 +364,27 @@
   <div class="footer-note">
     Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.
   </div>
-  <div class="nordstrom-tag">SCOUT — DC499 Reporter &nbsp;|&nbsp; Retail Putaway WIP v1.0</div>
+  <div class="nordstrom-tag">SCOUT — DC499 Reporter &nbsp;|&nbsp; Retail Putaway WIP v1.1</div>
 </div>
 
 <script>
 // ── config ─────────────────────────────────────────────────────────────────────
-const THEME_VALS  = ['solid','dark','pastel','starr','light'];
-const THEME_NAMES = ['Solid','Dark','Pastel','Starr','Light'];
-const THEME_KEY   = 'dc499_putaway_theme_v1';
-const DATA_URL    = 'putaway_live.json';
-const STALE_MS    = 10 * 60 * 1000;
+var THEME_VALS  = ['solid','dark','pastel','starr','light'];
+var THEME_NAMES = ['Solid','Dark','Pastel','Starr','Light'];
+var THEME_KEY   = 'dc499_putaway_theme_v1';
+var DATA_URL    = 'putaway_live.json';
+var STALE_MS    = 10 * 60 * 1000;
 
-let lastData        = null;
-let activeCatFilter = 'all';
-let activeSort      = 'age_desc';
-let ageMaxDays      = 60;
-let ageMinDays      = 0;
-let searchTerm      = '';
+// ── state ──────────────────────────────────────────────────────────────────────
+var liveData        = null;
+var liveFetchError  = false;
+var csvCartonIds    = null;
+var csvFileName     = '';
+var showAll         = false;
+var activeCatFilter = 'all';
+var activeSort      = 'age_asc';
+var ageMaxDays      = 60;
+var searchTerm      = '';
 
 // ── theme ──────────────────────────────────────────────────────────────────────
 function applyTheme(t) {
@@ -331,6 +408,104 @@ document.addEventListener('click', function(e) {
   if (!picker.contains(e.target)) picker.classList.remove('open');
 });
 
+// ── upload / file ──────────────────────────────────────────────────────────────
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.add('drag-over');
+}
+function handleDragLeave() {
+  document.getElementById('upload-zone').classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  var file = e.dataTransfer.files[0];
+  if (file) parseFile(file);
+}
+function handleFileInput(e) {
+  var file = e.target.files[0];
+  if (file) parseFile(file);
+  e.target.value = '';
+}
+function loadSheetJS(cb) {
+  if (window.XLSX) { cb(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+  s.onload = cb;
+  s.onerror = function() { alert('Could not load Excel parser. Check your network connection.'); };
+  document.head.appendChild(s);
+}
+
+function parseFile(file) {
+  csvFileName = file.name;
+  loadSheetJS(function() {
+  var reader = new FileReader();
+  reader.onload = function(evt) {
+    var data = new Uint8Array(evt.target.result);
+    var workbook = XLSX.read(data, {type: 'array', cellText: true, cellDates: false});
+    var sheet = workbook.Sheets[workbook.SheetNames[0]];
+    // raw:false uses formatted text values — preserves leading zeros on barcode strings
+    var rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: null, raw: false});
+
+    // Debug: log headers and first 5 data rows to confirm column positions
+    console.log('HEADERS:', rows[0]);
+    for (var dbg = 1; dbg <= 5 && dbg < rows.length; dbg++) console.log('ROW ' + dbg + ':', rows[dbg]);
+
+    // Find carton_id column by header name (defensive against column shifts)
+    var headers = (rows[0] || []).map(function(h) { return h ? String(h).toLowerCase().trim() : ''; });
+    var cartonCol = headers.indexOf('carton_id');
+    if (cartonCol === -1) cartonCol = 2; // fallback to index 2
+
+    // Forward-fill carton_id — Cognos sparse-fills merged cells
+    var lastCarton = null;
+    var cartonSet = new Set();
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      var val = row[cartonCol];
+      if (val != null && String(val).trim() !== '') {
+        lastCarton = String(val).trim();
+      }
+      if (lastCarton) cartonSet.add(lastCarton);
+    }
+    console.log('Carton set size:', cartonSet.size, '| cartonCol:', cartonCol);
+    console.log('First 3 carton IDs:', Array.from(cartonSet).slice(0,3));
+
+    csvCartonIds = cartonSet;
+    showAll = false;
+    document.getElementById('show-all-cb').checked = false;
+    document.getElementById('csv-name').textContent = csvFileName;
+    document.getElementById('csv-carton-count').textContent = cartonSet.size.toLocaleString() + ' cartons';
+    document.getElementById('upload-zone').style.display = 'none';
+    document.getElementById('csv-strip').style.display = 'flex';
+    render();
+  };
+  reader.readAsArrayBuffer(file);
+  }); // end loadSheetJS
+}
+function clearCsv() {
+  csvCartonIds = null;
+  csvFileName  = '';
+  showAll      = false;
+  document.getElementById('show-all-cb').checked = false;
+  document.getElementById('not-found-warn').style.display = 'none';
+  document.getElementById('upload-zone').style.display = 'flex';
+  document.getElementById('csv-strip').style.display   = 'none';
+  // reset tiles
+  document.getElementById('t-lpns').textContent      = '—';
+  document.getElementById('t-lpns-sub').textContent  = 'upload file to begin';
+  document.getElementById('t-units').textContent     = '—';
+  document.getElementById('t-over14').textContent    = '—';
+  document.getElementById('t-over14-pct').textContent = 'of total';
+  document.getElementById('t-oldest').textContent    = '—';
+  document.getElementById('card-meta').textContent   = '';
+  document.getElementById('wip-body').innerHTML =
+    '<tr><td colspan="8" class="empty-state">Upload a file to view putaway WIP.</td></tr>';
+}
+function toggleShowAll(cb) {
+  showAll = cb.checked;
+  render();
+}
+
 // ── filters / sort ─────────────────────────────────────────────────────────────
 function setSearch(v) {
   searchTerm = v.trim().toLowerCase();
@@ -344,136 +519,191 @@ function clearSearch() {
   document.getElementById('search-count').textContent = '';
   render();
 }
-function setAgeMin(v) {
-  var n = parseInt(v, 10);
-  if (isNaN(n) || n < 0) return;
-  ageMinDays = Math.min(n, 60);
-  render();
-}
 function setAgeMax(v) {
   var n = parseInt(v, 10);
-  if (!n || n < 1) return;
+  if (!n || n < 5) return;
   ageMaxDays = Math.min(n, 60);
   render();
 }
 function setCatFilter(c) {
   activeCatFilter = c;
-  ['all','Footwear','Apparel'].forEach(function(v) {
-    var id = 'f-cat-' + (v === 'all' ? 'all' : v === 'Footwear' ? 'foot' : 'app');
-    document.getElementById(id).classList.toggle('active', v === c);
+  var map = {all:'f-cat-all', Footwear:'f-cat-foot', Apparel:'f-cat-app', Other:'f-cat-other'};
+  Object.keys(map).forEach(function(v) {
+    document.getElementById(map[v]).classList.toggle('active', v === c);
   });
   render();
 }
 function setSort(s) {
   activeSort = s;
   document.getElementById('sort-sel').value = s;
-  // update header indicators
-  ['th-age'].forEach(function(id) { document.getElementById(id).classList.remove('sorted'); });
-  if (s === 'age_desc' || s === 'age_asc') document.getElementById('th-age').classList.add('sorted');
+  var thAge = document.getElementById('th-age');
+  if (s === 'age_asc') {
+    thAge.classList.add('sorted');
+    thAge.innerHTML = 'Age &#9650;';
+  } else if (s === 'age_desc') {
+    thAge.classList.add('sorted');
+    thAge.innerHTML = 'Age &#9660;';
+  } else {
+    thAge.classList.remove('sorted');
+    thAge.innerHTML = 'Age';
+  }
   render();
 }
 
-// ── data load ──────────────────────────────────────────────────────────────────
-function getLiveBase() {
-  var loc = window.location.href;
-  if (loc.includes('github.io') || loc.includes('file://')) return '';
-  return '';
-}
-function loadData() {
+// ── data fetch (silent background) ────────────────────────────────────────────
+function fetchLiveData() {
   var dot = document.getElementById('live-dot');
   dot.style.background = '#f59e0b';
-  fetch(getLiveBase() + DATA_URL + '?t=' + Date.now())
-    .then(function(r) { return r.json(); })
+  var ctrl = new AbortController();
+  var timer = setTimeout(function() { ctrl.abort(); }, 10000);
+  fetch(DATA_URL + '?t=' + Date.now(), {signal: ctrl.signal})
+    .then(function(r) {
+      clearTimeout(timer);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
     .then(function(d) {
-      lastData = d;
+      liveData = d;
       dot.style.background = '#22c55e';
-      render();
+      document.getElementById('top-sub').textContent =
+        'Live data: ' + new Date(d.generated).toLocaleTimeString('en-US',
+          {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true}) + ' PDT';
+      if (csvCartonIds !== null || showAll) render();
     })
     .catch(function(e) {
+      clearTimeout(timer);
+      liveFetchError = true;
       dot.style.background = '#ef4444';
-      document.getElementById('top-sub').textContent = 'Error loading data';
+      var msg = e.name === 'AbortError' ? 'Live data timed out — is the server running?' : 'Could not load live data: ' + e.message;
+      document.getElementById('top-sub').textContent = msg;
       console.error(e);
+      if (csvCartonIds !== null) render();
     });
 }
 
 // ── render ─────────────────────────────────────────────────────────────────────
 function render() {
-  if (!lastData) return;
-  var d = lastData;
-  var s = d.summary || {};
+  if (!liveData) {
+    document.getElementById('wip-body').innerHTML =
+      '<tr><td colspan="8" class="empty-state">' +
+      (liveFetchError
+        ? 'Could not load live data — make sure the :3001 server is running, then click Refresh.'
+        : 'Loading live data…') +
+      '</td></tr>';
+    return;
+  }
+  if (!csvCartonIds && !showAll) return;
+
+  var d    = liveData;
   var lpns = d.lpns || [];
-  var gen = new Date(d.generated);
+  var gen  = new Date(d.generated);
 
   // stale check
-  var stale = (Date.now() - gen.getTime()) > STALE_MS;
-  document.getElementById('stale-banner').style.display = stale ? 'block' : 'none';
+  document.getElementById('stale-banner').style.display =
+    (Date.now() - gen.getTime()) > STALE_MS ? 'block' : 'none';
 
-  // sub line
-  document.getElementById('top-sub').textContent =
-    'Updated ' + gen.toLocaleTimeString('en-US', {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true}) + ' PDT';
-
-  // tiles
-  var total  = s.total_lpns  || 0;
-  document.getElementById('t-lpns').textContent   = total.toLocaleString();
-  document.getElementById('t-units').textContent  = (s.total_units || 0).toLocaleString();
-  var over5 = lpns.filter(function(l) { return l.age_days >= 5 && l.age_days >= ageMinDays && l.age_days <= ageMaxDays; }).length;
-  var o5el = document.getElementById('t-over5');
-  o5el.textContent = over5.toLocaleString();
-  o5el.className   = 'tile-val' + (over5 > 0 && over5 / Math.max(total,1) > 0.3 ? ' danger' : over5 > 0 ? ' warn' : '');
-  document.getElementById('t-over5-pct').textContent =
-    total > 0 ? (Math.round(over5 / total * 100)) + '% of total' : 'of total';
-  var oldest = document.getElementById('t-oldest');
-  oldest.textContent = s.oldest_age_days != null ? s.oldest_age_days.toFixed(1) : '—';
-  oldest.className   = 'tile-val' + (s.oldest_age_days >= 5 ? ' danger' : s.oldest_age_days >= 2 ? ' warn' : '');
-
-  // truncation warning
+  // truncation
   document.getElementById('trunc-warn').style.display = d.truncated ? 'block' : 'none';
 
-  // apply filters
-  var filtered = lpns.slice();
-  filtered = filtered.filter(function(l) { return l.age_days >= ageMinDays && l.age_days <= ageMaxDays; });
-  if (activeCatFilter !== 'all') filtered = filtered.filter(function(l) { return l.category === activeCatFilter; });
+  // 5-day floor always applied
+  var base = lpns.filter(function(l) { return l.age_days >= 5; });
+
+  // CSV filter or show-all
+  var filtered;
+  if (!showAll && csvCartonIds) {
+    filtered = base.filter(function(l) {
+      return csvCartonIds.has(String(l.carton_id || '').trim());
+    });
+  } else {
+    filtered = base.slice();
+  }
+
+  // not-found warning
+  var nfEl = document.getElementById('not-found-warn');
+  if (!showAll && csvCartonIds) {
+    var liveSet = new Set(lpns.map(function(l) { return String(l.carton_id || '').trim(); }));
+    var notFound = 0;
+    csvCartonIds.forEach(function(id) { if (!liveSet.has(id)) notFound++; });
+    if (notFound > 0) {
+      nfEl.textContent = notFound + ' carton' + (notFound !== 1 ? 's' : '') +
+        ' from your file had no match in live data (may already be putaway)';
+      nfEl.style.display = 'block';
+    } else {
+      nfEl.style.display = 'none';
+    }
+  } else {
+    nfEl.style.display = 'none';
+  }
+
+  // summary tiles (computed before category/search/age-max filters)
+  var totalLpns  = filtered.length;
+  var totalUnits = filtered.reduce(function(s, l) { return s + (l.units || 0); }, 0);
+  var over14     = filtered.filter(function(l) { return l.age_days >= 14; }).length;
+  var maxAge     = filtered.reduce(function(m, l) { return l.age_days > m ? l.age_days : m; }, 0);
+
+  document.getElementById('t-lpns').textContent  = totalLpns.toLocaleString();
+  document.getElementById('t-units').textContent = totalUnits.toLocaleString();
+  document.getElementById('t-lpns-sub').textContent = (!showAll && csvCartonIds)
+    ? csvCartonIds.size.toLocaleString() + ' in file, ' + totalLpns + ' matched'
+    : 'all retail ≥5 days';
+
+  var o14el = document.getElementById('t-over14');
+  o14el.textContent = over14.toLocaleString();
+  o14el.className   = 'tile-val' + (over14 > 0 && over14 / Math.max(totalLpns, 1) > 0.3 ? ' danger' : over14 > 0 ? ' warn' : '');
+  document.getElementById('t-over14-pct').textContent =
+    totalLpns > 0 ? Math.round(over14 / totalLpns * 100) + '% of total' : 'of total';
+
+  var oldestEl = document.getElementById('t-oldest');
+  oldestEl.textContent = maxAge > 0 ? maxAge.toFixed(1) : '—';
+  oldestEl.className   = 'tile-val' + (maxAge >= 14 ? ' danger' : maxAge >= 7 ? ' warn' : '');
+
+  // category filter
+  if (activeCatFilter !== 'all') {
+    filtered = filtered.filter(function(l) { return l.category === activeCatFilter; });
+  }
+
+  // age max filter
+  filtered = filtered.filter(function(l) { return l.age_days <= ageMaxDays; });
+
+  // search
   if (searchTerm) {
     filtered = filtered.filter(function(l) {
       return [l.carton_id, l.item_id, l.po_number, l.category, l.location, l.location_label]
         .some(function(f) { return f && String(f).toLowerCase().includes(searchTerm); });
     });
   }
-  document.getElementById('search-count').textContent =
-    searchTerm ? filtered.length + ' match' + (filtered.length !== 1 ? 'es' : '') : '';
 
   // sort
   filtered.sort(function(a, b) {
-    if (activeSort === 'age_desc')  return b.age_days - a.age_days;
-    if (activeSort === 'age_asc')   return a.age_days - b.age_days;
-    if (activeSort === 'units_desc') return b.units - a.units;
+    if (activeSort === 'age_asc')    return a.age_days - b.age_days;
+    if (activeSort === 'age_desc')   return b.age_days - a.age_days;
+    if (activeSort === 'units_desc') return (b.units || 0) - (a.units || 0);
     if (activeSort === 'loc') {
       var la = a.location || 'zzz', lb = b.location || 'zzz';
-      return la < lb ? -1 : la > lb ? 1 : b.age_days - a.age_days;
+      return la < lb ? -1 : la > lb ? 1 : a.age_days - b.age_days;
     }
     return 0;
   });
 
-  // card meta
-  document.getElementById('card-meta').textContent = filtered.length + ' LPN' + (filtered.length !== 1 ? 's' : '');
+  document.getElementById('card-meta').textContent =
+    filtered.length + ' LPN' + (filtered.length !== 1 ? 's' : '');
+  document.getElementById('search-count').textContent =
+    searchTerm ? filtered.length + ' match' + (filtered.length !== 1 ? 'es' : '') : '';
 
-  // render rows
   var tbody = document.getElementById('wip-body');
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No pending putaway LPNs match the current filter.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No matching putaway LPNs found.</td></tr>';
     return;
   }
 
   var rows = filtered.map(function(l) {
-    var ageCls = l.age_days >= 5 ? 'age-red' : l.age_days >= 2 ? 'age-amber' : 'age-green';
+    var ageCls = l.age_days >= 14 ? 'age-red' : l.age_days >= 7 ? 'age-amber' : 'age-green';
     var ageStr = l.age_days >= 1 ? l.age_days.toFixed(1) + 'd' : Math.round(l.age_days * 24) + 'h';
 
     var locLabel = l.location_label || l.location || 'Unplaced';
     var locCls   = !l.location ? 'loc-chip unplaced'
-                 : (l.location && (l.location.startsWith('L1') || l.location.startsWith('L2'))) ? 'loc-chip inbound'
+                 : (l.location.startsWith('L1') || l.location.startsWith('L2')) ? 'loc-chip inbound'
                  : 'loc-chip';
-
-    var catChip = '<span class="cat-chip">' + escHtml(l.category || '—') + '</span>';
 
     var recvPdt = '—';
     if (l.received_utc) {
@@ -483,16 +713,12 @@ function render() {
       });
     }
 
-    var cartonShort = l.carton_id || '—';
-
     return '<tr>'
-      + '<td><span class="age-badge ' + ageCls + '">' + ageStr + '</span></td>'
-      + '<td><span class="' + locCls + '">' + escHtml(locLabel) + '</span>'
-      + (l.location && l.location !== l.location_label ? '<br><span class="carton-id">' + escHtml(l.location) + '</span>' : '')
-      + '</td>'
-      + '<td><span class="carton-id">' + escHtml(cartonShort) + '</span></td>'
+      + '<td><span class="age-badge ' + ageCls + '">' + escHtml(ageStr) + '</span></td>'
+      + '<td><span class="' + locCls + '">' + escHtml(locLabel) + '</span></td>'
+      + '<td><span class="carton-id">' + escHtml(l.carton_id || '—') + '</span></td>'
       + '<td><span class="po-code">' + escHtml(l.item_id || '—') + '</span></td>'
-      + '<td>' + catChip + '</td>'
+      + '<td><span class="cat-chip">' + escHtml(l.category || '—') + '</span></td>'
       + '<td style="text-align:right;font-size:14px;">' + (l.units || 0) + '</td>'
       + '<td><span class="po-code">' + escHtml(l.po_number || '—') + '</span></td>'
       + '<td style="font-size:12px;color:var(--text-muted);">' + recvPdt + '</td>'
@@ -510,8 +736,16 @@ function escHtml(s) {
 buildThemeMenu();
 var saved = localStorage.getItem(THEME_KEY);
 applyTheme(THEME_VALS.includes(saved) ? saved : 'solid');
-loadData();
-setInterval(loadData, 3 * 60 * 1000);
+if (window.location.protocol === 'file:') {
+  liveFetchError = true;
+  document.getElementById('live-dot').style.background = '#ef4444';
+  document.getElementById('top-sub').textContent = 'Open via localhost:3001 to load live data';
+  document.getElementById('wip-body').innerHTML =
+    '<tr><td colspan="8" class="empty-state">Live data requires the server.<br>Run dc499.bat option 2, then open this page at <strong>localhost:3001/Reserve_putaway.html</strong></td></tr>';
+} else {
+  fetchLiveData();
+  setInterval(fetchLiveData, 3 * 60 * 1000);
+}
 </script>
 </body>
 </html>
