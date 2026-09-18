@@ -455,6 +455,8 @@
   .xpd-age-late {color:var(--red);font-weight:700;}
   .xpd-carrier{font-size:11px;color:var(--text-hint);font-family:monospace;}
   .xpd-olpn-loc{font-size:11px;color:var(--text-muted);font-family:monospace;}
+  .xpd-svc-1dd{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:8px;letter-spacing:0.05em;background:var(--xpd-bg);color:var(--xpd);border:0.5px solid var(--xpd-border);}
+  .xpd-svc-2dd{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:8px;letter-spacing:0.05em;background:var(--accent-bg);color:var(--accent);border:0.5px solid var(--accent-muted);}
   .xpd-table-wrap{overflow-y:auto;max-height:480px;}
   .xpd-table-wrap::-webkit-scrollbar{width:4px;}
   .xpd-table-wrap::-webkit-scrollbar-track{background:transparent;}
@@ -1057,21 +1059,21 @@
     <!-- Summary tiles -->
     <div class="xpd-summary" id="xpd-summary-tiles" style="display:none;">
       <div class="xpd-tile t-xpd">
-        <div class="xpd-tile-label">Not Yet Shipped</div>
-        <div class="xpd-tile-value" id="xpd-t-open">--</div>
-        <div class="xpd-tile-sub">expedite orders</div>
+        <div class="xpd-tile-label">1DD Open</div>
+        <div class="xpd-tile-value" id="xpd-t-1dd">--</div>
+        <div class="xpd-tile-sub" id="xpd-t-1dd-shipped" style="color:var(--green);"></div>
+      </div>
+      <div class="xpd-tile t-accent">
+        <div class="xpd-tile-label">2DD Open</div>
+        <div class="xpd-tile-value" id="xpd-t-2dd">--</div>
+        <div class="xpd-tile-sub" id="xpd-t-2dd-shipped" style="color:var(--green);"></div>
       </div>
       <div class="xpd-tile t-amber">
         <div class="xpd-tile-label">Approaching Deadline</div>
         <div class="xpd-tile-value" id="xpd-t-warn">--</div>
         <div class="xpd-tile-sub">&lt; 2 hrs to ship-by</div>
       </div>
-      <div class="xpd-tile t-green">
-        <div class="xpd-tile-label">Shipped This Shift</div>
-        <div class="xpd-tile-value" id="xpd-t-shipped">--</div>
-        <div class="xpd-tile-sub">expedite orders</div>
-      </div>
-      <div class="xpd-tile t-accent">
+      <div class="xpd-tile">
         <div class="xpd-tile-label">Avg Age</div>
         <div class="xpd-tile-value" id="xpd-t-avg-age">--</div>
         <div class="xpd-tile-sub">open orders</div>
@@ -1087,7 +1089,7 @@
     <!-- Main table -->
     <div class="card" id="xpd-table-card" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <div class="card-title" style="margin-bottom:0;">Open Expedite Orders — This Shift</div>
+        <div class="card-title" style="margin-bottom:0;">Open 1DD &amp; 2DD Orders — This Shift</div>
         <div style="display:flex;align-items:center;gap:8px;">
           <label style="font-size:12px;color:var(--text-muted);cursor:pointer;">
             <input type="checkbox" id="xpd-show-planned" onchange="renderExpediteTable()" style="margin-right:4px;">
@@ -1099,20 +1101,20 @@
         <table>
           <thead>
             <tr>
-              <th>Order ID</th>
-              <th>Stage</th>
+              <th>SVC</th>
+              <th>Order #</th>
+              <th>Status</th>
+              <th>oLPN(s)</th>
+              <th class="r">Qty</th>
               <th class="r">Age</th>
               <th class="r">Ship By</th>
-              <th class="r">Deliver By</th>
-              <th>oLPN</th>
-              <th>Location</th>
-              <th>Carrier</th>
+              <th style="font-size:11px;">Ordered</th>
             </tr>
           </thead>
           <tbody id="xpd-tbody"></tbody>
         </table>
       </div>
-      <div id="xpd-table-empty" class="xpd-empty" style="display:none;">No open expedite orders found for this shift.</div>
+      <div id="xpd-table-empty" class="xpd-empty" style="display:none;">No open 1DD or 2DD orders found for this shift.</div>
     </div>
 
     <div class="empty-state" id="xpd-empty-state" style="display:none;">
@@ -3030,7 +3032,6 @@ function renderExpediteData(data) {
   lastXpdOrders = orders;
 
   var open = orders.filter(function(o) { return !o.shipped; });
-  var shipped = orders.filter(function(o) { return o.shipped; });
   var warnCount = open.filter(function(o) {
     if (!o.ship_by_utc) return false;
     var s = String(o.ship_by_utc).replace(' ','T');
@@ -3042,13 +3043,18 @@ function renderExpediteData(data) {
   }, 0) / open.length) : 0;
   var avgH = Math.floor(avgAgeMins / 60), avgM = avgAgeMins % 60;
 
-  document.getElementById('xpd-t-open').textContent    = open.length;
+  document.getElementById('xpd-t-1dd').textContent = data.open_1dd != null ? data.open_1dd : open.filter(function(o){return o.service_level==='1DD';}).length;
+  document.getElementById('xpd-t-2dd').textContent = data.open_2dd != null ? data.open_2dd : open.filter(function(o){return o.service_level==='2DD';}).length;
+  var s1dd = document.getElementById('xpd-t-1dd-shipped');
+  var s2dd = document.getElementById('xpd-t-2dd-shipped');
+  if (s1dd) s1dd.textContent = data.shipped_1dd ? data.shipped_1dd + ' shipped' : '';
+  if (s2dd) s2dd.textContent = data.shipped_2dd ? data.shipped_2dd + ' shipped' : '';
   document.getElementById('xpd-t-warn').textContent    = warnCount;
-  document.getElementById('xpd-t-shipped').textContent = shipped.length;
   document.getElementById('xpd-t-avg-age').textContent = open.length ? (avgH > 0 ? avgH + 'h ' + avgM + 'm' : avgM + 'm') : '—';
 
-  document.getElementById('xpd-summary-tiles').style.display = open.length || shipped.length ? 'grid' : 'none';
-  document.getElementById('xpd-empty-state').style.display  = (!open.length && !shipped.length) ? 'block' : 'none';
+  var hasAny = open.length || data.shipped_count;
+  document.getElementById('xpd-summary-tiles').style.display = hasAny ? 'grid' : 'none';
+  document.getElementById('xpd-empty-state').style.display   = hasAny ? 'none' : 'block';
 
   // Pipeline bar
   var stageCounts = {};
@@ -3113,22 +3119,23 @@ function renderExpediteTable() {
 
   var html = '';
   orders.forEach(function(o) {
+    var svc      = o.service_level || '—';
+    var svcCls   = svc === '1DD' ? 'xpd-svc-1dd' : svc === '2DD' ? 'xpd-svc-2dd' : '';
     var stg      = xpdStage(o.order_status);
     var age      = xpdAge(o.placed_utc);
     var countdown= xpdCountdown(o.ship_by_utc);
-    var delivBy  = xpdDeliverBy(o.deliver_by_utc);
-    var olpnId   = o.olpn_id ? escHtml(o.olpn_id) : '—';
-    var loc      = o.olpn_location ? escHtml(o.olpn_location) : '—';
-    var carrier  = o.carrier ? escHtml(o.carrier) : '—';
+    var olpns    = (o.olpns && o.olpns.length) ? o.olpns.map(function(id){ return '<span class="xpd-olpn-loc">' + escHtml(id) + '</span>'; }).join('<br>') : '<span style="color:var(--text-hint);">—</span>';
+    var qty      = o.quantity ? o.quantity : '—';
+    var ordered  = o.placed_utc ? fmtPdt(o.placed_utc) : '—';
     html += '<tr>'
-      + '<td><span style="font-family:monospace;font-size:12px;">' + escHtml(o.order_id || '—') + '</span></td>'
+      + '<td><span class="' + svcCls + '">' + escHtml(svc) + '</span></td>'
+      + '<td><span style="font-family:monospace;font-size:11px;">' + escHtml(o.order_id || '—') + '</span></td>'
       + '<td><span class="xpd-stage-badge ' + stg.cls + '">' + escHtml(stg.label) + '</span></td>'
+      + '<td>' + olpns + '</td>'
+      + '<td class="r" style="font-size:13px;">' + qty + '</td>'
       + '<td class="r"><span class="' + age.cls + '">' + age.text + '</span></td>'
       + '<td class="r"><span class="' + countdown.cls + '">' + countdown.text + '</span></td>'
-      + '<td class="r" style="font-size:12px;color:var(--text-muted);">' + delivBy + '</td>'
-      + '<td><span class="xpd-olpn-loc">' + olpnId + '</span></td>'
-      + '<td><span class="xpd-olpn-loc">' + loc + '</span></td>'
-      + '<td><span class="xpd-carrier">' + carrier + '</span></td>'
+      + '<td style="font-size:11px;color:var(--text-muted);white-space:nowrap;">' + ordered + '</td>'
       + '</tr>';
   });
   tbody.innerHTML = html;

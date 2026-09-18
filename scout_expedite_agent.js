@@ -255,11 +255,12 @@ async function fetchExpedite(accessToken) {
 
   console.log(`[${ts()}] Expedite Live — ${is1st ? '1st' : '2nd'} shift, since ${shiftStartStr} UTC`);
 
-  // Q1: not-yet-shipped expedite orders this shift
+  // Q1: not-yet-shipped 1DD + 2DD orders this shift
   const sqlOpen = `
 SELECT
   o.ORDER_ID,
   o.MAXIMUM_STATUS,
+  o.DESIGNATED_SERVICE_LEVEL_ID AS service_level_id,
   o.ORDER_PLACED_DATE_TIME AS placed_utc,
   o.EXT_ESTIMATEDSHIPBYDATETIME AS ship_by_utc,
   o.DELIVERY_END_DATE_TIME AS deliver_by_utc
@@ -267,76 +268,95 @@ FROM default_dcorder.DCO_ORDER o
 WHERE o.FACILITY_ID = '${FACILITY}'
   AND o.ORDER_TYPE = 'ECOM'
   AND o.CANCELLED = 0
-  AND o.DESIGNATED_SERVICE_LEVEL_ID = '11'
+  AND o.DESIGNATED_SERVICE_LEVEL_ID IN ('11','42')
   AND o.MAXIMUM_STATUS NOT IN ('8000','9000')
   AND o.CREATED_TIMESTAMP >= '${shiftStartStr}'
 ORDER BY o.EXT_ESTIMATEDSHIPBYDATETIME ASC
 LIMIT 500`.trim();
 
-  // Q2: shipped expedite orders this shift (count only)
+  // Q2: shipped counts per service level this shift
   const sqlShipped = `
-SELECT COUNT(*) AS shipped_count
+SELECT DESIGNATED_SERVICE_LEVEL_ID AS svc, COUNT(*) AS shipped_count
 FROM default_dcorder.DCO_ORDER
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE = 'ECOM'
   AND CANCELLED = 0
-  AND DESIGNATED_SERVICE_LEVEL_ID = '11'
+  AND DESIGNATED_SERVICE_LEVEL_ID IN ('11','42')
   AND MAXIMUM_STATUS = '8000'
-  AND CREATED_TIMESTAMP >= '${shiftStartStr}'`.trim();
+  AND CREATED_TIMESTAMP >= '${shiftStartStr}'
+GROUP BY DESIGNATED_SERVICE_LEVEL_ID`.trim();
 
   const [respOpen, respShipped] = await Promise.all([
     mcpQuery(accessToken, sqlOpen),
     mcpQuery(accessToken, sqlShipped).catch(() => ({ rows: [] })),
   ]);
 
-  const openOrders  = respOpen.rows || [];
-  const shippedCount = Number(((respShipped.rows || [])[0] || {}).shipped_count || 0);
+  const openOrders = respOpen.rows || [];
 
-  // oLPN enrichment — batch query by ORDER_ID list
-  let olpnMap = {};
+  // shipped counts broken out by service level
+  const shippedMap = {};
+  for (const r of (respShipped.rows || [])) shippedMap[r.svc] = Number(r.shipped_count || 0);
+  const shippedCount = (shippedMap['11'] || 0) + (shippedMap['42'] || 0);
+
+  // oLPN enrichment — LEFT JOIN via DCO_ORDER (more reliable than direct PPK_OLPN query)
+  // Collect all oLPNs per order (one order can have multiple oLPNs for multi-qty orders)
+  let olpnMap = {}; // ORDER_ID -> array of olpn objects
   if (openOrders.length > 0) {
     const orderIds = openOrders.map(r => `'${r.ORDER_ID}'`).join(',');
     try {
       const respOlpn = await mcpQuery(accessToken, `
-SELECT ORDER_ID, OLPN_ID, STATUS, CURRENT_LOCATION_ID, CARRIER_ID, CARRIER_SERVICE_LEVEL
-FROM default_pickpack.PPK_OLPN
-WHERE FACILITY_ID = '${FACILITY}'
-  AND STATUS NOT IN ('9000')
-  AND ORDER_ID IN (${orderIds})`.trim());
+SELECT o.ORDER_ID, p.OLPN_ID, p.STATUS AS olpn_status, p.TOTAL_UNITS, p.CURRENT_LOCATION_ID, p.CARRIER_ID
+FROM default_dcorder.DCO_ORDER o
+LEFT JOIN default_pickpack.PPK_OLPN p
+  ON p.ORDER_ID = o.ORDER_ID
+  AND p.FACILITY_ID = o.FACILITY_ID
+  AND p.STATUS NOT IN ('9000')
+WHERE o.FACILITY_ID = '${FACILITY}'
+  AND o.ORDER_ID IN (${orderIds})
+  AND p.OLPN_ID IS NOT NULL`.trim());
       for (const r of (respOlpn.rows || [])) {
-        const existing = olpnMap[r.ORDER_ID];
-        if (!existing || Number(r.STATUS) > Number(existing.STATUS)) {
-          olpnMap[r.ORDER_ID] = r;
-        }
+        if (!olpnMap[r.ORDER_ID]) olpnMap[r.ORDER_ID] = [];
+        olpnMap[r.ORDER_ID].push(r);
       }
     } catch(e) {
       console.warn(`[${ts()}] oLPN enrichment failed: ${e.message}`);
     }
   }
 
+  const SVC_LABEL = { '11': '1DD', '42': '2DD' };
+
   const orders = openOrders.map(r => {
-    const olpn = olpnMap[r.ORDER_ID] || {};
+    const olpns = olpnMap[r.ORDER_ID] || [];
+    // highest-status oLPN for location/carrier display
+    const topOlpn = olpns.reduce((best, o) =>
+      (!best || Number(o.olpn_status) > Number(best.olpn_status)) ? o : best, null);
+    const totalUnits = olpns.reduce((s, o) => s + Number(o.TOTAL_UNITS || 0), 0);
     return {
-      order_id:       r.ORDER_ID,
-      order_status:   r.MAXIMUM_STATUS,
-      placed_utc:     r.placed_utc,
-      ship_by_utc:    r.ship_by_utc,
+      order_id:      r.ORDER_ID,
+      order_status:  r.MAXIMUM_STATUS,
+      service_level: SVC_LABEL[r.service_level_id] || r.service_level_id,
+      placed_utc:    r.placed_utc,
+      ship_by_utc:   r.ship_by_utc,
       deliver_by_utc: r.deliver_by_utc,
-      olpn_id:        olpn.OLPN_ID             || null,
-      olpn_status:    olpn.STATUS              || null,
-      olpn_location:  olpn.CURRENT_LOCATION_ID || null,
-      carrier:        olpn.CARRIER_ID          || null,
-      carrier_svc:    olpn.CARRIER_SERVICE_LEVEL || null,
+      quantity:      totalUnits || null,
+      olpns:         olpns.map(o => o.OLPN_ID).filter(Boolean),
+      olpn_status:   topOlpn?.olpn_status   || null,
+      olpn_location: topOlpn?.CURRENT_LOCATION_ID || null,
+      carrier:       topOlpn?.CARRIER_ID    || null,
     };
   });
 
   const output = {
-    generated:    new Date().toISOString().slice(0,19),
-    facility:     FACILITY,
-    shift_label:  is1st ? '1st shift' : '2nd shift',
-    shift_start:  shiftStartStr,
-    open_count:   openOrders.length,
+    generated:     new Date().toISOString().slice(0,19),
+    facility:      FACILITY,
+    shift_label:   is1st ? '1st shift' : '2nd shift',
+    shift_start:   shiftStartStr,
+    open_count:    openOrders.length,
+    open_1dd:      openOrders.filter(r => r.service_level_id === '11').length,
+    open_2dd:      openOrders.filter(r => r.service_level_id === '42').length,
     shipped_count: shippedCount,
+    shipped_1dd:   shippedMap['11'] || 0,
+    shipped_2dd:   shippedMap['42'] || 0,
     orders,
   };
 
