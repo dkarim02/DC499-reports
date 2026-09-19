@@ -116,6 +116,40 @@ body.light .blob-gold   { opacity: 0.08; }
 }
 
 
+/* ── ENTRANCE / EXIT ANIMATIONS ──────────────────────────────── */
+@keyframes blobEnter-teal   { from { transform: translate(36vw, 26vh) scale(0.04); } to { transform: translate(0,0) scale(1); } }
+@keyframes blobEnter-orange { from { transform: translate(-36vw, 26vh) scale(0.04); } to { transform: translate(0,0) scale(1); } }
+@keyframes blobEnter-blue   { from { transform: translate(36vw,-26vh) scale(0.04); } to { transform: translate(0,0) scale(1); } }
+@keyframes blobEnter-purple { from { transform: translate(-36vw,-26vh) scale(0.04); } to { transform: translate(0,0) scale(1); } }
+@keyframes blobEnter-gold   { from { transform: translate(10vw, 6vh) scale(0.04); } to { transform: translate(0,0) scale(1); } }
+
+@keyframes blobExit-teal   { from { transform: translate(0,0) scale(1); } to { transform: translate(36vw, 26vh) scale(0.04); } }
+@keyframes blobExit-orange { from { transform: translate(0,0) scale(1); } to { transform: translate(-36vw, 26vh) scale(0.04); } }
+@keyframes blobExit-blue   { from { transform: translate(0,0) scale(1); } to { transform: translate(36vw,-26vh) scale(0.04); } }
+@keyframes blobExit-purple { from { transform: translate(0,0) scale(1); } to { transform: translate(-36vw,-26vh) scale(0.04); } }
+@keyframes blobExit-gold   { from { transform: translate(0,0) scale(1); } to { transform: translate(10vw, 6vh) scale(0.04); } }
+
+@keyframes blobsEnterFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes blobsExitFade  { from { opacity: 1; } to { opacity: 0; } }
+@keyframes contentEnter   { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes contentExit    { from { opacity: 1; } to { opacity: 0; } }
+
+body.is-entering .bg-blobs  { animation: blobsEnterFade   0.55s ease-out forwards; }
+body.is-entering .blob-teal   { animation: blobEnter-teal   0.60s cubic-bezier(0.22,1,0.36,1) forwards; }
+body.is-entering .blob-orange { animation: blobEnter-orange 0.60s cubic-bezier(0.22,1,0.36,1) forwards; }
+body.is-entering .blob-blue   { animation: blobEnter-blue   0.60s cubic-bezier(0.22,1,0.36,1) forwards; }
+body.is-entering .blob-purple { animation: blobEnter-purple 0.60s cubic-bezier(0.22,1,0.36,1) forwards; }
+body.is-entering .blob-gold   { animation: blobEnter-gold   0.60s cubic-bezier(0.22,1,0.36,1) forwards; }
+body.is-entering .content     { animation: contentEnter     0.45s 0.12s ease-out both; }
+
+body.is-exiting .bg-blobs   { animation: blobsExitFade    0.38s ease-in forwards; }
+body.is-exiting .blob-teal   { animation: blobExit-teal   0.38s ease-in forwards; }
+body.is-exiting .blob-orange { animation: blobExit-orange 0.38s ease-in forwards; }
+body.is-exiting .blob-blue   { animation: blobExit-blue   0.38s ease-in forwards; }
+body.is-exiting .blob-purple { animation: blobExit-purple 0.38s ease-in forwards; }
+body.is-exiting .blob-gold   { animation: blobExit-gold   0.38s ease-in forwards; }
+body.is-exiting .content     { animation: contentExit     0.30s ease-in forwards; }
+
 /* ── CONTENT ──────────────────────────────────────────────────── */
 .content { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100%; }
 
@@ -604,7 +638,9 @@ document.addEventListener('click', function(e) {
 function openApp(filename, deptId) {
   if (deptId) { try { localStorage.setItem(RECENT_KEY, deptId); } catch(e) {} }
   var base = window.location.href.replace(/\/[^\/]*$/, '/');
-  window.location.href = base + filename;
+  var url = base + filename;
+  document.body.classList.add('is-exiting');
+  setTimeout(function() { window.location.href = url; }, 420);
 }
 
 /* ── CLOCK ────────────────────────────────────────────────────── */
@@ -625,7 +661,9 @@ updateClock();
 var MENU_THEME_VALS  = ['dark','solid','pastel','scout','light'];
 var MENU_THEME_NAMES = {dark:'Dark', solid:'Solid', pastel:'Pastel', scout:'✦ Scout', light:'Light'};
 function applyTheme(t) {
+  var keep = ['is-entering','is-exiting'].filter(function(c) { return document.body.classList.contains(c); });
   document.body.className = (t === 'dark') ? '' : t;
+  keep.forEach(function(c) { document.body.classList.add(c); });
   var lbl = document.getElementById('menu-theme-label');
   if (lbl) lbl.textContent = MENU_THEME_NAMES[t] || t;
   document.querySelectorAll('.menu-theme-option').forEach(function(el) {
@@ -647,6 +685,8 @@ function initTheme() {
 document.getElementById('date').textContent = new Date().toLocaleDateString();
 initTheme();
 renderBento();
+document.body.classList.add('is-entering');
+setTimeout(function() { document.body.classList.remove('is-entering'); }, 700);
 
 /* ── WHATS NEW ────────────────────────────────────────────────── */
 function toggleWhatsNew() {

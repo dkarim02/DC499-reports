@@ -150,6 +150,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 
 /* ── loading ───────────────────────────────────────────────────────────────── */
 .loading{text-align:center;padding:60px;color:var(--text-muted);font-size:14px}
+@keyframes pageEnter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+body { animation: pageEnter 0.28s ease-out both; }
 </style>
 </head>
 <body>
