@@ -33,6 +33,17 @@
     --text:#d4d0e8;--text-muted:#8b8aaa;--text-hint:#565670;
     --bar-bg:#3c3f52;--drop-hover:#2c2f3e;
   }
+  [data-theme="scout"] {
+    --bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-light:#141825;--border-mid:#222a3c;
+    --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;
+    --bar-bg:#1c2232;--drop-hover:#171b2a;
+  }
+  /* Scout: twilight glow — teal top-left, deep indigo bottom-right */
+  [data-theme="scout"] body, body[data-theme="scout"] {
+    background: radial-gradient(ellipse 70% 55% at 0% 0%, rgba(14,158,142,0.13) 0%, transparent 65%),
+                radial-gradient(ellipse 60% 50% at 100% 100%, rgba(24,95,165,0.12) 0%, transparent 65%),
+                #0c0d14;
+  }
 
   /* ── BASE ── */
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; transition: background 0.2s, color 0.2s; }
@@ -52,6 +63,7 @@
   .theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
   .theme-option:hover{background:var(--surface2);color:var(--text);}
   .theme-option.active{color:#185FA5;background:var(--surface2);}
+  [data-theme="scout"] .theme-option.active{color:#0E9E8E;}
 
   /* ── BACKLOG PILL ── */
   .backlog-pill { display: none; align-items: center; gap: 0; margin-top: 8px; border-radius: 20px; overflow: hidden; border: 1.5px solid #185FA5; font-size: 13px; font-weight: 700; flex-shrink: 0; cursor: pointer; transition: opacity 0.15s, box-shadow 0.15s; }
@@ -146,6 +158,7 @@
   .chart-mode-btn { font-family: inherit; padding: 3px 8px; border-radius: 5px; cursor: pointer; border: 0.5px solid var(--border); background: none; color: var(--text-hint); transition: all 0.15s; display: flex; align-items: center; }
   .chart-mode-btn.active { background: #e8f0fb; color: #185FA5; border-color: #185FA5; }
   [data-theme="dark"] .chart-mode-btn.active { background: #0C447C; color: #B5D4F4; border-color: #185FA5; }
+  [data-theme="scout"] .chart-mode-btn.active { background: #082e2a; color: #6ee0d6; border-color: #0E9E8E; }
   .chart-dl-btn { font-family: inherit; font-size: 11px; padding: 3px 9px; border-radius: 5px; cursor: pointer; border: 0.5px solid var(--border); background: none; color: var(--text-hint); text-decoration: none; display: inline-flex; align-items: center; }
   .chart-dl-btn:hover { background: var(--surface2); color: var(--text); }
   .chart-wrap { position: relative; height: 200px; }
@@ -313,6 +326,7 @@
   .arch-shift-btn:hover { background:var(--surface2); color:var(--text); }
   .arch-shift-btn.active { background:#EEEDFE; color:#534AB7; border-color:#7F77DD; }
   [data-theme="dark"] .arch-shift-btn.active, [data-theme="solid"] .arch-shift-btn.active, [data-theme="pastel"] .arch-shift-btn.active { background:#3C3489; color:#CECBF6; border-color:#7F77DD; }
+  [data-theme="scout"] .arch-shift-btn.active { background:#0c2e2b; color:#6ee0d6; border-color:#0E9E8E; }
   .arch-meta { font-size:12px; color:var(--text-hint); margin-bottom:1rem; }
   .arch-summary { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:1rem; overflow-x:auto; }
   .arch-summary-tile { background:var(--surface2); border-radius:8px; padding:10px 6px; text-align:center; }
@@ -362,6 +376,7 @@
           <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
           <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
           <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
+          <div class="theme-option" data-tv="scout"  onclick="pickTheme('scout')">✦ Scout</div>
           <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
         </div>
       </div>
@@ -566,8 +581,8 @@ const SHIFT_BOUNDS = { '1st': {start:3, end:13}, '2nd': {start:14, end:25} };
 
 // ── THEME ──────────────────────────────────────────────
 var THEME_KEY_ECOM = 'dc499_ecom_theme_v1';
-var THEME_NAMES_ECOM = {dark:'Dark',solid:'Solid',pastel:'Pastel',light:'Light'};
-var THEME_VALS_ECOM  = ['dark','solid','pastel','light'];
+var THEME_NAMES_ECOM = {dark:'Dark',solid:'Solid',pastel:'Pastel',scout:'✦ Scout',light:'Light'};
+var THEME_VALS_ECOM  = ['dark','solid','pastel','scout','light'];
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES_ECOM[t] || t;
