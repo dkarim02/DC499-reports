@@ -393,6 +393,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button onclick="sendLiveToTeams(this)" style="font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #6264A7;border-radius:6px;background:#f0f0fa;color:#6264A7;cursor:pointer;">&#x1F4E8; Send to Teams</button>
         <button onclick="nailFromLive(this)" style="font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #1a6b2f;border-radius:6px;background:#e6f4eb;color:#1a6b2f;cursor:pointer;font-weight:600;">&#x1F4CC; NAIL</button>
+        <button onclick="exportCSV(liveData&&liveData.rows,'live')" style="font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #0F6E56;border-radius:6px;background:#E1F5EE;color:#0F6E56;cursor:pointer;">&#x2B07; Export CSV</button>
         <button onclick="loadLiveData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
       </div>
     </div>
@@ -1848,6 +1849,7 @@ function renderFullReport() {
   html += '<div style="display:flex;gap:8px;">';
   html += '<button class="full-reset-btn" style="border-color:#6264A7;background:#f0f0fa;color:#6264A7;" onclick="sendToTeams(this)" id="send-teams-btn">&#x1F4E8; Send to Teams</button>';
   html += '<button class="full-reset-btn nail-btn" onclick="nailThePlan(this)">&#x1F4CC; NAIL</button>';
+  html += '<button class="full-reset-btn" style="border-color:#0F6E56;background:#E1F5EE;color:#0F6E56;" onclick="exportCSV(fullReportRows,\'full\')">&#x2B07; Export CSV</button>';
   html += '<button class="full-reset-btn" onclick="clearFullReport()">&#x21BA; Clear</button>';
   html += '</div></div>';
   html += '<div class="full-meta">' + fullReportRows.length + ' total rows loaded</div>';
@@ -1983,6 +1985,54 @@ function clearFullReport() {
   var hint = document.getElementById('full-files-loaded');
   if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
   renderFullReport();
+}
+
+function exportCSV(rows, label) {
+  if (!rows || !rows.length) { alert('No data to export.'); return; }
+  var types = ['replen','putaway','picking','packing','shipping','sorting'];
+  var empDeptTotals = {};
+  types.forEach(function(typ) {
+    var txList = getTX()[typ];
+    var filtered = rows.filter(function(r) {
+      if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
+      if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
+      return true;
+    });
+    var totals = sumRows(filtered, typ, null);
+    Object.keys(totals).forEach(function(emp) {
+      if (!empDeptTotals[emp]) empDeptTotals[emp] = {};
+      empDeptTotals[emp][typ] = totals[emp];
+    });
+  });
+  var TEAM = getTeamSet();
+  var emps = Object.keys(empDeptTotals).sort(function(a,b) {
+    var aOn = TEAM.has(a), bOn = TEAM.has(b);
+    if (aOn !== bOn) return aOn ? -1 : 1;
+    var aT = Object.values(empDeptTotals[a]).reduce(function(s,v){return s+v;},0);
+    var bT = Object.values(empDeptTotals[b]).reduce(function(s,v){return s+v;},0);
+    return bT - aT;
+  });
+  var headers = ['Name','Email','On Roster','Replen','Putaway','Picking','Packing','Shipping','Sorting','Total'];
+  var lines = [headers.join(',')];
+  emps.forEach(function(emp) {
+    var d = empDeptTotals[emp];
+    var name = emp.split('@')[0];
+    var onRoster = TEAM.has(emp) ? 'Yes' : 'No';
+    var vals = types.map(function(t){ return d[t] || 0; });
+    var total = vals.reduce(function(s,v){return s+v;},0);
+    lines.push([name, emp, onRoster].concat(vals).concat([total]).join(','));
+  });
+  var csv = lines.join('\r\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  var ds = new Date().toLocaleDateString('en-CA');
+  a.download = 'ecom_' + (label||'report') + '_' + getShift() + '_' + ds + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 
