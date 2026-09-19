@@ -23,6 +23,8 @@ const { execSync } = require('child_process');
 const MCP_BASE      = 'https://mawm-data-mcp.nordstromaws.app';
 const TOKEN_FILE    = path.join(__dirname, '.mcp_token.json');
 const OUTPUT_FILE   = path.join(__dirname, 'ecom_live.json');
+const HISTORY_FILE  = path.join(__dirname, 'ecom_history.json');
+const HISTORY_MAX   = 14; // 6 days × 2 shifts + buffer
 const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3119; // different port from dc499_refresh.js (3118)
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
@@ -309,6 +311,91 @@ WHERE t.FACILITY_ID = '${FACILITY}'
 ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 }
 
+// ── history snapshot ───────────────────────────────────────────────────────────
+function updateEcomHistory(rows, shift, shiftStartUtcStr) {
+  const ZONE_H_TX = ['System Directed Putaway','User Directed Putaway','iLPN Replen Fill','iLPN Replen Fill Large'];
+  const SORT_CRITERIA = 'NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA';
+  const SHIPPING_2ND = 'OB Putaway By Ship Via';
+  const SHIPPING_1ST = 'NRDR Load Parcel Packages';
+  const shippingTx = shift === '1st' ? SHIPPING_1ST : SHIPPING_2ND;
+
+  // Build per-associate totals
+  const empMap = {};
+  const shippingContainers = {}; // emp -> Set<containerID>
+
+  function emp(r) { return (r['Employee'] || '').trim().toLowerCase(); }
+  function zone3(loc) { return loc && loc.length >= 3 ? loc[2].toUpperCase() : null; }
+  function isZoneH(r) {
+    const z = zone3(r['Current Location']) ?? zone3(r['Previous Location']);
+    return z === 'H';
+  }
+
+  rows.forEach(r => {
+    const e = emp(r);
+    if (!e) return;
+    const tx = (r['Transaction ID'] || '').trim();
+    if (!empMap[e]) empMap[e] = { replen:0, putaway:0, picking:0, packing:0, shipping:0, sorting:0 };
+    const m = empMap[e];
+
+    if (tx === 'iLPN Replen Fill' || tx === 'iLPN Replen Fill Large') {
+      if (!isZoneH(r)) m.replen += parseFloat(r['Completed Quantity']) || 0;
+    } else if (tx === 'System Directed Putaway' || tx === 'User Directed Putaway') {
+      if (!isZoneH(r)) m.putaway += 1;
+    } else if (tx === 'Ecom Mezz Pick To Putwall Cart' || tx === 'Ecom Non-Mezz Pick To Putwall Cart' || tx === 'Ecom Singles Bulk LPN Pick') {
+      m.picking += parseFloat(r['Quantity']) || 0;
+    } else if (tx === 'NRDR CORE PACK FOR ECOM PACK STATION') {
+      m.packing += parseFloat(r['Quantity']) || 0;
+    } else if (tx === shippingTx) {
+      const cid = (r['Container ID'] || '').trim();
+      if (cid) {
+        if (!shippingContainers[e]) shippingContainers[e] = new Set();
+        shippingContainers[e].add(cid);
+      }
+    } else if (tx === 'OB Sort To Putwall Cubby' && (r['Criteria'] || '').trim() === SORT_CRITERIA) {
+      m.sorting += parseFloat(r['Quantity']) || 0;
+    }
+  });
+
+  // Merge shipping container counts
+  Object.keys(shippingContainers).forEach(e => {
+    if (!empMap[e]) empMap[e] = { replen:0, putaway:0, picking:0, packing:0, shipping:0, sorting:0 };
+    empMap[e].shipping = shippingContainers[e].size;
+  });
+
+  // Build associates array, skip zeros
+  const associates = Object.entries(empMap)
+    .map(([email, d]) => {
+      const total = d.replen + d.putaway + d.picking + d.packing + d.shipping + d.sorting;
+      return { email, ...d, total };
+    })
+    .filter(a => a.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  // Derive PDT date string from shift start UTC
+  const shiftStartDate = new Date(shiftStartUtcStr.replace(' ', 'T') + '-07:00');
+  const date = shiftStartDate.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+
+  const snapshot = { date, shift, generated: new Date().toISOString(), associates };
+
+  // Load existing history, upsert, trim, save
+  let history = [];
+  try { history = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8')); } catch {}
+  const idx = history.findIndex(e => e.date === date && e.shift === shift);
+  if (idx !== -1) history[idx] = snapshot;
+  else history.push(snapshot);
+
+  // Sort newest first, trim to max
+  history.sort((a, b) => {
+    const cmp = b.date.localeCompare(a.date);
+    if (cmp !== 0) return cmp;
+    return b.shift.localeCompare(a.shift); // '2nd' > '1st'
+  });
+  history = history.slice(0, HISTORY_MAX);
+
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+  console.log(`[${ts()}] ✓ ecom_history.json updated — ${date} ${shift} (${associates.length} associates)`);
+}
+
 // ── main fetch ─────────────────────────────────────────────────────────────────
 async function fetchEcomLive(accessToken) {
   const { utc: shiftStart, label: shift } = shiftStartUtc();
@@ -349,6 +436,8 @@ async function fetchEcomLive(accessToken) {
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
   console.log(`[${ts()}] ✓ ecom_live.json written (${rows.length} rows, ${shift} shift)`);
+
+  updateEcomHistory(rows, shift, shiftStart);
 
   // Git push handled by dc499_refresh.js (single coordinator — avoids concurrent push collisions)
   console.log(`[${ts()}] ecom_live.json ready — dc499_refresh will push on next cycle`);
