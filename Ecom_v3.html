@@ -313,7 +313,7 @@
   .arch-shift-slider::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#9B4DCA; cursor:pointer; }
   .arch-shift-val { font-size:13px; font-weight:500; color:#9B4DCA; min-width:28px; }
   .arch-meta { font-size:12px; color:var(--text-hint); margin-bottom:1rem; }
-  .arch-summary { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:1rem; }
+  .arch-summary { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:1rem; overflow-x:auto; }
   .arch-summary-tile { background:var(--surface2); border-radius:8px; padding:10px 6px; text-align:center; }
   .arch-summary-label { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px; }
   .arch-summary-val { font-size:16px; font-weight:500; color:var(--text); }
@@ -2617,8 +2617,8 @@ function renderArchiveTable() {
     return '<span class="arch-sort-arrow'+(active?' active':'')+'">'+arrow+'</span>';
   }
 
-  html += '<div class="card" style="padding:0;overflow:hidden;">';
-  html += '<table class="arch-table"><thead><tr>';
+  html += '<div class="card" style="padding:0;overflow-x:auto;">';
+  html += '<table class="arch-table" style="min-width:700px;"><thead><tr>';
   html += '<th onclick="archiveSortBy(\'email\')">Associate '+sortArrow('email')+'</th>';
   types.forEach(function(t) {
     html += '<th onclick="archiveSortBy(\''+t+'\')" style="text-align:right;color:'+COLORS[t]+';">'+LABELS[t]+' '+sortArrow(t)+'</th>';
