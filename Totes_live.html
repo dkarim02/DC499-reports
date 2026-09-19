@@ -59,6 +59,24 @@
     --dz-active-bg:#1c3c38;--dz-active-border:#7ecec4;--dz-active-text:#7ecec4;
     --dz-idle-bg:#1e2034;--dz-idle-border:#383b52;--dz-idle-text:#484864;
   }
+  [data-theme="scout"]{
+    --bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-mid:#222a3c;
+    --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;
+    --accent:#0E9E8E;--accent-bg:#0c2e2b;
+    --green:#86efac;--green-bg:#162b22;--green-border:#2a6644;
+    --yellow:#fde68a;--yellow-bg:#2e2410;--yellow-border:#7a5c1a;
+    --red:#fca5a5;--red-bg:#2e1a1a;--red-border:#7a3030;
+    --orphan:#d8b4fe;--orphan-bg:#241640;--orphan-border:#6a3a9a;
+    --s-color:#c4b5fd;--m-color:#fdba74;
+    --pw-active-glow:#0E9E8E;--pw-active-bg:#0d2e2a;--pw-active-border:#0E9E8E;
+    --dz-active-bg:#0f3d38;--dz-active-border:#0E9E8E;--dz-active-text:#2dd4c0;
+    --dz-idle-bg:#1b2035;--dz-idle-border:#2e3650;--dz-idle-text:#3a4a65;
+  }
+  [data-theme="scout"] body {
+    background: radial-gradient(ellipse 70% 55% at 0% 0%, rgba(14,158,142,0.13) 0%, transparent 65%),
+                radial-gradient(ellipse 60% 50% at 100% 100%, rgba(24,95,165,0.12) 0%, transparent 65%),
+                #0c0d14;
+  }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.25rem;}
   .container{max-width:1700px;margin:0 auto;}
@@ -396,6 +414,7 @@
           <div class="theme-option" data-theme-val="dark"  onclick="pickTheme('dark')">Dark</div>
           <div class="theme-option" data-theme-val="solid" onclick="pickTheme('solid')">Solid</div>
           <div class="theme-option" data-theme-val="mixed" onclick="pickTheme('mixed')">Pastel</div>
+          <div class="theme-option" data-theme-val="scout" onclick="pickTheme('scout')">✦ Scout</div>
           <div class="theme-option" data-theme-val="light" onclick="pickTheme('light')">Light</div>
         </div>
       </div>
@@ -553,8 +572,8 @@ var ORPHAN_MIN = 1440;
 // Standalone locations shown in "Other" row (H1-HP-01 gets oLPN count from putwalls data)
 var STANDALONE_LOCS = ['D1-SN-01', 'D1-HP-01', 'C1-PM-01'];
 
-var THEME_NAMES = {dark:'Dark', solid:'Solid', mixed:'Pastel', light:'Light'};
-var THEME_VALS  = ['dark','solid','mixed','light'];
+var THEME_NAMES = {dark:'Dark', solid:'Solid', mixed:'Pastel', scout:'✦ Scout', light:'Light'};
+var THEME_VALS  = ['dark','solid','mixed','scout','light'];
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES[t] || t;

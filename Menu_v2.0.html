@@ -20,6 +20,15 @@ body {
 body.light  { background: #ecedf2; color: #1a1a1a; }
 body.solid  { background: #0a0e1e; color: #e4e8f4; }
 body.pastel { background: #11121b; color: #d4d0e8; }
+body.scout  {
+  --bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-light:#141825;--border-mid:#222a3c;
+  --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;
+  --bar-bg:#1c2232;--drop-hover:#171b2a;
+  background: radial-gradient(ellipse 70% 55% at 0% 0%, rgba(14,158,142,0.13) 0%, transparent 65%),
+              radial-gradient(ellipse 60% 50% at 100% 100%, rgba(24,95,165,0.12) 0%, transparent 65%),
+              #0c0d14;
+  color: #e2e8e8;
+}
 
 /* ── BACKGROUND BLOBS ─────────────────────────────────────────── */
 .bg-blobs {
@@ -490,6 +499,7 @@ body.light #whats-new-panel { background: rgba(255,255,255,0.97); border-color: 
     <div class="menu-theme-option" data-tv="dark"   onclick="menuPickTheme('dark')">Dark</div>
     <div class="menu-theme-option" data-tv="solid"  onclick="menuPickTheme('solid')">Solid</div>
     <div class="menu-theme-option" data-tv="pastel" onclick="menuPickTheme('pastel')">Pastel</div>
+    <div class="menu-theme-option" data-tv="scout"  onclick="menuPickTheme('scout')">✦ Scout</div>
     <div class="menu-theme-option" data-tv="light"  onclick="menuPickTheme('light')">Light</div>
   </div>
 </div>
@@ -612,8 +622,8 @@ setInterval(updateClock, 1000);
 updateClock();
 
 /* ── THEME ────────────────────────────────────────────────────── */
-var MENU_THEME_VALS  = ['dark','solid','pastel','light'];
-var MENU_THEME_NAMES = {dark:'Dark', solid:'Solid', pastel:'Pastel', light:'Light'};
+var MENU_THEME_VALS  = ['dark','solid','pastel','scout','light'];
+var MENU_THEME_NAMES = {dark:'Dark', solid:'Solid', pastel:'Pastel', scout:'✦ Scout', light:'Light'};
 function applyTheme(t) {
   document.body.className = (t === 'dark') ? '' : t;
   var lbl = document.getElementById('menu-theme-label');

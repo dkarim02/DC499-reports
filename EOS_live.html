@@ -35,6 +35,16 @@
     --green:#065f46;--green-dim:rgba(6,95,70,0.06);
     --red:#b91c1c;--yellow:#92400e;--yellow-dim:rgba(146,64,14,0.06);
   }
+  [data-theme="scout"]{
+    --bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-light:#141825;--border-mid:#222a3c;
+    --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;
+    --bar-bg:#1c2232;--drop-hover:#171b2a;
+  }
+  [data-theme="scout"] body {
+    background: radial-gradient(ellipse 70% 55% at 0% 0%, rgba(14,158,142,0.13) 0%, transparent 65%),
+                radial-gradient(ellipse 60% 50% at 100% 100%, rgba(24,95,165,0.12) 0%, transparent 65%),
+                #0c0d14;
+  }
   .eos-theme-picker{position:relative;}
   .eos-theme-btn{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-muted);cursor:pointer;background:transparent;border:1px solid var(--border);border-radius:5px;padding:5px 10px;font-family:inherit;white-space:nowrap;letter-spacing:.4px;font-weight:600;text-transform:uppercase;}
   .eos-theme-btn:hover{border-color:var(--amber);color:var(--amber);}
@@ -196,6 +206,7 @@
       <div class="eos-theme-option" data-tv="dark"   onclick="eosPickTheme('dark')">Dark</div>
       <div class="eos-theme-option" data-tv="solid"  onclick="eosPickTheme('solid')">Solid</div>
       <div class="eos-theme-option" data-tv="pastel" onclick="eosPickTheme('pastel')">Pastel</div>
+      <div class="eos-theme-option" data-tv="scout"  onclick="eosPickTheme('scout')">✦ Scout</div>
       <div class="eos-theme-option" data-tv="light"  onclick="eosPickTheme('light')">Light</div>
     </div>
   </div>
@@ -225,8 +236,8 @@
 <script>
 // ── THEME ───────────────────────────────────────────────────────────────────
 var EOS_THEME_KEY  = 'dc499_eos_theme_v1';
-var EOS_THEME_VALS = ['dark','solid','pastel','light'];
-var EOS_THEME_NAMES= {dark:'Dark',solid:'Solid',pastel:'Pastel',light:'Light'};
+var EOS_THEME_VALS = ['dark','solid','pastel','scout','light'];
+var EOS_THEME_NAMES= {dark:'Dark',solid:'Solid',pastel:'Pastel',scout:'✦ Scout',light:'Light'};
 function eosApplyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   var lbl = document.getElementById('eos-theme-label');
