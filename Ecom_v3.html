@@ -2612,7 +2612,7 @@ function renderArchiveTable() {
 
   // Summary tiles
   var totals = {};
-  types.forEach(function(t){ totals[t] = entry.associates.reduce(function(s,a){ return s+(a[t]||0); },0); });
+  types.forEach(function(t){ totals[t] = rows.reduce(function(s,a){ return s+(a[t]||0); },0); });
   var grandTotal = types.reduce(function(s,t){ return s+totals[t]; },0);
 
   var COLORS = FULL_COLORS;
