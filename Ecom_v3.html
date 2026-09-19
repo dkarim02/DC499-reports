@@ -307,11 +307,12 @@
   .arch-controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:1rem; }
   .arch-date-select { font-family:inherit; font-size:13px; padding:7px 12px; border:0.5px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); outline:none; cursor:pointer; }
   .arch-date-select:focus { border-color:#9B4DCA; }
-  .arch-shift-wrap { display:flex; align-items:center; gap:8px; }
-  .arch-shift-label { font-size:12px; color:var(--text-muted); white-space:nowrap; }
-  .arch-shift-slider { -webkit-appearance:none; appearance:none; width:80px; height:4px; border-radius:2px; background:var(--bar-bg); outline:none; cursor:pointer; }
-  .arch-shift-slider::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#9B4DCA; cursor:pointer; }
-  .arch-shift-val { font-size:13px; font-weight:500; color:#9B4DCA; min-width:28px; }
+  .arch-shift-wrap { display:flex; align-items:center; gap:6px; }
+  .arch-shift-label { font-size:12px; color:var(--text-muted); white-space:nowrap; margin-right:2px; }
+  .arch-shift-btn { font-family:inherit; font-size:12px; font-weight:500; padding:5px 12px; border:0.5px solid var(--border); border-radius:6px; background:none; color:var(--text-muted); cursor:pointer; transition:all 0.15s; }
+  .arch-shift-btn:hover { background:var(--surface2); color:var(--text); }
+  .arch-shift-btn.active { background:#EEEDFE; color:#534AB7; border-color:#7F77DD; }
+  [data-theme="dark"] .arch-shift-btn.active, [data-theme="solid"] .arch-shift-btn.active, [data-theme="pastel"] .arch-shift-btn.active { background:#3C3489; color:#CECBF6; border-color:#7F77DD; }
   .arch-meta { font-size:12px; color:var(--text-hint); margin-bottom:1rem; }
   .arch-summary { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:1rem; overflow-x:auto; }
   .arch-summary-tile { background:var(--surface2); border-radius:8px; padding:10px 6px; text-align:center; }
@@ -444,8 +445,9 @@
       </select>
       <div class="arch-shift-wrap">
         <span class="arch-shift-label">Shift:</span>
-        <input class="arch-shift-slider" type="range" min="0" max="1" step="1" value="1" id="arch-shift-slider" oninput="archiveSelectShift(this.value)">
-        <span class="arch-shift-val" id="arch-shift-val">2nd</span>
+        <button class="arch-shift-btn" id="arch-btn-1st" onclick="archiveSelectShift('1st')">1st</button>
+        <button class="arch-shift-btn" id="arch-btn-2nd" onclick="archiveSelectShift('2nd')">2nd</button>
+        <button class="arch-shift-btn" id="arch-btn-both" onclick="archiveSelectShift('both')">Both</button>
       </div>
     </div>
     <div id="arch-content">
@@ -2515,10 +2517,10 @@ function populateArchiveDateSelect() {
   archiveCurDate = defaultDate;
   archiveCurShift = defaultShift;
 
-  var slider = document.getElementById('arch-shift-slider');
-  var shiftVal = document.getElementById('arch-shift-val');
-  if (slider) slider.value = defaultShift === '2nd' ? 1 : 0;
-  if (shiftVal) shiftVal.textContent = defaultShift;
+  ['1st','2nd','both'].forEach(function(s) {
+    var btn = document.getElementById('arch-btn-' + s);
+    if (btn) btn.classList.toggle('active', s === defaultShift);
+  });
 
   renderArchiveTable();
 }
@@ -2540,9 +2542,11 @@ function archiveSelectDate(val) {
 }
 
 function archiveSelectShift(val) {
-  archiveCurShift = val === '1' ? '2nd' : '1st';
-  var shiftVal = document.getElementById('arch-shift-val');
-  if (shiftVal) shiftVal.textContent = archiveCurShift;
+  archiveCurShift = val;
+  ['1st','2nd','both'].forEach(function(s) {
+    var btn = document.getElementById('arch-btn-' + s);
+    if (btn) btn.classList.toggle('active', s === val);
+  });
   renderArchiveTable();
 }
 
@@ -2564,26 +2568,39 @@ function renderArchiveTable() {
     return;
   }
 
-  var entry = archiveData && archiveData.find(function(e){ return e.date === archiveCurDate && e.shift === archiveCurShift; });
-  if (!entry) {
-    content.innerHTML = '<div class="full-empty">No data for ' + archiveCurDate + ' ' + archiveCurShift + ' shift.</div>';
-    if (meta) meta.textContent = archiveCurDate + ' · ' + archiveCurShift + ' shift · no data';
+  var entries = archiveData ? archiveData.filter(function(e) {
+    if (e.date !== archiveCurDate) return false;
+    return archiveCurShift === 'both' ? true : e.shift === archiveCurShift;
+  }) : [];
+
+  if (!entries.length) {
+    content.innerHTML = '<div class="full-empty">No data for ' + archiveCurDate + (archiveCurShift !== 'both' ? ' ' + archiveCurShift + ' shift' : '') + '.</div>';
+    if (meta) meta.textContent = archiveCurDate + ' · no data';
     if (exportBtn) exportBtn.style.display = 'none';
     return;
   }
 
+  // Merge associates across shifts when "both"
+  var types = ['replen','putaway','picking','packing','shipping','sorting'];
+  var mergedMap = {};
+  entries.forEach(function(entry) {
+    entry.associates.forEach(function(a) {
+      if (!mergedMap[a.email]) mergedMap[a.email] = {email:a.email,replen:0,putaway:0,picking:0,packing:0,shipping:0,sorting:0,total:0};
+      types.forEach(function(t){ mergedMap[a.email][t] += (a[t]||0); });
+      mergedMap[a.email].total += (a.total||0);
+    });
+  });
+
   if (meta) {
-    var gen = entry.generated ? new Date(entry.generated).toLocaleString('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '';
-    meta.textContent = archiveCurDate + ' · ' + archiveCurShift + ' shift · ' + entry.associates.length + ' associates' + (gen ? ' · snapshot ' + gen : '');
+    var shiftLabel = archiveCurShift === 'both' ? 'Both shifts' : archiveCurShift + ' shift';
+    meta.textContent = archiveCurDate + ' · ' + shiftLabel + ' · ' + Object.keys(mergedMap).length + ' associates';
   }
   if (exportBtn) exportBtn.style.display = '';
 
   var TEAM = getTeamSet();
-  var types = ['replen','putaway','picking','packing','shipping','sorting'];
-  var cols = types.concat(['total']);
 
   // Sort
-  var rows = entry.associates.slice();
+  var rows = Object.values(mergedMap);
   var sc = archiveSortCol, asc = archiveSortAsc;
   rows.sort(function(a,b) {
     var av = sc === 'email' ? (a.email||'') : (a[sc]||0);
@@ -2650,13 +2667,25 @@ function renderArchiveTable() {
 
 function archiveExportCSV() {
   if (!archiveData || !archiveCurDate || !archiveCurShift) { alert('No archive data selected.'); return; }
-  var entry = archiveData.find(function(e){ return e.date === archiveCurDate && e.shift === archiveCurShift; });
-  if (!entry || !entry.associates.length) { alert('No data to export.'); return; }
+  var entries = archiveData.filter(function(e) {
+    if (e.date !== archiveCurDate) return false;
+    return archiveCurShift === 'both' ? true : e.shift === archiveCurShift;
+  });
+  if (!entries.length) { alert('No data to export.'); return; }
   var TEAM = getTeamSet();
   var types = ['replen','putaway','picking','packing','shipping','sorting'];
+  var mergedMap = {};
+  entries.forEach(function(entry) {
+    entry.associates.forEach(function(a) {
+      if (!mergedMap[a.email]) mergedMap[a.email] = {email:a.email,replen:0,putaway:0,picking:0,packing:0,shipping:0,sorting:0,total:0};
+      types.forEach(function(t){ mergedMap[a.email][t] += (a[t]||0); });
+      mergedMap[a.email].total += (a.total||0);
+    });
+  });
+  var rows = Object.values(mergedMap).sort(function(a,b){ return b.total - a.total; });
   var headers = ['Name','Email','On Roster','Replen','Putaway','Picking','Packing','Shipping','Sorting','Total'];
   var lines = [headers.join(',')];
-  entry.associates.forEach(function(a) {
+  rows.forEach(function(a) {
     var name = (a.email||'').split('@')[0];
     var onRoster = TEAM.has(a.email) ? 'Yes' : 'No';
     var vals = types.map(function(t){ return a[t]||0; });
