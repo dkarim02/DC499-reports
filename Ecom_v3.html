@@ -302,6 +302,32 @@
   .pph-input { width:100%; font-family:inherit; font-size:13px; padding:5px 8px; border:0.5px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); outline:none; text-align:right; }
   .pph-input:focus { border-color:#185FA5; }
 
+  /* ── ARCHIVE TAB ── */
+  .tab.active-archive { color: #9B4DCA; border-bottom-color: #9B4DCA; font-weight: 500; }
+  .arch-controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:1rem; }
+  .arch-date-select { font-family:inherit; font-size:13px; padding:7px 12px; border:0.5px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); outline:none; cursor:pointer; }
+  .arch-date-select:focus { border-color:#9B4DCA; }
+  .arch-shift-wrap { display:flex; align-items:center; gap:8px; }
+  .arch-shift-label { font-size:12px; color:var(--text-muted); white-space:nowrap; }
+  .arch-shift-slider { -webkit-appearance:none; appearance:none; width:80px; height:4px; border-radius:2px; background:var(--bar-bg); outline:none; cursor:pointer; }
+  .arch-shift-slider::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#9B4DCA; cursor:pointer; }
+  .arch-shift-val { font-size:13px; font-weight:500; color:#9B4DCA; min-width:28px; }
+  .arch-meta { font-size:12px; color:var(--text-hint); margin-bottom:1rem; }
+  .arch-summary { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:1rem; }
+  .arch-summary-tile { background:var(--surface2); border-radius:8px; padding:10px 6px; text-align:center; }
+  .arch-summary-label { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px; }
+  .arch-summary-val { font-size:16px; font-weight:500; color:var(--text); }
+  .arch-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .arch-table th { text-align:left; font-size:10px; font-weight:500; color:var(--text-muted); padding:7px 10px; border-bottom:0.5px solid var(--border-mid); text-transform:uppercase; letter-spacing:0.04em; cursor:pointer; user-select:none; white-space:nowrap; }
+  .arch-table th:hover { color:var(--text); }
+  .arch-table td { padding:8px 10px; border-bottom:0.5px solid var(--border-light); color:var(--text); }
+  .arch-table tr:last-child td { border-bottom:none; }
+  .arch-table tfoot td { font-weight:500; border-top:0.5px solid var(--border); border-bottom:none; padding-top:10px; }
+  .arch-table tr.on-roster td:first-child { font-weight:500; }
+  .arch-table tr.off-roster td { color:var(--text-muted); }
+  .arch-sort-arrow { font-size:9px; margin-left:3px; opacity:0.5; }
+  .arch-sort-arrow.active { opacity:1; color:#9B4DCA; }
+
   /* ── HEADCOUNT STEPPER ── */
   .hc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
   .hc-item { display:flex; flex-direction:column; gap:4px; }
@@ -363,6 +389,7 @@
     <div class="tabs-left" id="tabs-left">
       <button class="tab active-full" id="tab-full" draggable="true" onclick="switchTab('full')">&#x1F4CA; Full Report</button>
       <button class="tab" id="tab-live" draggable="true" onclick="switchTab('live')" style="color:var(--text-muted);">&#x26A1; Live</button>
+      <button class="tab" id="tab-archive" draggable="true" onclick="switchTab('archive')" style="color:var(--text-muted);">&#x1F4C5; Archive</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -399,6 +426,30 @@
     </div>
     <div id="live-content">
       <div class="full-empty">Loading live data...</div>
+    </div>
+  </div>
+
+  <!-- ARCHIVE TAB -->
+  <div class="tab-panel" id="panel-archive">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--text);">&#x1F4C5; Archive</div>
+        <div style="font-size:12px;color:var(--text-hint);margin-top:2px;" id="arch-meta">Select a date to view</div>
+      </div>
+      <button id="arch-export-btn" onclick="archiveExportCSV()" style="font-family:inherit;font-size:12px;padding:5px 12px;border:0.5px solid #0F6E56;border-radius:6px;background:#E1F5EE;color:#0F6E56;cursor:pointer;display:none;">&#x2B07; Export CSV</button>
+    </div>
+    <div class="arch-controls">
+      <select class="arch-date-select" id="arch-date-select" onchange="archiveSelectDate(this.value)">
+        <option value="">-- Select date --</option>
+      </select>
+      <div class="arch-shift-wrap">
+        <span class="arch-shift-label">Shift:</span>
+        <input class="arch-shift-slider" type="range" min="0" max="1" step="1" value="1" id="arch-shift-slider" oninput="archiveSelectShift(this.value)">
+        <span class="arch-shift-val" id="arch-shift-val">2nd</span>
+      </div>
+    </div>
+    <div id="arch-content">
+      <div class="full-empty">No archive data — select a date above.</div>
     </div>
   </div>
 
@@ -534,14 +585,16 @@ var ACTIVE_TAB_KEY = 'ecom_active_tab_v1';
 function switchTab(tab) {
   document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
   document.getElementById('tab-live').className = 'tab' + (tab === 'live' ? ' active-full' : '');
+  document.getElementById('tab-archive').className = 'tab' + (tab === 'archive' ? ' active-archive' : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['full','live','settings'].forEach(function(t) {
+  ['full','live','archive','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
   try { localStorage.setItem(ACTIVE_TAB_KEY, tab); } catch(e) {}
   if (tab === 'settings') { renderRoster(); renderHeadcountCard(); }
   if (tab === 'full') { renderFullReport(); }
   if (tab === 'live') { loadLiveData(); }
+  if (tab === 'archive') { loadArchiveData(); }
 }
 
 // ── LIVE TAB ───────────────────────────────────────────────────────────────────
@@ -2406,6 +2459,219 @@ function restoreTabOrder() {
   });
 })();
 
+// ── ARCHIVE ────────────────────────────────────────────
+var archiveData = null;          // full parsed ecom_history.json array
+var archiveCurDate = null;       // selected ISO date string
+var archiveCurShift = null;      // '1st' or '2nd'
+var archiveSortCol = 'total';    // column key for table sort
+var archiveSortAsc = false;
+
+function loadArchiveData() {
+  var base = getLiveBase();
+  var meta = document.getElementById('arch-meta');
+  if (meta) meta.textContent = 'Loading...';
+  fetch(base + '/ecom_history.json?_=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(d) {
+      archiveData = d;
+      populateArchiveDateSelect();
+    })
+    .catch(function(e) {
+      var content = document.getElementById('arch-content');
+      if (content) content.innerHTML = '<div class="full-empty">Could not load ecom_history.json.<br><small style="color:var(--text-hint);">' + e.message + '</small></div>';
+      if (meta) meta.textContent = 'Error';
+    });
+}
+
+function populateArchiveDateSelect() {
+  if (!archiveData) return;
+  var sel = document.getElementById('arch-date-select');
+  if (!sel) return;
+
+  // Collect unique dates, sorted newest first
+  var dates = [];
+  archiveData.forEach(function(e) { if (dates.indexOf(e.date) === -1) dates.push(e.date); });
+  dates.sort(function(a,b){ return b.localeCompare(a); });
+
+  sel.innerHTML = '<option value="">-- Select date --</option>';
+  dates.forEach(function(d) {
+    var opt = document.createElement('option');
+    opt.value = d;
+    // Format nicely: "Sep 16 (Mon)"
+    var dt = new Date(d + 'T12:00:00');
+    opt.textContent = dt.toLocaleDateString('en-US', {month:'short', day:'numeric', weekday:'short'});
+    sel.appendChild(opt);
+  });
+
+  // Default to most recent date, current shift
+  var defaultDate = dates[0] || '';
+  var defaultShift = getShift();
+
+  // Check if the shift exists for that date; fall back if not
+  var available = archiveData.filter(function(e){ return e.date === defaultDate; }).map(function(e){ return e.shift; });
+  if (available.length && available.indexOf(defaultShift) === -1) defaultShift = available[0];
+
+  sel.value = defaultDate;
+  archiveCurDate = defaultDate;
+  archiveCurShift = defaultShift;
+
+  var slider = document.getElementById('arch-shift-slider');
+  var shiftVal = document.getElementById('arch-shift-val');
+  if (slider) slider.value = defaultShift === '2nd' ? 1 : 0;
+  if (shiftVal) shiftVal.textContent = defaultShift;
+
+  renderArchiveTable();
+}
+
+function archiveSelectDate(val) {
+  archiveCurDate = val;
+  // If current shift doesn't exist for new date, pick first available
+  if (val) {
+    var available = archiveData.filter(function(e){ return e.date === val; }).map(function(e){ return e.shift; });
+    if (available.length && available.indexOf(archiveCurShift) === -1) {
+      archiveCurShift = available[0];
+      var slider = document.getElementById('arch-shift-slider');
+      var shiftVal = document.getElementById('arch-shift-val');
+      if (slider) slider.value = archiveCurShift === '2nd' ? 1 : 0;
+      if (shiftVal) shiftVal.textContent = archiveCurShift;
+    }
+  }
+  renderArchiveTable();
+}
+
+function archiveSelectShift(val) {
+  archiveCurShift = val === '1' ? '2nd' : '1st';
+  var shiftVal = document.getElementById('arch-shift-val');
+  if (shiftVal) shiftVal.textContent = archiveCurShift;
+  renderArchiveTable();
+}
+
+function archiveSortBy(col) {
+  if (archiveSortCol === col) { archiveSortAsc = !archiveSortAsc; }
+  else { archiveSortCol = col; archiveSortAsc = col === 'email'; }
+  renderArchiveTable();
+}
+
+function renderArchiveTable() {
+  var content = document.getElementById('arch-content');
+  var meta = document.getElementById('arch-meta');
+  var exportBtn = document.getElementById('arch-export-btn');
+  if (!content) return;
+
+  if (!archiveCurDate) {
+    content.innerHTML = '<div class="full-empty">Select a date above.</div>';
+    if (exportBtn) exportBtn.style.display = 'none';
+    return;
+  }
+
+  var entry = archiveData && archiveData.find(function(e){ return e.date === archiveCurDate && e.shift === archiveCurShift; });
+  if (!entry) {
+    content.innerHTML = '<div class="full-empty">No data for ' + archiveCurDate + ' ' + archiveCurShift + ' shift.</div>';
+    if (meta) meta.textContent = archiveCurDate + ' · ' + archiveCurShift + ' shift · no data';
+    if (exportBtn) exportBtn.style.display = 'none';
+    return;
+  }
+
+  if (meta) {
+    var gen = entry.generated ? new Date(entry.generated).toLocaleString('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '';
+    meta.textContent = archiveCurDate + ' · ' + archiveCurShift + ' shift · ' + entry.associates.length + ' associates' + (gen ? ' · snapshot ' + gen : '');
+  }
+  if (exportBtn) exportBtn.style.display = '';
+
+  var TEAM = getTeamSet();
+  var types = ['replen','putaway','picking','packing','shipping','sorting'];
+  var cols = types.concat(['total']);
+
+  // Sort
+  var rows = entry.associates.slice();
+  var sc = archiveSortCol, asc = archiveSortAsc;
+  rows.sort(function(a,b) {
+    var av = sc === 'email' ? (a.email||'') : (a[sc]||0);
+    var bv = sc === 'email' ? (b.email||'') : (b[sc]||0);
+    if (av < bv) return asc ? -1 : 1;
+    if (av > bv) return asc ? 1 : -1;
+    return 0;
+  });
+
+  // Summary tiles
+  var totals = {};
+  types.forEach(function(t){ totals[t] = entry.associates.reduce(function(s,a){ return s+(a[t]||0); },0); });
+  var grandTotal = types.reduce(function(s,t){ return s+totals[t]; },0);
+
+  var COLORS = FULL_COLORS;
+  var LABELS = FULL_LABELS;
+
+  var html = '<div class="arch-summary">';
+  types.forEach(function(t) {
+    html += '<div class="arch-summary-tile">';
+    html += '<div class="arch-summary-label" style="color:'+COLORS[t]+';">'+LABELS[t]+'</div>';
+    html += '<div class="arch-summary-val">'+totals[t].toLocaleString()+'</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Table
+  function sortArrow(col) {
+    var active = archiveSortCol === col;
+    var arrow = active ? (archiveSortAsc ? '&#x25B2;' : '&#x25BC;') : '&#x25BC;';
+    return '<span class="arch-sort-arrow'+(active?' active':'')+'">'+arrow+'</span>';
+  }
+
+  html += '<div class="card" style="padding:0;overflow:hidden;">';
+  html += '<table class="arch-table"><thead><tr>';
+  html += '<th onclick="archiveSortBy(\'email\')">Associate '+sortArrow('email')+'</th>';
+  types.forEach(function(t) {
+    html += '<th onclick="archiveSortBy(\''+t+'\')" style="text-align:right;color:'+COLORS[t]+';">'+LABELS[t]+' '+sortArrow(t)+'</th>';
+  });
+  html += '<th onclick="archiveSortBy(\'total\')" style="text-align:right;">Total '+sortArrow('total')+'</th>';
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(function(a) {
+    var onRoster = TEAM.has(a.email);
+    var name = (a.email||'').split('@')[0];
+    html += '<tr class="'+(onRoster?'on-roster':'off-roster')+'">';
+    html += '<td title="'+a.email+'">'+name+(onRoster?'':' <span style="font-size:10px;color:var(--text-hint);">(not on roster)</span>')+'</td>';
+    types.forEach(function(t) {
+      var v = a[t]||0;
+      html += '<td style="text-align:right;color:'+(v>0?COLORS[t]:'var(--text-hint)')+';">'+(v>0?v.toLocaleString():'—')+'</td>';
+    });
+    html += '<td style="text-align:right;font-weight:500;">'+(a.total||0).toLocaleString()+'</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody><tfoot><tr>';
+  html += '<td>Total</td>';
+  types.forEach(function(t){ html += '<td style="text-align:right;">'+totals[t].toLocaleString()+'</td>'; });
+  html += '<td style="text-align:right;">'+grandTotal.toLocaleString()+'</td>';
+  html += '</tr></tfoot></table></div>';
+
+  content.innerHTML = html;
+}
+
+function archiveExportCSV() {
+  if (!archiveData || !archiveCurDate || !archiveCurShift) { alert('No archive data selected.'); return; }
+  var entry = archiveData.find(function(e){ return e.date === archiveCurDate && e.shift === archiveCurShift; });
+  if (!entry || !entry.associates.length) { alert('No data to export.'); return; }
+  var TEAM = getTeamSet();
+  var types = ['replen','putaway','picking','packing','shipping','sorting'];
+  var headers = ['Name','Email','On Roster','Replen','Putaway','Picking','Packing','Shipping','Sorting','Total'];
+  var lines = [headers.join(',')];
+  entry.associates.forEach(function(a) {
+    var name = (a.email||'').split('@')[0];
+    var onRoster = TEAM.has(a.email) ? 'Yes' : 'No';
+    var vals = types.map(function(t){ return a[t]||0; });
+    lines.push([name, a.email, onRoster].concat(vals).concat([a.total||0]).join(','));
+  });
+  var csv = lines.join('\r\n');
+  var blob = new Blob([csv], {type:'text/csv'});
+  var url = URL.createObjectURL(blob);
+  var el = document.createElement('a');
+  el.href = url;
+  el.download = 'ecom_archive_' + archiveCurShift + '_' + archiveCurDate + '.csv';
+  document.body.appendChild(el); el.click(); document.body.removeChild(el);
+  URL.revokeObjectURL(url);
+}
+
 // ── INIT ───────────────────────────────────────────────
 document.getElementById('last-updated').textContent = new Date().toLocaleDateString();
 restoreTabOrder();
@@ -2414,7 +2680,7 @@ renderRoster();
 renderHeadcountCard();
 (function() {
   var saved; try { saved = localStorage.getItem(ACTIVE_TAB_KEY); } catch(e) {}
-  switchTab(saved && ['full','live','settings'].indexOf(saved) !== -1 ? saved : 'full');
+  switchTab(saved && ['full','live','archive','settings'].indexOf(saved) !== -1 ? saved : 'full');
 })();
 fetchBacklogStrip();
 </script>
