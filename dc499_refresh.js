@@ -1592,6 +1592,7 @@ FROM default_task.TSK_TASK
 WHERE FACILITY_ID = '${FACILITY}'
   AND STATUS != '9000'
   AND LEFT(SOURCE_LOCATION_ID, 3) IN ('R1B','R1C','R1D','R1E','R1F')
+  AND TRANSACTION_ID IN ('iLPN Replen Pull','iLPN Replen Pull Large','iLPN Replen Fill','iLPN Replen Fill Large')
   AND TASK_ID NOT LIKE 'CC%'
   AND (
     CREATED_TIMESTAMP >= '${startStr}'
