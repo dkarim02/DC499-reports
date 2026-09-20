@@ -303,6 +303,7 @@ SELECT
   t.CONTAINER_ID                                         AS \`Container ID\`,
   t.SOURCE_LOCATION_ID                                   AS \`Current Location\`,
   ''                                                     AS \`Previous Location\`,
+  t.TARGET_LOCATION_ID                                   AS \`Target Location\`,
   t.CRITERIA_ID                                          AS \`Criteria\`
 FROM default_task.TSK_ACTIVITY_TRACKING t
 WHERE t.FACILITY_ID = '${FACILITY}'
@@ -326,8 +327,9 @@ function updateEcomHistory(rows, shift, shiftStartUtcStr) {
   function emp(r) { return (r['Employee'] || '').trim().toLowerCase(); }
   function zone3(loc) { return loc && loc.length >= 3 ? loc[2].toUpperCase() : null; }
   function isZoneH(r) {
-    const z = zone3(r['Current Location']) ?? zone3(r['Previous Location']);
-    return z === 'H';
+    return zone3(r['Current Location']) === 'H'
+        || zone3(r['Previous Location']) === 'H'
+        || zone3(r['Target Location']) === 'H';
   }
 
   rows.forEach(r => {

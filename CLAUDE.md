@@ -351,6 +351,16 @@ Storage key: `rs_weekly_v1`. Per-day payload includes `employees: {email: {pick_
 
 ---
 
+## Page transitions (Menu_v2.0.html + all dept pages)
+
+**Menu exit:** `openApp()` adds `.is-exiting` to body, waits 420ms, then navigates. CSS keyframes (`blobExit-*`) collapse blobs to center; `.content` fades out.
+**Menu entrance:** `is-entering` class added at init, removed after 700ms. CSS keyframes (`blobEnter-*`) burst blobs from center to corners.
+**`applyTheme()`:** Preserves `is-entering`/`is-exiting` classes before reassigning `body.className` — never wipe animation state when switching themes.
+**Dept page entrance:** All pages have `@keyframes pageEnter` + `body { animation: pageEnter 0.28s ease-out both; }` at the bottom of their `<style>` block.
+**Blob-only:** Entrance/exit animations are scout-theme-aware but live in base CSS — they run on all themes (blobs are just dim on light).
+
+---
+
 ## Remi sprite
 
 Animated MP4 (`remi.mp4`) along top of progress bars. `mix-blend-mode:multiply` removes white bg. `clip-path:inset(4px 6px 6px 6px)`. Speed: 45px/s, `scaleX(-1)` on direction change. Toggle: `dc499_remi_enabled_v1` localStorage. **Video elements must be in DOM BEFORE `<script>` block.**

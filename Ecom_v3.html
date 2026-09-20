@@ -1131,11 +1131,12 @@ function getLocationZone(loc) {
 function rowBelongsToEcom(r) {
   var txId = (r['Transaction ID'] || '').trim();
   if (SHARED_TX.indexOf(txId) === -1) return true; // not shared — trust transaction ID
-  var curZone = getLocationZone(r['Current Location']);
-  if (curZone !== null) return curZone !== 'H'; // Current Location wins
-  var prevZone = getLocationZone(r['Previous Location']);
-  if (prevZone !== null) return prevZone !== 'H'; // Previous as fallback
-  return true; // both blank — default to Ecom
+  // zone H in any location field (source, previous, or target) = retail, exclude
+  var locs = [r['Current Location'], r['Previous Location'], r['Target Location']];
+  for (var i = 0; i < locs.length; i++) {
+    if (getLocationZone(locs[i]) === 'H') return false;
+  }
+  return true;
 }
 
 var FULL_TX = {
