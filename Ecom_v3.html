@@ -2526,13 +2526,10 @@ function populateArchiveDateSelect() {
     sel.appendChild(opt);
   });
 
-  // Default to most recent date, current shift
+  // Default to most recent date; prefer 2nd shift if available, else 1st
   var defaultDate = dates[0] || '';
-  var defaultShift = getShift();
-
-  // Check if the shift exists for that date; fall back if not
   var available = archiveData.filter(function(e){ return e.date === defaultDate; }).map(function(e){ return e.shift; });
-  if (available.length && available.indexOf(defaultShift) === -1) defaultShift = available[0];
+  var defaultShift = available.indexOf('2nd') !== -1 ? '2nd' : (available[0] || '2nd');
 
   sel.value = defaultDate;
   archiveCurDate = defaultDate;

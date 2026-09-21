@@ -234,6 +234,13 @@ function jsonPost(url, body, headers = {}) {
   });
 }
 async function acquireQueryLock() {
+  // Clear stale lock left by a previously killed process
+  try {
+    const pid = parseInt(fs.readFileSync(QUERY_LOCK_FILE, 'utf8'));
+    if (pid && pid !== process.pid) {
+      try { process.kill(pid, 0); } catch { fs.unlinkSync(QUERY_LOCK_FILE); } // process gone — clear it
+    }
+  } catch {}
   const deadline = Date.now() + 60000;
   while (Date.now() < deadline) {
     try { fs.writeFileSync(QUERY_LOCK_FILE, String(process.pid), { flag: 'wx' }); return true; } catch {}
@@ -340,7 +347,8 @@ function updateEcomHistory(rows, shift, shiftStartUtcStr) {
     const m = empMap[e];
 
     if (tx === 'iLPN Replen Fill' || tx === 'iLPN Replen Fill Large') {
-      if (!isZoneH(r)) m.replen += parseFloat(r['Completed Quantity']) || 0;
+      const curLoc = (r['Current Location'] || '').trim();
+      if (!isZoneH(r) && !/^P1-PK/i.test(curLoc)) m.replen += parseFloat(r['Completed Quantity']) || 0;
     } else if (tx === 'System Directed Putaway' || tx === 'User Directed Putaway') {
       if (!isZoneH(r)) m.putaway += 1;
     } else if (tx === 'Ecom Mezz Pick To Putwall Cart' || tx === 'Ecom Non-Mezz Pick To Putwall Cart' || tx === 'Ecom Singles Bulk LPN Pick') {
@@ -439,7 +447,8 @@ async function fetchEcomLive(accessToken) {
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
   console.log(`[${ts()}] ✓ ecom_live.json written (${rows.length} rows, ${shift} shift)`);
 
-  updateEcomHistory(rows, shift, shiftStart);
+  try { updateEcomHistory(rows, shift, shiftStart); }
+  catch (e) { console.error(`[${ts()}] ⚠ ecom_history.json update failed: ${e.message}`); }
 
   // Git push handled by dc499_refresh.js (single coordinator — avoids concurrent push collisions)
   console.log(`[${ts()}] ecom_live.json ready — dc499_refresh will push on next cycle`);
