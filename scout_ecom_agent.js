@@ -321,7 +321,6 @@ ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 
 // ── history snapshot ───────────────────────────────────────────────────────────
 function updateEcomHistory(rows, shift, shiftStartUtcStr) {
-  const ZONE_H_TX = ['System Directed Putaway','User Directed Putaway','iLPN Replen Fill','iLPN Replen Fill Large'];
   const SORT_CRITERIA = 'NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA';
   const SHIPPING_2ND = 'OB Putaway By Ship Via';
   const SHIPPING_1ST = 'NRDR Load Parcel Packages';
@@ -332,12 +331,6 @@ function updateEcomHistory(rows, shift, shiftStartUtcStr) {
   const shippingContainers = {}; // emp -> Set<containerID>
 
   function emp(r) { return (r['Employee'] || '').trim().toLowerCase(); }
-  function zone3(loc) { return loc && loc.length >= 3 ? loc[2].toUpperCase() : null; }
-  function isZoneH(r) {
-    return zone3(r['Current Location']) === 'H'
-        || zone3(r['Previous Location']) === 'H'
-        || zone3(r['Target Location']) === 'H';
-  }
 
   rows.forEach(r => {
     const e = emp(r);
@@ -348,9 +341,9 @@ function updateEcomHistory(rows, shift, shiftStartUtcStr) {
 
     if (tx === 'iLPN Replen Fill' || tx === 'iLPN Replen Fill Large') {
       const curLoc = (r['Current Location'] || '').trim();
-      if (!isZoneH(r) && !/^P1-PK/i.test(curLoc)) m.replen += parseFloat(r['Completed Quantity']) || 0;
+      if (!/^P1-PK/i.test(curLoc)) m.replen += parseFloat(r['Completed Quantity']) || 0;
     } else if (tx === 'System Directed Putaway' || tx === 'User Directed Putaway') {
-      if (!isZoneH(r)) m.putaway += 1;
+      m.putaway += 1;
     } else if (tx === 'Ecom Mezz Pick To Putwall Cart' || tx === 'Ecom Non-Mezz Pick To Putwall Cart' || tx === 'Ecom Singles Bulk LPN Pick') {
       m.picking += parseFloat(r['Quantity']) || 0;
     } else if (tx === 'NRDR CORE PACK FOR ECOM PACK STATION') {
