@@ -552,7 +552,8 @@
   .rr-order-chips{display:flex;flex-wrap:wrap;gap:5px;}
   .rr-order-chip{font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border);font-family:monospace;}
   .rr-no-task{font-size:12px;font-weight:600;color:var(--red);padding:5px 8px;background:var(--red-bg,#2e1a1a);border:0.5px solid var(--red-border,#6b2020);border-radius:5px;display:inline-block;margin-top:4px;}
-  .tk-zone-header td{background:var(--surface2,#1a1e2a);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-hint);padding:4px 6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+  .tk-zone-header td{background:var(--surface2,#1a1e2a);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-hint);padding:4px 6px;border-top:1px solid var(--border);}
+  .tk-zone-pct{float:right;font-size:11px;font-weight:600;color:var(--text-hint);}
   .tk-zone-header td .tk-zone-name{font-size:12px;font-weight:700;color:var(--text-muted);font-family:monospace;}
   .tk-zone-header td .tk-zone-count{font-size:11px;font-weight:600;color:var(--accent);margin-left:8px;}
   [data-theme="light"] .tk-zone-header td{background:#f0f2f7;}
@@ -2770,11 +2771,9 @@ function renderTaskTable(type) {
     var zoneCount = zoneTasks.length;
     var zonePct = filtered.length ? Math.round(zoneCount / filtered.length * 100) : 0;
     rows += '<tr class="tk-zone-header"><td colspan="6">'
-      + '<span>'
+      + '<span class="tk-zone-pct">' + zonePct + '% of total</span>'
       + '<span class="tk-zone-name">' + zone + '</span>'
       + '<span class="tk-zone-count">Tasks: ' + zoneCount + '</span>'
-      + '</span>'
-      + '<span style="font-size:11px;font-weight:600;color:var(--text-hint);">' + zonePct + '% of total</span>'
       + '</td></tr>';
     for (var ti = 0; ti < zoneTasks.length; ti++) {
       var t = zoneTasks[ti];
