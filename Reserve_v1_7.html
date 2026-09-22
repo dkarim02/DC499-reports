@@ -234,6 +234,7 @@
   .full-bar-pick2{background:#D97706;}
   .full-bar-replen{background:#6366F1;}
   .full-bar-putaway{background:#059669;}
+  .full-bar-bulk-lpn{background:#E11D48;}
   .full-empty{text-align:center;padding:2rem;color:var(--text-hint);font-size:13px;}
   .full-meta{font-size:11px;color:var(--text-hint);margin-bottom:1rem;}
   .full-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
@@ -513,10 +514,10 @@ function setShift(shift) {
   if (typeof renderPPHSection    === 'function') renderPPHSection();
 }
 
-let charts = {pick:null,pick2:null,replen:null,putaway:null};
-const chartModes = {pick:'smooth',pick2:'smooth',replen:'smooth',putaway:'smooth'};
-const chartData = {pick:{labels:[],data:[]},pick2:{labels:[],data:[]},replen:{labels:[],data:[]},putaway:{labels:[],data:[]}};
-const lastUpload = {pick:{rows:null,fileName:null},pick2:{rows:null,fileName:null},replen:{rows:null,fileName:null},putaway:{rows:null,fileName:null}};
+let charts = {pick:null,pick2:null,replen:null,putaway:null,bulk_lpn:null};
+const chartModes = {pick:'smooth',pick2:'smooth',replen:'smooth',putaway:'smooth',bulk_lpn:'smooth'};
+const chartData = {pick:{labels:[],data:[]},pick2:{labels:[],data:[]},replen:{labels:[],data:[]},putaway:{labels:[],data:[]},bulk_lpn:{labels:[],data:[]}};
+const lastUpload = {pick:{rows:null,fileName:null},pick2:{rows:null,fileName:null},replen:{rows:null,fileName:null},putaway:{rows:null,fileName:null},bulk_lpn:{rows:null,fileName:null}};
 
 // Full Report
 var fullReportRows = [];
@@ -525,14 +526,15 @@ var fullReportKeysByFile = {};
 var _activeTile = null;
 
 var RES_TX = {
-  pick:   ['Non Haz Retail Pick To oLPN Cart'],
-  pick2:  ['Non Haz Retail Pick To oLPN Cart Floor 2'],
-  replen: ['iLPN Replen Fill','iLPN Replen Fill Large'],
-  putaway:['System Directed Putaway','User Directed Putaway']
+  pick:     ['Non Haz Retail Pick To oLPN Cart'],
+  pick2:    ['Non Haz Retail Pick To oLPN Cart Floor 2'],
+  replen:   ['iLPN Replen Fill','iLPN Replen Fill Large'],
+  putaway:  ['System Directed Putaway','User Directed Putaway'],
+  bulk_lpn: ['RETAIL_BULK_LPN_PICK','Retail Full LPN Pick','Retail Full LPN Pick Floor 2']
 };
-var RES_COLORS = {pick:'#0891B2',pick2:'#D97706',replen:'#6366F1',putaway:'#059669'};
-var RES_LABELS = {pick:'Pick F1',pick2:'Pick F2',replen:'Replenishment',putaway:'Putaway'};
-var RES_METRIC = {pick:'Quantity',pick2:'Quantity',replen:'Completed Quantity',putaway:'Completed Quantity'};
+var RES_COLORS = {pick:'#0891B2',pick2:'#D97706',replen:'#6366F1',putaway:'#059669',bulk_lpn:'#E11D48'};
+var RES_LABELS = {pick:'Pick F1',pick2:'Pick F2',replen:'Replenishment',putaway:'Putaway',bulk_lpn:'Full LPN Pick'};
+var RES_METRIC = {pick:'Quantity',pick2:'Quantity',replen:'Completed Quantity',putaway:'Completed Quantity',bulk_lpn:'Quantity'};
 
 // ── THEME ──────────────────────────────────────────────
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
@@ -674,7 +676,7 @@ function filterRoster(query) {
 
 // ── REPROCESS ALL ──────────────────────────────────────
 function reprocessAll() {
-  ['pick','pick2','replen','putaway'].forEach(function(type) {
+  ['pick','pick2','replen','putaway','bulk_lpn'].forEach(function(type) {
     const u = lastUpload[type];
     if (u && u.rows && u.fileName) processData(u.rows, u.fileName, type);
   });
@@ -707,14 +709,14 @@ function processFullFile(file) {
 }
 
 // ── HEADCOUNT + PPH ────────────────────────────────────
-var HC_DEPTS = ['pick','pick2','replen','putaway'];
-var HC_LABELS = {pick:'Pick F1', pick2:'Pick F2', replen:'Replenishment', putaway:'Putaway'};
+var HC_DEPTS = ['pick','pick2','replen','putaway','bulk_lpn'];
+var HC_LABELS = {pick:'Pick F1', pick2:'Pick F2', replen:'Replenishment', putaway:'Putaway', bulk_lpn:'Full LPN Pick'};
 function hcKey()         { return 'rs_headcount_v1_'  + getShift(); }
 function pphKeyRS()      { return 'rs_pph_v1_'         + getShift(); }
 function shiftHoursKey() { return 'rs_shift_hours_v1_' + getShift(); }
 
-var FIN_FCST_PPH_RS = {pick:93.1, pick2:93.1, replen:83.4, putaway:14.0};
-var MIN_TX_RS = {pick:5, pick2:5, replen:5, putaway:3};
+var FIN_FCST_PPH_RS = {pick:93.1, pick2:93.1, replen:83.4, putaway:14.0, bulk_lpn:0};
+var MIN_TX_RS = {pick:5, pick2:5, replen:5, putaway:3, bulk_lpn:3};
 
 function loadHeadcount() {
   try { var s = localStorage.getItem(hcKey()); if (s) return JSON.parse(s); } catch(e) {}
@@ -1352,14 +1354,16 @@ function drawFullChart(filterTyp, typesOverride) {
   }
 
   if(!filterTyp && !typesOverride) {
-    // Default: 3 merged lines — Picking (F1+F2), Replen, Putaway
+    // Default: 4 merged lines — Picking (F1+F2), Replen, Putaway, Full LPN Pick
     var pickMap=buildMap(['pick','pick2']);
     var replenMap=buildMap(['replen']);
     var putawayMap=buildMap(['putaway']);
+    var bulkMap=buildMap(['bulk_lpn']);
     datasets=[
       {rawTypes:['pick','pick2'],map:pickMap,   label:'Picking',       color:'#0891B2'},
       {rawTypes:['replen'],      map:replenMap,  label:'Replenishment', color:RES_COLORS.replen},
-      {rawTypes:['putaway'],     map:putawayMap, label:'Putaway',       color:RES_COLORS.putaway}
+      {rawTypes:['putaway'],     map:putawayMap, label:'Putaway',       color:RES_COLORS.putaway},
+      {rawTypes:['bulk_lpn'],    map:bulkMap,    label:'Full LPN Pick', color:RES_COLORS.bulk_lpn}
     ];
   } else if(filterTyp==='picking' || (typesOverride&&typesOverride.length===2&&typesOverride[0]==='pick')) {
     // Picking tile clicked: single merged Picking line
@@ -1445,6 +1449,12 @@ function renderFullReport() {
     }
     html+='</div>';
   })();
+  // Full LPN Pick tile — spans full width
+  var bulkLpnMeta=fullReportRows.filter(function(r){return RES_TX.bulk_lpn.indexOf((r['Transaction ID']||'').trim())!==-1;}).reduce(function(s,r){var e=(r['Employee']||'').trim();if(!TEAM.has(e))return s;return s+(parseFloat(r['Quantity'])||0);},0);
+  html+='<div class="full-tile" id="tile-bulk_lpn" data-typ="bulk_lpn" onclick="clickTile(this.dataset.typ)" style="color:'+RES_COLORS.bulk_lpn+';grid-column:span 2;">';
+  html+='<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Full LPN Pick</div>';
+  html+='<div style="font-size:18px;font-weight:500;color:var(--text);">'+bulkLpnMeta.toLocaleString()+'</div>';
+  html+='</div>';
   html+='</div></div>';
   html+='<div id="full-side-panel" class="full-side-panel"></div>';
   // Chart
@@ -1452,7 +1462,7 @@ function renderFullReport() {
   html+='<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;">Activity by Hour</div>';
   html+='<div style="position:relative;height:220px;"><canvas id="chart-full"></canvas></div>';
   html+='<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;justify-content:center;">';
-  [{label:'Picking',color:'#0891B2'},{label:'Replenishment',color:RES_COLORS.replen},{label:'Putaway',color:RES_COLORS.putaway}]
+  [{label:'Picking',color:'#0891B2'},{label:'Replenishment',color:RES_COLORS.replen},{label:'Putaway',color:RES_COLORS.putaway},{label:'Full LPN Pick',color:RES_COLORS.bulk_lpn}]
     .forEach(function(d){html+='<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);"><span style="width:12px;height:3px;background:'+d.color+';display:inline-block;border-radius:2px;"></span>'+d.label+'</span>';});
   html+='</div></div>';
   // Dept cards
@@ -1530,6 +1540,15 @@ function renderFullReport() {
     renderDeptCard('Putaway',RES_COLORS.putaway,'full-bar-putaway','putaway',sorted,grand);
   })();
 
+  // ── Full LPN Pick card ──
+  (function(){
+    var totals={};
+    fullReportRows.filter(function(r){return RES_TX.bulk_lpn.indexOf((r['Transaction ID']||'').trim())!==-1;})
+      .forEach(function(r){var e=(r['Employee']||'').trim();if(TEAM.has(e))totals[e]=(totals[e]||0)+(parseFloat(r['Quantity'])||0);});
+    var sorted=Object.entries(totals).sort(function(a,b){return b[1]-a[1];}),grand=sorted.reduce(function(s,v){return s+v[1];},0);
+    renderDeptCard('Full LPN Pick',RES_COLORS.bulk_lpn,'full-bar-bulk-lpn','bulk_lpn',sorted,grand);
+  })();
+
   html+='</div>';
   panel.innerHTML=html;
   setTimeout(function(){drawFullChart();},50);
@@ -1539,7 +1558,7 @@ function renderFullReport() {
 var rsLiveData = null;
 var _activeLiveTile = null;
 
-var RS_LIVE_TILE_KEYS = ['picking','replen','putaway'];
+var RS_LIVE_TILE_KEYS = ['picking','replen','putaway','bulk_lpn'];
 
 function getLiveBase() {
   return window.location.protocol === 'file:'
@@ -1662,18 +1681,33 @@ function renderLiveReport(d) {
     html += '</div>';
   })();
 
+  // Full LPN Pick tile — spans full width
+  (function() {
+    var bulkGrand = 0;
+    Object.keys(d.associates).forEach(function(emp) {
+      if (TEAM.has(emp)) bulkGrand += (d.associates[emp].bulk_lpn || 0);
+    });
+    var isActive = _activeLiveTile === 'bulk_lpn';
+    html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="bulk_lpn" onclick="clickLiveTile(this.dataset.livtyp)" style="color:#E11D48;cursor:pointer;grid-column:span 2;">';
+    html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Full LPN Pick</div>';
+    html += '<div style="font-size:18px;font-weight:500;color:var(--text);">' + bulkGrand.toLocaleString() + '</div>';
+    html += '</div>';
+  })();
+
   html += '</div></div>';
 
   // ── Per-dept associate cards (shown when tile is active) ──
   // Cards: 'picking' (merged F1+F2), 'replen', 'putaway'
   var LIVE_CARD_DEFS = [
-    { key:'picking', label:'Picking', color:'#0891B2', barClass:'full-bar-pick',
+    { key:'picking',  label:'Picking', color:'#0891B2', barClass:'full-bar-pick',
       getVal: function(assoc) { return (assoc.pick_f1||0) + (assoc.pick_f2||0); } },
-    { key:'replen',  label:'Replenishment', color:'#6366F1', barClass:'full-bar-replen',
+    { key:'replen',   label:'Replenishment', color:'#6366F1', barClass:'full-bar-replen',
       getVal: function(assoc) { return assoc.replen||0; },
       getSubVal: function(assoc) { return assoc.replen_containers||0; } },
-    { key:'putaway', label:'Putaway', color:'#059669', barClass:'full-bar-putaway',
+    { key:'putaway',  label:'Putaway', color:'#059669', barClass:'full-bar-putaway',
       getVal: function(assoc) { return assoc.putaway||0; } },
+    { key:'bulk_lpn', label:'Full LPN Pick', color:'#E11D48', barClass:'full-bar-bulk-lpn',
+      getVal: function(assoc) { return assoc.bulk_lpn||0; } },
   ];
 
   html += '<div>';
@@ -2018,7 +2052,7 @@ function renderScorecard(d) {
   }
   function getTotalUnits(emp) {
     var a = assoc[emp]; if (!a) return 0;
-    return (a.pick_f1||0) + (a.pick_f2||0) + (a.replen||0) + (a.putaway||0);
+    return (a.pick_f1||0) + (a.pick_f2||0) + (a.replen||0) + (a.putaway||0) + (a.bulk_lpn||0);
   }
   function vClass(v) {
     if (!v) return 'sc-v-0';
@@ -2193,10 +2227,11 @@ function renderScorecard(d) {
     })();
 
     var depts = [
-      {label:'Pick F1',val:a.pick_f1||0,color:'#0891B2'},
-      {label:'Pick F2',val:a.pick_f2||0,color:'#D97706'},
-      {label:'Replen', val:a.replen||0, color:'#6366F1'},
-      {label:'Putaway',val:a.putaway||0,color:'#059669'},
+      {label:'Pick F1',    val:a.pick_f1||0,  color:'#0891B2'},
+      {label:'Pick F2',    val:a.pick_f2||0,  color:'#D97706'},
+      {label:'Replen',     val:a.replen||0,   color:'#6366F1'},
+      {label:'Putaway',    val:a.putaway||0,  color:'#059669'},
+      {label:'Full LPN',   val:a.bulk_lpn||0, color:'#E11D48'},
     ].filter(function(x){return x.val>0;});
     if (depts.length) {
       h += '<div class="sc-dept-chips">';

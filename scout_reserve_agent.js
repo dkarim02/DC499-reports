@@ -69,6 +69,13 @@ const RS_GROUPS = [
     metric: 'COMPLETED_QUANTITY',
     zoneH:  true,
   },
+  {
+    key:    'bulk_lpn',
+    label:  'Full LPN Pick',
+    txIds:  ['RETAIL_BULK_LPN_PICK', 'Retail Full LPN Pick', 'Retail Full LPN Pick Floor 2'],
+    metric: 'QUANTITY',
+    zoneH:  false,
+  },
 ];
 
 // ── OAuth ───────────────────────────────────────────────────────────────────────
@@ -312,8 +319,8 @@ async function fetchReserveLive(accessToken) {
   console.log(`[${ts()}] Reserve Live — ${shift} shift, since ${shiftStart}`);
 
   const associates = {};
-  const totals     = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, replen_containers: 0 };
-  const rowCounts  = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0 };
+  const totals     = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, bulk_lpn: 0, replen_containers: 0 };
+  const rowCounts  = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, bulk_lpn: 0 };
 
   console.log(`[${ts()}] Querying all groups in parallel...`);
   const results = await Promise.all(RS_GROUPS.map(async group => {
@@ -332,7 +339,7 @@ async function fetchReserveLive(accessToken) {
     for (const row of rows) {
       const emp = row.Employee;
       const qty = Math.round(Number(row.total_qty) || 0);
-      if (!associates[emp]) associates[emp] = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0 };
+      if (!associates[emp]) associates[emp] = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, bulk_lpn: 0 };
       associates[emp][group.key] = qty;
       totals[group.key] += qty;
       if (group.containerCount) {
@@ -355,7 +362,7 @@ async function fetchReserveLive(accessToken) {
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
   console.log(`[${ts()}] ✓ reserve_live.json written`);
-  console.log(`[${ts()}]   Pick F1: ${totals.pick_f1}  Pick F2: ${totals.pick_f2}  Replen: ${totals.replen}  Putaway: ${totals.putaway}`);
+  console.log(`[${ts()}]   Pick F1: ${totals.pick_f1}  Pick F2: ${totals.pick_f2}  Replen: ${totals.replen}  Putaway: ${totals.putaway}  Bulk LPN: ${totals.bulk_lpn}`);
 
   // Git push handled by dc499_refresh.js (single coordinator — avoids concurrent push collisions)
   console.log(`[${ts()}] reserve_live.json ready — dc499_refresh will push on next cycle`);
