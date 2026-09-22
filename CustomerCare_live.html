@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC Pick List v1.0 -- DC499</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e0e0e0;
+    --text:#111827;--text-muted:#555;--text-hint:#999;
+    --accent:#185FA5;--accent-bg:#e8f0fb;--accent-muted:#91b8e8;
+    --green:#15803d;--amber:#b45309;--red:#b91c1c;
+    --box-green:#16a34a;--box-amber:#d97706;--box-red:#dc2626;--box-grey:#9ca3af;
+  }
+  [data-theme="dark"]{
+    --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#404040;
+    --text:#f4f4f2;--text-muted:#aaa;--text-hint:#666;
+    --accent-bg:#0d2340;--accent-muted:#5B9BD5;
+    --green:#4ade80;--amber:#fbbf24;--red:#f87171;
+    --box-green:#22c55e;--box-amber:#f59e0b;--box-red:#ef4444;--box-grey:#6b7280;
+  }
+  [data-theme="solid"]{
+    --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;
+    --text:#edf0fa;--text-muted:#8090b0;--text-hint:#4a5570;
+    --accent-bg:#0d2340;--accent-muted:#5B9BD5;
+    --green:#4ade80;--amber:#fbbf24;--red:#f87171;
+    --box-green:#22c55e;--box-amber:#f59e0b;--box-red:#ef4444;--box-grey:#6b7280;
+  }
+  [data-theme="pastel"]{
+    --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
+    --text:#e8e4f8;--text-muted:#9b9aaa;--text-hint:#565670;
+    --accent:#7ecec4;--accent-bg:#152e2c;--accent-muted:#7ecec4;
+    --green:#86efac;--amber:#fde68a;--red:#fca5a5;
+    --box-green:#34d399;--box-amber:#fbbf24;--box-red:#f87171;--box-grey:#6b7280;
+  }
+  [data-theme="starr"]{
+    --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
+    --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;
+    --accent:#b0003a;--accent-bg:#f8d0e8;--accent-muted:#d06090;
+    --green:#1b5e20;--amber:#8b3000;--red:#7b0020;
+    --box-green:#16a34a;--box-amber:#c2410c;--box-red:#be123c;--box-grey:#9ca3af;
+  }
+  [data-theme="light"]{
+    --bg:#f9fafb;--surface:#fff;--surface2:#f3f4f6;--border:#e5e7eb;--border-light:#f3f4f6;--border-mid:#d1d5db;
+    --text:#111827;--text-muted:#4b5563;--text-hint:#9ca3af;
+    --accent:#185FA5;--accent-bg:#eff6ff;--accent-muted:#bfdbfe;
+    --green:#15803d;--amber:#b45309;--red:#b91c1c;
+    --box-green:#16a34a;--box-amber:#d97706;--box-red:#dc2626;--box-grey:#9ca3af;
+  }
+  body[data-theme="scout"]{
+    --bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-light:#141825;--border-mid:#222a3c;
+    --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Nunito',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1.5rem 1.75rem;transition:background 0.2s,color 0.2s;}
+  .container{max-width:1380px;margin:0 auto;}
+
+  /* TOP BAR */
+  .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:12px;flex-wrap:wrap;}
+  .top-left{display:flex;flex-direction:column;gap:3px;}
+  .top-eyebrow{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.12em;}
+  .top-title{display:flex;align-items:center;gap:8px;font-size:21px;font-weight:900;color:var(--text);line-height:1.1;}
+  .ver-badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;background:var(--accent-bg);color:var(--accent);letter-spacing:0.04em;}
+  .top-sub{font-size:11px;font-weight:600;color:var(--text-hint);margin-top:1px;}
+  .top-right{display:flex;align-items:center;gap:6px;}
+
+  /* BUTTONS */
+  .icon-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;border:0.5px solid var(--border);background:none;cursor:pointer;color:var(--text-muted);font-size:15px;transition:background 0.12s,color 0.12s;}
+  .icon-btn:hover{background:var(--surface2);color:var(--text);}
+  .pill-btn{font-family:'Nunito',system-ui,sans-serif;font-size:11px;font-weight:700;padding:4px 13px;border:0.5px solid var(--border);border-radius:20px;background:var(--surface);cursor:pointer;color:var(--text-muted);white-space:nowrap;transition:background 0.12s,color 0.12s,border-color 0.12s;}
+  .pill-btn:hover{background:var(--surface2);}
+  .pill-btn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-muted);}
+
+  /* THEME PICKER */
+  .theme-picker{position:relative;}
+  .theme-btn{display:flex;align-items:center;gap:5px;font-family:'Nunito',system-ui,sans-serif;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:7px;padding:4px 10px;white-space:nowrap;}
+  .theme-btn:hover{background:var(--surface2);}
+  .theme-chevron{font-size:9px;opacity:0.6;transition:transform 0.15s;}
+  .theme-picker.open .theme-chevron{transform:rotate(180deg);}
+  .theme-menu{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;min-width:110px;box-shadow:0 8px 24px rgba(0,0,0,0.28);z-index:300;}
+  .theme-picker.open .theme-menu{display:block;}
+  .theme-opt{font-family:'Nunito',system-ui,sans-serif;display:block;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text-muted);}
+  .theme-opt:hover{background:var(--surface2);}
+  .theme-opt.active{color:var(--accent);}
+
+  /* UPLOAD ZONE */
+  .upload-zone{border:2px dashed var(--border-mid);border-radius:14px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;background:var(--surface);}
+  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-bg);}
+  .upload-zone .uz-icon{font-size:2.4rem;margin-bottom:0.75rem;line-height:1;}
+  .upload-zone .uz-title{font-size:16px;font-weight:800;color:var(--text);margin-bottom:5px;}
+  .upload-zone .uz-sub{font-size:12px;font-weight:600;color:var(--text-muted);}
+  #fileInput{display:none;}
+
+  /* STAT TILES */
+  .stats-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.4rem;}
+  .stat-tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 18px;min-width:100px;display:flex;flex-direction:column;gap:2px;}
+  .stat-num{font-size:26px;font-weight:900;line-height:1;color:var(--text);}
+  .stat-lbl{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;}
+  .stat-tile.hl-amber .stat-num{color:var(--box-amber);}
+  .stat-tile.hl-green .stat-num{color:var(--box-green);}
+  .stat-tile.hl-blue .stat-num{color:var(--accent);}
+
+  /* CONTROLS ROW */
+  .controls-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:0.9rem;}
+  .sort-label{font-size:10px;font-weight:800;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.08em;white-space:nowrap;padding-right:2px;}
+  .controls-divider{width:1px;height:20px;background:var(--border);margin:0 4px;}
+
+  /* SECTION HEADER */
+  .section-head{display:flex;align-items:center;gap:10px;margin-bottom:0.65rem;padding-left:3px;}
+  .section-title{font-size:11px;font-weight:900;color:var(--text);text-transform:uppercase;letter-spacing:0.1em;border-left:3px solid var(--accent);padding-left:8px;}
+  .section-count{font-size:11px;font-weight:700;color:var(--text-hint);}
+  .section-gap{margin-bottom:1.75rem;}
+
+  /* CARD */
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;}
+
+  /* TABLE BASE */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{padding:8px 12px;text-align:left;font-size:9px;font-weight:900;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.09em;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap;}
+  thead th.sortable{cursor:pointer;user-select:none;}
+  thead th.sortable:hover{color:var(--text);}
+  thead th.sorted{color:var(--accent);}
+  tbody tr{border-bottom:0.5px solid var(--border-light);}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:var(--surface2);}
+  tbody td{padding:9px 12px;vertical-align:middle;}
+
+  /* PICK TABLE CELLS */
+  .sku-cell{font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;}
+  .sku-alt{font-size:10px;color:var(--text-hint);margin-top:2px;font-family:inherit;font-weight:600;}
+  .brand-cell{font-size:12px;font-weight:700;color:var(--text);}
+  .count-cell{font-size:20px;font-weight:900;color:var(--text);text-align:center;white-space:nowrap;}
+  .date-cell{font-size:11px;font-weight:600;color:var(--text-muted);white-space:nowrap;}
+  .expand-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;font-size:10px;color:var(--accent);background:var(--accent-bg);border:none;cursor:pointer;transition:background 0.1s;}
+  .expand-btn:hover{opacity:0.75;}
+
+  /* TIMEFRAME BADGE */
+  .tf-badge{display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;}
+  .tf-standard{background:#e5e7eb;color:#374151;}
+  [data-theme="dark"] .tf-standard,[data-theme="solid"] .tf-standard,[data-theme="pastel"] .tf-standard{background:#374151;color:#d1d5db;}
+  .tf-twobd{background:#fef3c7;color:#92400e;}
+  [data-theme="dark"] .tf-twobd,[data-theme="solid"] .tf-twobd,[data-theme="pastel"] .tf-twobd{background:#422006;color:#fde68a;}
+  .tf-rush{background:#fee2e2;color:#991b1b;}
+  [data-theme="dark"] .tf-rush,[data-theme="solid"] .tf-rush,[data-theme="pastel"] .tf-rush{background:#450a0a;color:#fca5a5;}
+  .tf-unknown{background:var(--surface2);color:var(--text-muted);}
+
+  /* NORDY BADGE */
+  .nordy-badge{display:inline-block;font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;}
+  .nb-amb{background:#fef3c7;color:#92400e;}
+  .nb-inf{background:#ede9fe;color:#4c1d95;}
+  .nb-mem{background:#d1fae5;color:#065f46;}
+  .nb-non{background:#f3f4f6;color:#6b7280;}
+  [data-theme="dark"] .nb-amb,[data-theme="solid"] .nb-amb,[data-theme="pastel"] .nb-amb{background:#422006;color:#fde68a;}
+  [data-theme="dark"] .nb-inf,[data-theme="solid"] .nb-inf,[data-theme="pastel"] .nb-inf{background:#2e1065;color:#c4b5fd;}
+  [data-theme="dark"] .nb-mem,[data-theme="solid"] .nb-mem,[data-theme="pastel"] .nb-mem{background:#022c22;color:#6ee7b7;}
+  [data-theme="dark"] .nb-non,[data-theme="solid"] .nb-non,[data-theme="pastel"] .nb-non{background:#1f2937;color:#9ca3af;}
+
+  /* EXPAND ROWS */
+  .expand-row{display:none;}
+  .expand-row.open{display:table-row;}
+  .expand-inner{padding:8px 12px 12px 36px;background:var(--surface2);}
+  .expand-inner table{font-size:11px;}
+  .expand-inner thead th{font-size:8px;padding:5px 10px;background:var(--surface);}
+  .expand-inner tbody td{padding:5px 10px;vertical-align:middle;}
+  .expand-inner tbody tr:hover{background:transparent;}
+
+  /* ORDER TABLE CELLS */
+  .order-num{font-family:'Courier New',monospace;font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap;}
+  .order-sku-cell{font-family:'Courier New',monospace;font-size:11px;color:var(--text);}
+  .order-sku-alt{font-size:10px;color:var(--text-hint);margin-top:2px;}
+  .notes-cell{font-size:11px;color:var(--text-muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .req-cell{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+
+  /* DONE ROW — strikethrough content cells only, not the action column */
+  .done-row td:not(.col-action){opacity:0.4;text-decoration:line-through;}
+  .col-action{text-align:right;white-space:nowrap;vertical-align:middle;}
+
+  /* COMPLETE BUTTON */
+  .complete-btn{font-family:'Nunito',system-ui,sans-serif;font-size:11px;font-weight:800;padding:4px 12px;border-radius:6px;border:1.5px solid var(--box-green);background:transparent;color:var(--box-green);cursor:pointer;white-space:nowrap;transition:background 0.12s,color 0.12s,opacity 0.12s;display:inline-flex;align-items:center;gap:4px;}
+  .complete-btn:hover{background:var(--box-green);color:#fff;}
+  .complete-btn.is-done{border-color:var(--border-mid);color:var(--text-hint);pointer-events:none;background:transparent;}
+
+  /* EMPTY STATE */
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-muted);}
+  .empty-state .icon{font-size:2rem;margin-bottom:0.5rem;}
+  .empty-state p{font-size:13px;font-weight:700;}
+
+  /* DISCLAIMER */
+  .disclaimer{font-size:10px;color:var(--text-hint);text-align:center;padding:1.5rem 0 0.5rem;line-height:1.6;}
+
+  /* UNDO TOAST */
+  #undoToast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:#1e293b;color:#f1f5f9;font-family:'Nunito',system-ui,sans-serif;font-size:13px;font-weight:700;padding:10px 16px 10px 18px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,0.45);display:flex;align-items:center;gap:12px;opacity:0;pointer-events:none;transition:opacity 0.18s,transform 0.18s;z-index:999;white-space:nowrap;}
+  #undoToast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
+  #undoToast .undo-btn{font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:800;color:#60a5fa;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px;}
+  #undoToast .undo-btn:hover{color:#93c5fd;}
+  #undoToast .undo-bar{position:absolute;bottom:0;left:0;height:3px;background:#60a5fa;border-radius:0 0 10px 10px;width:100%;transform-origin:left;animation:none;}
+  #undoToast.show .undo-bar{animation:undoProgress var(--undo-dur,5s) linear forwards;}
+  @keyframes undoProgress{from{transform:scaleX(1);}to{transform:scaleX(0);}}
+
+  @keyframes pageEnter{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
+  body{animation:pageEnter 0.25s ease-out both;}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="top-eyebrow">DC499 — Customer Care</div>
+      <div class="top-title">
+        <span>CC Pick List</span>
+        <span class="ver-badge">v1.0</span>
+      </div>
+      <div class="top-sub" id="fileLabel">Upload a 489 GWP Replacements XLSX to get started</div>
+    </div>
+    <div class="top-right">
+      <button class="icon-btn" onclick="clearData()" title="Clear / Upload new file" id="clearBtn" style="display:none;">&#10005;</button>
+      <div class="theme-picker" id="themePicker">
+        <button class="theme-btn" onclick="toggleThemeMenu()">
+          Theme <span class="theme-chevron">&#9660;</span>
+        </button>
+        <div class="theme-menu" id="themeMenu">
+          <div class="theme-opt" onclick="setTheme('')">Default</div>
+          <div class="theme-opt" onclick="setTheme('dark')">Dark</div>
+          <div class="theme-opt" onclick="setTheme('solid')">Solid</div>
+          <div class="theme-opt" onclick="setTheme('pastel')">Pastel</div>
+          <div class="theme-opt" onclick="setTheme('starr')">Starr</div>
+          <div class="theme-opt" onclick="setTheme('light')">Light</div>
+        </div>
+      </div>
+      <button class="icon-btn" onclick="goBack()" title="Back to menu">&#8592;</button>
+    </div>
+  </div>
+
+  <!-- UPLOAD ZONE (shown when no data) -->
+  <div id="uploadZone" class="upload-zone" onclick="document.getElementById('fileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+    <div class="uz-icon">📋</div>
+    <div class="uz-title">Drop XLSX file here or click to upload</div>
+    <div class="uz-sub">489 GWP Replacements spreadsheet — any month tab</div>
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="onFileSelect(event)">
+
+  <!-- DATA VIEW (hidden until file loaded) -->
+  <div id="dataView" style="display:none;">
+
+    <!-- STATS -->
+    <div class="stats-row" id="statsBar"></div>
+
+    <!-- CONTROLS -->
+    <div class="controls-row">
+      <span class="sort-label">Sort</span>
+      <button class="pill-btn active" id="sortOldest" onclick="setSort('oldest')">Oldest first</button>
+      <button class="pill-btn" id="sortCount" onclick="setSort('count')">Count</button>
+      <button class="pill-btn" id="sortSku" onclick="setSort('sku')">SKU</button>
+      <button class="pill-btn" id="sortBrand" onclick="setSort('brand')">Brand</button>
+      <div class="controls-divider"></div>
+      <button class="pill-btn" id="showCompletedBtn" onclick="toggleCompleted()">Show completed</button>
+    </div>
+
+    <!-- PICK LIST -->
+    <div class="section-gap">
+      <div class="section-head">
+        <span class="section-title">Pick List</span>
+        <span class="section-count" id="pickListCount"></span>
+      </div>
+      <div class="card">
+        <table id="pickTable">
+          <thead>
+            <tr>
+              <th style="width:32px;"></th>
+              <th class="sortable" id="th-sku" onclick="setSort('sku')">SKU</th>
+              <th>Brand</th>
+              <th style="text-align:center;">Orders</th>
+              <th>Oldest</th>
+              <th>Timeframe</th>
+              <th style="text-align:right;"></th>
+            </tr>
+          </thead>
+          <tbody id="pickBody"></tbody>
+        </table>
+        <div class="empty-state" id="pickEmpty" style="display:none;">
+          <div class="icon">&#10003;</div>
+          <p>All orders completed!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDER DETAIL -->
+    <div class="section-gap">
+      <div class="section-head">
+        <span class="section-title">Order Detail</span>
+        <span class="section-count" id="orderCount"></span>
+      </div>
+      <div class="card">
+        <table id="orderTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Order #</th>
+              <th>Requestor</th>
+              <th>Nordy Club</th>
+              <th>SKU / UPC</th>
+              <th>Brand</th>
+              <th>Timeframe</th>
+              <th>Notes</th>
+              <th style="text-align:right;"></th>
+            </tr>
+          </thead>
+          <tbody id="orderBody"></tbody>
+        </table>
+        <div class="empty-state" id="orderEmpty" style="display:none;">
+          <div class="icon">&#10003;</div>
+          <p>No orders to display</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dataView -->
+
+  <div class="disclaimer">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>
+
+</div><!-- /container -->
+
+<div id="undoToast">
+  <span id="undoMsg"></span>
+  <button class="undo-btn" onclick="undoComplete()">Undo</button>
+  <div class="undo-bar" id="undoBar"></div>
+</div>
+
+<script>
+// ── THEME ────────────────────────────────────────────────
+const THEME_KEY = 'cc_picklist_theme_v1';
+function setTheme(t){
+  document.body.dataset.theme = t;
+  localStorage.setItem(THEME_KEY, t);
+  document.querySelectorAll('.theme-opt').forEach(o => o.classList.toggle('active', o.textContent.toLowerCase().replace('default','') === t));
+  document.getElementById('themePicker').classList.remove('open');
+}
+function toggleThemeMenu(){document.getElementById('themePicker').classList.toggle('open');}
+document.addEventListener('click', e => { if(!e.target.closest('#themePicker')) document.getElementById('themePicker').classList.remove('open'); });
+(function(){ const t = localStorage.getItem(THEME_KEY)||''; setTheme(t); })();
+
+// ── NAV ──────────────────────────────────────────────────
+function goBack(){ window.location.href = 'Menu_v2.0.html'; }
+
+// ── STATE ────────────────────────────────────────────────
+let allRows = [];       // parsed rows (PII stripped)
+let skuMap  = {};       // sku -> { brand, orders:[], altSkus:[] }
+let currentSort = 'oldest';
+let showCompleted = false;
+let manualDone = new Set(); // order numbers marked complete this session
+
+// ── DRAG & DROP ──────────────────────────────────────────
+function onDragOver(e){ e.preventDefault(); document.getElementById('uploadZone').classList.add('drag-over'); }
+function onDragLeave(){ document.getElementById('uploadZone').classList.remove('drag-over'); }
+function onDrop(e){ e.preventDefault(); document.getElementById('uploadZone').classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if(f) processFile(f); }
+function onFileSelect(e){ const f = e.target.files[0]; if(f) processFile(f); }
+
+// ── PARSE ────────────────────────────────────────────────
+function processFile(file){
+  const isCsv = file.name.toLowerCase().endsWith('.csv');
+  if(isCsv){
+    const reader = new FileReader();
+    reader.onload = e => parseCsv(e.target.result, file.name);
+    reader.readAsText(file);
+  } else {
+    loadSheetJS(() => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+          // Use active sheet — first one in the workbook when opened programmatically
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const csv = XLSX.utils.sheet_to_csv(ws, {blankrows:false});
+          parseCsv(csv, file.name);
+        } catch(err){ alert('Could not read file: ' + err.message); }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+}
+
+function loadSheetJS(cb){
+  if(window.XLSX){ cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload = cb;
+  document.head.appendChild(s);
+}
+
+function parseCsv(text, filename){
+  // Parse CSV respecting quoted multiline cells
+  const lines = splitCsvLines(text);
+  if(lines.length < 2){ alert('No data rows found.'); return; }
+
+  // Normalize headers — remove newlines, trim, lowercase for matching
+  const rawHeaders = parseCsvRow(lines[0]);
+  const headers = rawHeaders.map(h => h.replace(/\s+/g,' ').trim().toLowerCase());
+
+  function col(name){ return headers.indexOf(name); }
+  const iDate  = col('date');
+  const iOrder = col('order number');
+  const iNordy = col('nordy club');
+  const iReq   = col('requestor');
+  const iSku   = col('rms sku');
+  const iUpc   = col('upc #');
+  const iBrand = col('brand');
+  const iAltS  = findCol(headers, ['alternate rms sku', 'alternate\nrms sku']);
+  const iAltU  = findCol(headers, ['alternate upc #', 'alternate upc#']);
+  const iTf    = col('shipping timeframe');
+  const iTrack = col('489 tracking');
+  const iEmail = col('tracking emailed');
+  const iNotes = col('notes');
+  // iGladly, iName, iAddr, iPhone intentionally not read (PII)
+
+  const rows = [];
+  for(let i = 1; i < lines.length; i++){
+    if(!lines[i].trim()) continue;
+    const c = parseCsvRow(lines[i]);
+    const date  = getCell(c, iDate);
+    const order = getCell(c, iOrder);
+    if(!date && !order) continue;
+    // skip month-boundary marker rows
+    if(/end of month/i.test(date) || /end of month/i.test(order)) continue;
+
+    const sku   = cleanSkuCell(getCell(c, iSku));
+    const upc   = cleanSkuCell(getCell(c, iUpc));
+    const altS  = cleanSkuCell(getCell(c, iAltS));
+    const altU  = cleanSkuCell(getCell(c, iAltU));
+
+    rows.push({
+      date:    normalizeDate(date),
+      order:   order,
+      nordy:   getCell(c, iNordy),
+      req:     getCell(c, iReq),
+      skus:    splitTokens(sku),
+      upcs:    splitTokens(upc),
+      altSkus: splitTokens(altS),
+      altUpcs: splitTokens(altU),
+      brand:   getCell(c, iBrand),
+      tf:      getCell(c, iTf),
+      tracking: getCell(c, iTrack),
+      emailed: getCell(c, iEmail),
+      notes:   getCell(c, iNotes),
+    });
+  }
+
+  allRows = rows;
+  buildSkuMap();
+  renderAll(filename);
+}
+
+function findCol(headers, candidates){
+  for(const c of candidates){ const i = headers.indexOf(c); if(i >= 0) return i; }
+  return -1;
+}
+function getCell(row, idx){ return idx >= 0 && idx < row.length ? (row[idx]||'').trim() : ''; }
+
+function cleanSkuCell(raw){
+  // Strip trailing % (Excel percentage artifact), trim whitespace
+  return raw.replace(/%+$/g,'').trim();
+}
+
+function splitTokens(str){
+  if(!str) return [];
+  // Split on comma, ampersand, or standalone "and" (word boundary)
+  return str.split(/[\s]*[,&][\s]*|\s+and\s+/)
+    .map(t => t.trim())
+    .filter(t => t && t.toLowerCase() !== 'and');
+}
+
+function normalizeDate(d){
+  if(!d) return '';
+  // Accept M/D/YY, M/D/YYYY
+  const m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(m){
+    let yr = parseInt(m[3]);
+    if(yr < 100) yr += 2000;
+    const mo = m[1].padStart(2,'0'), dy = m[2].padStart(2,'0');
+    return `${yr}-${mo}-${dy}`;
+  }
+  return d;
+}
+
+function isCompleted(row){
+  if(manualDone.has(row.order)) return true;
+  if((row.tracking||'').trim()) return true;
+  return (row.emailed||'').trim().toUpperCase() === 'YES';
+}
+
+// ── SKU MAP ──────────────────────────────────────────────
+function buildSkuMap(){
+  skuMap = {};
+  for(const row of allRows){
+    if(isCompleted(row)) continue;
+    const skus = row.skus.length ? row.skus : (row.altSkus.length ? row.altSkus : ['—']);
+    for(const sku of skus){
+      if(!skuMap[sku]) skuMap[sku] = { sku, brand:row.brand, altSkus:[], orders:[] };
+      for(const a of row.altSkus) if(!skuMap[sku].altSkus.includes(a)) skuMap[sku].altSkus.push(a);
+      // allSkus = every SKU on this order row so picker can grab everything at once
+      skuMap[sku].orders.push({ date:row.date, order:row.order, tf:row.tf, allSkus: skus });
+      if(!skuMap[sku].brand && row.brand) skuMap[sku].brand = row.brand;
+    }
+  }
+}
+
+// ── RENDER ───────────────────────────────────────────────
+function renderAll(filename){
+  document.getElementById('uploadZone').style.display = 'none';
+  document.getElementById('dataView').style.display   = 'block';
+  document.getElementById('clearBtn').style.display   = 'flex';
+  document.getElementById('fileLabel').textContent     = filename || 'Loaded';
+  renderStats();
+  renderPickList();
+  renderOrderTable();
+}
+
+function renderStats(){
+  const total   = allRows.length;
+  const done    = allRows.filter(isCompleted).length;
+  const pending = total - done;
+  const skuCount = Object.keys(skuMap).length;
+  // Total units = sum of SKU count per pending row
+  const totalUnits = allRows.filter(r => !isCompleted(r))
+    .reduce((sum, r) => {
+      const skus = r.skus.length ? r.skus : (r.altSkus.length ? r.altSkus : ['—']);
+      return sum + skus.length;
+    }, 0);
+
+  const bar = document.getElementById('statsBar');
+  bar.innerHTML = `
+    <div class="stat-tile"><div class="stat-num">${total}</div><div class="stat-lbl">Orders</div></div>
+    <div class="stat-tile hl-amber"><div class="stat-num">${pending}</div><div class="stat-lbl">Pending</div></div>
+    <div class="stat-tile hl-green"><div class="stat-num">${done}</div><div class="stat-lbl">Completed</div></div>
+    <div class="stat-tile hl-blue"><div class="stat-num">${skuCount}</div><div class="stat-lbl">Unique SKUs</div></div>
+    <div class="stat-tile"><div class="stat-num">${totalUnits}</div><div class="stat-lbl">Units to Pull</div></div>
+  `;
+}
+
+// Pick list sort
+function sortedSkus(){
+  const entries = Object.values(skuMap);
+  if(currentSort === 'oldest'){
+    return entries.sort((a,b)=>{
+      const da = a.orders.length ? a.orders[0].date : '9999';
+      const db = b.orders.length ? b.orders[0].date : '9999';
+      return da.localeCompare(db) || a.sku.localeCompare(b.sku);
+    });
+  } else if(currentSort === 'count'){
+    return entries.sort((a,b) => b.orders.length - a.orders.length || a.sku.localeCompare(b.sku));
+  } else if(currentSort === 'brand'){
+    return entries.sort((a,b) => (a.brand||'').localeCompare(b.brand||'') || a.sku.localeCompare(b.sku));
+  } else { // sku
+    return entries.sort((a,b) => a.sku.localeCompare(b.sku));
+  }
+}
+
+function renderPickList(){
+  buildSkuMap(); // includes completed filter
+  const skus = sortedSkus();
+  const body  = document.getElementById('pickBody');
+  const empty = document.getElementById('pickEmpty');
+  const countEl = document.getElementById('pickListCount');
+  body.innerHTML = '';
+
+  if(!skus.length){
+    empty.style.display = 'block';
+    countEl.textContent = '';
+    return;
+  }
+  empty.style.display = 'none';
+  countEl.textContent = `${skus.length} SKU${skus.length !== 1 ? 's' : ''}`;
+
+  skus.forEach((entry, idx) => {
+    const expId = 'exp-' + idx;
+    // Sort orders within entry oldest first
+    const orders = [...entry.orders].sort((a,b) => a.date.localeCompare(b.date));
+    const oldest = orders[0]?.date || '—';
+    // Total units = count of all SKUs across all orders for this entry
+    const totalUnits = orders.reduce((sum, o) => sum + (o.allSkus ? o.allSkus.length : 1), 0);
+    // Dominant timeframe
+    const tfFreq = {};
+    for(const o of orders) tfFreq[o.tf||''] = (tfFreq[o.tf||'']||0)+1;
+    const domTf = Object.entries(tfFreq).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+
+    const allOrderNums = orders.map(o => o.order);
+
+    const trMain = document.createElement('tr');
+    trMain.className = 'sku-main-row';
+    trMain.innerHTML = `
+      <td><button class="expand-btn" onclick="toggleExpand(this,'${expId}')">&#9654;</button></td>
+      <td class="sku-cell">
+        ${escHtml(entry.sku)}
+        ${entry.altSkus.length ? `<div class="sku-alt">Alt: ${entry.altSkus.map(escHtml).join(', ')}</div>` : ''}
+      </td>
+      <td class="brand-cell">${escHtml(entry.brand||'—')}</td>
+      <td class="count-cell">${orders.length}</td>
+      <td class="date-cell">${oldest}</td>
+      <td>${tfBadge(domTf)}</td>
+      <td class="col-action">
+        <button class="complete-btn" onclick="markCompleteAll(this,${JSON.stringify(allOrderNums)})">
+          Complete all
+        </button>
+      </td>
+    `;
+    body.appendChild(trMain);
+
+    // Expand row — always rendered, always available to open
+    const trExp = document.createElement('tr');
+    trExp.className = 'expand-row';
+    trExp.id = expId;
+    const tdExp = document.createElement('td');
+    tdExp.colSpan = 7;
+    tdExp.className = 'expand-inner';
+    tdExp.innerHTML = `
+      <table>
+        <thead><tr><th>Date</th><th>Order #</th><th>All SKUs on Order</th><th>Units</th><th>Timeframe</th><th style="text-align:right;"></th></tr></thead>
+        <tbody>
+          ${orders.map(o => {
+            const allS = o.allSkus && o.allSkus.length ? o.allSkus : [entry.sku];
+            return `<tr>
+              <td>${o.date}</td>
+              <td class="order-num">${escHtml(o.order)}</td>
+              <td class="order-sku-cell">${allS.map(escHtml).join('<br>')}</td>
+              <td style="text-align:center;font-weight:800;">${allS.length}</td>
+              <td>${tfBadge(o.tf)}</td>
+              <td style="text-align:right;"><button class="complete-btn" style="font-size:10px;padding:3px 9px;" onclick="markCompleteOne(this,'${escHtml(o.order)}')">Complete</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+    trExp.appendChild(tdExp);
+    body.appendChild(trExp);
+  });
+}
+
+function renderOrderTable(){
+  const body  = document.getElementById('orderBody');
+  const empty = document.getElementById('orderEmpty');
+  const countEl = document.getElementById('orderCount');
+  body.innerHTML = '';
+
+  let rows = [...allRows].sort((a,b) => a.date.localeCompare(b.date) || a.order.localeCompare(b.order));
+  if(!showCompleted) rows = rows.filter(r => !isCompleted(r));
+
+  if(!rows.length){
+    empty.style.display = 'block';
+    countEl.textContent = '';
+    return;
+  }
+  empty.style.display = 'none';
+  countEl.textContent = `${rows.length} order${rows.length !== 1 ? 's' : ''}`;
+
+  for(const r of rows){
+    const done = isCompleted(r);
+    const tr = document.createElement('tr');
+    if(done) tr.className = 'done-row';
+    tr.dataset.order = r.order;
+
+    // Build SKU/UPC cell — primary SKU(s), dim alt SKU/UPC below
+    const skuPrimary = r.skus.join(', ') || '—';
+    const upcPrimary = r.upcs.join(', ');
+    const altSkuStr  = r.altSkus.join(', ');
+    const altUpcStr  = r.altUpcs.join(', ');
+    let skuHtml = `<div class="order-sku-cell">${escHtml(skuPrimary)}</div>`;
+    if(upcPrimary) skuHtml += `<div class="order-sku-alt">${escHtml(upcPrimary)}</div>`;
+    if(altSkuStr)  skuHtml += `<div class="order-sku-alt">Alt: ${escHtml(altSkuStr)}</div>`;
+    if(altUpcStr)  skuHtml += `<div class="order-sku-alt">Alt UPC: ${escHtml(altUpcStr)}</div>`;
+
+    tr.innerHTML = `
+      <td class="date-cell">${r.date}</td>
+      <td class="order-num">${escHtml(r.order)}</td>
+      <td class="req-cell">${escHtml(r.req)}</td>
+      <td>${nordyBadge(r.nordy)}</td>
+      <td>${skuHtml}</td>
+      <td class="brand-cell">${escHtml(r.brand)}</td>
+      <td>${tfBadge(r.tf)}</td>
+      <td class="notes-cell" title="${escHtml(r.notes)}">${escHtml(r.notes||'')}</td>
+      <td class="col-action"><button class="complete-btn${done?' is-done':''}" onclick="markComplete(this,'${escHtml(r.order)}')">${done ? '&#10003;&nbsp;Done' : 'Complete'}</button></td>
+    `;
+    body.appendChild(tr);
+  }
+}
+
+// ── CONTROLS ─────────────────────────────────────────────
+function setSort(s){
+  currentSort = s;
+  ['sortOldest','sortCount','sortSku','sortBrand'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const map = {oldest:'sortOldest',count:'sortCount',sku:'sortSku',brand:'sortBrand'};
+  document.getElementById(map[s]).classList.add('active');
+  renderPickList();
+}
+
+// ── UNDO TOAST ────────────────────────────────────────────
+let _undoTimer = null;
+let _lastCompleted = []; // order numbers from the most recent complete action
+
+function showUndoToast(orderNums, label){
+  _lastCompleted = orderNums;
+  const toast = document.getElementById('undoToast');
+  const msg   = document.getElementById('undoMsg');
+  const bar   = document.getElementById('undoBar');
+  const DUR   = 5;
+  msg.textContent = label;
+  toast.style.setProperty('--undo-dur', DUR + 's');
+  // Reset bar animation
+  bar.style.animation = 'none';
+  bar.offsetHeight; // reflow
+  bar.style.animation = '';
+  toast.classList.add('show');
+  clearTimeout(_undoTimer);
+  _undoTimer = setTimeout(() => {
+    toast.classList.remove('show');
+    _lastCompleted = [];
+  }, DUR * 1000);
+}
+
+function undoComplete(){
+  for(const o of _lastCompleted) manualDone.delete(o);
+  _lastCompleted = [];
+  clearTimeout(_undoTimer);
+  document.getElementById('undoToast').classList.remove('show');
+  renderPickList();
+  renderOrderTable();
+  renderStats();
+}
+
+function markComplete(btn, orderNum){
+  manualDone.add(orderNum);
+  const tr = btn.closest('tr');
+  tr.className = 'done-row';
+  btn.innerHTML = '&#10003;&nbsp;Done';
+  btn.classList.add('is-done');
+  renderPickList();
+  renderStats();
+  showUndoToast([orderNum], 'Marked complete');
+}
+
+function markCompleteOne(btn, orderNum){
+  manualDone.add(orderNum);
+  btn.innerHTML = '&#10003;&nbsp;Done';
+  btn.classList.add('is-done');
+  btn.closest('tr').style.opacity = '0.4';
+  renderPickList();
+  renderStats();
+  showUndoToast([orderNum], 'Marked complete');
+}
+
+function markCompleteAll(btn, orderNums){
+  for(const o of orderNums) manualDone.add(o);
+  btn.innerHTML = '&#10003;&nbsp;Done';
+  btn.classList.add('is-done');
+  renderPickList();
+  renderOrderTable();
+  renderStats();
+  showUndoToast(orderNums, `Marked ${orderNums.length} order${orderNums.length !== 1 ? 's' : ''} complete`);
+}
+
+function toggleCompleted(){
+  showCompleted = !showCompleted;
+  const btn = document.getElementById('showCompletedBtn');
+  btn.classList.toggle('active', showCompleted);
+  renderOrderTable();
+}
+
+function toggleExpand(btn, id){
+  const row = document.getElementById(id);
+  if(!row) return;
+  const open = row.classList.toggle('open');
+  btn.innerHTML = open ? '&#9660;' : '&#9654;';
+}
+
+function clearData(){
+  allRows = [];
+  skuMap  = {};
+  showCompleted = false;
+  manualDone = new Set();
+  document.getElementById('dataView').style.display   = 'none';
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('clearBtn').style.display   = 'none';
+  document.getElementById('fileLabel').textContent     = 'Upload a 489 GWP Replacements XLSX to get started';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('showCompletedBtn').classList.remove('active');
+}
+
+// ── BADGES ───────────────────────────────────────────────
+function tfBadge(tf){
+  const t = (tf||'').trim().toLowerCase();
+  if(!t || t === '—') return '<span class="tf-badge tf-unknown">—</span>';
+  if(t === 'standard') return '<span class="tf-badge tf-standard">Standard</span>';
+  if(t.includes('two') || t.includes('2bd') || t.includes('2 bd')) return '<span class="tf-badge tf-twobd">Two BD</span>';
+  if(t.includes('rush') || t.includes('expedite') || t === '1bd' || t.includes('1 bd'))
+    return '<span class="tf-badge tf-rush">' + escHtml(tf) + '</span>';
+  return `<span class="tf-badge tf-unknown">${escHtml(tf)}</span>`;
+}
+
+function nordyBadge(n){
+  const t = (n||'').trim().toUpperCase();
+  if(t === 'AMBASSADOR') return '<span class="nordy-badge nb-amb">AMB</span>';
+  if(t === 'INFLUENCER')  return '<span class="nordy-badge nb-inf">INF</span>';
+  if(t === 'MEMBER')      return '<span class="nordy-badge nb-mem">MEM</span>';
+  if(t === 'NON-MEMBER')  return '<span class="nordy-badge nb-non">NON</span>';
+  return `<span class="nordy-badge nb-non">${escHtml(n||'')}</span>`;
+}
+
+// ── CSV PARSER ───────────────────────────────────────────
+function splitCsvLines(text){
+  // Split text into logical CSV lines (respecting quoted multiline cells)
+  const lines = [];
+  let cur = '', inQ = false;
+  for(let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if(ch === '"'){ inQ = !inQ; cur += ch; }
+    else if(!inQ && (ch === '\n')){ lines.push(cur); cur = ''; }
+    else if(!inQ && ch === '\r'){ /* skip */ }
+    else { cur += ch; }
+  }
+  if(cur) lines.push(cur);
+  return lines;
+}
+
+function parseCsvRow(line){
+  const cells = [];
+  let cur = '', inQ = false;
+  for(let i = 0; i < line.length; i++){
+    const ch = line[i];
+    if(ch === '"'){
+      if(inQ && line[i+1] === '"'){ cur += '"'; i++; }
+      else { inQ = !inQ; }
+    } else if(!inQ && ch === ','){
+      cells.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  cells.push(cur);
+  return cells;
+}
+
+function escHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
