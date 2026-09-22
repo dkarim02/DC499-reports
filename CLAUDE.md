@@ -197,6 +197,8 @@ All agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent.js`,
 
 **MCP query concurrency (dc499_refresh.js):** Uses a 2-slot in-memory semaphore (`_queryActive`, `_queryQueue`) inside `mcpQuery()`. Do NOT add a file-based query lock — the old `.query_lock` approach serialized all queries and was replaced 2026-09-17. 3+ concurrent slots caused empty responses from the server; 2 is the safe max.
 
+**Stale query_lock diagnosis:** If `ecom_live.json` updates fine but `ecom_history.json` stops updating, the root cause is almost always a stale `.mcp_token.json.query_lock` or `.mcp_token.json-*.query_lock` file left by a killed process. Delete it and the agent recovers on next run. `acquireQueryLock()` now checks if the locking PID is still alive and clears stale locks automatically.
+
 **Fix (2026-08-13):** File-based lock + freshness check in `getAccessTokenSilent()`:
 - `_saved_at` timestamp written to token file on every save
 - `TOKEN_TTL = 55 * 60 * 1000` — fallback TTL if `expires_in` missing
@@ -222,6 +224,10 @@ Output: ecom_live.json. Query groups A/B/C/D/E fire in parallel (`Promise.all`).
 **Shift start (UTC):** 2nd = 22:15, 1st = 11:00. Boundary: `is1st = h >= 11 && h < 22`. Timestamp offset: `-07:00` PDT (fix to `-08:00` PST ~Oct 25, 2026 — see DST fix memory).
 
 **Truncation:** `truncated: true` in JSON + amber meta line if any group hits 9,500 rows.
+
+**History snapshot gate:** `updateEcomHistory()` only fires for 1st shift (always) or 2nd shift after ≥420 min elapsed (~9:10 PM PDT). Before that, console prints `history snapshot skipped`. Gate is offset-based from shift start — DST-safe, no hardcoded UTC hour.
+
+**Archive vs live consistency:** No zone H filter on either archive or live tab. P1-PK excluded from replen on both. `rowBelongsToEcom()` (zone H filter) is only called in `addToFullReport()` — the CSV upload path in Full Report tab — NOT in the live summary tiles.
 
 **Pending TX type:** `Returns System Directed Putaway` — not yet assigned to a group.
 
