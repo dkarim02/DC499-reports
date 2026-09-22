@@ -440,14 +440,16 @@ async function fetchEcomLive(accessToken) {
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
   console.log(`[${ts()}] ✓ ecom_live.json written (${rows.length} rows, ${shift} shift)`);
 
-  // Only snapshot history after 7h into 2nd shift (~9:10 PM PDT) — avoids saving mid-shift numbers
+  // 2nd shift: only snapshot after 7h in (~9:10 PM PDT) to avoid saving mid-shift numbers
+  // 1st shift: always snapshot — agent runs at shift transition so numbers are already complete
   const shiftStartDate = new Date(shiftStart.replace(' ', 'T') + 'Z');
   const minsIntoShift = (new Date() - shiftStartDate) / 60000;
-  if (shift === '2nd' && minsIntoShift >= 7 * 60) {
+  const historyReady = shift === '1st' || minsIntoShift >= 7 * 60;
+  if (historyReady) {
     try { updateEcomHistory(rows, shift, shiftStart); }
     catch (e) { console.error(`[${ts()}] ⚠ ecom_history.json update failed: ${e.message}`); }
   } else {
-    console.log(`[${ts()}] history snapshot skipped — ${shift} shift, ${Math.round(minsIntoShift)}min in (gate: 2nd shift ≥420min)`);
+    console.log(`[${ts()}] history snapshot skipped — 2nd shift, ${Math.round(minsIntoShift)}min in (gate: ≥420min)`);
   }
 
   // Git push handled by dc499_refresh.js (single coordinator — avoids concurrent push collisions)
