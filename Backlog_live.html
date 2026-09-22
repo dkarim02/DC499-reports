@@ -2768,12 +2768,9 @@ function renderTaskTable(type) {
     var zone = zoneKeys[zi];
     var zoneTasks = zoneMap[zone];
     var zoneCount = zoneTasks.length;
-    // Task IDs for tooltip
-    var zoneIds = zoneTasks.map(function(t){ return t.task_id || '—'; }).join(' · ');
     rows += '<tr class="tk-zone-header"><td colspan="6">'
       + '<span class="tk-zone-name">' + zone + '</span>'
       + '<span class="tk-zone-count">Tasks: ' + zoneCount + '</span>'
-      + '<span style="font-size:10px;color:var(--text-hint);margin-left:10px;">' + zoneIds + '</span>'
       + '</td></tr>';
     for (var ti = 0; ti < zoneTasks.length; ti++) {
       var t = zoneTasks[ti];
