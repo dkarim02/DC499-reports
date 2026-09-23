@@ -272,15 +272,42 @@ function statusColor(code) {
 // ── chart registry (for redraw on theme change) ────────────────────────────────
 const chartRegistry = {};
 
-function buildPieData(stores, totalActive) {
+// Group stores: top 5 shown individually, rest bucketed by first digit (400s, 300s, etc.)
+function groupStores(stores) {
   const TOP = 5;
   const top = stores.slice(0, TOP);
-  const otherOrders = stores.slice(TOP).reduce((s, r) => s + r.orders, 0);
+  const rest = stores.slice(TOP);
+
+  // bucket rest by first digit of store_id
+  const buckets = {};
+  for (const r of rest) {
+    const firstDigit = String(r.store_id)[0];
+    const key = firstDigit + '00s';
+    buckets[key] = (buckets[key] || 0) + r.orders;
+  }
+
+  const bucketRows = Object.entries(buckets)
+    .map(([label, orders]) => ({ store_id: label, orders, isBucket: true }))
+    .sort((a, b) => b.orders - a.orders);
+
+  return { top, bucketRows };
+}
+
+function buildPieData(stores) {
+  const { top, bucketRows } = groupStores(stores);
+  const palette = ['#5B9BD5','#E65100','#2E7D32','#6D28D9','#00838F'];
+  const bucketColors = ['#aaa','#888','#bbb','#777','#ccc'];
+
   const labels = top.map(r => `Store ${r.store_id}`);
   const data   = top.map(r => r.orders);
-  const palette = ['#5B9BD5','#E65100','#2E7D32','#6D28D9','#00838F'];
-  const colors  = top.map((_, i) => palette[i]);
-  if (otherOrders > 0) { labels.push('Other'); data.push(otherOrders); colors.push('#aaa'); }
+  const colors = top.map((_, i) => palette[i]);
+
+  bucketRows.forEach((b, i) => {
+    labels.push(b.store_id);
+    data.push(b.orders);
+    colors.push(bucketColors[i % bucketColors.length]);
+  });
+
   return { labels, data, colors };
 }
 
@@ -347,12 +374,17 @@ function renderWaves(data) {
       return `<div class="progress-seg seg-${STATUS_CLASS[s]}" style="width:${pct}%"></div>`;
     }).join('');
 
-    // store list (all stores)
-    const maxOrders = wave.stores.length ? wave.stores[0].orders : 1;
-    const storeRowsHtml = wave.stores.map(r =>
+    // store list — top 5 individual, rest bucketed by first digit
+    const { top: topStores, bucketRows } = groupStores(wave.stores);
+    const allDisplayRows = [
+      ...topStores.map(r => ({ label: `Store ${r.store_id}`, orders: r.orders, isBucket: false })),
+      ...bucketRows.map(r => ({ label: r.store_id, orders: r.orders, isBucket: true })),
+    ];
+    const maxOrders = allDisplayRows.length ? allDisplayRows[0].orders : 1;
+    const storeRowsHtml = allDisplayRows.map(r =>
       `<div class="store-row">
-        <span class="store-id">${r.store_id}</span>
-        <div class="store-bar-wrap"><div class="store-bar-fill" style="width:${(r.orders/maxOrders*100).toFixed(1)}%"></div></div>
+        <span class="store-id" style="${r.isBucket ? 'color:var(--text-muted);font-style:italic;' : ''}">${r.label}</span>
+        <div class="store-bar-wrap"><div class="store-bar-fill" style="width:${(r.orders/maxOrders*100).toFixed(1)}%${r.isBucket ? ';background:var(--text-hint)' : ''}"></div></div>
         <span class="store-orders">${r.orders}</span>
       </div>`
     ).join('');
@@ -380,7 +412,7 @@ function renderWaves(data) {
           <canvas id="${canvasId}" data-stores='${JSON.stringify(wave.stores)}'></canvas>
         </div>
         <div class="detail-stores">
-          <div class="stores-title">All Stores (${wave.stores.length})</div>
+          <div class="stores-title">Stores — Top 5 + Groups (${wave.stores.length} total)</div>
           ${storeRowsHtml}
         </div>
       </div>
