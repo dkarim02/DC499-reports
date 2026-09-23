@@ -2615,10 +2615,13 @@ function renderTasksData(data) {
 
   document.getElementById('tk-summary-tiles').style.display = '';
   document.getElementById('tk-view-bar').style.display      = '';
-  document.getElementById('tk-cards-grid').style.display   = 'grid';
+  document.getElementById('tk-cards-grid').style.display    = _tkView === 'list' ? 'grid' : 'none';
+  var pg = document.getElementById('tk-pie-grid');
+  if (_tkView === 'chart') pg.classList.add('visible'); else pg.classList.remove('visible');
 
   renderTaskTable('picking');
   renderTaskTable('replen');
+  if (_tkView === 'chart') { renderTaskPie('picking'); renderTaskPie('replen'); }
   renderPickDropCarts(data.pick_drop_carts || []);
   renderFlowCarts(data.flow_carts || []);
 }
