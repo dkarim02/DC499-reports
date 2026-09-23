@@ -330,6 +330,39 @@
   /* per-card disable button */
   .full-side-disable-all-btn{font-size:10px;padding:2px 6px;border-radius:4px;border:1.5px solid var(--border);background:none;color:var(--text-hint);cursor:pointer;font-family:inherit;}
   .full-side-disable-all-btn:hover{background:var(--surface2);color:var(--text);}
+  /* ── Hourly view ── */
+  .rs-hourly-wrap{overflow-x:auto;border:0.5px solid var(--border);border-radius:10px;background:var(--surface);}
+  .rs-hourly-wrap::-webkit-scrollbar{height:4px;}
+  .rs-hourly-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .rs-hourly table{width:100%;border-collapse:collapse;}
+  .rs-hourly th{text-align:center;font-size:11px;font-weight:800;color:var(--text-muted);padding:7px 3px 9px;border-bottom:1.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;}
+  .rs-hourly th.col-emp{text-align:left;padding-left:10px;}
+  .rs-hourly th.col-total{border-left:1.5px solid var(--border-mid);padding:7px 10px 9px;}
+  .rs-hourly th.col-live{color:#7C3AAD;background:rgba(124,58,173,0.06);border-bottom-color:#7C3AAD;}
+  .rs-hourly td{padding:0;border-bottom:0.5px solid var(--border-light);vertical-align:middle;white-space:nowrap;}
+  .rs-hourly tr:last-child td{border-bottom:none;}
+  .rs-hourly .td-emp{padding:6px 4px 6px 10px;font-size:14px;font-weight:700;color:var(--text);min-width:90px;max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+  .rs-hourly .hcell{width:46px;min-width:46px;text-align:center;padding:5px 2px;}
+  .rs-hourly .hcell.col-live{background:rgba(124,58,173,0.05);}
+  .rs-hourly .hval{display:inline-flex;align-items:center;justify-content:center;width:38px;height:32px;border-radius:7px;font-size:14px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.22);}
+  .rs-hourly .hval.c-green{background:#059669;}
+  .rs-hourly .hval.c-lime{background:#65a30d;}
+  .rs-hourly .hval.c-orange{background:#d97706;}
+  .rs-hourly .hval.c-red{background:#dc2626;}
+  .rs-hourly .hval.c-live{background:rgba(124,58,173,0.75);font-style:italic;}
+  .rs-hourly .hval.c-empty{background:var(--surface2);color:var(--text-hint);font-size:16px;font-weight:900;text-shadow:none;}
+  .rs-hourly .td-total{padding:5px 8px;text-align:center;border-left:1.5px solid var(--border-mid);}
+  .rs-hourly .hval-total{display:inline-flex;align-items:center;justify-content:center;width:46px;height:32px;border-radius:7px;font-size:14px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.22);}
+  .rs-hourly .hval-total.c-green{background:#059669;}
+  .rs-hourly .hval-total.c-lime{background:#65a30d;}
+  .rs-hourly .hval-total.c-orange{background:#d97706;}
+  .rs-hourly .hval-total.c-red{background:#dc2626;}
+  .rs-hourly .hval-total.c-empty{background:var(--surface2);color:var(--text-hint);font-size:12px;font-weight:700;text-shadow:none;}
+  .rs-hourly tfoot td{border-top:2px solid var(--border-mid);border-bottom:none;background:var(--surface2);}
+  .rs-hourly-legend{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;margin-bottom:10px;flex-wrap:wrap;}
+  .rs-lc{display:inline-flex;align-items:center;border-radius:5px;overflow:hidden;border:0.5px solid var(--border);}
+  .rs-lc-dot{width:9px;height:24px;flex-shrink:0;}
+  .rs-lc-label{padding:0 7px;font-size:11px;font-weight:800;color:var(--text-muted);background:var(--surface2);height:24px;display:flex;align-items:center;}
 @keyframes pageEnter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 body { animation: pageEnter 0.28s ease-out both; }
 </style>
@@ -356,7 +389,6 @@ body { animation: pageEnter 0.28s ease-out both; }
     <div class="tabs-left">
       <button class="tab active-full" id="tab-full" onclick="switchTab('full')">&#x1F4CA; CSV</button>
       <button class="tab" id="tab-live" onclick="switchTab('live')" style="color:var(--text-muted);">&#x26A1; Live</button>
-      <button class="tab" id="tab-scorecard" disabled title="Under construction" style="color:var(--text-hint);opacity:0.45;cursor:not-allowed;">&#x1F4CB; Scorecard &#x1F6A7;</button>
     </div>
     <div class="tabs-right">
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
@@ -384,7 +416,11 @@ body { animation: pageEnter 0.28s ease-out both; }
         <div style="font-size:15px;font-weight:600;color:var(--text);">&#x26A1; Reserve Live</div>
         <div style="font-size:12px;color:var(--text-hint);margin-top:2px;" id="live-meta">Loading...</div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;border:0.5px solid var(--border);border-radius:7px;overflow:hidden;font-size:12px;font-weight:600;">
+          <button id="live-view-cards" onclick="setLiveView('cards')" style="font-family:inherit;padding:5px 12px;border:none;background:var(--accent-bg,#f0ebf8);color:#7C3AAD;cursor:pointer;">Cards</button>
+          <button id="live-view-hourly" onclick="setLiveView('hourly')" style="font-family:inherit;padding:5px 12px;border:none;border-left:0.5px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;">Hourly</button>
+        </div>
         <button class="nail-btn-rs" id="nail-btn-rs" onclick="nailFromLiveRS(this)">&#x1F4CC; NAIL</button>
         <button class="log-day-btn" onclick="logDay(this)">&#x1F4C5; Log Day</button>
         <button onclick="loadLiveData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
@@ -395,19 +431,6 @@ body { animation: pageEnter 0.28s ease-out both; }
     </div>
   </div>
 
-
-  <!-- SCORECARD TAB -->
-  <div class="tab-panel" id="panel-scorecard">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;">
-      <div>
-        <div style="font-size:15px;font-weight:600;color:var(--text);">&#x1F4CB; Hourly Scorecard</div>
-        <div style="font-size:12px;color:var(--text-hint);margin-top:2px;" id="sc-meta">Loading...</div>
-      </div>
-      <button onclick="loadScorecardData()" style="font-family:inherit;font-size:13px;padding:6px 14px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;">&#x21BB; Refresh</button>
-    </div>
-    <div class="sc-disclaimer">&#x26A0;&#xFE0F; This report provides an outside view only. For coaching purposes, always refer to WMS directly.</div>
-    <div id="sc-content"><div class="full-empty">Loading scorecard...</div></div>
-  </div>
 
   <!-- SETTINGS TAB -->
   <div class="tab-panel" id="panel-settings">
@@ -566,21 +589,19 @@ function toggleDark() { applyTheme(document.documentElement.getAttribute('data-t
 function switchTab(tab) {
   document.getElementById('tab-full').className = 'tab' + (tab === 'full' ? ' active-full' : '');
   document.getElementById('tab-live').className = 'tab' + (tab === 'live' ? ' active-full' : '');
-  document.getElementById('tab-scorecard').className = 'tab' + (tab === 'scorecard' ? ' active-full' : '');
   document.getElementById('tab-settings').className = 'tab-settings' + (tab === 'settings' ? ' active-settings' : '');
-  ['full','live','scorecard','settings'].forEach(function(t) {
+  ['full','live','settings'].forEach(function(t) {
     document.getElementById('panel-' + t).className = 'tab-panel' + (t === tab ? ' active' : '');
   });
   try { localStorage.setItem('dc499_reserve_tab_v1', tab); } catch(e) {}
   if (tab === 'settings') { renderRoster(); renderGoalsCard(); }
   if (tab === 'full') { renderFullReport(); }
   if (tab === 'live') { loadLiveData(); }
-  if (tab === 'scorecard') { loadScorecardData(); }
 }
 (function() {
   var saved;
   try { saved = localStorage.getItem('dc499_reserve_tab_v1'); } catch(e) {}
-  if (saved && saved !== 'full') { switchTab(saved); }
+  if (saved && saved !== 'full' && saved !== 'scorecard') { switchTab(saved); }
 })();
 function openWeeklyRecap() {
   var base = window.location.href.replace(/\/[^\/]*$/, '/');
@@ -1580,11 +1601,25 @@ function loadLiveData() {
   if (meta) meta.textContent = 'Fetching...';
   fetch(getLiveBase() + '/reserve_live.json?_=' + Date.now())
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(d) { rsLiveData = d; if (d.shift && d.shift !== getShift()) setShift(d.shift); renderLiveReport(d); })
+    .then(function(d) { rsLiveData = d; if (d.shift && d.shift !== getShift()) setShift(d.shift); scMaybeSnapshot(d); renderLiveDispatch(d); })
     .catch(function(e) {
       if (content) content.innerHTML = '<div class="full-empty">Could not load reserve_live.json — run Option 11 in dc499.bat first.<br><small style="color:var(--text-hint);">' + e.message + '</small></div>';
       if (meta) meta.textContent = 'Error loading data';
     });
+}
+
+// ── Live view toggle (Cards / Hourly) ─────────────────────────────────────────
+var _liveView = 'cards';
+function setLiveView(v) {
+  _liveView = v;
+  var cBtn = document.getElementById('live-view-cards');
+  var hBtn = document.getElementById('live-view-hourly');
+  if (cBtn) { cBtn.style.background = v === 'cards' ? 'var(--accent-bg,#f0ebf8)' : 'var(--surface)'; cBtn.style.color = v === 'cards' ? '#7C3AAD' : 'var(--text-muted)'; }
+  if (hBtn) { hBtn.style.background = v === 'hourly' ? 'var(--accent-bg,#f0ebf8)' : 'var(--surface)'; hBtn.style.color = v === 'hourly' ? '#7C3AAD' : 'var(--text-muted)'; }
+  if (rsLiveData) renderLiveDispatch(rsLiveData);
+}
+function renderLiveDispatch(d) {
+  if (_liveView === 'hourly') { renderLiveHourly(d); } else { renderLiveReport(d); }
 }
 
 function renderLiveReport(d) {
@@ -1997,315 +2032,195 @@ renderHeadcountCard();
 
 setInterval(function() {
   if (document.getElementById('panel-live').className.includes('active')) loadLiveData();
-  if (document.getElementById('panel-scorecard').className.includes('active')) loadScorecardData();
 }, 5 * 60 * 1000);
 
-// ── SCORECARD TAB ───────────────────────────────────────
-var scLiveData  = null;
-var scSelectedEmp = null;
-
-function loadScorecardData() {
-  var meta    = document.getElementById('sc-meta');
-  var content = document.getElementById('sc-content');
-  if (meta) meta.textContent = 'Fetching...';
-  fetch(getLiveBase() + '/reserve_live.json?_=' + Date.now())
-    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(d) {
-      scLiveData = d;
-      if (d.shift && d.shift !== getShift()) setShift(d.shift);
-      renderScorecard(d);
-    })
-    .catch(function(e) {
-      if (content) content.innerHTML = '<div class="full-empty">Could not load reserve_live.json — run Option 11 in dc499.bat first.<br><small style="color:var(--text-hint);">' + e.message + '</small></div>';
-      if (meta) meta.textContent = 'Error loading data';
-    });
-}
-
-function renderScorecard(d) {
-  var meta    = document.getElementById('sc-meta');
-  var content = document.getElementById('sc-content');
-  var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
-  if (meta) meta.textContent = (d.shift || '2nd') + ' shift \xb7 updated ' + gen;
-
-  var sc    = d.scorecard  || {};
-  var assoc = d.associates || {};
+// ── HOURLY VIEW ─────────────────────────────────────────────────────────────────
+function renderLiveHourly(d) {
+  var meta    = document.getElementById('live-meta');
+  var content = document.getElementById('live-content');
+  if (!d || !d.associates) {
+    if (content) content.innerHTML = '<div class="full-empty">No data — run Option 11 in dc499.bat first.</div>';
+    return;
+  }
+  var gen   = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
   var shift = d.shift || getShift();
+  if (meta) meta.textContent = shift + ' shift \xb7 updated ' + gen + ' \xb7 Hourly view';
 
+  var assoc = d.associates;
+  var nowPdt = new Date(new Date().toLocaleString('en-US', { timeZone:'America/Los_Angeles' }));
+  var nowHr  = nowPdt.getHours();
   var hourStart = shift === '1st' ? 3  : 14;
   var hourEnd   = shift === '1st' ? 14 : 22;
-  var nowPdt = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-  var nowHr  = nowPdt.getHours();
-  var hours  = [];
-  for (var h = hourStart; h < hourEnd; h++) hours.push(h);
-
-  var colSpan = hours.length + 2; // name + hours + Total
-
-  function hrKey(h) {
-    var d2 = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-    var yr = d2.getFullYear(), mo = d2.getMonth()+1, dy = d2.getDate();
-    var hr24 = h % 24;
-    return yr + '-' + (mo<10?'0'+mo:mo) + '-' + (dy<10?'0'+dy:dy) + ' ' + (hr24<10?'0'+hr24:hr24) + ':00';
+  var hours = [];
+  for (var h = hourStart; h <= Math.min(nowHr, hourEnd - 1); h++) hours.push(h);
+  if (!hours.length) {
+    if (content) content.innerHTML = '<div class="full-empty">Shift hasn\'t started yet.</div>';
+    return;
   }
-  function hrLabel(h) { var h12 = h % 12 || 12; return h12 + (h < 12 || h === 24 ? 'a' : 'p'); }
-  function getHrUnits(emp, h) {
-    var key = hrKey(h);
-    return (sc[emp] && sc[emp].hours && sc[emp].hours[key]) ? sc[emp].hours[key] : 0;
+
+  // snapshot key for a given PDT hour
+  var pdt = new Date(new Date().toLocaleString('en-US', { timeZone:'America/Los_Angeles' }));
+  var yr = pdt.getFullYear(), mo = pdt.getMonth()+1, dy = pdt.getDate();
+  function snapHrKey(h) {
+    var hr = h % 24;
+    return yr+'-'+(mo<10?'0'+mo:mo)+'-'+(dy<10?'0'+dy:dy)+' '+(hr<10?'0'+hr:hr)+':00';
   }
-  function getTotalUnits(emp) {
+  var snaps = scLoadSnaps(shift);
+
+  function snapSum(snap, emp) {
+    var a = snap && snap[emp] ? snap[emp] : {};
+    return (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0)+(a.bulk_lpn||0);
+  }
+  function liveSum(emp) {
     var a = assoc[emp]; if (!a) return 0;
-    return (a.pick_f1||0) + (a.pick_f2||0) + (a.replen||0) + (a.putaway||0) + (a.bulk_lpn||0);
+    return (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0)+(a.bulk_lpn||0);
   }
-  function vClass(v) {
-    if (!v) return 'sc-v-0';
-    if (v >= 80) return 'sc-v-hi';
-    if (v >= 60) return 'sc-v-ok';
-    if (v >= 40) return 'sc-v-mid';
-    return 'sc-v-lo';
-  }
-  function trendArrow(emp, h, hIdx) {
-    if (hIdx < 2) return '';
-    var prev = []; for (var i = 0; i < hIdx; i++) prev.push(getHrUnits(emp, hours[i]));
-    var avg = prev.reduce(function(s,v){return s+v;},0) / prev.length;
-    var cur = getHrUnits(emp, h);
-    if (avg === 0 && cur === 0) return '';
-    var diff = cur - avg;
-    if (Math.abs(diff) < 3) return '';
-    return diff > 0 ? '<span class="sc-trend-up">&#x25B2;</span>' : '<span class="sc-trend-dn">&#x25BC;</span>';
-  }
-
-  var rosterAll = loadRoster().filter(function(m) { return m.enabled; });
-  var rosterMembers = rosterAll.filter(function(m) { return getTotalUnits(m.email) > 0; });
-
-  var deptHrTotals = {}, activeHrCounts = {}, deptGrand = 0;
-  hours.forEach(function(h) { deptHrTotals[h] = 0; activeHrCounts[h] = 0; });
-  rosterMembers.forEach(function(m) {
-    var emp = m.email;
-    hours.forEach(function(h) { var u = getHrUnits(emp, h); deptHrTotals[h] += u; if (u > 0) activeHrCounts[h]++; });
-    deptGrand += getTotalUnits(emp);
-  });
-
-  function drawerHtml(emp) {
-    var s    = sc[emp]    || {};
-    var a    = assoc[emp] || {};
-    var short = emp.split('@')[0];
-    function fmtPdt(utcStr) {
-      if (!utcStr) return '—';
-      try { return new Date(utcStr.replace(' ','T')+'Z').toLocaleTimeString('en-US',{timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit',hour12:true}); } catch(e) { return utcStr; }
+  function getHrUnits(emp, h) {
+    if (h === nowHr) {
+      // current hour: live minus last closed snapshot
+      var lastSnap = null;
+      for (var i = h; i >= hourStart; i--) { var sk = snapHrKey(i); if (snaps[sk]) { lastSnap = snaps[sk]; break; } }
+      return Math.max(0, liveSum(emp) - snapSum(lastSnap, emp));
     }
-    function minToHM(m) { if (m == null) return '—'; var hh=Math.floor(m/60),mm=Math.round(m%60); return hh+'h '+(mm<10?'0':'')+mm+'m'; }
-
-    var clockIn    = fmtPdt(s.clock_in);
-    var clockOut   = fmtPdt(s.clock_out);
-    var paidBrk    = Math.round(s.paid_break_min   || 0);
-    var unpdBrk    = Math.round(s.unpaid_break_min || 0);
-    var totalBrk   = paidBrk + unpdBrk;
-    var totalUnits = (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0);
-    var gaps       = s.gaps || [];
-    var totalGapMin = s.total_gap_min || 0;
-
-    var h = '<div class="sc-drawer-inner">';
-    h += '<div class="sc-drawer-header">';
-    h += '<span class="sc-drawer-name">' + short + '</span>';
-    h += '<button class="sc-drawer-close" onclick="closeScorecardDetail()" title="Close">&times;</button></div>';
-
-    h += '<div class="sc-stat-row">';
-    h += '<div class="sc-stat"><div class="sc-stat-label">Clock In</div><div class="sc-stat-val">' + clockIn + '</div></div>';
-    h += '<div class="sc-stat"><div class="sc-stat-label">Clock Out</div><div class="sc-stat-val">' + clockOut + '</div></div>';
-    var brkSub = (paidBrk > 0 ? paidBrk + 'm paid' : '') + (paidBrk > 0 && unpdBrk > 0 ? ' / ' : '') + (unpdBrk > 0 ? unpdBrk + 'm unpaid' : '');
-    h += '<div class="sc-stat"><div class="sc-stat-label">Break</div><div class="sc-stat-val">' + (totalBrk > 0 ? minToHM(totalBrk) : '—') + '</div>' + (brkSub ? '<div class="sc-stat-sub">' + brkSub + '</div>' : '') + '</div>';
-    h += '<div class="sc-stat"><div class="sc-stat-label">Units</div><div class="sc-stat-val">' + (totalUnits > 0 ? totalUnits.toLocaleString() : '—') + '</div></div>';
-    var gapStatStyle = totalGapMin > 0 ? 'border-color:rgba(220,38,38,0.35);' : '';
-    var gapValColor  = totalGapMin > 0 ? '#dc2626' : 'var(--text-hint)';
-    h += '<div class="sc-stat" style="' + gapStatStyle + '">';
-    h += '<div class="sc-stat-label">Gap Time</div>';
-    h += '<div class="sc-stat-val" style="color:' + gapValColor + ';">' + (totalGapMin > 0 ? minToHM(totalGapMin) : '—') + '</div>';
-    if (gaps.length > 0) h += '<div class="sc-stat-sub" style="color:#dc2626;">' + gaps.length + ' gap' + (gaps.length > 1 ? 's' : '') + ' &gt;10 min</div>';
-    h += '</div>';
-    h += '</div>';
-
-    if (gaps.length > 0) {
-      h += '<div style="margin-bottom:8px;">';
-      h += '<div style="font-size:10px;font-weight:500;color:#dc2626;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;">&#x26A0; Gaps &gt;10 min</div>';
-      gaps.forEach(function(g) {
-        var gFrom = fmtPdt(g.from), gTo = fmtPdt(g.to);
-        var gMins = g.dur_min;
-        var gStr  = gMins >= 60 ? Math.floor(gMins/60) + 'h ' + (gMins%60) + 'm' : gMins + ' min';
-        h += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;border-radius:6px;background:rgba(220,38,38,0.05);border:0.5px solid rgba(220,38,38,0.18);margin-bottom:3px;">';
-        h += '<span style="font-size:11px;color:var(--text);">' + gFrom + ' &ndash; ' + gTo + '</span>';
-        h += '<span style="font-size:11px;font-weight:600;color:#dc2626;">' + gStr + '</span>';
-        h += '</div>';
-      });
-      h += '</div>';
-    }
-
-    // Timeline chart — stock-style line with filled area; red segments where gaps occur
-    (function() {
-      var canvasId = 'sc-timeline-' + emp.replace(/[^a-z0-9]/gi, '_');
-      h += '<div style="margin-bottom:10px;">';
-      h += '<div style="font-size:10px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">Hourly Activity &amp; Gaps</div>';
-      h += '<div style="overflow-x:auto;"><canvas id="' + canvasId + '" height="90" style="display:block;"></canvas></div>';
-      if (gaps.length > 0) {
-        h += '<div style="font-size:10px;color:var(--text-hint);margin-top:4px;">&#x25AC; <span style="color:#dc2626;">Red</span> = gap &gt;10 min</div>';
-      }
-      h += '</div>';
-      setTimeout(function() {
-        var canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        var gridC = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
-        var tickC = isDark ? '#666' : '#999';
-        var hrData  = (sc[emp] && sc[emp].hours) ? sc[emp].hours : {};
-        var gapList = (sc[emp] && sc[emp].gaps)  ? sc[emp].gaps  : [];
-        var labels = [], data = [];
-        hours.forEach(function(h2) {
-          labels.push(hrLabel(h2));
-          data.push(hrData[hrKey(h2)] || 0);
-        });
-        var gapIdxSet = new Set();
-        hours.forEach(function(h2, idx) {
-          var hrStartMs = new Date(hrKey(h2).replace(' ','T')+':00:00-07:00').getTime();
-          var hrEndMs   = hrStartMs + 3600000;
-          gapList.forEach(function(g) {
-            var gF = new Date(g.from.replace(' ','T')+'Z').getTime();
-            var gT = new Date(g.to.replace(' ','T')+'Z').getTime();
-            if (gF < hrEndMs && gT > hrStartMs) gapIdxSet.add(idx);
-          });
-        });
-        var lineColor = isDark ? '#9B4DCA' : '#7C3AAD';
-        var fillColor = isDark ? 'rgba(155,77,202,0.12)' : 'rgba(155,77,202,0.09)';
-        var gapColor  = '#dc2626';
-        var gapFill   = 'rgba(220,38,38,0.10)';
-        var pointColors = data.map(function(_, idx) { return gapIdxSet.has(idx) ? gapColor : lineColor; });
-        var pointRadii  = data.map(function(v, idx) { return gapIdxSet.has(idx) ? 5 : (v > 0 ? 3 : 2); });
-        var cw = Math.max(labels.length * 44, 320);
-        canvas.style.width = cw + 'px'; canvas.width = cw;
-        canvas.style.height = '90px';   canvas.height = 90;
-        if (!window._scCharts) window._scCharts = {};
-        if (window._scCharts[canvasId]) { try { window._scCharts[canvasId].destroy(); } catch(e) {} }
-        window._scCharts[canvasId] = new Chart(canvas.getContext('2d'), {
-          type: 'line',
-          data: { labels: labels, datasets: [{
-            data: data,
-            segment: {
-              borderColor: function(ctx) { return (gapIdxSet.has(ctx.p0DataIndex)||gapIdxSet.has(ctx.p1DataIndex)) ? gapColor : lineColor; },
-              backgroundColor: function(ctx) { return (gapIdxSet.has(ctx.p0DataIndex)||gapIdxSet.has(ctx.p1DataIndex)) ? gapFill : fillColor; },
-            },
-            borderColor: lineColor, backgroundColor: fillColor,
-            borderWidth: 2,
-            pointBackgroundColor: pointColors, pointBorderColor: pointColors,
-            pointRadius: pointRadii, pointHoverRadius: 6,
-            fill: true, tension: 0.35, spanGaps: false,
-          }]},
-          options: {
-            responsive: false, maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: { callbacks: {
-                title: function(ctx) { return labels[ctx[0].dataIndex]; },
-                label: function(ctx) {
-                  var idx = ctx.dataIndex;
-                  var lines = [ctx.parsed.y + ' units'];
-                  if (gapIdxSet.has(idx)) {
-                    var h2 = hours[idx], hrStartMs = new Date(hrKey(h2).replace(' ','T')+':00:00-07:00').getTime(), hrEndMs = hrStartMs + 3600000;
-                    var gap = gapList.find(function(g) {
-                      var gF = new Date(g.from.replace(' ','T')+'Z').getTime();
-                      var gT = new Date(g.to.replace(' ','T')+'Z').getTime();
-                      return gF < hrEndMs && gT > hrStartMs;
-                    });
-                    if (gap) lines.push('⚠ Gap: ' + fmtPdt(gap.from) + ' – ' + fmtPdt(gap.to) + ' (' + gap.dur_min + ' min)');
-                  }
-                  return lines;
-                }
-              }}
-            },
-            scales: {
-              x: { ticks: { color: tickC, font: { size: 9 }, maxRotation: 0 }, grid: { display: false }, border: { display: false } },
-              y: { ticks: { color: tickC, font: { size: 9 }, maxTicksLimit: 3, precision: 0 }, grid: { color: gridC }, border: { display: false }, beginAtZero: true }
-            }
-          }
-        });
-      }, 80);
-    })();
-
-    var depts = [
-      {label:'Pick F1',    val:a.pick_f1||0,  color:'#0891B2'},
-      {label:'Pick F2',    val:a.pick_f2||0,  color:'#D97706'},
-      {label:'Replen',     val:a.replen||0,   color:'#6366F1'},
-      {label:'Putaway',    val:a.putaway||0,  color:'#059669'},
-      {label:'Full LPN',   val:a.bulk_lpn||0, color:'#E11D48'},
-    ].filter(function(x){return x.val>0;});
-    if (depts.length) {
-      h += '<div class="sc-dept-chips">';
-      depts.forEach(function(dep) {
-        h += '<span class="sc-dept-chip" style="border-color:' + dep.color + '22;">';
-        h += '<span style="color:' + dep.color + ';font-size:10px;">' + dep.label + '</span> <strong>' + dep.val.toLocaleString() + '</strong></span>';
-      });
-      h += '</div>';
-    }
-    h += '</div>';
-    return h;
+    var vNext = snapSum(snaps[snapHrKey(h+1)], emp);
+    var vThis = snapSum(snaps[snapHrKey(h)], emp);
+    if (!snaps[snapHrKey(h+1)] && !snaps[snapHrKey(h)]) return null;
+    return Math.max(0, vNext - vThis);
   }
 
-  var html = '<div class="sc-wrap"><table class="sc-matrix"><thead><tr>';
-  html += '<th>Associate</th>';
+  function hrLabel(h) { var h12 = h % 12 || 12; return h12 + (h < 12 || h === 24 ? 'a' : 'p'); }
+  function boxClass(v, isLive) {
+    if (isLive) return 'c-live';
+    if (!v) return 'c-empty';
+    if (v >= 80) return 'c-green';
+    if (v >= 60) return 'c-lime';
+    if (v >= 40) return 'c-orange';
+    return 'c-red';
+  }
+
+  var TEAM = getTeamSet();
+  var roster = loadRoster().filter(function(m) { return m.enabled && (TEAM.size === 0 || TEAM.has(m.email)) && liveSum(m.email) > 0; });
+
+  var html = '<div class="rs-hourly">';
+  // legend
+  html += '<div class="rs-hourly-legend">';
+  html += '<span style="font-size:11px;color:var(--text-hint);font-weight:500;margin-right:2px;">Units/hr:</span>';
+  html += '<span class="rs-lc"><span class="rs-lc-dot" style="background:#059669;"></span><span class="rs-lc-label">80+</span></span>';
+  html += '<span class="rs-lc"><span class="rs-lc-dot" style="background:#65a30d;"></span><span class="rs-lc-label">60–79</span></span>';
+  html += '<span class="rs-lc"><span class="rs-lc-dot" style="background:#d97706;"></span><span class="rs-lc-label">40–59</span></span>';
+  html += '<span class="rs-lc"><span class="rs-lc-dot" style="background:#dc2626;"></span><span class="rs-lc-label">&lt;40</span></span>';
+  html += '<span class="rs-lc"><span class="rs-lc-dot" style="background:rgba(124,58,173,0.75);"></span><span class="rs-lc-label">Live ●</span></span>';
+  html += '</div>';
+
+  html += '<div class="rs-hourly-wrap"><table><thead><tr>';
+  html += '<th class="col-emp">Associate</th>';
   hours.forEach(function(h) {
-    html += '<th style="' + (h === nowHr ? 'color:var(--text);font-weight:600;' : '') + '">' + hrLabel(h) + '</th>';
+    html += '<th class="' + (h === nowHr ? 'col-live' : '') + '">' + hrLabel(h) + (h === nowHr ? ' ●' : '') + '</th>';
   });
-  html += '<th>Total</th></tr></thead><tbody>';
+  html += '<th class="col-total">Total</th></tr></thead><tbody>';
 
-  rosterMembers.forEach(function(m) {
+  roster.forEach(function(m) {
     var emp   = m.email;
     var short = emp.split('@')[0];
-    var isSel = (scSelectedEmp === emp);
-    var safeEmp = emp.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    var total = getTotalUnits(emp);
-
-    html += '<tr class="sc-data-row' + (isSel ? ' sc-selected' : '') + '" onclick="openScorecardDetail(\'' + safeEmp + '\')">';
-    html += '<td style="cursor:pointer;" title="' + emp + '">' + short + (isSel ? ' <span style="color:#9B4DCA;font-size:10px;">&#x25BE;</span>' : '') + '</td>';
-    hours.forEach(function(h, hIdx) {
-      var u = getHrUnits(emp, h);
-      var past = h < nowHr;
-      var cls = vClass(u);
-      var trend = past ? trendArrow(emp, h, hIdx) : '';
-      var txt = u > 0 ? ('<span class="' + cls + '">' + u + '</span>') : (past ? '<span class="sc-v-0">—</span>' : '');
-      html += '<td>' + txt + trend + '</td>';
+    var total = liveSum(emp);
+    html += '<tr><td class="td-emp" title="' + emp + '">' + short + '</td>';
+    hours.forEach(function(h) {
+      var u      = getHrUnits(emp, h);
+      var isLive = h === nowHr;
+      var isNull = u == null;
+      var cls    = isNull ? 'c-empty' : boxClass(u, isLive);
+      var txt    = isNull || u === 0 ? (isLive ? '●' : '–') : u;
+      html += '<td class="hcell' + (isLive ? ' col-live' : '') + '"><span class="hval ' + cls + '">' + txt + '</span></td>';
     });
-    html += '<td><strong>' + (total > 0 ? total.toLocaleString() : '—') + '</strong></td>';
-    html += '</tr>';
-
-    if (isSel) {
-      html += '<tr class="sc-drawer"><td colspan="' + colSpan + '">' + drawerHtml(emp) + '</td></tr>';
-    }
+    // total box colored by shift avg PPH
+    var hoursWithData = hours.filter(function(h) { var u = getHrUnits(emp, h); return u != null && u > 0; }).length;
+    var avgPph = hoursWithData > 0 ? total / hoursWithData : 0;
+    var totCls = total === 0 ? 'c-empty' : boxClass(Math.round(avgPph), false);
+    html += '<td class="td-total"><span class="hval-total ' + totCls + '">' + (total === 0 ? '—' : total) + '</span></td></tr>';
   });
 
-  var activeHC = rosterMembers.filter(function(m) { return getTotalUnits(m.email) > 0; }).length;
-  html += '</tbody><tfoot><tr>';
-  html += '<td>Dept (' + activeHC + ')</td>';
+  // footer row
+  html += '</tbody><tfoot><tr><td class="td-emp">Team</td>';
   hours.forEach(function(h) {
-    var u = deptHrTotals[h];
-    var hc = activeHrCounts[h];
-    var pph = hc > 0 ? Math.round(u / hc) : null;
-    var cls = pph != null ? vClass(pph) : 'sc-v-0';
-    html += '<td>';
-    if (u > 0) html += '<span class="' + cls + '">' + u + '</span>';
-    if (pph != null) html += '<div style="font-size:9px;color:var(--text-hint);">' + pph + '/h</div>';
-    html += '</td>';
+    var teamTotal = 0, count = 0;
+    roster.forEach(function(m) { var u = getHrUnits(m.email, h); if (u != null) { teamTotal += u; count++; } });
+    var isLive = h === nowHr;
+    var avg    = count > 0 ? teamTotal / count : 0;
+    var cls    = teamTotal === 0 ? 'c-empty' : boxClass(Math.round(avg), isLive);
+    var txt    = teamTotal === 0 ? '–' : teamTotal;
+    html += '<td class="hcell' + (isLive ? ' col-live' : '') + '"><span class="hval ' + cls + '">' + txt + '</span></td>';
   });
-  html += '<td><strong>' + deptGrand.toLocaleString() + '</strong></td>';
-  html += '</tr></tfoot></table></div>';
+  var grandTotal = roster.reduce(function(s, m) { return s + liveSum(m.email); }, 0);
+  var teamHrs    = hours.filter(function(h) {
+    var t = 0; roster.forEach(function(m) { var u = getHrUnits(m.email, h); if (u != null) t += u; }); return t > 0;
+  }).length;
+  var teamAvg = (roster.length > 0 && teamHrs > 0) ? grandTotal / (roster.length * teamHrs) : 0;
+  var gtCls   = grandTotal === 0 ? 'c-empty' : boxClass(Math.round(teamAvg), false);
+  html += '<td class="td-total"><span class="hval-total ' + gtCls + '">' + (grandTotal === 0 ? '—' : grandTotal) + '</span></td>';
+  html += '</tr></tfoot></table></div></div>';
 
   if (content) content.innerHTML = html;
 }
 
-function openScorecardDetail(emp) {
-  scSelectedEmp = (scSelectedEmp === emp) ? null : emp;
-  if (scLiveData) renderScorecard(scLiveData);
+// ── SCORECARD SNAPSHOT (localStorage) ────────────────────────────────────────
+// Snapshots are written to localStorage every time the PDT hour changes.
+// Key format: rs_sc_v1_{shift}_{YYYY-MM-DD HH:00}
+// Value: JSON of d.associates at that moment.
+// Per-hour delta = units at snapshot(h+1) minus units at snapshot(h).
+// Current in-progress hour = live totals minus last snapshot.
+// Total column always mirrors live tab (d.associates directly).
+
+var SC_KEY_PFX    = 'rs_sc_v1_';
+var SC_MAX_SNAPS  = 48; // prune oldest beyond this
+
+function scPdtHourKey(date) {
+  var pdt = new Date((date || new Date()).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
+  var y = pdt.getFullYear(), mo = pdt.getMonth() + 1, d = pdt.getDate(), h = pdt.getHours();
+  return (y + '-' + (mo<10?'0'+mo:mo) + '-' + (d<10?'0'+d:d) + ' ' + (h<10?'0'+h:h) + ':00');
 }
 
-function closeScorecardDetail() {
-  scSelectedEmp = null;
-  if (scLiveData) renderScorecard(scLiveData);
+function scSnapKey(shift, hourKey) {
+  return SC_KEY_PFX + shift + '_' + hourKey;
 }
+
+// Called after every successful loadLiveData — writes snapshot if hour has ticked
+function scMaybeSnapshot(d) {
+  if (!d || !d.associates) return;
+  var shift    = d.shift || getShift();
+  var hourKey  = scPdtHourKey();
+  var storeKey = scSnapKey(shift, hourKey);
+  if (!localStorage.getItem(storeKey)) {
+    localStorage.setItem(storeKey, JSON.stringify(d.associates));
+    scPruneOldSnaps(shift);
+  }
+}
+
+function scPruneOldSnaps(shift) {
+  var prefix = SC_KEY_PFX + shift + '_';
+  var keys = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && k.indexOf(prefix) === 0) keys.push(k);
+  }
+  keys.sort();
+  while (keys.length > SC_MAX_SNAPS) {
+    localStorage.removeItem(keys.shift());
+  }
+}
+
+function scLoadSnaps(shift) {
+  var prefix = SC_KEY_PFX + shift + '_';
+  var snaps = {};
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && k.indexOf(prefix) === 0) {
+      var hourKey = k.slice(prefix.length);
+      try { snaps[hourKey] = JSON.parse(localStorage.getItem(k)); } catch(e) {}
+    }
+  }
+  return snaps; // { 'YYYY-MM-DD HH:00': associatesObj, ... }
+}
+
 </script>
 </body>
 </html>

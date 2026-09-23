@@ -560,6 +560,24 @@
   [data-theme="light"] .tk-zone-header td{background:#f0f2f7;}
   [data-theme="solid"] .tk-zone-header td{background:#12192e;}
 
+  /* ── Task view toggle ───────────────────────────────────────────────────── */
+  .tk-view-bar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .tk-view-seg{display:flex;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;}
+  .tk-view-btn{padding:5px 14px;font-size:12px;font-weight:600;color:var(--text-muted);background:transparent;border:none;cursor:pointer;transition:background .15s,color .15s;letter-spacing:.03em;}
+  .tk-view-btn.active{background:var(--accent-bg);color:var(--accent);}
+  .tk-view-btn:hover:not(.active){background:var(--surface);color:var(--text);}
+  .tk-show-done-wrap{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;margin-left:auto;}
+  .tk-show-done-wrap input{cursor:pointer;}
+
+  /* ── Pie chart cards ────────────────────────────────────────────────────── */
+  .tk-pie-grid{display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:0;}
+  .tk-pie-grid.visible{display:grid;}
+  .tk-pie-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:16px 16px 20px;}
+  .tk-pie-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:14px;}
+  .tk-pie-wrap{display:flex;justify-content:center;}
+  .tk-pie-canvas{display:block;}
+  .tk-pie-empty{text-align:center;padding:40px 0;color:var(--text-muted);font-size:13px;}
+
   /* ── Waves widget ───────────────────────────────────────────────────────── */
   .waves-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;}
   .waves-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;user-select:none;}
@@ -983,6 +1001,18 @@ body { animation: pageEnter 0.28s ease-out both; }
       </div>
     </div>
 
+    <!-- View toggle + Show completed -->
+    <div class="tk-view-bar" id="tk-view-bar" style="display:none;">
+      <div class="tk-view-seg">
+        <button class="tk-view-btn active" id="tk-btn-list" onclick="setTaskView('list')">List</button>
+        <button class="tk-view-btn" id="tk-btn-chart" onclick="setTaskView('chart')">Zonage Chart</button>
+      </div>
+      <label class="tk-show-done-wrap">
+        <input type="checkbox" id="tk-show-done-global" onchange="onTaskDoneToggle()">
+        Show completed
+      </label>
+    </div>
+
     <!-- Health-check tiles -->
     <div class="summary-tiles" id="tk-summary-tiles" style="display:none;">
       <div class="tile t-accent">
@@ -1012,12 +1042,8 @@ body { animation: pageEnter 0.28s ease-out both; }
 
       <!-- Picking tasks -->
       <div class="card" id="tk-pick-card" style="margin-top:0;">
-        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="card-title">
           <span>Ecom Picking</span>
-          <label style="font-size:12px;font-weight:400;color:var(--text-muted);cursor:pointer;">
-            <input type="checkbox" id="tk-pick-show-done" onchange="renderTaskTable('picking')" style="margin-right:4px;">
-            Show completed
-          </label>
         </div>
         <div class="tk-table-wrap">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -1039,12 +1065,8 @@ body { animation: pageEnter 0.28s ease-out both; }
 
       <!-- Replen tasks -->
       <div class="card" id="tk-replen-card" style="margin-top:0;">
-        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="card-title">
           <span>Ecom Replen</span>
-          <label style="font-size:12px;font-weight:400;color:var(--text-muted);cursor:pointer;">
-            <input type="checkbox" id="tk-replen-show-done" onchange="renderTaskTable('replen')" style="margin-right:4px;">
-            Show completed
-          </label>
         </div>
         <div class="tk-table-wrap">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -1064,6 +1086,24 @@ body { animation: pageEnter 0.28s ease-out both; }
         <div id="tk-replen-empty" style="display:none;text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">No open replen tasks</div>
       </div>
 
+    </div>
+
+    <!-- Zonage pie chart grid -->
+    <div class="tk-pie-grid" id="tk-pie-grid">
+      <div class="tk-pie-card">
+        <div class="tk-pie-title">Ecom Picking — Zonage</div>
+        <div id="tk-pick-pie-wrap" class="tk-pie-wrap">
+          <canvas id="tk-pick-pie" class="tk-pie-canvas" width="280" height="280"></canvas>
+        </div>
+        <div id="tk-pick-pie-empty" class="tk-pie-empty" style="display:none;">No tasks</div>
+      </div>
+      <div class="tk-pie-card">
+        <div class="tk-pie-title">Ecom Replen — Zonage</div>
+        <div id="tk-replen-pie-wrap" class="tk-pie-wrap">
+          <canvas id="tk-replen-pie" class="tk-pie-canvas" width="280" height="280"></canvas>
+        </div>
+        <div id="tk-replen-pie-empty" class="tk-pie-empty" style="display:none;">No tasks</div>
+      </div>
     </div>
 
     <!-- Pick Drop Carts card -->
@@ -2551,6 +2591,7 @@ function renderTasksData(data) {
   if (!data || (!data.picking && !data.replen)) {
     document.getElementById('tk-empty-state').style.display = 'block';
     document.getElementById('tk-summary-tiles').style.display = 'none';
+    document.getElementById('tk-view-bar').style.display = 'none';
     document.getElementById('tk-cards-grid').style.display = 'none';
     return;
   }
@@ -2573,6 +2614,7 @@ function renderTasksData(data) {
   document.getElementById('tk-replen-done').textContent = r.completed.toLocaleString();
 
   document.getElementById('tk-summary-tiles').style.display = '';
+  document.getElementById('tk-view-bar').style.display      = '';
   document.getElementById('tk-cards-grid').style.display   = 'grid';
 
   renderTaskTable('picking');
@@ -2705,15 +2747,14 @@ function renderFlowCarts(carts) {
 }
 
 function renderTaskTable(type) {
-  var isPick     = type === 'picking';
-  var tbodyId    = isPick ? 'tk-pick-tbody'      : 'tk-replen-tbody';
-  var emptyId    = isPick ? 'tk-pick-empty'      : 'tk-replen-empty';
-  var showDoneId = isPick ? 'tk-pick-show-done'  : 'tk-replen-show-done';
-  var dataKey    = isPick ? 'picking'             : 'replen';
-  var tasks      = (lastTkData && lastTkData[dataKey] && lastTkData[dataKey].tasks) || [];
-  var showDone   = !!(document.getElementById(showDoneId) && document.getElementById(showDoneId).checked);
+  var isPick   = type === 'picking';
+  var tbodyId  = isPick ? 'tk-pick-tbody'  : 'tk-replen-tbody';
+  var emptyId  = isPick ? 'tk-pick-empty'  : 'tk-replen-empty';
+  var dataKey  = isPick ? 'picking'        : 'replen';
+  var tasks    = (lastTkData && lastTkData[dataKey] && lastTkData[dataKey].tasks) || [];
+  var showDone = !!(document.getElementById('tk-show-done-global') && document.getElementById('tk-show-done-global').checked);
 
-  var filtered = tasks.filter(function(t) { return showDone || t.status !== '8000'; });
+  var filtered = tasks.filter(function(t) { return showDone ? t.status === '8000' : t.status !== '8000'; });
 
   var STATUS_ORDER = { '7000':0, '5000':1, '3000':2, '8000':3 };
 
@@ -2826,6 +2867,144 @@ function renderTaskTable(type) {
     }
   }
   tbody.innerHTML = rows;
+}
+
+// ── Task view toggle ──────────────────────────────────────────────────────────
+var _tkView = 'list'; // 'list' | 'chart'
+
+function setTaskView(v) {
+  _tkView = v;
+  document.getElementById('tk-btn-list').classList.toggle('active', v === 'list');
+  document.getElementById('tk-btn-chart').classList.toggle('active', v === 'chart');
+  document.getElementById('tk-cards-grid').style.display = v === 'list' ? 'grid' : 'none';
+  var pg = document.getElementById('tk-pie-grid');
+  if (v === 'chart') {
+    pg.classList.add('visible');
+    renderTaskPie('picking');
+    renderTaskPie('replen');
+  } else {
+    pg.classList.remove('visible');
+  }
+}
+
+function onTaskDoneToggle() {
+  if (_tkView === 'list') {
+    renderTaskTable('picking');
+    renderTaskTable('replen');
+  } else {
+    renderTaskPie('picking');
+    renderTaskPie('replen');
+  }
+}
+
+// ── Pie chart renderer ────────────────────────────────────────────────────────
+var _TK_PIE_COLORS = [
+  '#6366f1','#22d3ee','#f59e0b','#34d399','#f87171',
+  '#a78bfa','#38bdf8','#fb923c','#4ade80','#e879f9',
+  '#60a5fa','#facc15','#2dd4bf','#f472b6','#94a3b8'
+];
+
+function renderTaskPie(type) {
+  var isPick  = type === 'picking';
+  var canvId  = isPick ? 'tk-pick-pie'       : 'tk-replen-pie';
+  var wrapId  = isPick ? 'tk-pick-pie-wrap'  : 'tk-replen-pie-wrap';
+  var emptyId = isPick ? 'tk-pick-pie-empty' : 'tk-replen-pie-empty';
+  var dataKey = isPick ? 'picking'           : 'replen';
+  var tasks   = (lastTkData && lastTkData[dataKey] && lastTkData[dataKey].tasks) || [];
+  var showDone = !!(document.getElementById('tk-show-done-global') && document.getElementById('tk-show-done-global').checked);
+  var filtered = tasks.filter(function(t) { return showDone ? t.status === '8000' : t.status !== '8000'; });
+
+  var wrap  = document.getElementById(wrapId);
+  var empty = document.getElementById(emptyId);
+
+  if (!filtered.length) {
+    wrap.style.display  = 'none';
+    empty.style.display = '';
+    return;
+  }
+  wrap.style.display  = '';
+  empty.style.display = 'none';
+
+  // Aggregate by zone
+  var zoneMap = {};
+  for (var i = 0; i < filtered.length; i++) {
+    var z = (filtered[i].source || '').slice(0, 3) || '???';
+    zoneMap[z] = (zoneMap[z] || 0) + 1;
+  }
+  var zones = Object.keys(zoneMap).sort();
+  var total = filtered.length;
+
+  var canv = document.getElementById(canvId);
+  var size = 280;
+  canv.width = canv.height = size;
+  var cx = size / 2, cy = size / 2, R = size / 2 - 10, Ri = R * 0.46;
+  var ctx = canv.getContext('2d');
+
+  // Spin-in animation
+  var startAngle = -Math.PI / 2;
+  var slices = [];
+  var cumAngle = 0;
+  for (var si = 0; si < zones.length; si++) {
+    var sweep = (zoneMap[zones[si]] / total) * Math.PI * 2;
+    slices.push({ zone: zones[si], count: zoneMap[zones[si]], start: startAngle + cumAngle, sweep: sweep, color: _TK_PIE_COLORS[si % _TK_PIE_COLORS.length] });
+    cumAngle += sweep;
+  }
+
+  var ANIM_MS = 520;
+  var t0 = null;
+  function frame(ts) {
+    if (!t0) t0 = ts;
+    var p = Math.min((ts - t0) / ANIM_MS, 1);
+    var ease = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    ctx.clearRect(0, 0, size, size);
+
+    for (var i = 0; i < slices.length; i++) {
+      var sl = slices[i];
+      var drawSweep = sl.sweep * ease;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, sl.start, sl.start + drawSweep);
+      ctx.closePath();
+      ctx.fillStyle = sl.color;
+      ctx.fill();
+      // thin separator
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+
+    // donut hole
+    ctx.beginPath();
+    ctx.arc(cx, cy, Ri, 0, Math.PI * 2);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#141824';
+    ctx.fill();
+
+    // labels — only draw if animation is >60% done
+    if (ease > 0.6) {
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (var i = 0; i < slices.length; i++) {
+        var sl = slices[i];
+        var pct = Math.round(sl.count / total * 100);
+        if (pct < 4) continue; // skip tiny slices
+        var mid = sl.start + sl.sweep * 0.5;
+        var lr = (R + Ri) / 2;
+        var tx = cx + Math.cos(mid) * lr;
+        var ty = cy + Math.sin(mid) * lr;
+        var alpha = Math.min(1, (ease - 0.6) / 0.4);
+        ctx.globalAlpha = alpha;
+        ctx.font = 'bold 11px system-ui,sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(sl.zone, tx, ty - 7);
+        ctx.font = '10px system-ui,sans-serif';
+        ctx.fillText(pct + '%', tx, ty + 6);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    if (p < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
