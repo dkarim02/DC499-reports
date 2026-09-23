@@ -23,7 +23,7 @@
   [data-theme="dark"]{
     --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;
     --text:#f0f0ee;--text-muted:#999;--text-hint:#777;--bar-bg:#3a3a3a;
-    --accent-bg:#0d2340;--accent-muted:#5B9BD5;
+    --accent:#5B9BD5;--accent-bg:#0d2340;--accent-muted:#5B9BD5;
     --ready:#4CAF50;--ready-bg:#1a2e1a;
     --alloc:#FFB74D;--alloc-bg:#2e1a00;
     --packing:#a78bfa;--packing-bg:#2e1a50;
@@ -36,7 +36,7 @@
   [data-theme="solid"]{
     --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;
     --text:#e4e8f4;--text-muted:#8090b0;--text-hint:#4a5570;--bar-bg:#2e3650;
-    --accent-bg:#0d2340;--accent-muted:#5B9BD5;
+    --accent:#5B9BD5;--accent-bg:#0d2340;--accent-muted:#5B9BD5;
     --ready:#22c55e;--ready-bg:#052e16;
     --alloc:#FFB74D;--alloc-bg:#2a1f00;
     --packing:#a78bfa;--packing-bg:#1e1040;
@@ -74,8 +74,7 @@
   }
   [data-theme="scout"]{
     --bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-light:#141825;--border-mid:#222a3c;
-    --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;
-    --bar-bg:#1c2232;
+    --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;--bar-bg:#1c2232;
     --accent:#0E9E8E;--accent-bg:#0c2e2b;--accent-muted:#0E9E8E;
     --ready:#27ae60;--ready-bg:#0c2e1a;
     --alloc:#e67e22;--alloc-bg:#2e1a00;
@@ -86,26 +85,25 @@
     --amber:#e67e22;--amber-bg:#2e1a00;
     --red:#e74c3c;--red-bg:#2d0a0a;
   }
-  [data-theme="scout"] body {
-    background: radial-gradient(ellipse 70% 55% at 0% 0%, rgba(14,158,142,0.13) 0%, transparent 65%),
-                radial-gradient(ellipse 60% 50% at 100% 100%, rgba(24,95,165,0.12) 0%, transparent 65%),
-                #0c0d14;
+  [data-theme="scout"] body{
+    background:radial-gradient(ellipse 70% 55% at 0% 0%,rgba(14,158,142,0.13) 0%,transparent 65%),
+               radial-gradient(ellipse 60% 50% at 100% 100%,rgba(24,95,165,0.12) 0%,transparent 65%),
+               #0c0d14;
   }
-  [data-theme="scout"] .theme-option.active { color: #0E9E8E; }
+  [data-theme="scout"] .theme-option.active{color:#0E9E8E;}
 
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
   .container{max-width:1100px;margin:0 auto;}
 
-  /* top bar */
-  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;gap:1rem;}
-  .top-bar-left{}
+  /* ── top bar ── */
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;gap:1rem;}
   .dept-label{font-size:11px;color:var(--accent);font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;}
   h1{font-size:20px;font-weight:500;margin-bottom:2px;}
-  .subtitle{font-size:13px;color:var(--text-muted);}
+  .subtitle{font-size:14px;color:var(--text-muted);}
   .top-bar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 
-  /* theme picker */
+  /* ── theme picker ── */
   .theme-picker{position:relative;}
   .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
   .theme-btn:hover{background:var(--surface2);}
@@ -119,63 +117,97 @@
   .theme-option:hover{background:var(--surface2);color:var(--text);}
   .theme-option.active{color:var(--accent);}
 
-  /* refresh meta */
-  .meta-bar{font-size:12px;color:var(--text-hint);margin-bottom:1.5rem;}
+  /* ── live dot ── */
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:5px;animation:livepulse 2s infinite;flex-shrink:0;}
+  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.75);}}
 
-  /* wave cards */
-  .waves{display:flex;flex-direction:column;gap:1rem;}
+  /* ── header row ── */
+  .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .run-time{display:flex;align-items:center;font-size:12px;color:var(--text-hint);}
 
-  .wave-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;}
-  .wave-card.stale{opacity:0.65;}
+  /* ── total capsule ── */
+  .total-capsule{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:10px;padding:10px 18px;margin-bottom:1.25rem;border-left:3px solid var(--accent);}
+  .total-capsule-left{display:flex;align-items:baseline;gap:10px;}
+  .total-capsule-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .total-capsule-value{font-size:22px;font-weight:500;color:var(--text);}
+  .total-capsule-right{font-size:11px;color:var(--text-hint);}
 
-  .wave-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:0.5px solid var(--border);gap:1rem;cursor:pointer;user-select:none;}
-  .wave-header:hover{background:var(--surface2);}
-  .wave-left{display:flex;align-items:center;gap:12px;}
-  .wave-date-label{font-size:15px;font-weight:600;color:var(--text);}
-  .wave-total{font-size:13px;color:var(--text-muted);}
-  .wave-chevron{font-size:11px;color:var(--text-hint);transition:transform 0.2s;}
-  .wave-card.expanded .wave-chevron{transform:rotate(180deg);}
+  /* ── metric tiles (wave + status) ── */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;}
+  .metrics.status-grid{grid-template-columns:repeat(5,1fr);margin-bottom:1.25rem;}
+  @media(max-width:900px){.metrics{grid-template-columns:repeat(2,1fr);}.metrics.status-grid{grid-template-columns:repeat(3,1fr);}}
+  @media(max-width:500px){.metrics{grid-template-columns:1fr;}.metrics.status-grid{grid-template-columns:repeat(2,1fr);}}
+  .metric{background:var(--surface2);border-radius:10px;padding:1rem;text-align:center;border-top:3px solid transparent;transition:background 0.15s,box-shadow 0.15s;}
+  .metric.wave-tile{cursor:pointer;border-top-color:var(--accent);}
+  .metric.wave-tile:hover{background:var(--accent-bg);}
+  .metric.wave-tile.active{background:var(--accent-bg);box-shadow:0 0 0 1.5px var(--accent);border-top-color:var(--accent);}
+  .metric.wave-tile.stale{opacity:0.6;}
+  .metric.s-ready   {border-top-color:var(--ready);}
+  .metric.s-alloc   {border-top-color:var(--alloc);}
+  .metric.s-packing {border-top-color:var(--packing);}
+  .metric.s-packed  {border-top-color:var(--packed);}
+  .metric.s-loaded  {border-top-color:var(--loaded);}
+  .metric-eyebrow{font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
+  .metric-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .metric-value{font-size:26px;font-weight:500;color:var(--text);}
+  .metric.s-ready   .metric-value{color:var(--ready);}
+  .metric.s-alloc   .metric-value{color:var(--alloc);}
+  .metric.s-packing .metric-value{color:var(--packing);}
+  .metric.s-packed  .metric-value{color:var(--packed);}
+  .metric.s-loaded  .metric-value{color:var(--loaded);}
+  .metric-sub{font-size:11px;color:var(--text-hint);margin-top:4px;}
+  .wave-mini-bar{display:flex;height:4px;border-radius:3px;overflow:hidden;margin-top:10px;background:var(--bar-bg);}
+  .wave-mini-seg{height:100%;}
+  .nearly-done{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;margin-top:6px;background:var(--packed-bg);color:var(--packed);}
 
-  /* status pills row */
-  .status-row{display:flex;flex-wrap:wrap;gap:6px;padding:12px 18px;border-bottom:0.5px solid var(--border-light);}
-  .status-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:4px 10px;border-radius:20px;white-space:nowrap;}
-  .pill-ready   {color:var(--ready);  background:var(--ready-bg);}
-  .pill-alloc   {color:var(--alloc);  background:var(--alloc-bg);}
-  .pill-packing {color:var(--packing);background:var(--packing-bg);}
-  .pill-packed  {color:var(--packed); background:var(--packed-bg);}
-  .pill-loaded  {color:var(--loaded); background:var(--loaded-bg);}
-  .pill-count{font-weight:700;}
+  /* ── section header ── */
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .section-title{font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;}
 
-  /* progress bar */
-  .progress-section{padding:10px 18px 14px;}
-  .progress-label{font-size:11px;color:var(--text-hint);margin-bottom:5px;}
-  .progress-track{background:var(--bar-bg);border-radius:4px;height:6px;overflow:hidden;display:flex;}
+  /* ── progress card ── */
+  .progress-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;}
+  .progress-track{background:var(--bar-bg);border-radius:4px;height:8px;overflow:hidden;display:flex;}
   .progress-seg{height:100%;transition:width 0.5s;}
   .seg-ready   {background:var(--ready);}
   .seg-alloc   {background:var(--alloc);}
   .seg-packing {background:var(--packing);}
   .seg-packed  {background:var(--packed);}
   .seg-loaded  {background:var(--loaded);}
+  .progress-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
+  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 
-  /* store breakdown (expanded) */
-  .wave-detail{display:none;padding:16px 18px;border-top:0.5px solid var(--border-light);}
-  .wave-card.expanded .wave-detail{display:flex;gap:20px;flex-wrap:wrap;}
-  .detail-chart{flex:0 0 220px;}
-  .detail-chart canvas{width:220px!important;height:220px!important;}
-  .detail-stores{flex:1;min-width:200px;}
-  .stores-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;}
-  .store-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--border-light);font-size:13px;}
-  .store-row:last-child{border-bottom:none;}
-  .store-id{color:var(--text);font-weight:500;min-width:50px;}
-  .store-bar-wrap{flex:1;margin:0 10px;background:var(--bar-bg);border-radius:3px;height:5px;overflow:hidden;}
-  .store-bar-fill{height:100%;border-radius:3px;background:var(--accent-muted);transition:width 0.4s;}
-  .store-orders{color:var(--text-muted);font-size:12px;min-width:36px;text-align:right;}
-  .store-other{font-size:12px;color:var(--text-hint);padding:6px 0 2px;}
+  /* ── card + table (shared with Ecom) ── */
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;overflow-x:auto;}
+  .card-title{font-size:13px;font-weight:500;color:var(--text-muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.04em;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);padding:8px 12px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;}
+  th.r{text-align:right;}
+  td{padding:9px 12px;border-bottom:0.5px solid var(--border-light);color:var(--text);vertical-align:middle;white-space:nowrap;}
+  td.r{text-align:right;}
+  td.muted{color:var(--text-muted);font-style:italic;}
+  tfoot td{font-weight:500;border-top:0.5px solid var(--border);border-bottom:none;padding-top:12px;}
+  tr:last-child td{border-bottom:none;}
+  .store-share-cell{display:flex;align-items:center;gap:8px;justify-content:flex-end;}
+  .store-share-bar{width:60px;height:4px;background:var(--bar-bg);border-radius:2px;overflow:hidden;flex-shrink:0;}
+  .store-share-fill{height:100%;border-radius:2px;background:var(--accent-muted);transition:width 0.4s;}
+  .store-share-fill.bucket{background:var(--text-hint);}
+  .store-share-pct{font-size:11px;color:var(--text-hint);min-width:32px;text-align:right;}
+  .bucket-divider td{padding:3px 12px;font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.06em;background:var(--surface2);border-bottom:0.5px solid var(--border-mid);}
 
-  /* empty / error states */
+  /* ── page layout (sidebar) ── */
+  .page-layout{display:flex;gap:1.25rem;align-items:flex-start;}
+  .page-main{flex:1;min-width:0;}
+  .page-sidebar{width:260px;flex-shrink:0;}
+  @media(max-width:800px){.page-layout{flex-direction:column;}.page-sidebar{width:100%;}}
+  .pie-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;}
+  .pie-card .card-title{margin-bottom:0.75rem;}
+  .pie-card canvas{display:block;margin:0 auto;}
+
+  /* ── empty / error ── */
   .empty-state{text-align:center;padding:3rem;color:var(--text-hint);font-size:14px;}
 
-  /* disclaimer */
+  /* ── disclaimer ── */
   .disclaimer{margin-top:2rem;font-size:11px;color:var(--text-hint);text-align:center;line-height:1.5;}
 
   @keyframes pageEnter{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
@@ -186,10 +218,10 @@
 <div class="container">
 
   <div class="top-bar">
-    <div class="top-bar-left">
+    <div>
       <div class="dept-label">DC499 — Retail</div>
       <h1>Retail Backlog</h1>
-      <div class="subtitle" id="subtitle">Loading...</div>
+      <div class="subtitle" id="subtitle">Store replenishment order progress by wave</div>
     </div>
     <div class="top-bar-right">
       <div class="theme-picker" id="themePicker">
@@ -211,9 +243,57 @@
     </div>
   </div>
 
-  <div class="meta-bar" id="metaBar"></div>
-  <div class="waves" id="wavesContainer">
-    <div class="empty-state">Loading wave data...</div>
+  <div class="header-row">
+    <div class="run-time"><span class="live-dot"></span><span id="runTime">Loading...</span></div>
+  </div>
+
+  <div class="total-capsule" id="totalCapsule" style="display:none">
+    <div class="total-capsule-left">
+      <span class="total-capsule-label">Active Orders</span>
+      <span class="total-capsule-value" id="totalActive">—</span>
+    </div>
+    <div class="total-capsule-right" id="totalRight">— waves</div>
+  </div>
+
+  <div class="metrics" id="waveTiles">
+    <div class="empty-state" style="grid-column:1/-1">Loading wave data...</div>
+  </div>
+
+  <div id="waveDetail" style="display:none">
+    <div class="section-header">
+      <div class="section-title" id="detailTitle">Wave detail</div>
+    </div>
+    <div class="metrics status-grid" id="statusTiles"></div>
+    <div class="progress-card">
+      <div class="progress-track" id="progressTrack"></div>
+      <div class="progress-legend" id="progressLegend"></div>
+    </div>
+    <div class="page-layout">
+      <div class="page-main">
+        <div class="card">
+          <div class="card-title" id="storeCardTitle">Store Breakdown</div>
+          <table id="storeTable">
+            <thead><tr>
+              <th>Store</th>
+              <th class="r">Orders</th>
+              <th class="r">Share</th>
+            </tr></thead>
+            <tbody id="storeTableBody"></tbody>
+            <tfoot><tr>
+              <td>Total</td>
+              <td class="r" id="storeTotalOrders">—</td>
+              <td class="r">100%</td>
+            </tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div class="page-sidebar">
+        <div class="pie-card">
+          <div class="card-title">By Store Group</div>
+          <canvas id="pieCanvas" width="210" height="210"></canvas>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="disclaimer">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>
@@ -240,14 +320,10 @@ function setTheme(t) {
   localStorage.setItem(THEME_KEY, t);
   applyTheme(t);
   closeThemeMenu();
-  redrawCharts();
+  if (currentWave) renderPie(currentWave.stores);
 }
-function toggleThemeMenu() {
-  document.getElementById('themePicker').classList.toggle('open');
-}
-function closeThemeMenu() {
-  document.getElementById('themePicker').classList.remove('open');
-}
+function toggleThemeMenu() { document.getElementById('themePicker').classList.toggle('open'); }
+function closeThemeMenu()  { document.getElementById('themePicker').classList.remove('open'); }
 document.addEventListener('click', e => {
   if (!document.getElementById('themePicker').contains(e.target)) closeThemeMenu();
 });
@@ -255,75 +331,49 @@ applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 
 // ── status config ──────────────────────────────────────────────────────────────
 const STATUS_ORDER  = ['1000','2090','7100','7200','7800'];
-const STATUS_LABELS = { '1000':'Ready', '2090':'Allocated', '7100':'Packing', '7200':'Packed', '7800':'Loaded' };
-const STATUS_CLASS  = { '1000':'ready', '2090':'alloc', '7100':'packing', '7200':'packed', '7800':'loaded' };
-const STATUS_COLORS_LIGHT = {
-  '1000': '#2E7D32', '2090': '#E65100', '7100': '#6D28D9', '7200': '#5B9BD5', '7800': '#00838F'
-};
-const STATUS_COLORS_DARK = {
-  '1000': '#4CAF50', '2090': '#FFB74D', '7100': '#a78bfa', '7200': '#5B9BD5', '7800': '#26C6DA'
-};
+const STATUS_LABELS = { '1000':'Ready','2090':'Allocated','7100':'Packing','7200':'Packed','7800':'Loaded' };
+const STATUS_CLASS  = { '1000':'ready','2090':'alloc','7100':'packing','7200':'packed','7800':'loaded' };
+const SEG_CLASS     = { '1000':'seg-ready','2090':'seg-alloc','7100':'seg-packing','7200':'seg-packed','7800':'seg-loaded' };
 
-function statusColor(code) {
-  const dark = ['dark','solid','pastel','scout'].includes(localStorage.getItem(THEME_KEY) || 'dark');
-  return (dark ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT)[code] || '#999';
+function isDarkTheme() {
+  return ['dark','solid','pastel','scout'].includes(localStorage.getItem(THEME_KEY) || 'dark');
 }
+const PIE_COLORS_TOP    = ['#5B9BD5','#E65100','#2E7D32','#6D28D9','#00838F'];
+const PIE_COLORS_BUCKET = ['#888','#aaa','#777','#bbb','#999'];
 
-// ── chart registry (for redraw on theme change) ────────────────────────────────
-const chartRegistry = {};
-
-// Group stores: top 5 shown individually, rest bucketed by first digit (400s, 300s, etc.)
+// ── store grouping ─────────────────────────────────────────────────────────────
 function groupStores(stores) {
-  const TOP = 5;
-  const top = stores.slice(0, TOP);
-  const rest = stores.slice(TOP);
-
-  // bucket rest by first digit of store_id
+  const top  = stores.slice(0, 5);
+  const rest = stores.slice(5);
   const buckets = {};
   for (const r of rest) {
-    const firstDigit = String(r.store_id)[0];
-    const key = firstDigit + '00s';
+    const key = String(r.store_id)[0] + '00s';
     buckets[key] = (buckets[key] || 0) + r.orders;
   }
-
   const bucketRows = Object.entries(buckets)
     .map(([label, orders]) => ({ store_id: label, orders, isBucket: true }))
     .sort((a, b) => b.orders - a.orders);
-
   return { top, bucketRows };
 }
 
-function buildPieData(stores) {
-  const { top, bucketRows } = groupStores(stores);
-  const palette = ['#5B9BD5','#E65100','#2E7D32','#6D28D9','#00838F'];
-  const bucketColors = ['#aaa','#888','#bbb','#777','#ccc'];
-
-  const labels = top.map(r => `Store ${r.store_id}`);
-  const data   = top.map(r => r.orders);
-  const colors = top.map((_, i) => palette[i]);
-
-  bucketRows.forEach((b, i) => {
-    labels.push(b.store_id);
-    data.push(b.orders);
-    colors.push(bucketColors[i % bucketColors.length]);
-  });
-
-  return { labels, data, colors };
-}
-
-function renderPie(canvasId, stores) {
-  const canvas = document.getElementById(canvasId);
+// ── pie chart ──────────────────────────────────────────────────────────────────
+let pieChart = null;
+function renderPie(stores) {
+  const canvas = document.getElementById('pieCanvas');
   if (!canvas) return;
-  if (chartRegistry[canvasId]) { chartRegistry[canvasId].destroy(); delete chartRegistry[canvasId]; }
-  const { labels, data, colors } = buildPieData(stores);
-  const isDark = ['dark','solid','pastel','scout'].includes(localStorage.getItem(THEME_KEY) || 'dark');
-  chartRegistry[canvasId] = new Chart(canvas, {
+  if (pieChart) { pieChart.destroy(); pieChart = null; }
+  const { top, bucketRows } = groupStores(stores);
+  const labels = [...top.map(r => `Store ${r.store_id}`), ...bucketRows.map(r => r.store_id)];
+  const data   = [...top.map(r => r.orders),              ...bucketRows.map(r => r.orders)];
+  const colors = [...top.map((_, i) => PIE_COLORS_TOP[i] || '#aaa'), ...bucketRows.map((_, i) => PIE_COLORS_BUCKET[i % PIE_COLORS_BUCKET.length])];
+  const dark = isDarkTheme();
+  pieChart = new Chart(canvas, {
     type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 1, borderColor: isDark ? '#333' : '#fff' }] },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 1, borderColor: dark ? '#333' : '#fff' }] },
     options: {
       cutout: '30%',
       plugins: {
-        legend: { display: true, position: 'bottom', labels: { color: isDark ? '#999' : '#666', font: { size: 11 }, boxWidth: 10, padding: 8 } },
+        legend: { display: true, position: 'bottom', labels: { color: dark ? '#999' : '#666', font: { size: 11 }, boxWidth: 10, padding: 8 } },
         tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} orders` } },
       },
       animation: { duration: 400 },
@@ -331,142 +381,178 @@ function renderPie(canvasId, stores) {
   });
 }
 
-function redrawCharts() {
-  Object.keys(chartRegistry).forEach(id => {
-    const canvas = document.getElementById(id);
-    if (!canvas) return;
-    const stores = canvas.dataset.stores ? JSON.parse(canvas.dataset.stores) : [];
-    renderPie(id, stores);
+// ── wave state ─────────────────────────────────────────────────────────────────
+let allWaves     = [];
+let currentWave  = null;
+let selectedIdx  = 0;
+
+function selectWave(idx) {
+  selectedIdx = idx;
+  currentWave = allWaves[idx];
+  document.querySelectorAll('.metric.wave-tile').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
   });
+  renderWaveDetail(currentWave);
 }
 
-// ── render ─────────────────────────────────────────────────────────────────────
+// ── date format ────────────────────────────────────────────────────────────────
 function fmtDate(isoDate) {
   const [y, m, d] = isoDate.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtDateShort(isoDate) {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function renderWaves(data) {
-  const container = document.getElementById('wavesContainer');
-  if (!data.waves || !data.waves.length) {
-    container.innerHTML = '<div class="empty-state">No active waves found.</div>';
+// ── render wave tiles ──────────────────────────────────────────────────────────
+function renderWaveTiles(waves) {
+  const container = document.getElementById('waveTiles');
+  if (!waves.length) {
+    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No active waves found.</div>';
     return;
   }
-
   container.innerHTML = '';
-  data.waves.forEach((wave, idx) => {
+  waves.forEach((wave, idx) => {
     const total = wave.total_active_orders || 0;
     const sc    = wave.status_counts || {};
-    const isStale = total < 5;
+    const stale = total < 5;
 
-    // status pills
-    const pillsHtml = STATUS_ORDER.filter(s => sc[s]).map(s =>
-      `<span class="status-pill pill-${STATUS_CLASS[s]}">
-        <span>${STATUS_LABELS[s]}</span>
-        <span class="pill-count">${sc[s].toLocaleString()}</span>
-      </span>`
+    // mini bar segments
+    const segsHtml = STATUS_ORDER.filter(s => sc[s] && total > 0).map(s =>
+      `<div class="wave-mini-seg ${SEG_CLASS[s]}" style="width:${(sc[s]/total*100).toFixed(1)}%"></div>`
     ).join('');
 
-    // segmented progress bar
-    const segsHtml = STATUS_ORDER.filter(s => sc[s] && total > 0).map(s => {
-      const pct = (sc[s] / total * 100).toFixed(1);
-      return `<div class="progress-seg seg-${STATUS_CLASS[s]}" style="width:${pct}%"></div>`;
-    }).join('');
-
-    // store list — top 5 individual, rest bucketed by first digit
-    const { top: topStores, bucketRows } = groupStores(wave.stores);
-    const allDisplayRows = [
-      ...topStores.map(r => ({ label: `Store ${r.store_id}`, orders: r.orders, isBucket: false })),
-      ...bucketRows.map(r => ({ label: r.store_id, orders: r.orders, isBucket: true })),
-    ];
-    const maxOrders = allDisplayRows.length ? allDisplayRows[0].orders : 1;
-    const storeRowsHtml = allDisplayRows.map(r =>
-      `<div class="store-row">
-        <span class="store-id" style="${r.isBucket ? 'color:var(--text-muted);font-style:italic;' : ''}">${r.label}</span>
-        <div class="store-bar-wrap"><div class="store-bar-fill" style="width:${(r.orders/maxOrders*100).toFixed(1)}%${r.isBucket ? ';background:var(--text-hint)' : ''}"></div></div>
-        <span class="store-orders">${r.orders}</span>
-      </div>`
-    ).join('');
-
-    const canvasId = `pie-${idx}`;
-
-    const card = document.createElement('div');
-    card.className = `wave-card${isStale ? ' stale' : ''}`;
-    card.innerHTML = `
-      <div class="wave-header" onclick="toggleWave(this)">
-        <div class="wave-left">
-          <span class="wave-date-label">${fmtDate(wave.wave_date)}</span>
-          <span class="wave-total">${total.toLocaleString()} active order${total !== 1 ? 's' : ''}</span>
-          ${isStale ? '<span class="status-pill pill-packed" style="font-size:11px;padding:2px 8px;">nearly done</span>' : ''}
-        </div>
-        <span class="wave-chevron">&#9660;</span>
-      </div>
-      <div class="status-row">${pillsHtml || '<span style="font-size:12px;color:var(--text-hint)">No active orders</span>'}</div>
-      <div class="progress-section">
-        <div class="progress-label">Active order distribution</div>
-        <div class="progress-track">${segsHtml}</div>
-      </div>
-      <div class="wave-detail">
-        <div class="detail-chart">
-          <canvas id="${canvasId}" data-stores='${JSON.stringify(wave.stores)}'></canvas>
-        </div>
-        <div class="detail-stores">
-          <div class="stores-title">Stores — Top 5 + Groups (${wave.stores.length} total)</div>
-          ${storeRowsHtml}
-        </div>
-      </div>
+    const tile = document.createElement('div');
+    tile.className = `metric wave-tile${stale ? ' stale' : ''}${idx === selectedIdx ? ' active' : ''}`;
+    tile.onclick = () => selectWave(idx);
+    tile.innerHTML = `
+      <div class="metric-eyebrow">Wave</div>
+      <div class="metric-value" style="font-size:18px;font-weight:600">${fmtDateShort(wave.wave_date)}</div>
+      <div class="metric-sub">${total.toLocaleString()} active</div>
+      <div class="wave-mini-bar">${segsHtml}</div>
+      ${stale ? '<div class="nearly-done">nearly done</div>' : ''}
     `;
-    container.appendChild(card);
-
-    // auto-expand the first (most active) wave
-    if (idx === 0) {
-      card.classList.add('expanded');
-      setTimeout(() => renderPie(canvasId, wave.stores), 50);
-    }
+    container.appendChild(tile);
   });
 }
 
-function toggleWave(header) {
-  const card = header.closest('.wave-card');
-  const wasExpanded = card.classList.contains('expanded');
-  card.classList.toggle('expanded');
-  if (!wasExpanded) {
-    const canvas = card.querySelector('canvas');
-    if (canvas) {
-      const stores = JSON.parse(canvas.dataset.stores || '[]');
-      renderPie(canvas.id, stores);
-    }
+// ── render wave detail ─────────────────────────────────────────────────────────
+function renderWaveDetail(wave) {
+  document.getElementById('waveDetail').style.display = '';
+  document.getElementById('detailTitle').textContent = `${fmtDate(wave.wave_date)} — Wave Detail`;
+
+  const total = wave.total_active_orders || 0;
+  const sc    = wave.status_counts || {};
+
+  // status tiles
+  const tilesContainer = document.getElementById('statusTiles');
+  tilesContainer.innerHTML = '';
+  STATUS_ORDER.forEach(s => {
+    const count = sc[s] || 0;
+    const pct   = total > 0 ? ((count / total) * 100).toFixed(0) : '0';
+    const tile  = document.createElement('div');
+    tile.className = `metric s-${STATUS_CLASS[s]}`;
+    tile.innerHTML = `
+      <div class="metric-label">${STATUS_LABELS[s]}</div>
+      <div class="metric-value">${count.toLocaleString()}</div>
+      <div class="metric-sub">${pct}% of wave</div>
+    `;
+    tilesContainer.appendChild(tile);
+  });
+
+  // progress bar
+  const track = document.getElementById('progressTrack');
+  track.innerHTML = STATUS_ORDER.filter(s => sc[s] && total > 0).map(s =>
+    `<div class="progress-seg ${SEG_CLASS[s]}" style="width:${(sc[s]/total*100).toFixed(1)}%"></div>`
+  ).join('');
+
+  const legend = document.getElementById('progressLegend');
+  legend.innerHTML = STATUS_ORDER.filter(s => sc[s]).map(s => {
+    const colors = { '1000':'var(--ready)','2090':'var(--alloc)','7100':'var(--packing)','7200':'var(--packed)','7800':'var(--loaded)' };
+    return `<span class="legend-item"><span class="legend-dot" style="background:${colors[s]}"></span>${STATUS_LABELS[s]}: ${sc[s].toLocaleString()}</span>`;
+  }).join('');
+
+  // store table
+  const { top, bucketRows } = groupStores(wave.stores);
+  const maxOrders = wave.stores.length ? wave.stores[0].orders : 1;
+  const totalStoreOrders = wave.stores.reduce((s, r) => s + r.orders, 0);
+  const tbody = document.getElementById('storeTableBody');
+  tbody.innerHTML = '';
+
+  top.forEach(r => {
+    const pct = totalStoreOrders > 0 ? ((r.orders / totalStoreOrders) * 100).toFixed(0) : '0';
+    const barW = ((r.orders / maxOrders) * 100).toFixed(1);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>Store ${r.store_id}</td>
+      <td class="r">${r.orders.toLocaleString()}</td>
+      <td class="r"><div class="store-share-cell"><div class="store-share-bar"><div class="store-share-fill" style="width:${barW}%"></div></div><span class="store-share-pct">${pct}%</span></div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  if (bucketRows.length) {
+    const divRow = document.createElement('tr');
+    divRow.className = 'bucket-divider';
+    divRow.innerHTML = '<td colspan="3">Store Groups</td>';
+    tbody.appendChild(divRow);
+    bucketRows.forEach(r => {
+      const pct = totalStoreOrders > 0 ? ((r.orders / totalStoreOrders) * 100).toFixed(0) : '0';
+      const barW = ((r.orders / maxOrders) * 100).toFixed(1);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="muted">${r.store_id}</td>
+        <td class="r">${r.orders.toLocaleString()}</td>
+        <td class="r"><div class="store-share-cell"><div class="store-share-bar"><div class="store-share-fill bucket" style="width:${barW}%"></div></div><span class="store-share-pct">${pct}%</span></div></td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
+
+  document.getElementById('storeTotalOrders').textContent = totalStoreOrders.toLocaleString();
+  document.getElementById('storeCardTitle').textContent   = `Store Breakdown — ${wave.stores.length} stores`;
+
+  // pie
+  renderPie(wave.stores);
 }
 
 // ── data fetch ─────────────────────────────────────────────────────────────────
 function getLiveBase() {
-  const onLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  return onLocal ? 'http://localhost:3001' : 'https://dkarim02.github.io/DC499-reports';
+  const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  return local ? 'http://localhost:3001' : 'https://dkarim02.github.io/DC499-reports';
 }
 
 async function loadData() {
   try {
-    const url = `${getLiveBase()}/retail_backlog_live.json?_=${Date.now()}`;
-    const res = await fetch(url);
+    const res  = await fetch(`${getLiveBase()}/retail_backlog_live.json?_=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
     const genDt = new Date(data.generated);
-    const pdt   = genDt.toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour12: true, hour:'numeric', minute:'2-digit' });
-    document.getElementById('metaBar').textContent = `Last updated ${pdt} PDT`;
+    const pdt   = genDt.toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour12:true, hour:'numeric', minute:'2-digit' });
+    document.getElementById('runTime').textContent = `Updated ${pdt} PDT`;
 
-    const totalActive = (data.waves || []).reduce((s, w) => s + (w.total_active_orders || 0), 0);
-    const waveCount   = (data.waves || []).length;
-    document.getElementById('subtitle').textContent =
-      `${totalActive.toLocaleString()} active orders across ${waveCount} wave${waveCount !== 1 ? 's' : ''}`;
+    allWaves = data.waves || [];
+    const totalActive = allWaves.reduce((s, w) => s + (w.total_active_orders || 0), 0);
 
-    renderWaves(data);
+    document.getElementById('totalCapsule').style.display = '';
+    document.getElementById('totalActive').textContent  = totalActive.toLocaleString();
+    document.getElementById('totalRight').textContent   = `${allWaves.length} active wave${allWaves.length !== 1 ? 's' : ''}`;
+
+    renderWaveTiles(allWaves);
+
+    if (allWaves.length) {
+      currentWave = allWaves[selectedIdx] || allWaves[0];
+      selectedIdx = allWaves.indexOf(currentWave);
+      renderWaveDetail(currentWave);
+    } else {
+      document.getElementById('waveDetail').style.display = 'none';
+    }
   } catch (e) {
-    document.getElementById('wavesContainer').innerHTML =
-      `<div class="empty-state">Could not load data — ${e.message}</div>`;
-    document.getElementById('subtitle').textContent = 'Data unavailable';
+    document.getElementById('waveTiles').innerHTML =
+      `<div class="empty-state" style="grid-column:1/-1">Could not load data — ${e.message}</div>`;
+    document.getElementById('runTime').textContent = 'Data unavailable';
   }
 }
 
