@@ -2977,9 +2977,16 @@ function renderTaskPie(type) {
     ctx.arc(cx, cy, Ri, 0, Math.PI * 2);
     ctx.fillStyle = surfaceColor;
     ctx.fill();
-    // labels
+    // center total
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.font = 'bold ' + Math.round(Ri * 0.72) + 'px system-ui,sans-serif';
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#e8eaf0';
+    ctx.fillText(total, cx, cy - Ri * 0.14);
+    ctx.font = Math.round(Ri * 0.38) + 'px system-ui,sans-serif';
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#8891aa';
+    ctx.fillText('tasks', cx, cy + Ri * 0.38);
+    // slice labels
     for (var i = 0; i < slices.length; i++) {
       var sl = slices[i];
       var pct = Math.round(sl.count / total * 100);
@@ -3023,6 +3030,15 @@ function renderTaskPie(type) {
     ctx.arc(cx, cy, Ri, 0, Math.PI * 2);
     ctx.fillStyle = surfaceColor;
     ctx.fill();
+    // center total (visible throughout animation)
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold ' + Math.round(Ri * 0.72) + 'px system-ui,sans-serif';
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#e8eaf0';
+    ctx.fillText(total, cx, cy - Ri * 0.14);
+    ctx.font = Math.round(Ri * 0.38) + 'px system-ui,sans-serif';
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#8891aa';
+    ctx.fillText('tasks', cx, cy + Ri * 0.38);
     if (ease > 0.7) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
