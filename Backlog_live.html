@@ -1788,6 +1788,11 @@ function renderHourly(hourly) {
         '<span class="hourly-range"' + (isPeak ? ' style="color:var(--text);font-weight:500;"' : '') + '>' + fmtHourRange(r.hour) + '</span>' +
         '<span class="hourly-count" style="' + countStyle + '">' + r.lines.toLocaleString() + '<span class="hourly-uom">units</span></span>' +
         '</div>';
+    } else {
+      html += '<div class="hourly-row">' +
+        '<span class="hourly-range" style="color:var(--text-hint);">' + fmtHourRange(r.hour) + '</span>' +
+        '<span class="hourly-count" style="color:var(--text-hint);">—</span>' +
+        '</div>';
     }
   });
   if (completedRows.length) {

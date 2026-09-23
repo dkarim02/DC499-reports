@@ -916,11 +916,13 @@ LIMIT 10`.trim();
     hour:  Number(r.hour_pdt),
     lines: Number(r.line_count),
   }));
-  // Always include the current PDT hour so the bridge shows a live partial count
+  // Fill any gaps between the first data hour and the current PDT hour with 0
   const nowPdtForHourly = nowPdt();
   const currentHourPdt  = nowPdtForHourly.getHours();
-  if (!hourly.some(h => h.hour === currentHourPdt)) {
-    hourly.push({ hour: currentHourPdt, lines: 0 });
+  const hourSet = new Set(hourly.map(h => h.hour));
+  const firstHour = hourly.length ? hourly[0].hour : currentHourPdt;
+  for (let h = firstHour; h <= currentHourPdt; h++) {
+    if (!hourSet.has(h)) hourly.push({ hour: h, lines: 0 });
   }
   hourly.sort((a, b) => a.hour - b.hour);
 
