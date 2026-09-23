@@ -2939,8 +2939,8 @@ function renderTaskPie(type) {
   canv.width = canv.height = size;
   var cx = size / 2, cy = size / 2, R = size / 2 - 10, Ri = R * 0.30;
   var ctx = canv.getContext('2d');
+  var surfaceColor = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#141824';
 
-  // Spin-in animation
   var startAngle = -Math.PI / 2;
   var slices = [];
   var cumAngle = 0;
@@ -2950,14 +2950,60 @@ function renderTaskPie(type) {
     cumAngle += sweep;
   }
 
+  function drawPie(hovIdx) {
+    ctx.clearRect(0, 0, size, size);
+    var NUDGE = 10;
+    for (var i = 0; i < slices.length; i++) {
+      var sl = slices[i];
+      var isHov = i === hovIdx;
+      var ox = 0, oy = 0;
+      if (isHov) {
+        var mid = sl.start + sl.sweep * 0.5;
+        ox = Math.cos(mid) * NUDGE;
+        oy = Math.sin(mid) * NUDGE;
+      }
+      ctx.beginPath();
+      ctx.moveTo(cx + ox, cy + oy);
+      ctx.arc(cx + ox, cy + oy, isHov ? R + 4 : R, sl.start, sl.start + sl.sweep);
+      ctx.closePath();
+      ctx.fillStyle = sl.color;
+      ctx.fill();
+      ctx.strokeStyle = isHov ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = isHov ? 2 : 1.2;
+      ctx.stroke();
+    }
+    // donut hole
+    ctx.beginPath();
+    ctx.arc(cx, cy, Ri, 0, Math.PI * 2);
+    ctx.fillStyle = surfaceColor;
+    ctx.fill();
+    // labels
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (var i = 0; i < slices.length; i++) {
+      var sl = slices[i];
+      var pct = Math.round(sl.count / total * 100);
+      if (pct < 4) continue;
+      var mid = sl.start + sl.sweep * 0.5;
+      var lr = (R + Ri) / 2;
+      var tx = cx + Math.cos(mid) * lr;
+      var ty = cy + Math.sin(mid) * lr;
+      ctx.font = 'bold 11px system-ui,sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(sl.zone, tx, ty - 7);
+      ctx.font = '10px system-ui,sans-serif';
+      ctx.fillText(pct + '%', tx, ty + 6);
+    }
+  }
+
+  // Spin-in animation
   var ANIM_MS = 520;
   var t0 = null;
   function frame(ts) {
     if (!t0) t0 = ts;
     var p = Math.min((ts - t0) / ANIM_MS, 1);
-    var ease = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    var ease = 1 - Math.pow(1 - p, 3);
     ctx.clearRect(0, 0, size, size);
-
     for (var i = 0; i < slices.length; i++) {
       var sl = slices[i];
       var drawSweep = sl.sweep * ease;
@@ -2967,26 +3013,21 @@ function renderTaskPie(type) {
       ctx.closePath();
       ctx.fillStyle = sl.color;
       ctx.fill();
-      // thin separator
       ctx.strokeStyle = 'rgba(0,0,0,0.18)';
       ctx.lineWidth = 1.2;
       ctx.stroke();
     }
-
-    // donut hole
     ctx.beginPath();
     ctx.arc(cx, cy, Ri, 0, Math.PI * 2);
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#141824';
+    ctx.fillStyle = surfaceColor;
     ctx.fill();
-
-    // labels — only draw if animation is >60% done
     if (ease > 0.6) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       for (var i = 0; i < slices.length; i++) {
         var sl = slices[i];
         var pct = Math.round(sl.count / total * 100);
-        if (pct < 4) continue; // skip tiny slices
+        if (pct < 4) continue;
         var mid = sl.start + sl.sweep * 0.5;
         var lr = (R + Ri) / 2;
         var tx = cx + Math.cos(mid) * lr;
@@ -3001,10 +3042,85 @@ function renderTaskPie(type) {
         ctx.globalAlpha = 1;
       }
     }
-
-    if (p < 1) requestAnimationFrame(frame);
+    if (p < 1) { requestAnimationFrame(frame); return; }
+    // Animation done — wire up hover
+    attachPieHover(canv, slices, total, cx, cy, R, Ri, drawPie);
   }
   requestAnimationFrame(frame);
+}
+
+function attachPieHover(canv, slices, total, cx, cy, R, Ri, drawPie) {
+  // Remove any prior listener by replacing the canvas clone trick via a flag
+  canv._pieHoverBound = true;
+
+  var tip = document.getElementById('tk-pie-tooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'tk-pie-tooltip';
+    tip.style.cssText = 'position:fixed;pointer-events:none;display:none;background:var(--surface2,#1a1e2a);border:0.5px solid var(--border);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:600;color:var(--text);box-shadow:0 4px 16px rgba(0,0,0,0.35);z-index:9999;white-space:nowrap;';
+    document.body.appendChild(tip);
+  }
+
+  function hitSlice(mx, my) {
+    var dx = mx - cx, dy = my - cy;
+    var dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < Ri || dist > R + 6) return -1;
+    var angle = Math.atan2(dy, dx);
+    // normalise angle to match slice start angles
+    for (var i = 0; i < slices.length; i++) {
+      var sl = slices[i];
+      var a = angle;
+      // wrap angle into [sl.start, sl.start + sl.sweep]
+      var s = sl.start, e = s + sl.sweep;
+      // bring a into range near s
+      while (a < s - Math.PI) a += Math.PI * 2;
+      while (a > s + Math.PI) a -= Math.PI * 2;
+      if (a >= s && a <= e) return i;
+    }
+    return -1;
+  }
+
+  var lastHov = -1;
+
+  function onMove(ev) {
+    var rect = canv.getBoundingClientRect();
+    var scaleX = canv.width / rect.width;
+    var scaleY = canv.height / rect.height;
+    var mx = (ev.clientX - rect.left) * scaleX;
+    var my = (ev.clientY - rect.top)  * scaleY;
+    var idx = hitSlice(mx, my);
+    if (idx !== lastHov) {
+      lastHov = idx;
+      drawPie(idx);
+    }
+    if (idx >= 0) {
+      var sl = slices[idx];
+      var pct = Math.round(sl.count / total * 100);
+      tip.innerHTML = '<span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + sl.color + ';margin-right:6px;vertical-align:middle;"></span>'
+        + sl.zone + ' &nbsp;·&nbsp; ' + sl.count + ' task' + (sl.count !== 1 ? 's' : '') + ' &nbsp;·&nbsp; ' + pct + '%';
+      tip.style.display = '';
+      tip.style.left = (ev.clientX + 14) + 'px';
+      tip.style.top  = (ev.clientY - 28) + 'px';
+      canv.style.cursor = 'pointer';
+    } else {
+      tip.style.display = 'none';
+      canv.style.cursor = '';
+    }
+  }
+
+  function onLeave() {
+    tip.style.display = 'none';
+    canv.style.cursor = '';
+    if (lastHov !== -1) { lastHov = -1; drawPie(-1); }
+  }
+
+  // Clean up old listeners before re-attaching
+  canv.removeEventListener('mousemove', canv._pieMoveHandler);
+  canv.removeEventListener('mouseleave', canv._pieLeaveHandler);
+  canv._pieMoveHandler  = onMove;
+  canv._pieLeaveHandler = onLeave;
+  canv.addEventListener('mousemove',  onMove);
+  canv.addEventListener('mouseleave', onLeave);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
