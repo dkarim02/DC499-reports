@@ -1,14 +1,14 @@
 {
-    "generated": "2026-09-23T15:21:16.375Z",
+    "generated": "2026-09-23T15:21:22.558Z",
     "shift": "1st",
     "shift_start": "2026-09-23 10:00:00",
     "facility": "499",
     "picking": {
-        "queued": 50,
+        "queued": 53,
         "assigned": 0,
-        "in_progress": 5,
+        "in_progress": 4,
         "completed": 0,
-        "total_open": 55,
+        "total_open": 57,
         "tasks": [
             {
                 "task_id": "WRPICK0000266475",
@@ -39,16 +39,6 @@
                 "target": null,
                 "created_pdt": "2026-09-22T21:16:20.163000",
                 "detail_count": 3
-            },
-            {
-                "task_id": "WRPICK0000266493",
-                "subtype": "NON MEZZ",
-                "status": "7000",
-                "status_label": "In Progress",
-                "source": "F1D0504D02",
-                "target": null,
-                "created_pdt": "2026-09-22T21:16:20.237000",
-                "detail_count": 8
             },
             {
                 "task_id": "WRPICK0000266496",
@@ -551,6 +541,16 @@
                 "detail_count": 150
             },
             {
+                "task_id": "WRPICK0000266596",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "P1C0206A02",
+                "target": null,
+                "created_pdt": "2026-09-23T05:21:04.694000",
+                "detail_count": 5
+            },
+            {
                 "task_id": "WRPICK0000266608",
                 "subtype": "NON MEZZ",
                 "status": "3000",
@@ -559,13 +559,33 @@
                 "target": null,
                 "created_pdt": "2026-09-23T05:21:05.536000",
                 "detail_count": 5
+            },
+            {
+                "task_id": "WRPICK0000266607",
+                "subtype": "MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F2C0461I01",
+                "target": null,
+                "created_pdt": "2026-09-23T05:21:05.981000",
+                "detail_count": 10
+            },
+            {
+                "task_id": "WRPICK0000266612",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F1B0211A02",
+                "target": null,
+                "created_pdt": "2026-09-23T05:26:26.648000",
+                "detail_count": 31
             }
         ]
     },
     "replen": {
-        "queued": 16,
+        "queued": 15,
         "assigned": 0,
-        "in_progress": 1,
+        "in_progress": 2,
         "completed": 0,
         "total_open": 17,
         "tasks": [
@@ -691,9 +711,9 @@
             },
             {
                 "task_id": "WRPICK0000266574",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "REPLEN PULL",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1F0302E01",
                 "target": "F1D1204D05",
                 "created_pdt": "2026-09-22T22:42:14.662000",
@@ -741,7 +761,21 @@
             }
         ]
     },
-    "pick_drop_carts": [],
+    "pick_drop_carts": [
+        {
+            "location": "P1-PK-14",
+            "ilpns": [
+                {
+                    "ilpn_id": "00003253580193292631",
+                    "on_hand": 4,
+                    "updated_pst": "2026-09-23T04:28:16.653000",
+                    "age_min": 173
+                }
+            ],
+            "total_units": 4,
+            "oldest_min": 173
+        }
+    ],
     "flow_carts": [
         {
             "location": "P1-FC-010008",
@@ -762,7 +796,7 @@
                     "ilpn_id": "00006499300003754538",
                     "on_hand": 3,
                     "updated_pst": "2026-09-21T10:43:49.605000",
-                    "age_min": 2677
+                    "age_min": 2678
                 },
                 {
                     "ilpn_id": "00006499300003597593",
@@ -787,7 +821,7 @@
                     "ilpn_id": "00006499300003755443",
                     "on_hand": 3,
                     "updated_pst": "2026-09-22T14:40:48.957000",
-                    "age_min": 1000
+                    "age_min": 1001
                 }
             ],
             "total_units": 7,
@@ -866,7 +900,7 @@
                     "ilpn_id": "00006499300003763608",
                     "on_hand": 9,
                     "updated_pst": "2026-09-21T10:16:50.651000",
-                    "age_min": 2704
+                    "age_min": 2705
                 },
                 {
                     "ilpn_id": "00006499300003763554",
