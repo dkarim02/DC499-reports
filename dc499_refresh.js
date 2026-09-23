@@ -431,18 +431,20 @@ WHERE td.FACILITY_ID            = '${FACILITY}'
   AND td.CREATED_TIMESTAMP   >= NOW() - INTERVAL 2 DAY
 GROUP BY td.TARGET_CONTAINER_ID`.trim();
 
-  // Query HP: individual oLPNs sitting at H1-PW-01 — powers the hospital detail modal.
+  // Query HP: individual oLPNs sitting at H1-PW-01 cubbies — powers Hospital PW tab in Backlog_live.
   const sqlHpOlpns = `
 SELECT
   o.LPN_ID                                                          AS olpn_id,
+  o.ORDER_ID                                                        AS order_id,
+  o.CURRENT_LOCATION_ID                                             AS cubby,
   o.STATUS                                                          AS status_code,
-  o.TOTAL_LPN_QTY                                                   AS units,
+  CONVERT_TZ(o.CREATED_TIMESTAMP, '+00:00', '+00:00')               AS created_utc,
   CONVERT_TZ(o.UPDATED_TIMESTAMP, '+00:00', '-07:00')               AS updated_pdt
 FROM default_pickpack.PPK_OLPN o
 WHERE o.FACILITY_ID        = '${FACILITY}'
   AND o.CURRENT_LOCATION_ID LIKE 'H1-PW-01%'
   AND o.STATUS NOT IN ('8000','9000')
-ORDER BY o.UPDATED_TIMESTAMP ASC`.trim();
+ORDER BY o.CREATED_TIMESTAMP ASC`.trim();
 
   // Query A: true total oLPN count per putwall — ungrouped by tote so every oLPN is counted.
   const sqlPwOlpn = `
@@ -616,9 +618,11 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
     const age_min = updMs ? Math.round((nowMs - updMs) / 60000) : null;
     return {
       olpn:        r.olpn_id,
+      order_id:    r.order_id || null,
+      cubby:       r.cubby    || null,
       status_code: r.status_code,
       status:      OLPN_STATUS_LABELS[r.status_code] || r.status_code,
-      units:       Math.round(Number(r.units) || 0),
+      created_utc: r.created_utc || null,
       age_min,
       updated:     r.updated_pdt ? r.updated_pdt.slice(11, 16) : null,
     };
@@ -912,6 +916,13 @@ LIMIT 10`.trim();
     hour:  Number(r.hour_pdt),
     lines: Number(r.line_count),
   }));
+  // Always include the current PDT hour so the bridge shows a live partial count
+  const nowPdtForHourly = nowPdt();
+  const currentHourPdt  = nowPdtForHourly.getHours();
+  if (!hourly.some(h => h.hour === currentHourPdt)) {
+    hourly.push({ hour: currentHourPdt, lines: 0 });
+  }
+  hourly.sort((a, b) => a.hour - b.hour);
 
   function waveLabel(sid, chase) {
     if (sid === 'NRDR_CORE_REPLEN_ORDER_PLANNING_STRATEGY')         return 'Replen';

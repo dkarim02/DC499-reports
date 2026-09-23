@@ -430,6 +430,49 @@
   .empty-state{text-align:center;padding:3rem 1rem;color:var(--text-hint);font-size:14px;line-height:1.8;}
   .nordstrom-tag{font-size:11px;color:var(--text-hint);text-align:center;margin-top:2rem;}
 
+  /* ── Hospital Putwall tab ────────────────────────────────────────────────── */
+  :root {
+    --hpw:#b91c1c;--hpw-bg:#fef2f2;--hpw-border:#fca5a5;
+    --hpw-amber:#d97706;--hpw-amber-bg:#fffbeb;
+    --hpw-green:#15803d;--hpw-green-bg:#f0fdf4;
+  }
+  [data-theme="dark"],[data-theme="solid"],[data-theme="pastel"],[data-theme="remi"],[data-theme="scout"] {
+    --hpw:#f87171;--hpw-bg:#2e0a0a;--hpw-border:#7c2020;
+    --hpw-amber:#fbbf24;--hpw-amber-bg:#2a1e00;
+    --hpw-green:#4ade80;--hpw-green-bg:#052e16;
+  }
+  [data-theme="starr"] {
+    --hpw:#9b1239;--hpw-bg:#fce7f3;--hpw-border:#f9a8d4;
+    --hpw-amber:#92400e;--hpw-amber-bg:#fef3c7;
+    --hpw-green:#166534;--hpw-green-bg:#f0fdf4;
+  }
+  .hpw-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem;}
+  @media(max-width:700px){.hpw-summary{grid-template-columns:repeat(2,1fr);}}
+  .hpw-tile{background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;border-top:3px solid var(--border-mid);}
+  .hpw-tile.t-hpw   {border-top-color:var(--hpw);}
+  .hpw-tile.t-amber {border-top-color:var(--hpw-amber);}
+  .hpw-tile.t-green {border-top-color:var(--hpw-green);}
+  .hpw-tile.t-accent{border-top-color:var(--accent);}
+  .hpw-tile-label{font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;}
+  .hpw-tile-value{font-size:26px;font-weight:600;line-height:1;color:var(--text);}
+  .hpw-tile.t-hpw   .hpw-tile-value{color:var(--hpw);}
+  .hpw-tile.t-amber .hpw-tile-value{color:var(--hpw-amber);}
+  .hpw-tile.t-green .hpw-tile-value{color:var(--hpw-green);}
+  .hpw-tile-sub{font-size:11px;color:var(--text-hint);margin-top:4px;}
+  .hpw-age-ok   {color:var(--hpw-green);font-weight:600;}
+  .hpw-age-warn {color:var(--hpw-amber);font-weight:600;}
+  .hpw-age-late {color:var(--hpw);font-weight:700;}
+  .hpw-cubby{font-family:monospace;font-size:12px;color:var(--text-muted);}
+  .hpw-olpn{font-family:monospace;font-size:11px;color:var(--text-hint);}
+  .hpw-table-wrap{overflow-y:auto;max-height:480px;}
+  .hpw-table-wrap::-webkit-scrollbar{width:4px;}
+  .hpw-table-wrap::-webkit-scrollbar-track{background:transparent;}
+  .hpw-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  .hpw-table-wrap thead th{position:sticky;top:0;background:var(--surface);z-index:2;box-shadow:0 1px 0 var(--border);}
+  .hpw-empty{text-align:center;padding:2.5rem 1rem;color:var(--hpw-green);font-size:13px;}
+  .tab-btn.hpw-tab-btn.active{color:var(--hpw);border-bottom-color:var(--hpw);}
+  .tab-btn.hpw-tab-btn:not(.active):hover{color:var(--hpw);}
+
   /* ── Expedite tab ─────────────────────────────────────────────────────────── */
   :root {
     --xpd:#c2410c;--xpd-bg:#fff7ed;--xpd-border:#fed7aa;
@@ -673,6 +716,7 @@ body { animation: pageEnter 0.28s ease-out both; }
     <button class="tab-btn"        id="tb-batches" onclick="setTab('batches')">Batches</button>
     <button class="tab-btn"        id="tb-tasks"   onclick="setTab('tasks')">Tasks</button>
     <button class="tab-btn xpd-tab-btn" id="tb-expedite" onclick="setTab('expedite')">Expedite</button>
+    <button class="tab-btn hpw-tab-btn" id="tb-hospital" onclick="setTab('hospital')">Hospital PW</button>
     <div style="flex:1;"></div>
     <a href="https://nrdrp.sce.manh.com/udc/dm-config/screen/dcorder/OrderPlanningStrategy" target="_blank"
        style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-muted);text-decoration:none;white-space:nowrap;margin-right:4px;transition:background 0.12s,color 0.12s,border-color 0.12s;"
@@ -1210,6 +1254,65 @@ body { animation: pageEnter 0.28s ease-out both; }
     </div>
   </div><!-- /#tab-expedite -->
 
+  <!-- ── Tab: Hospital Putwall ─────────────────────────────────────────────── -->
+  <div class="tab-pane" id="tab-hospital">
+    <div class="header-row">
+      <div>
+        <div id="hpw-run-time" class="run-time">Loading...</div>
+        <div style="font-size:11px;color:var(--text-hint);margin-top:2px;">oLPNs stuck at H1-PW-01 cubbies awaiting missing picks</div>
+      </div>
+      <button class="refresh-btn" onclick="fetchHospitalData(true)">&#x21BA; Refresh</button>
+    </div>
+
+    <div class="hpw-summary" id="hpw-summary-tiles" style="display:none;">
+      <div class="hpw-tile t-hpw">
+        <div class="hpw-tile-label">Stuck Orders</div>
+        <div class="hpw-tile-value" id="hpw-t-count">--</div>
+        <div class="hpw-tile-sub">at H1-PW-01</div>
+      </div>
+      <div class="hpw-tile t-amber">
+        <div class="hpw-tile-label">Oldest</div>
+        <div class="hpw-tile-value" id="hpw-t-oldest">--</div>
+        <div class="hpw-tile-sub">time waiting</div>
+      </div>
+      <div class="hpw-tile t-hpw">
+        <div class="hpw-tile-label">Over 1 hr</div>
+        <div class="hpw-tile-value" id="hpw-t-over1h">--</div>
+        <div class="hpw-tile-sub">orders</div>
+      </div>
+      <div class="hpw-tile t-green">
+        <div class="hpw-tile-label">Under 30 min</div>
+        <div class="hpw-tile-value" id="hpw-t-under30">--</div>
+        <div class="hpw-tile-sub">recently placed</div>
+      </div>
+    </div>
+
+    <div class="card" id="hpw-table-card" style="display:none;">
+      <div class="card-title">Hospital Putwall — Open Orders</div>
+      <div class="hpw-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Cubby</th>
+              <th>Order #</th>
+              <th>oLPN</th>
+              <th class="r">Time at Wall</th>
+            </tr>
+          </thead>
+          <tbody id="hpw-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="hpw-empty" id="hpw-empty-good" style="display:none;">
+      &#x2714; No orders stuck at Hospital Putwall
+    </div>
+    <div class="empty-state" id="hpw-empty-state" style="display:none;">
+      <div style="font-size:32px;margin-bottom:10px;">&#x1F3E5;</div>
+      No hospital putwall data loaded. Click <strong>Refresh</strong>.
+    </div>
+  </div><!-- /#tab-hospital -->
+
   <!-- Batch picker modal -->
   <div class="bp-overlay" id="bp-overlay" onclick="bpOverlayClick(event)">
     <div class="bp-modal" id="bp-modal">
@@ -1259,7 +1362,7 @@ var BL_INTERVAL_MS = 2 * 60 * 1000;
 var BT_INTERVAL_MS = 2 * 60 * 1000;
 var activeTab      = 'orders';
 
-var lastBlData = null, lastBtData = null, lastRrData = null, lastRfpUnits = null, lastTkData = null, lastShippedData = null, lastXpdData = null;
+var lastBlData = null, lastBtData = null, lastRrData = null, lastRfpUnits = null, lastTkData = null, lastShippedData = null, lastXpdData = null, lastHpwData = null;
 var blTimer = null, blCountdown = null, blNextAt = null;
 var btTimer = null, btCountdown = null, btNextAt = null;
 var viewMode = 'lines';
@@ -1307,18 +1410,21 @@ applyRemiToggle();
 // -- Tab switching ------------------------------------------------------------
 function setTab(tab) {
   activeTab = tab;
-  document.getElementById('tb-orders').classList.toggle('active',   tab === 'orders');
-  document.getElementById('tb-batches').classList.toggle('active',  tab === 'batches');
-  document.getElementById('tb-tasks').classList.toggle('active',    tab === 'tasks');
-  document.getElementById('tb-expedite').classList.toggle('active', tab === 'expedite');
-  document.getElementById('tab-orders').classList.toggle('active',   tab === 'orders');
-  document.getElementById('tab-batches').classList.toggle('active',  tab === 'batches');
-  document.getElementById('tab-tasks').classList.toggle('active',    tab === 'tasks');
-  document.getElementById('tab-expedite').classList.toggle('active', tab === 'expedite');
+  document.getElementById('tb-orders').classList.toggle('active',    tab === 'orders');
+  document.getElementById('tb-batches').classList.toggle('active',   tab === 'batches');
+  document.getElementById('tb-tasks').classList.toggle('active',     tab === 'tasks');
+  document.getElementById('tb-expedite').classList.toggle('active',  tab === 'expedite');
+  document.getElementById('tb-hospital').classList.toggle('active',  tab === 'hospital');
+  document.getElementById('tab-orders').classList.toggle('active',    tab === 'orders');
+  document.getElementById('tab-batches').classList.toggle('active',   tab === 'batches');
+  document.getElementById('tab-tasks').classList.toggle('active',     tab === 'tasks');
+  document.getElementById('tab-expedite').classList.toggle('active',  tab === 'expedite');
+  document.getElementById('tab-hospital').classList.toggle('active',  tab === 'hospital');
   document.getElementById('stale-banner').style.display = 'none';
   if (tab === 'batches')  { if (lastBtData)  renderBatchData(lastBtData);     else fetchBatchData(); }
   if (tab === 'tasks')    { if (lastTkData)  renderTasksData(lastTkData);     else fetchTasksData(); }
   if (tab === 'expedite') { if (lastXpdData) renderExpediteData(lastXpdData); else fetchExpediteData(); }
+  if (tab === 'hospital') { if (lastHpwData) renderHospitalData(lastHpwData); else fetchHospitalData(); }
 }
 
 // -- Shared helpers -----------------------------------------------------------
@@ -1646,27 +1752,48 @@ function fmtHourRange(h) {
 function renderHourly(hourly) {
   var card   = document.getElementById('hourly-card');
   var barsEl = document.getElementById('hourly-bars');
-  var rows   = (hourly || []).filter(function(r) { return r.lines > 0; });
+  var allRows = (hourly || []);
   lastAvgUph = null;
-  if (!rows.length) {
+
+  if (!allRows.length) {
     barsEl.innerHTML = '<div class="hourly-empty">No data yet</div>';
     card.style.display = 'block';
     return;
   }
-  var total = rows.reduce(function(s,r) { return s + r.lines; }, 0);
-  lastAvgUph = Math.round(total / rows.length);
-  var maxLines = rows.reduce(function(mx,r) { return Math.max(mx, r.lines); }, 0);
+
+  var nowPdtH = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false });
+  var currentHour = parseInt(nowPdtH, 10);
+
+  // Avg / Total only counts completed hours (not the in-progress one)
+  var completedRows = allRows.filter(function(r) { return r.hour !== currentHour && r.lines > 0; });
+  var total = completedRows.reduce(function(s,r) { return s + r.lines; }, 0);
+  lastAvgUph = completedRows.length ? Math.round(total / completedRows.length) : 0;
+  var maxLines = completedRows.reduce(function(mx,r) { return Math.max(mx, r.lines); }, 0);
+
   var html = '';
-  rows.forEach(function(r) {
-    var isPeak = r.lines === maxLines;
-    var countStyle = isPeak ? 'color:var(--accent);font-weight:700;' : '';
-    html += '<div class="hourly-row">' +
-      '<span class="hourly-range"' + (isPeak ? ' style="color:var(--text);font-weight:500;"' : '') + '>' + fmtHourRange(r.hour) + '</span>' +
-      '<span class="hourly-count" style="' + countStyle + '">' + r.lines.toLocaleString() + '<span class="hourly-uom">units</span></span>' +
-      '</div>';
+  allRows.forEach(function(r) {
+    var isCurrent = r.hour === currentHour;
+    if (isCurrent) {
+      var countHtml = r.lines > 0
+        ? r.lines.toLocaleString() + '<span class="hourly-uom">so far</span>'
+        : '—<span class="hourly-uom">so far</span>';
+      html += '<div class="hourly-row">' +
+        '<span class="hourly-range" style="color:var(--text);font-weight:500;font-style:italic;">' + fmtHourRange(r.hour) + '</span>' +
+        '<span class="hourly-count" style="color:var(--text-muted);">' + countHtml + '</span>' +
+        '</div>';
+    } else if (r.lines > 0) {
+      var isPeak = r.lines === maxLines;
+      var countStyle = isPeak ? 'color:var(--accent);font-weight:700;' : '';
+      html += '<div class="hourly-row">' +
+        '<span class="hourly-range"' + (isPeak ? ' style="color:var(--text);font-weight:500;"' : '') + '>' + fmtHourRange(r.hour) + '</span>' +
+        '<span class="hourly-count" style="' + countStyle + '">' + r.lines.toLocaleString() + '<span class="hourly-uom">units</span></span>' +
+        '</div>';
+    }
   });
-  html += '<div class="hourly-row" style="border-top:0.5px solid var(--border-mid);margin-top:4px;padding-top:8px;"><span class="hourly-range" style="font-weight:500;color:var(--text);">Avg / hr</span><span class="hourly-count" style="color:var(--accent);">' + lastAvgUph.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
-  html += '<div class="hourly-row"><span class="hourly-range" style="font-weight:500;color:var(--text);">Total</span><span class="hourly-count" style="color:var(--text);">' + total.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
+  if (completedRows.length) {
+    html += '<div class="hourly-row" style="border-top:0.5px solid var(--border-mid);margin-top:4px;padding-top:8px;"><span class="hourly-range" style="font-weight:500;color:var(--text);">Avg / hr</span><span class="hourly-count" style="color:var(--accent);">' + lastAvgUph.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
+    html += '<div class="hourly-row"><span class="hourly-range" style="font-weight:500;color:var(--text);">Total</span><span class="hourly-count" style="color:var(--text);">' + total.toLocaleString() + '<span class="hourly-uom">units</span></span></div>';
+  }
   barsEl.innerHTML = html;
   card.style.display = 'block';
 }
@@ -3683,6 +3810,102 @@ function renderExpediteTable() {
       + '</tr>';
   });
   tbody.innerHTML = html;
+}
+
+// ── Hospital Putwall tab ──────────────────────────────────────────────────────
+function fetchHospitalData(manual) {
+  var rtEl = document.getElementById('hpw-run-time');
+  if (rtEl) rtEl.textContent = 'Loading...';
+  fetch(getBase() + '/totes_live.json?_=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      lastHpwData = data;
+      renderHospitalData(data, manual);
+    })
+    .catch(function() {
+      if (rtEl) rtEl.textContent = 'Failed to load';
+      document.getElementById('hpw-empty-state').style.display = 'block';
+      document.getElementById('hpw-summary-tiles').style.display = 'none';
+      document.getElementById('hpw-table-card').style.display = 'none';
+      document.getElementById('hpw-empty-good').style.display = 'none';
+    });
+}
+
+function hpwAge(createdUtc) {
+  if (!createdUtc) return { mins: null, text: '—', cls: '' };
+  var ms = Date.now() - new Date(createdUtc.endsWith('Z') ? createdUtc : createdUtc + 'Z').getTime();
+  var mins = Math.round(ms / 60000);
+  var h = Math.floor(mins / 60), m = mins % 60;
+  var text = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+  var cls  = mins >= 60 ? 'hpw-age-late' : mins >= 30 ? 'hpw-age-warn' : 'hpw-age-ok';
+  return { mins: mins, text: text, cls: cls };
+}
+
+function hpwCubby(locationId) {
+  if (!locationId) return '—';
+  // H1-PW-0101B04 → B04
+  var m = String(locationId).match(/H1-PW-\d+([A-Z]\d+)$/i);
+  return m ? m[1] : locationId;
+}
+
+function renderHospitalData(data) {
+  var rtEl = document.getElementById('hpw-run-time');
+  var olpns = (data && data.hospital_olpns) ? data.hospital_olpns : [];
+
+  if (rtEl) {
+    var gen = data && data.generated ? data.generated : null;
+    rtEl.textContent = gen ? 'Updated ' + new Date(gen + 'Z').toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Loaded';
+  }
+
+  if (!olpns.length) {
+    document.getElementById('hpw-empty-state').style.display = 'none';
+    document.getElementById('hpw-summary-tiles').style.display = 'none';
+    document.getElementById('hpw-table-card').style.display = 'none';
+    document.getElementById('hpw-empty-good').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('hpw-empty-state').style.display = 'none';
+  document.getElementById('hpw-empty-good').style.display = 'none';
+  document.getElementById('hpw-summary-tiles').style.display = 'grid';
+  document.getElementById('hpw-table-card').style.display = 'block';
+
+  var maxMins = 0, over1h = 0, under30 = 0;
+  olpns.forEach(function(o) {
+    var a = hpwAge(o.created_utc || o.updated);
+    if (a.mins != null) {
+      if (a.mins > maxMins) maxMins = a.mins;
+      if (a.mins >= 60) over1h++;
+      if (a.mins < 30)  under30++;
+    }
+  });
+
+  document.getElementById('hpw-t-count').textContent   = olpns.length;
+  document.getElementById('hpw-t-over1h').textContent  = over1h;
+  document.getElementById('hpw-t-under30').textContent = under30;
+  var oh = Math.floor(maxMins / 60), om = maxMins % 60;
+  document.getElementById('hpw-t-oldest').textContent  = maxMins > 0 ? (oh > 0 ? oh + 'h ' + om + 'm' : om + 'm') : '—';
+
+  var sorted = olpns.slice().sort(function(a, b) {
+    var am = hpwAge(a.created_utc || a.updated).mins || 0;
+    var bm = hpwAge(b.created_utc || b.updated).mins || 0;
+    return bm - am;
+  });
+
+  var html = '';
+  sorted.forEach(function(o) {
+    var age    = hpwAge(o.created_utc || o.updated);
+    var cubby  = hpwCubby(o.cubby || o.location || '');
+    var orderId = escHtml(o.order_id || '—');
+    var olpnId  = escHtml(o.olpn || '—');
+    html += '<tr>'
+      + '<td><span class="hpw-cubby">' + escHtml(cubby) + '</span></td>'
+      + '<td>' + orderId + '</td>'
+      + '<td><span class="hpw-olpn">' + olpnId + '</span></td>'
+      + '<td class="r"><span class="' + age.cls + '">' + age.text + '</span></td>'
+      + '</tr>';
+  });
+  document.getElementById('hpw-tbody').innerHTML = html;
 }
 
 // ── Remi sprite (next-batch bar) ─────────────────────────────────────────────
