@@ -40,6 +40,10 @@ echo  17 Expedite Live - one-shot refresh
 echo  18 Expedite Live - start auto-refresh (every 3 min)
 echo  19 Expedite Live - auth
 echo ──────────────────────────────
+echo  20 Retail Backlog - one-shot refresh
+echo  21 Retail Backlog - start auto-refresh (every 5 min)
+echo  22 Retail Backlog - auth
+echo ──────────────────────────────
 set /p choice="Select: "
 
 if "%choice%"=="1" (
@@ -173,6 +177,27 @@ if "%choice%"=="19" (
     echo.
     echo Starting Expedite Live auth flow...
     "%NODE_EXE%" "%~dp0scout_expedite_agent.js" --auth
+    pause
+    exit /b
+)
+if "%choice%"=="20" (
+    echo.
+    echo Running Retail Backlog one-shot refresh...
+    "%NODE_EXE%" "%~dp0scout_retail_agent.js"
+    pause
+    exit /b
+)
+if "%choice%"=="21" (
+    echo.
+    echo Starting Retail Backlog auto-refresh every 5 min...
+    "%NODE_EXE%" "%~dp0scout_retail_agent.js" --serve --interval=5
+    pause
+    exit /b
+)
+if "%choice%"=="22" (
+    echo.
+    echo Starting Retail Backlog auth flow...
+    "%NODE_EXE%" "%~dp0scout_retail_agent.js" --auth
     pause
     exit /b
 )
