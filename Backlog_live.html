@@ -2996,20 +2996,22 @@ function renderTaskPie(type) {
     }
   }
 
-  // Spin-in animation
-  var ANIM_MS = 520;
+  // Spin-in animation — single sweep reveals all slices like one clockhand turn
+  var ANIM_MS = 620;
   var t0 = null;
   function frame(ts) {
     if (!t0) t0 = ts;
-    var p = Math.min((ts - t0) / ANIM_MS, 1);
+    var p    = Math.min((ts - t0) / ANIM_MS, 1);
     var ease = 1 - Math.pow(1 - p, 3);
+    var revealed = startAngle + ease * Math.PI * 2; // the leading edge angle
     ctx.clearRect(0, 0, size, size);
     for (var i = 0; i < slices.length; i++) {
       var sl = slices[i];
-      var drawSweep = sl.sweep * ease;
+      if (revealed <= sl.start) continue; // not reached yet
+      var drawEnd = Math.min(sl.start + sl.sweep, revealed);
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, R, sl.start, sl.start + drawSweep);
+      ctx.arc(cx, cy, R, sl.start, drawEnd);
       ctx.closePath();
       ctx.fillStyle = sl.color;
       ctx.fill();
@@ -3021,9 +3023,11 @@ function renderTaskPie(type) {
     ctx.arc(cx, cy, Ri, 0, Math.PI * 2);
     ctx.fillStyle = surfaceColor;
     ctx.fill();
-    if (ease > 0.6) {
+    if (ease > 0.7) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      var alpha = Math.min(1, (ease - 0.7) / 0.3);
+      ctx.globalAlpha = alpha;
       for (var i = 0; i < slices.length; i++) {
         var sl = slices[i];
         var pct = Math.round(sl.count / total * 100);
@@ -3032,15 +3036,13 @@ function renderTaskPie(type) {
         var lr = (R + Ri) / 2;
         var tx = cx + Math.cos(mid) * lr;
         var ty = cy + Math.sin(mid) * lr;
-        var alpha = Math.min(1, (ease - 0.6) / 0.4);
-        ctx.globalAlpha = alpha;
         ctx.font = 'bold 11px system-ui,sans-serif';
         ctx.fillStyle = '#fff';
         ctx.fillText(sl.zone, tx, ty - 7);
         ctx.font = '10px system-ui,sans-serif';
         ctx.fillText(pct + '%', tx, ty + 6);
-        ctx.globalAlpha = 1;
       }
+      ctx.globalAlpha = 1;
     }
     if (p < 1) { requestAnimationFrame(frame); return; }
     // Animation done — wire up hover
