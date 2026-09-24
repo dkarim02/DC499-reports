@@ -142,12 +142,15 @@
   .wave-row.active td.wave-num{color:var(--accent);font-weight:700;}
   .wave-row td{border-bottom:0.5px solid var(--border-light);}
   .wave-row:last-child td{border-bottom:none;}
-  td.wave-num{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;min-width:90px;}
+  td.wave-num{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;min-width:90px;font-variant-numeric:tabular-nums;}
   td.wave-date-col{font-size:13px;color:var(--text-muted);white-space:nowrap;}
-  td.wave-active{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;min-width:80px;}
-  .nearly-done{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:var(--packed-bg);color:var(--packed);}
-  .wave-status-counts{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;}
-  .wave-status-pill{display:flex;flex-direction:column;gap:1px;}
+  td.wave-active{text-align:right;vertical-align:middle;min-width:90px;}
+  .wave-active-num{display:block;font-size:13px;font-weight:600;color:var(--text);line-height:1.2;}
+  .nearly-done{display:inline-block;font-size:10px;font-weight:600;padding:2px 6px;border-radius:8px;background:var(--packed-bg);color:var(--packed);margin-top:3px;}
+  .wave-status-counts{display:grid;grid-template-columns:repeat(5,minmax(56px,1fr));gap:0;}
+  .wave-status-pill{display:flex;flex-direction:column;gap:1px;padding:0 4px;}
+  .wave-status-pill.zero .wave-status-pill-label{opacity:0.3;}
+  .wave-status-pill.zero .wave-status-pill-val{color:var(--text-hint)!important;}
   .wave-status-pill-label{font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;}
   .wave-status-pill-val{font-size:13px;font-weight:600;}
   .wave-status-pill-val.s-ready   {color:var(--ready);}
@@ -217,7 +220,8 @@
   @media(max-width:800px){.page-layout{flex-direction:column;}.page-sidebar{width:100%;}}
   .pie-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;}
   .pie-card .card-title{margin-bottom:0.75rem;}
-  .pie-card canvas{display:block;margin:0 auto;}
+  .pie-wrap{width:210px;height:210px;margin:0 auto;position:relative;flex-shrink:0;}
+  .pie-wrap canvas{position:absolute;inset:0;}
 
   /* ── empty / error ── */
   .empty-state{text-align:center;padding:3rem;color:var(--text-hint);font-size:14px;}
@@ -315,7 +319,7 @@
       <div class="page-sidebar">
         <div class="pie-card">
           <div class="card-title">By Store Group</div>
-          <canvas id="pieCanvas" width="210" height="210"></canvas>
+          <div class="pie-wrap"><canvas id="pieCanvas" width="210" height="210"></canvas></div>
         </div>
       </div>
     </div>
@@ -386,16 +390,27 @@ let pieChart = null;
 function renderPie(stores) {
   const canvas = document.getElementById('pieCanvas');
   if (!canvas) return;
-  if (pieChart) { pieChart.destroy(); pieChart = null; }
   const { top, bucketRows } = groupStores(stores);
   const labels = [...top.map(r => `Store ${r.store_id}`), ...bucketRows.map(r => r.store_id)];
   const data   = [...top.map(r => r.orders),              ...bucketRows.map(r => r.orders)];
   const colors = [...top.map((_, i) => PIE_COLORS_TOP[i] || '#aaa'), ...bucketRows.map((_, i) => PIE_COLORS_BUCKET[i % PIE_COLORS_BUCKET.length])];
   const dark = isDarkTheme();
+  const borderColor = dark ? '#333' : '#fff';
+  if (pieChart) {
+    // Update data in-place — keeps canvas at fixed size, no layout reflow
+    pieChart.data.labels = labels;
+    pieChart.data.datasets[0].data = data;
+    pieChart.data.datasets[0].backgroundColor = colors;
+    pieChart.data.datasets[0].borderColor = borderColor;
+    pieChart.options.plugins.legend.labels.color = dark ? '#999' : '#666';
+    pieChart.update('none');
+    return;
+  }
   pieChart = new Chart(canvas, {
     type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 1, borderColor: dark ? '#333' : '#fff' }] },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 1, borderColor }] },
     options: {
+      responsive: false,
       cutout: '30%',
       plugins: {
         legend: { display: true, position: 'bottom', labels: { color: dark ? '#999' : '#666', font: { size: 11 }, boxWidth: 10, padding: 8 } },
@@ -444,12 +459,14 @@ function renderWaveTiles(waves) {
     const stale   = total < 5;
     const waveNum = wave.wave_number || '—';
 
-    const statusHtml = STATUS_ORDER.filter(s => sc[s]).map(s =>
-      `<div class="wave-status-pill">
+    // Always render all 5 status pills so columns align across rows
+    const statusHtml = STATUS_ORDER.map(s => {
+      const val = sc[s] || 0;
+      return `<div class="wave-status-pill${val === 0 ? ' zero' : ''}">
         <span class="wave-status-pill-label">${STATUS_LABELS[s]}</span>
-        <span class="wave-status-pill-val s-${STATUS_CLASS[s]}">${sc[s].toLocaleString()}</span>
-      </div>`
-    ).join('');
+        <span class="wave-status-pill-val s-${STATUS_CLASS[s]}">${val > 0 ? val.toLocaleString() : '—'}</span>
+      </div>`;
+    }).join('');
 
     const tr = document.createElement('tr');
     tr.className = `wave-row${idx === selectedIdx ? ' active' : ''}`;
@@ -457,7 +474,7 @@ function renderWaveTiles(waves) {
     tr.innerHTML = `
       <td class="wave-num">${waveNum}</td>
       <td class="wave-date-col">${fmtDate(wave.wave_date)}</td>
-      <td class="wave-active r">${total.toLocaleString()}${stale ? '&nbsp;<span class="nearly-done">nearly done</span>' : ''}</td>
+      <td class="wave-active"><span class="wave-active-num">${total.toLocaleString()}</span>${stale ? '<span class="nearly-done">nearly done</span>' : ''}</td>
       <td><div class="wave-status-counts">${statusHtml}</div></td>
     `;
     tbody.appendChild(tr);
