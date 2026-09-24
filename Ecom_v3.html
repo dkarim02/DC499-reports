@@ -1182,6 +1182,7 @@ function sumRows(rows, typ, empFilter) {
     if (!e) return;
     if (empFilter && !empFilter(e)) return;
     if (typ === 'replen' && /^P1-PK/i.test((r['Current Location']||'').trim())) return;
+    if (typ === 'packing' && (r['Container ID']||'').trim().startsWith('T')) return;
     if (dedupByContainer) {
       var cid = (r['Container ID']||'').trim();
       if (cid) {
