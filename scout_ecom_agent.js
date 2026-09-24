@@ -347,7 +347,8 @@ function updateEcomHistory(rows, shift, shiftStartUtcStr) {
     } else if (tx === 'Ecom Mezz Pick To Putwall Cart' || tx === 'Ecom Non-Mezz Pick To Putwall Cart' || tx === 'Ecom Singles Bulk LPN Pick') {
       m.picking += parseFloat(r['Quantity']) || 0;
     } else if (tx === 'NRDR CORE PACK FOR ECOM PACK STATION') {
-      m.packing += parseFloat(r['Quantity']) || 0;
+      const cid = (r['Container ID'] || '').trim();
+      if (!cid.startsWith('T')) m.packing += parseFloat(r['Quantity']) || 0;
     } else if (tx === shippingTx) {
       const cid = (r['Container ID'] || '').trim();
       if (cid) {
