@@ -145,10 +145,16 @@
   td.wave-num{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;min-width:90px;}
   td.wave-date-col{font-size:13px;color:var(--text-muted);white-space:nowrap;}
   td.wave-active{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;min-width:80px;}
-  .wave-bar-cell{width:100%;}
-  .wave-bar-wrap{display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--bar-bg);min-width:120px;}
-  .wave-bar-seg{height:100%;}
   .nearly-done{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:var(--packed-bg);color:var(--packed);}
+  .wave-status-counts{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;}
+  .wave-status-pill{display:flex;flex-direction:column;gap:1px;}
+  .wave-status-pill-label{font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;}
+  .wave-status-pill-val{font-size:13px;font-weight:600;}
+  .wave-status-pill-val.s-ready   {color:var(--ready);}
+  .wave-status-pill-val.s-alloc   {color:var(--alloc);}
+  .wave-status-pill-val.s-packing {color:var(--packing);}
+  .wave-status-pill-val.s-packed  {color:var(--packed);}
+  .wave-status-pill-val.s-loaded  {color:var(--loaded);}
 
   /* ── status metric tiles ── */
   .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.25rem;}
@@ -270,11 +276,10 @@
         <th>Wave</th>
         <th>Date</th>
         <th class="r">Active Orders</th>
-        <th>Status Breakdown</th>
-        <th></th>
+        <th>Status</th>
       </tr></thead>
       <tbody id="waveTableBody">
-        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-hint)">Loading wave data...</td></tr>
+        <tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-hint)">Loading wave data...</td></tr>
       </tbody>
     </table>
   </div>
@@ -429,7 +434,7 @@ function fmtDateShort(isoDate) {
 function renderWaveTiles(waves) {
   const tbody = document.getElementById('waveTableBody');
   if (!waves.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-hint)">No active waves found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-hint)">No active waves found.</td></tr>';
     return;
   }
   tbody.innerHTML = '';
@@ -439,13 +444,11 @@ function renderWaveTiles(waves) {
     const stale   = total < 5;
     const waveNum = wave.wave_number ? `Wave ${wave.wave_number}` : '—';
 
-    const segsHtml = STATUS_ORDER.filter(s => sc[s] && total > 0).map(s =>
-      `<div class="wave-bar-seg ${SEG_CLASS[s]}" style="width:${(sc[s]/total*100).toFixed(1)}%"></div>`
-    ).join('');
-
-    // status pill summary: e.g. "Alloc 700  Packed 933"
-    const pillsSummary = STATUS_ORDER.filter(s => sc[s]).map(s =>
-      `<span style="font-size:11px;color:var(--text-muted);margin-right:8px;">${STATUS_LABELS[s]} <strong>${sc[s].toLocaleString()}</strong></span>`
+    const statusHtml = STATUS_ORDER.filter(s => sc[s]).map(s =>
+      `<div class="wave-status-pill">
+        <span class="wave-status-pill-label">${STATUS_LABELS[s]}</span>
+        <span class="wave-status-pill-val s-${STATUS_CLASS[s]}">${sc[s].toLocaleString()}</span>
+      </div>`
     ).join('');
 
     const tr = document.createElement('tr');
@@ -454,9 +457,8 @@ function renderWaveTiles(waves) {
     tr.innerHTML = `
       <td class="wave-num">${waveNum}</td>
       <td class="wave-date-col">${fmtDate(wave.wave_date)}</td>
-      <td class="wave-active r">${total.toLocaleString()}${stale ? ' <span class="nearly-done">nearly done</span>' : ''}</td>
-      <td class="wave-bar-cell"><div class="wave-bar-wrap">${segsHtml}</div></td>
-      <td style="font-size:12px;white-space:normal;min-width:200px">${pillsSummary}</td>
+      <td class="wave-active r">${total.toLocaleString()}${stale ? '&nbsp;<span class="nearly-done">nearly done</span>' : ''}</td>
+      <td><div class="wave-status-counts">${statusHtml}</div></td>
     `;
     tbody.appendChild(tr);
   });
@@ -576,7 +578,7 @@ async function loadData() {
     }
   } catch (e) {
     document.getElementById('waveTableBody').innerHTML =
-      `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-hint)">Could not load data — ${e.message}</td></tr>`;
+      `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-hint)">Could not load data — ${e.message}</td></tr>`;
     document.getElementById('runTime').textContent = 'Data unavailable';
   }
 }
