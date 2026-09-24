@@ -320,7 +320,30 @@ ORDER BY MINIMUM_STATUS
 `.trim();
 }
 
-// Step 3: Store (destination facility) breakdown for one wave date window.
+// Step 3: Unit quantity totals for one wave date window.
+// Joins ORDER → ORDER_LINE, excludes cancelled lines, excludes shipped/cancelled orders.
+function sqlUnitCounts(utcStart, utcEnd) {
+  return `
+SELECT
+  SUM(ol.ORDERED_QUANTITY)    AS ordered_qty,
+  SUM(ol.ALLOCATED_QUANTITY)  AS allocated_qty,
+  SUM(ol.PACKED_QUANTITY)     AS packed_qty,
+  SUM(ol.MANIFESTED_QUANTITY) AS manifested_qty,
+  SUM(ol.SHIPPED_QUANTITY)    AS shipped_qty
+FROM default_dcorder.DCO_ORDER o
+JOIN default_dcorder.DCO_ORDER_LINE ol
+  ON ol.ORDER_ID = o.ORDER_ID AND ol.FACILITY_ID = o.FACILITY_ID
+WHERE o.FACILITY_ID = '${FACILITY}'
+  AND o.ORDER_TYPE = 'RETAIL'
+  AND o.CANCELLED = 0
+  AND o.CREATED_TIMESTAMP >= '${utcStart}'
+  AND o.CREATED_TIMESTAMP < '${utcEnd}'
+  AND o.MAXIMUM_STATUS NOT IN ('8000', '9000')
+  AND ol.CANCELLED = 0
+`.trim();
+}
+
+// Step 4: Store (destination facility) breakdown for one wave date window.
 function sqlStoreBreakdown(utcStart, utcEnd) {
   return `
 SELECT
@@ -389,12 +412,13 @@ async function fetchRetailBacklog(accessToken) {
     return;
   }
 
-  // Steps 2+3: For each wave, fire status + store queries in parallel
+  // Steps 2+3+4: For each wave, fire status + units + store queries in parallel
   const waves = await Promise.all(waveDates.map(async (waveDate) => {
     const { start, end } = pdtDateToUtcWindow(waveDate);
     try {
-      const [statusResp, storeResp] = await Promise.all([
+      const [statusResp, unitResp, storeResp] = await Promise.all([
         mcpQuery(accessToken, sqlStatusBreakdown(start, end)),
+        mcpQuery(accessToken, sqlUnitCounts(start, end)),
         mcpQuery(accessToken, sqlStoreBreakdown(start, end)),
       ]);
 
@@ -405,14 +429,23 @@ async function fetchRetailBacklog(accessToken) {
         totalActive += Number(row.orders);
       }
 
+      const ur = (unitResp.rows || [])[0] || {};
+      const unitCounts = {
+        ordered:    Math.round(Number(ur.ordered_qty)    || 0),
+        allocated:  Math.round(Number(ur.allocated_qty)  || 0),
+        packed:     Math.round(Number(ur.packed_qty)     || 0),
+        manifested: Math.round(Number(ur.manifested_qty) || 0),
+        shipped:    Math.round(Number(ur.shipped_qty)    || 0),
+      };
+
       const stores = (storeResp.rows || []).map(r => ({
         store_id: r.store_id,
         orders: Number(r.orders),
       }));
 
       const waveNum = waveNumMap[waveDate] || null;
-      console.log(`[${ts()}] Wave ${waveDate}${waveNum ? ` (${waveNum})` : ''}: ${totalActive} active orders, ${stores.length} stores`);
-      return { wave_date: waveDate, wave_number: waveNum, total_active_orders: totalActive, status_counts: statusCounts, stores };
+      console.log(`[${ts()}] Wave ${waveDate}${waveNum ? ` (${waveNum})` : ''}: ${totalActive} active orders, ${unitCounts.ordered} ordered units, ${stores.length} stores`);
+      return { wave_date: waveDate, wave_number: waveNum, total_active_orders: totalActive, status_counts: statusCounts, unit_counts: unitCounts, stores };
     } catch (e) {
       console.error(`[${ts()}] Wave ${waveDate} queries failed:`, e.message);
       return { wave_date: waveDate, wave_number: waveNumMap[waveDate] || null, total_active_orders: null, status_counts: {}, stores: [], error: true };

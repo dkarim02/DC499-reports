@@ -124,6 +124,10 @@
   /* ── header row ── */
   .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
   .run-time{display:flex;align-items:center;font-size:12px;color:var(--text-hint);}
+  .view-toggle{display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:2px;}
+  .vt-btn{background:none;border:none;font-family:inherit;font-size:12px;font-weight:500;padding:4px 14px;border-radius:6px;cursor:pointer;color:var(--text-muted);transition:background 0.15s,color 0.15s;}
+  .vt-btn:hover{color:var(--text);}
+  .vt-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.2);}
 
   /* ── total capsule ── */
   .total-capsule{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:10px;padding:10px 18px;margin-bottom:1.25rem;border-left:3px solid var(--accent);}
@@ -264,6 +268,10 @@
 
   <div class="header-row">
     <div class="run-time"><span class="live-dot"></span><span id="runTime">Loading...</span></div>
+    <div class="view-toggle" id="viewToggle">
+      <button class="vt-btn active" id="vt-orders" onclick="setView('orders')">Orders</button>
+      <button class="vt-btn" id="vt-units" onclick="setView('units')">Units</button>
+    </div>
   </div>
 
   <div class="total-capsule" id="totalCapsule" style="display:none">
@@ -276,7 +284,7 @@
 
   <div class="wave-table-card">
     <table id="waveTable">
-      <thead><tr>
+      <thead id="waveTableHead"><tr>
         <th>Wave — tap a row for details</th>
         <th class="sc">Ready</th>
         <th class="sc">Allocated</th>
@@ -437,6 +445,39 @@ function renderPie(stores) {
   });
 }
 
+// ── view toggle ────────────────────────────────────────────────────────────────
+let currentView = 'orders'; // 'orders' | 'units'
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('vt-orders').classList.toggle('active', v === 'orders');
+  document.getElementById('vt-units').classList.toggle('active', v === 'units');
+
+  const head = document.getElementById('waveTableHead');
+  if (v === 'units') {
+    head.innerHTML = `<tr>
+      <th>Wave — tap a row for details</th>
+      <th class="sc">Ordered</th>
+      <th class="sc">Allocated</th>
+      <th class="sc">Packed</th>
+      <th class="sc">Manifested</th>
+      <th class="sc">Shipped</th>
+      <th class="tc">Total Ordered</th>
+    </tr>`;
+  } else {
+    head.innerHTML = `<tr>
+      <th>Wave — tap a row for details</th>
+      <th class="sc">Ready</th>
+      <th class="sc">Allocated</th>
+      <th class="sc">Packing</th>
+      <th class="sc">Packed</th>
+      <th class="sc">Loaded</th>
+      <th class="tc">Total Open</th>
+    </tr>`;
+  }
+  if (allWaves.length) renderWaveTiles(allWaves);
+}
+
 // ── wave state ─────────────────────────────────────────────────────────────────
 let allWaves    = [];
 let currentWave = null;
@@ -479,44 +520,86 @@ function renderWaveTiles(waves) {
     const nearlyTag = stale ? '<span class="nearly-done">nearly done</span>' : '';
     const waveTag   = wave.wave_number ? `<div style="font-size:10px;color:var(--text-hint);margin-top:2px;font-variant-numeric:tabular-nums;">${wave.wave_number}</div>` : '';
 
-    const bubbles = STATUS_ORDER.map(s => {
-      const val = sc[s] || 0;
-      const cell = val > 0
-        ? `<span class="sc-bubble ${BUBBLE_CLASS[s]}">${val.toLocaleString()}</span>`
-        : `<span class="sc-zero">—</span>`;
-      return `<td class="sc">${cell}</td>`;
-    }).join('');
+    let cells, totalCell;
+    if (currentView === 'units') {
+      const uc = wave.unit_counts || {};
+      const unitCols = [
+        { val: uc.ordered,    cls: 'b-ready'   },
+        { val: uc.allocated,  cls: 'b-alloc'   },
+        { val: uc.packed,     cls: 'b-packed'  },
+        { val: uc.manifested, cls: 'b-loaded'  },
+        { val: uc.shipped,    cls: 'b-packing' },
+      ];
+      cells = unitCols.map(({ val, cls }) => {
+        const v = val || 0;
+        const cell = v > 0
+          ? `<span class="sc-bubble ${cls}">${v.toLocaleString()}</span>`
+          : `<span class="sc-zero">—</span>`;
+        return `<td class="sc">${cell}</td>`;
+      }).join('');
+      totalCell = `<td class="tc">${(uc.ordered || 0).toLocaleString()}</td>`;
+    } else {
+      cells = STATUS_ORDER.map(s => {
+        const val = sc[s] || 0;
+        const cell = val > 0
+          ? `<span class="sc-bubble ${BUBBLE_CLASS[s]}">${val.toLocaleString()}</span>`
+          : `<span class="sc-zero">—</span>`;
+        return `<td class="sc">${cell}</td>`;
+      }).join('');
+      totalCell = `<td class="tc">${total.toLocaleString()}</td>`;
+    }
 
     const tr = document.createElement('tr');
     tr.className = `wave-row${idx === selectedIdx ? ' active' : ''}`;
     tr.onclick = () => selectWave(idx);
     tr.innerHTML = `
       <td class="wave-date-col">${dateLabel}${nearlyTag}${waveTag}</td>
-      ${bubbles}
-      <td class="tc">${total.toLocaleString()}</td>
+      ${cells}
+      ${totalCell}
     `;
     tbody.appendChild(tr);
   });
 
   // totals footer
-  const totals = {};
-  let grandTotal = 0;
-  STATUS_ORDER.forEach(s => { totals[s] = 0; });
-  waves.forEach(w => {
-    const sc = w.status_counts || {};
-    STATUS_ORDER.forEach(s => { totals[s] += sc[s] || 0; });
-    grandTotal += w.total_active_orders || 0;
-  });
-  const ftIds = { '1000':'ft-ready','2090':'ft-alloc','7100':'ft-packing','7200':'ft-packed','7800':'ft-loaded' };
-  STATUS_ORDER.forEach(s => {
-    const el = document.getElementById(ftIds[s]);
-    if (!el) return;
-    el.innerHTML = totals[s] > 0
-      ? `<span class="sc-bubble ${BUBBLE_CLASS[s]}" style="opacity:0.7">${totals[s].toLocaleString()}</span>`
-      : `<span class="sc-zero">—</span>`;
-  });
-  const ftEl = document.getElementById('ft-total');
-  if (ftEl) ftEl.textContent = grandTotal.toLocaleString();
+  if (currentView === 'units') {
+    const unitKeys = ['ordered','allocated','packed','manifested','shipped'];
+    const unitFtIds = ['ft-ready','ft-alloc','ft-packed','ft-loaded','ft-packing'];
+    const unitCls   = ['b-ready','b-alloc','b-packed','b-loaded','b-packing'];
+    const unitTotals = { ordered:0, allocated:0, packed:0, manifested:0, shipped:0 };
+    waves.forEach(w => {
+      const uc = w.unit_counts || {};
+      unitKeys.forEach(k => { unitTotals[k] += uc[k] || 0; });
+    });
+    unitKeys.forEach((k, i) => {
+      const el = document.getElementById(unitFtIds[i]);
+      if (!el) return;
+      const v = unitTotals[k];
+      el.innerHTML = v > 0
+        ? `<span class="sc-bubble ${unitCls[i]}" style="opacity:0.7">${v.toLocaleString()}</span>`
+        : `<span class="sc-zero">—</span>`;
+    });
+    const ftEl = document.getElementById('ft-total');
+    if (ftEl) ftEl.textContent = unitTotals.ordered.toLocaleString();
+  } else {
+    const totals = {};
+    let grandTotal = 0;
+    STATUS_ORDER.forEach(s => { totals[s] = 0; });
+    waves.forEach(w => {
+      const sc = w.status_counts || {};
+      STATUS_ORDER.forEach(s => { totals[s] += sc[s] || 0; });
+      grandTotal += w.total_active_orders || 0;
+    });
+    const ftIds = { '1000':'ft-ready','2090':'ft-alloc','7100':'ft-packing','7200':'ft-packed','7800':'ft-loaded' };
+    STATUS_ORDER.forEach(s => {
+      const el = document.getElementById(ftIds[s]);
+      if (!el) return;
+      el.innerHTML = totals[s] > 0
+        ? `<span class="sc-bubble ${BUBBLE_CLASS[s]}" style="opacity:0.7">${totals[s].toLocaleString()}</span>`
+        : `<span class="sc-zero">—</span>`;
+    });
+    const ftEl = document.getElementById('ft-total');
+    if (ftEl) ftEl.textContent = grandTotal.toLocaleString();
+  }
   const foot = document.getElementById('waveTableFoot');
   if (foot) foot.style.display = '';
 }
