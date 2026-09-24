@@ -442,7 +442,7 @@ function renderWaveTiles(waves) {
     const total   = wave.total_active_orders || 0;
     const sc      = wave.status_counts || {};
     const stale   = total < 5;
-    const waveNum = wave.wave_number ? `Wave ${wave.wave_number}` : '—';
+    const waveNum = wave.wave_number || '—';
 
     const statusHtml = STATUS_ORDER.filter(s => sc[s]).map(s =>
       `<div class="wave-status-pill">
@@ -467,7 +467,7 @@ function renderWaveTiles(waves) {
 // ── render wave detail ─────────────────────────────────────────────────────────
 function renderWaveDetail(wave) {
   document.getElementById('waveDetail').style.display = '';
-  document.getElementById('detailTitle').textContent = `${fmtDate(wave.wave_date)} — Wave Detail`;
+  document.getElementById('detailTitle').textContent = wave.wave_number ? `${wave.wave_number} — ${fmtDate(wave.wave_date)}` : `${fmtDate(wave.wave_date)} — Wave Detail`;
 
   const total = wave.total_active_orders || 0;
   const sc    = wave.status_counts || {};

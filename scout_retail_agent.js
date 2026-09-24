@@ -335,21 +335,16 @@ ORDER BY orders DESC
 `.trim();
 }
 
-// Parse wave number from run_id: W09222026000000000005 → 5
-function parseWaveNum(runId) {
-  if (!runId) return null;
-  const seq = runId.slice(9); // everything after W + MMDDYYYY
-  return parseInt(seq, 10) || null;
-}
-
-// Build a map of PDT date → wave_number from the planning run table.
-// If multiple retail runs hit the same date (rare), take the highest seq number.
+// Build a map of PDT date → full ORDER_PLANNING_RUN_ID from the planning run table.
+// If multiple runs hit the same date, take the one with the highest sequence suffix.
 function buildWaveNumMap(rows) {
   const map = {};
   for (const r of rows) {
-    const num = parseWaveNum(r.run_id);
-    if (!num) continue;
-    if (!map[r.run_date] || num > map[r.run_date]) map[r.run_date] = num;
+    if (!r.run_id) continue;
+    const seq = parseInt(r.run_id.slice(9), 10) || 0;
+    const existing = map[r.run_date];
+    const existingSeq = existing ? parseInt(existing.slice(9), 10) || 0 : -1;
+    if (seq > existingSeq) map[r.run_date] = r.run_id;
   }
   return map;
 }
@@ -413,7 +408,7 @@ async function fetchRetailBacklog(accessToken) {
       }));
 
       const waveNum = waveNumMap[waveDate] || null;
-      console.log(`[${ts()}] Wave ${waveDate}${waveNum ? ` (#${waveNum})` : ''}: ${totalActive} active orders, ${stores.length} stores`);
+      console.log(`[${ts()}] Wave ${waveDate}${waveNum ? ` (${waveNum})` : ''}: ${totalActive} active orders, ${stores.length} stores`);
       return { wave_date: waveDate, wave_number: waveNum, total_active_orders: totalActive, status_counts: statusCounts, stores };
     } catch (e) {
       console.error(`[${ts()}] Wave ${waveDate} queries failed:`, e.message);
