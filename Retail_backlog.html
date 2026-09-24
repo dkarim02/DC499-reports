@@ -142,22 +142,22 @@
   .wave-row.active td.wave-num{color:var(--accent);font-weight:700;}
   .wave-row td{border-bottom:0.5px solid var(--border-light);}
   .wave-row:last-child td{border-bottom:none;}
-  td.wave-num{font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;min-width:90px;font-variant-numeric:tabular-nums;}
-  td.wave-date-col{font-size:13px;color:var(--text-muted);white-space:nowrap;}
-  td.wave-active{text-align:right;vertical-align:middle;min-width:90px;}
-  .wave-active-num{display:block;font-size:13px;font-weight:600;color:var(--text);line-height:1.2;}
-  .nearly-done{display:inline-block;font-size:10px;font-weight:600;padding:2px 6px;border-radius:8px;background:var(--packed-bg);color:var(--packed);margin-top:3px;}
-  .wave-status-counts{display:grid;grid-template-columns:repeat(5,minmax(56px,1fr));gap:0;}
-  .wave-status-pill{display:flex;flex-direction:column;gap:1px;padding:0 4px;}
-  .wave-status-pill.zero .wave-status-pill-label{opacity:0.3;}
-  .wave-status-pill.zero .wave-status-pill-val{color:var(--text-hint)!important;}
-  .wave-status-pill-label{font-size:10px;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.04em;}
-  .wave-status-pill-val{font-size:13px;font-weight:600;}
-  .wave-status-pill-val.s-ready   {color:var(--ready);}
-  .wave-status-pill-val.s-alloc   {color:var(--alloc);}
-  .wave-status-pill-val.s-packing {color:var(--packing);}
-  .wave-status-pill-val.s-packed  {color:var(--packed);}
-  .wave-status-pill-val.s-loaded  {color:var(--loaded);}
+  td.wave-num{font-size:11px;font-weight:500;color:var(--text-hint);white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
+  td.wave-date-col{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;}
+  .today-tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:6px;background:var(--accent-bg);color:var(--accent);margin-left:6px;vertical-align:middle;}
+  .nearly-done{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:6px;background:var(--packed-bg);color:var(--packed);margin-left:6px;vertical-align:middle;}
+  /* ── status bubble columns ── */
+  td.sc{text-align:center;padding:10px 8px;}
+  th.sc{text-align:center;padding:8px 8px;}
+  td.tc{text-align:right;font-size:13px;font-weight:600;color:var(--text);padding:10px 14px;}
+  th.tc{text-align:right;}
+  .sc-bubble{display:inline-flex;align-items:center;justify-content:center;min-width:46px;padding:3px 11px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid;white-space:nowrap;transition:transform 0.1s;}
+  .sc-bubble.b-ready  {color:var(--ready);  background:var(--ready-bg);  border-color:var(--ready);}
+  .sc-bubble.b-alloc  {color:var(--alloc);  background:var(--alloc-bg);  border-color:var(--alloc);}
+  .sc-bubble.b-packing{color:var(--packing);background:var(--packing-bg);border-color:var(--packing);}
+  .sc-bubble.b-packed {color:var(--packed); background:var(--packed-bg); border-color:var(--packed);}
+  .sc-bubble.b-loaded {color:var(--loaded); background:var(--loaded-bg); border-color:var(--loaded);}
+  .sc-zero{font-size:13px;color:var(--text-hint);opacity:0.4;}
 
   /* ── status metric tiles ── */
   .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.25rem;}
@@ -277,14 +277,28 @@
   <div class="wave-table-card">
     <table id="waveTable">
       <thead><tr>
-        <th>Wave</th>
-        <th>Date</th>
-        <th class="r">Active Orders</th>
-        <th>Status</th>
+        <th>Wave — tap a row for details</th>
+        <th class="sc">Ready</th>
+        <th class="sc">Allocated</th>
+        <th class="sc">Packing</th>
+        <th class="sc">Packed</th>
+        <th class="sc">Loaded</th>
+        <th class="tc">Total Open</th>
       </tr></thead>
       <tbody id="waveTableBody">
-        <tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-hint)">Loading wave data...</td></tr>
+        <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-hint)">Loading wave data...</td></tr>
       </tbody>
+      <tfoot id="waveTableFoot" style="display:none">
+        <tr>
+          <td style="font-size:12px;font-weight:600;color:var(--text-muted);padding:10px 14px;">Total</td>
+          <td class="sc" id="ft-ready"></td>
+          <td class="sc" id="ft-alloc"></td>
+          <td class="sc" id="ft-packing"></td>
+          <td class="sc" id="ft-packed"></td>
+          <td class="sc" id="ft-loaded"></td>
+          <td class="tc" id="ft-total"></td>
+        </tr>
+      </tfoot>
     </table>
   </div>
 
@@ -446,39 +460,63 @@ function fmtDateShort(isoDate) {
 }
 
 // ── render wave table ──────────────────────────────────────────────────────────
+const BUBBLE_CLASS = { '1000':'b-ready','2090':'b-alloc','7100':'b-packing','7200':'b-packed','7800':'b-loaded' };
+
 function renderWaveTiles(waves) {
   const tbody = document.getElementById('waveTableBody');
   if (!waves.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-hint)">No active waves found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-hint)">No active waves found.</td></tr>';
     return;
   }
   tbody.innerHTML = '';
   waves.forEach((wave, idx) => {
-    const total   = wave.total_active_orders || 0;
-    const sc      = wave.status_counts || {};
-    const stale   = total < 5;
-    const waveNum = wave.wave_number || '—';
+    const total = wave.total_active_orders || 0;
+    const sc    = wave.status_counts || {};
+    const stale = total < 5;
+    const dateLabel = fmtDate(wave.wave_date);
+    const nearlyTag = stale ? '<span class="nearly-done">nearly done</span>' : '';
+    const waveTag   = wave.wave_number ? `<div style="font-size:10px;color:var(--text-hint);margin-top:2px;font-variant-numeric:tabular-nums;">${wave.wave_number}</div>` : '';
 
-    // Always render all 5 status pills so columns align across rows
-    const statusHtml = STATUS_ORDER.map(s => {
+    const bubbles = STATUS_ORDER.map(s => {
       const val = sc[s] || 0;
-      return `<div class="wave-status-pill${val === 0 ? ' zero' : ''}">
-        <span class="wave-status-pill-label">${STATUS_LABELS[s]}</span>
-        <span class="wave-status-pill-val s-${STATUS_CLASS[s]}">${val > 0 ? val.toLocaleString() : '—'}</span>
-      </div>`;
+      const cell = val > 0
+        ? `<span class="sc-bubble ${BUBBLE_CLASS[s]}">${val.toLocaleString()}</span>`
+        : `<span class="sc-zero">—</span>`;
+      return `<td class="sc">${cell}</td>`;
     }).join('');
 
     const tr = document.createElement('tr');
     tr.className = `wave-row${idx === selectedIdx ? ' active' : ''}`;
     tr.onclick = () => selectWave(idx);
     tr.innerHTML = `
-      <td class="wave-num">${waveNum}</td>
-      <td class="wave-date-col">${fmtDate(wave.wave_date)}</td>
-      <td class="wave-active"><span class="wave-active-num">${total.toLocaleString()}</span>${stale ? '<span class="nearly-done">nearly done</span>' : ''}</td>
-      <td><div class="wave-status-counts">${statusHtml}</div></td>
+      <td class="wave-date-col">${dateLabel}${nearlyTag}${waveTag}</td>
+      ${bubbles}
+      <td class="tc">${total.toLocaleString()}</td>
     `;
     tbody.appendChild(tr);
   });
+
+  // totals footer
+  const totals = {};
+  let grandTotal = 0;
+  STATUS_ORDER.forEach(s => { totals[s] = 0; });
+  waves.forEach(w => {
+    const sc = w.status_counts || {};
+    STATUS_ORDER.forEach(s => { totals[s] += sc[s] || 0; });
+    grandTotal += w.total_active_orders || 0;
+  });
+  const ftIds = { '1000':'ft-ready','2090':'ft-alloc','7100':'ft-packing','7200':'ft-packed','7800':'ft-loaded' };
+  STATUS_ORDER.forEach(s => {
+    const el = document.getElementById(ftIds[s]);
+    if (!el) return;
+    el.innerHTML = totals[s] > 0
+      ? `<span class="sc-bubble ${BUBBLE_CLASS[s]}" style="opacity:0.7">${totals[s].toLocaleString()}</span>`
+      : `<span class="sc-zero">—</span>`;
+  });
+  const ftEl = document.getElementById('ft-total');
+  if (ftEl) ftEl.textContent = grandTotal.toLocaleString();
+  const foot = document.getElementById('waveTableFoot');
+  if (foot) foot.style.display = '';
 }
 
 // ── render wave detail ─────────────────────────────────────────────────────────
@@ -595,7 +633,7 @@ async function loadData() {
     }
   } catch (e) {
     document.getElementById('waveTableBody').innerHTML =
-      `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-hint)">Could not load data — ${e.message}</td></tr>`;
+      `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-hint)">Could not load data — ${e.message}</td></tr>`;
     document.getElementById('runTime').textContent = 'Data unavailable';
   }
 }
