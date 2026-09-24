@@ -300,10 +300,13 @@ ORDER BY wave_date DESC
 }
 
 // Step 2: Status breakdown for one wave date window.
+// Bucket by MINIMUM_STATUS (where the order is blocked) not MAXIMUM_STATUS.
+// An order with min=Allocated, max=Packed still has open allocated lines — it belongs in Allocated.
+// MAXIMUM_STATUS filter still excludes fully shipped/cancelled orders.
 function sqlStatusBreakdown(utcStart, utcEnd) {
   return `
 SELECT
-  MAXIMUM_STATUS,
+  MINIMUM_STATUS,
   COUNT(DISTINCT ORDER_ID) AS orders
 FROM default_dcorder.DCO_ORDER
 WHERE FACILITY_ID = '${FACILITY}'
@@ -312,8 +315,8 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${utcStart}'
   AND CREATED_TIMESTAMP < '${utcEnd}'
   AND MAXIMUM_STATUS NOT IN ('8000', '9000')
-GROUP BY MAXIMUM_STATUS
-ORDER BY MAXIMUM_STATUS
+GROUP BY MINIMUM_STATUS
+ORDER BY MINIMUM_STATUS
 `.trim();
 }
 
@@ -398,7 +401,7 @@ async function fetchRetailBacklog(accessToken) {
       const statusCounts = {};
       let totalActive = 0;
       for (const row of (statusResp.rows || [])) {
-        statusCounts[row.MAXIMUM_STATUS] = Number(row.orders);
+        statusCounts[row.MINIMUM_STATUS] = Number(row.orders);
         totalActive += Number(row.orders);
       }
 
