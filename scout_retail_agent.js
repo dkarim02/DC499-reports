@@ -266,6 +266,22 @@ function lookbackUtc() {
 
 // ── queries ────────────────────────────────────────────────────────────────────
 
+// Step 0: Get retail wave run IDs from the planning run table.
+// ORDER_PLANNING_RUN_ID format: W{MMDDYYYY}{seq} — e.g. W09222026000000000005
+// One retail run per week — date bucket matches wave_date from DCO_ORDER.
+function sqlWaveRunIds(since) {
+  return `
+SELECT
+  ORDER_PLANNING_RUN_ID AS run_id,
+  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS run_date
+FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
+WHERE FACILITY_ID = '${FACILITY}'
+  AND PLANNING_STRATEGY_ID = 'NRDR_CORE_RETAIL_ORDER_PLANNING_STRATEGY'
+  AND CREATED_TIMESTAMP >= '${since}'
+ORDER BY CREATED_TIMESTAMP DESC
+`.trim();
+}
+
 // Step 1: Get all wave dates that still have active (non-shipped) orders.
 function sqlActiveWaveDates(since) {
   return `
@@ -319,10 +335,39 @@ ORDER BY orders DESC
 `.trim();
 }
 
+// Parse wave number from run_id: W09222026000000000005 → 5
+function parseWaveNum(runId) {
+  if (!runId) return null;
+  const seq = runId.slice(9); // everything after W + MMDDYYYY
+  return parseInt(seq, 10) || null;
+}
+
+// Build a map of PDT date → wave_number from the planning run table.
+// If multiple retail runs hit the same date (rare), take the highest seq number.
+function buildWaveNumMap(rows) {
+  const map = {};
+  for (const r of rows) {
+    const num = parseWaveNum(r.run_id);
+    if (!num) continue;
+    if (!map[r.run_date] || num > map[r.run_date]) map[r.run_date] = num;
+  }
+  return map;
+}
+
 // ── main fetch ─────────────────────────────────────────────────────────────────
 async function fetchRetailBacklog(accessToken) {
   console.log(`[${ts()}] Retail Backlog — fetching active waves...`);
   const since = lookbackUtc();
+
+  // Step 0: Get wave run IDs for wave number labeling (best-effort)
+  let waveNumMap = {};
+  try {
+    const resp = await mcpQuery(accessToken, sqlWaveRunIds(since));
+    waveNumMap = buildWaveNumMap(resp.rows || []);
+    console.log(`[${ts()}] Wave run IDs loaded: ${Object.keys(waveNumMap).length} dates`);
+  } catch (e) {
+    console.warn(`[${ts()}] Wave run ID query failed (non-fatal):`, e.message);
+  }
 
   // Step 1: Get active wave dates
   let waveDates = [];
@@ -367,11 +412,12 @@ async function fetchRetailBacklog(accessToken) {
         orders: Number(r.orders),
       }));
 
-      console.log(`[${ts()}] Wave ${waveDate}: ${totalActive} active orders, ${stores.length} stores`);
-      return { wave_date: waveDate, total_active_orders: totalActive, status_counts: statusCounts, stores };
+      const waveNum = waveNumMap[waveDate] || null;
+      console.log(`[${ts()}] Wave ${waveDate}${waveNum ? ` (#${waveNum})` : ''}: ${totalActive} active orders, ${stores.length} stores`);
+      return { wave_date: waveDate, wave_number: waveNum, total_active_orders: totalActive, status_counts: statusCounts, stores };
     } catch (e) {
       console.error(`[${ts()}] Wave ${waveDate} queries failed:`, e.message);
-      return { wave_date: waveDate, total_active_orders: null, status_counts: {}, stores: [], error: true };
+      return { wave_date: waveDate, wave_number: waveNumMap[waveDate] || null, total_active_orders: null, status_counts: {}, stores: [], error: true };
     }
   }));
 

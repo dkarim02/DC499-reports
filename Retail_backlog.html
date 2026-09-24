@@ -132,22 +132,34 @@
   .total-capsule-value{font-size:22px;font-weight:500;color:var(--text);}
   .total-capsule-right{font-size:11px;color:var(--text-hint);}
 
-  /* ── metric tiles (wave + status) ── */
-  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem;}
-  .metrics.status-grid{grid-template-columns:repeat(5,1fr);margin-bottom:1.25rem;}
-  @media(max-width:900px){.metrics{grid-template-columns:repeat(2,1fr);}.metrics.status-grid{grid-template-columns:repeat(3,1fr);}}
-  @media(max-width:500px){.metrics{grid-template-columns:1fr;}.metrics.status-grid{grid-template-columns:repeat(2,1fr);}}
-  .metric{background:var(--surface2);border-radius:10px;padding:1rem;text-align:center;border-top:3px solid transparent;transition:background 0.15s,box-shadow 0.15s;}
-  .metric.wave-tile{cursor:pointer;border-top-color:var(--accent);}
-  .metric.wave-tile:hover{background:var(--accent-bg);}
-  .metric.wave-tile.active{background:var(--accent-bg);box-shadow:0 0 0 1.5px var(--accent);border-top-color:var(--accent);}
-  .metric.wave-tile.stale{opacity:0.6;}
+  /* ── wave table ── */
+  .wave-table-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.25rem;}
+  .wave-table-card table{margin-bottom:0;}
+  .wave-table-card td,.wave-table-card th{padding:10px 14px;}
+  .wave-row{cursor:pointer;transition:background 0.1s;}
+  .wave-row:hover{background:var(--surface2);}
+  .wave-row.active{background:var(--accent-bg);}
+  .wave-row.active td.wave-num{color:var(--accent);font-weight:700;}
+  .wave-row td{border-bottom:0.5px solid var(--border-light);}
+  .wave-row:last-child td{border-bottom:none;}
+  td.wave-num{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;min-width:90px;}
+  td.wave-date-col{font-size:13px;color:var(--text-muted);white-space:nowrap;}
+  td.wave-active{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;min-width:80px;}
+  .wave-bar-cell{width:100%;}
+  .wave-bar-wrap{display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--bar-bg);min-width:120px;}
+  .wave-bar-seg{height:100%;}
+  .nearly-done{display:inline-flex;align-items:center;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:var(--packed-bg);color:var(--packed);}
+
+  /* ── status metric tiles ── */
+  .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.25rem;}
+  @media(max-width:900px){.metrics{grid-template-columns:repeat(3,1fr);}}
+  @media(max-width:500px){.metrics{grid-template-columns:repeat(2,1fr);}}
+  .metric{background:var(--surface2);border-radius:10px;padding:1rem;text-align:center;border-top:3px solid transparent;}
   .metric.s-ready   {border-top-color:var(--ready);}
   .metric.s-alloc   {border-top-color:var(--alloc);}
   .metric.s-packing {border-top-color:var(--packing);}
   .metric.s-packed  {border-top-color:var(--packed);}
   .metric.s-loaded  {border-top-color:var(--loaded);}
-  .metric-eyebrow{font-size:10px;font-weight:600;color:var(--text-hint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
   .metric-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
   .metric-value{font-size:26px;font-weight:500;color:var(--text);}
   .metric.s-ready   .metric-value{color:var(--ready);}
@@ -156,9 +168,6 @@
   .metric.s-packed  .metric-value{color:var(--packed);}
   .metric.s-loaded  .metric-value{color:var(--loaded);}
   .metric-sub{font-size:11px;color:var(--text-hint);margin-top:4px;}
-  .wave-mini-bar{display:flex;height:4px;border-radius:3px;overflow:hidden;margin-top:10px;background:var(--bar-bg);}
-  .wave-mini-seg{height:100%;}
-  .nearly-done{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;margin-top:6px;background:var(--packed-bg);color:var(--packed);}
 
   /* ── section header ── */
   .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
@@ -255,8 +264,19 @@
     <div class="total-capsule-right" id="totalRight">— waves</div>
   </div>
 
-  <div class="metrics" id="waveTiles">
-    <div class="empty-state" style="grid-column:1/-1">Loading wave data...</div>
+  <div class="wave-table-card">
+    <table id="waveTable">
+      <thead><tr>
+        <th>Wave</th>
+        <th>Date</th>
+        <th class="r">Active Orders</th>
+        <th>Status Breakdown</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="waveTableBody">
+        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-hint)">Loading wave data...</td></tr>
+      </tbody>
+    </table>
   </div>
 
   <div id="waveDetail" style="display:none">
@@ -382,14 +402,14 @@ function renderPie(stores) {
 }
 
 // ── wave state ─────────────────────────────────────────────────────────────────
-let allWaves     = [];
-let currentWave  = null;
-let selectedIdx  = 0;
+let allWaves    = [];
+let currentWave = null;
+let selectedIdx = 0;
 
 function selectWave(idx) {
   selectedIdx = idx;
   currentWave = allWaves[idx];
-  document.querySelectorAll('.metric.wave-tile').forEach((el, i) => {
+  document.querySelectorAll('.wave-row').forEach((el, i) => {
     el.classList.toggle('active', i === idx);
   });
   renderWaveDetail(currentWave);
@@ -405,35 +425,40 @@ function fmtDateShort(isoDate) {
   return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-// ── render wave tiles ──────────────────────────────────────────────────────────
+// ── render wave table ──────────────────────────────────────────────────────────
 function renderWaveTiles(waves) {
-  const container = document.getElementById('waveTiles');
+  const tbody = document.getElementById('waveTableBody');
   if (!waves.length) {
-    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No active waves found.</div>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-hint)">No active waves found.</td></tr>';
     return;
   }
-  container.innerHTML = '';
+  tbody.innerHTML = '';
   waves.forEach((wave, idx) => {
-    const total = wave.total_active_orders || 0;
-    const sc    = wave.status_counts || {};
-    const stale = total < 5;
+    const total   = wave.total_active_orders || 0;
+    const sc      = wave.status_counts || {};
+    const stale   = total < 5;
+    const waveNum = wave.wave_number ? `Wave ${wave.wave_number}` : '—';
 
-    // mini bar segments
     const segsHtml = STATUS_ORDER.filter(s => sc[s] && total > 0).map(s =>
-      `<div class="wave-mini-seg ${SEG_CLASS[s]}" style="width:${(sc[s]/total*100).toFixed(1)}%"></div>`
+      `<div class="wave-bar-seg ${SEG_CLASS[s]}" style="width:${(sc[s]/total*100).toFixed(1)}%"></div>`
     ).join('');
 
-    const tile = document.createElement('div');
-    tile.className = `metric wave-tile${stale ? ' stale' : ''}${idx === selectedIdx ? ' active' : ''}`;
-    tile.onclick = () => selectWave(idx);
-    tile.innerHTML = `
-      <div class="metric-eyebrow">Wave</div>
-      <div class="metric-value" style="font-size:18px;font-weight:600">${fmtDateShort(wave.wave_date)}</div>
-      <div class="metric-sub">${total.toLocaleString()} active</div>
-      <div class="wave-mini-bar">${segsHtml}</div>
-      ${stale ? '<div class="nearly-done">nearly done</div>' : ''}
+    // status pill summary: e.g. "Alloc 700  Packed 933"
+    const pillsSummary = STATUS_ORDER.filter(s => sc[s]).map(s =>
+      `<span style="font-size:11px;color:var(--text-muted);margin-right:8px;">${STATUS_LABELS[s]} <strong>${sc[s].toLocaleString()}</strong></span>`
+    ).join('');
+
+    const tr = document.createElement('tr');
+    tr.className = `wave-row${idx === selectedIdx ? ' active' : ''}`;
+    tr.onclick = () => selectWave(idx);
+    tr.innerHTML = `
+      <td class="wave-num">${waveNum}</td>
+      <td class="wave-date-col">${fmtDate(wave.wave_date)}</td>
+      <td class="wave-active r">${total.toLocaleString()}${stale ? ' <span class="nearly-done">nearly done</span>' : ''}</td>
+      <td class="wave-bar-cell"><div class="wave-bar-wrap">${segsHtml}</div></td>
+      <td style="font-size:12px;white-space:normal;min-width:200px">${pillsSummary}</td>
     `;
-    container.appendChild(tile);
+    tbody.appendChild(tr);
   });
 }
 
@@ -550,8 +575,8 @@ async function loadData() {
       document.getElementById('waveDetail').style.display = 'none';
     }
   } catch (e) {
-    document.getElementById('waveTiles').innerHTML =
-      `<div class="empty-state" style="grid-column:1/-1">Could not load data — ${e.message}</div>`;
+    document.getElementById('waveTableBody').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-hint)">Could not load data — ${e.message}</td></tr>`;
     document.getElementById('runTime').textContent = 'Data unavailable';
   }
 }
