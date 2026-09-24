@@ -1,14 +1,14 @@
 {
-    "generated": "2026-09-24T04:53:49.559Z",
+    "generated": "2026-09-24T04:55:48.614Z",
     "shift": "2nd",
     "shift_start": "2026-09-23 21:00:00",
     "facility": "499",
     "picking": {
-        "queued": 6,
-        "assigned": 15,
-        "in_progress": 7,
-        "completed": 208,
-        "total_open": 28,
+        "queued": 12,
+        "assigned": 14,
+        "in_progress": 8,
+        "completed": 209,
+        "total_open": 34,
         "tasks": [
             {
                 "task_id": "WRPICK0000267412",
@@ -2043,8 +2043,8 @@
             {
                 "task_id": "Pick0006674021",
                 "subtype": "MEZZ",
-                "status": "5000",
-                "status_label": "Assigned",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "F2C0443E02",
                 "target": null,
                 "created_pdt": "2026-09-23T20:25:38.141000",
@@ -2303,18 +2303,18 @@
             {
                 "task_id": "WRPICK0000268254",
                 "subtype": "NON MEZZ",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "F1D1103C03",
                 "target": null,
                 "created_pdt": "2026-09-23T21:46:02.619000",
-                "detail_count": 2
+                "detail_count": null
             },
             {
                 "task_id": "WRPICK0000268261",
                 "subtype": "NON MEZZ",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "F1B0211A06",
                 "target": null,
                 "created_pdt": "2026-09-23T21:50:30.728000",
@@ -2369,13 +2369,83 @@
                 "target": null,
                 "created_pdt": "2026-09-23T21:50:33.965000",
                 "detail_count": 106
+            },
+            {
+                "task_id": "WRPICK0000268269",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F1D1216B02",
+                "target": null,
+                "created_pdt": "2026-09-23T21:55:28.537000",
+                "detail_count": 9
+            },
+            {
+                "task_id": "WRPICK0000268270",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F1B0213B04",
+                "target": null,
+                "created_pdt": "2026-09-23T21:55:28.628000",
+                "detail_count": 12
+            },
+            {
+                "task_id": "WRPICK0000268271",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F1A0124D05",
+                "target": null,
+                "created_pdt": "2026-09-23T21:55:31.577000",
+                "detail_count": 37
+            },
+            {
+                "task_id": "WRPICK0000268279",
+                "subtype": "MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F2C0485C03",
+                "target": null,
+                "created_pdt": "2026-09-23T21:55:32.888000",
+                "detail_count": 13
+            },
+            {
+                "task_id": "WRPICK0000268281",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "P1C0204A01",
+                "target": null,
+                "created_pdt": "2026-09-23T21:55:33.078000",
+                "detail_count": 5
+            },
+            {
+                "task_id": "WRPICK0000268268",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F1D1218C03",
+                "target": null,
+                "created_pdt": "2026-09-23T21:55:33.234000",
+                "detail_count": 150
+            },
+            {
+                "task_id": "WRPICK0000268278",
+                "subtype": "MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F2C0417I01",
+                "target": null,
+                "created_pdt": "2026-09-23T21:55:34.050000",
+                "detail_count": 44
             }
         ]
     },
     "replen": {
-        "queued": 8,
+        "queued": 7,
         "assigned": 0,
-        "in_progress": 1,
+        "in_progress": 2,
         "completed": 63,
         "total_open": 9,
         "tasks": [
@@ -3081,9 +3151,9 @@
             },
             {
                 "task_id": "WRPICK0000268260",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "REPLEN PULL",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1F0506C02",
                 "target": "F1D0610E01",
                 "created_pdt": "2026-09-23T21:50:30.428000",
@@ -3101,21 +3171,7 @@
             }
         ]
     },
-    "pick_drop_carts": [
-        {
-            "location": "P1-PK-12",
-            "ilpns": [
-                {
-                    "ilpn_id": "00070166616391310208",
-                    "on_hand": 20,
-                    "updated_pst": "2026-09-23T20:46:56.414000",
-                    "age_min": 7
-                }
-            ],
-            "total_units": 20,
-            "oldest_min": 7
-        }
-    ],
+    "pick_drop_carts": [],
     "flow_carts": [
         {
             "location": "P1-FC-010008",
@@ -3124,29 +3180,29 @@
                     "ilpn_id": "00006499300003597760",
                     "on_hand": 6,
                     "updated_pst": "2026-09-21T10:26:15.953000",
-                    "age_min": 3508
+                    "age_min": 3510
                 },
                 {
                     "ilpn_id": "00006499300003754422",
                     "on_hand": 1,
                     "updated_pst": "2026-09-21T10:35:00.824000",
-                    "age_min": 3499
+                    "age_min": 3501
                 },
                 {
                     "ilpn_id": "00006499300003754538",
                     "on_hand": 3,
                     "updated_pst": "2026-09-21T10:43:49.605000",
-                    "age_min": 3490
+                    "age_min": 3492
                 },
                 {
                     "ilpn_id": "00006499300003597593",
                     "on_hand": 3,
                     "updated_pst": "2026-09-21T10:43:59.537000",
-                    "age_min": 3490
+                    "age_min": 3492
                 }
             ],
             "total_units": 13,
-            "oldest_min": 3508
+            "oldest_min": 3510
         },
         {
             "location": "P1-FC-010009",
@@ -3155,17 +3211,17 @@
                     "ilpn_id": "00207912220024674479",
                     "on_hand": 4,
                     "updated_pst": "2026-09-21T11:42:21.539000",
-                    "age_min": 3431
+                    "age_min": 3433
                 },
                 {
                     "ilpn_id": "00006499300003755443",
                     "on_hand": 3,
                     "updated_pst": "2026-09-22T14:40:48.957000",
-                    "age_min": 1813
+                    "age_min": 1815
                 }
             ],
             "total_units": 7,
-            "oldest_min": 3431
+            "oldest_min": 3433
         },
         {
             "location": "P1-FC-010010",
@@ -3174,95 +3230,95 @@
                     "ilpn_id": "00006499300003762960",
                     "on_hand": 3,
                     "updated_pst": "2026-09-18T12:16:46.998000",
-                    "age_min": 7717
+                    "age_min": 7719
                 },
                 {
                     "ilpn_id": "00006499300003764353",
                     "on_hand": 3,
                     "updated_pst": "2026-09-18T12:16:54.841000",
-                    "age_min": 7717
+                    "age_min": 7719
                 },
                 {
                     "ilpn_id": "00006499300003763844",
                     "on_hand": 10,
                     "updated_pst": "2026-09-18T12:18:17.110000",
-                    "age_min": 7716
+                    "age_min": 7718
                 },
                 {
                     "ilpn_id": "00006499300003763707",
                     "on_hand": 3,
                     "updated_pst": "2026-09-18T12:18:31.840000",
-                    "age_min": 7715
+                    "age_min": 7717
                 },
                 {
                     "ilpn_id": "00006499300003763967",
                     "on_hand": 12,
                     "updated_pst": "2026-09-18T12:18:39.420000",
-                    "age_min": 7715
+                    "age_min": 7717
                 },
                 {
                     "ilpn_id": "00006499300003763516",
                     "on_hand": 7,
                     "updated_pst": "2026-09-18T12:19:40.381000",
-                    "age_min": 7714
+                    "age_min": 7716
                 },
                 {
                     "ilpn_id": "00006499300003763462",
                     "on_hand": 9,
                     "updated_pst": "2026-09-18T12:19:57.820000",
-                    "age_min": 7714
+                    "age_min": 7716
                 },
                 {
                     "ilpn_id": "00006499300003763530",
                     "on_hand": 9,
                     "updated_pst": "2026-09-18T12:20:07.929000",
-                    "age_min": 7714
+                    "age_min": 7716
                 },
                 {
                     "ilpn_id": "00006499300003763523",
                     "on_hand": 6,
                     "updated_pst": "2026-09-18T12:20:34.212000",
-                    "age_min": 7713
+                    "age_min": 7715
                 },
                 {
                     "ilpn_id": "00006499300003688451",
                     "on_hand": 3,
                     "updated_pst": "2026-09-18T19:37:28.858000",
-                    "age_min": 7276
+                    "age_min": 7278
                 },
                 {
                     "ilpn_id": "00006499300003688192",
                     "on_hand": 11,
                     "updated_pst": "2026-09-18T19:43:40.301000",
-                    "age_min": 7270
+                    "age_min": 7272
                 },
                 {
                     "ilpn_id": "00006499300003763608",
                     "on_hand": 9,
                     "updated_pst": "2026-09-21T10:16:50.651000",
-                    "age_min": 3517
+                    "age_min": 3519
                 },
                 {
                     "ilpn_id": "00006499300003763554",
                     "on_hand": 3,
                     "updated_pst": "2026-09-21T10:22:15.571000",
-                    "age_min": 3512
+                    "age_min": 3514
                 },
                 {
                     "ilpn_id": "LPN000000052956",
                     "on_hand": 3,
                     "updated_pst": "2026-09-21T12:15:43.177000",
-                    "age_min": 3398
+                    "age_min": 3400
                 },
                 {
                     "ilpn_id": "00006499300003763493",
                     "on_hand": 3,
                     "updated_pst": "2026-09-22T07:46:53.589000",
-                    "age_min": 2227
+                    "age_min": 2229
                 }
             ],
             "total_units": 94,
-            "oldest_min": 7717
+            "oldest_min": 7719
         },
         {
             "location": "P1-FC-010011",
@@ -3271,29 +3327,29 @@
                     "ilpn_id": "00006499300003685443",
                     "on_hand": 1,
                     "updated_pst": "2026-09-19T09:38:33.911000",
-                    "age_min": 6435
+                    "age_min": 6437
                 },
                 {
                     "ilpn_id": "00008407320091235767",
                     "on_hand": 9,
                     "updated_pst": "2026-09-19T19:08:07.822000",
-                    "age_min": 5866
+                    "age_min": 5868
                 },
                 {
                     "ilpn_id": "00006499300003741095",
                     "on_hand": 3,
                     "updated_pst": "2026-09-21T04:10:35.788000",
-                    "age_min": 3883
+                    "age_min": 3885
                 },
                 {
                     "ilpn_id": "00006499300003597197",
                     "on_hand": 15,
                     "updated_pst": "2026-09-21T06:28:31.786000",
-                    "age_min": 3745
+                    "age_min": 3747
                 }
             ],
             "total_units": 28,
-            "oldest_min": 6435
+            "oldest_min": 6437
         },
         {
             "location": "P1-FC-010012",
@@ -3302,11 +3358,11 @@
                     "ilpn_id": "00006499300003759694",
                     "on_hand": 14,
                     "updated_pst": "2026-09-21T04:57:40.872000",
-                    "age_min": 3836
+                    "age_min": 3838
                 }
             ],
             "total_units": 14,
-            "oldest_min": 3836
+            "oldest_min": 3838
         },
         {
             "location": "P1-FC-010014",
@@ -3315,11 +3371,11 @@
                     "ilpn_id": "00006499300003801232",
                     "on_hand": 1,
                     "updated_pst": "2026-09-23T09:31:48.316000",
-                    "age_min": 682
+                    "age_min": 684
                 }
             ],
             "total_units": 1,
-            "oldest_min": 682
+            "oldest_min": 684
         }
     ]
 }
