@@ -385,8 +385,9 @@ const PIE_COLORS_TOP    = ['#5B9BD5','#E65100','#2E7D32','#6D28D9','#00838F'];
 const PIE_COLORS_BUCKET = ['#888','#aaa','#777','#bbb','#999'];
 
 // ── store grouping ─────────────────────────────────────────────────────────────
+// Returns top/bucketRows each with a .color property matching the pie slice.
 function groupStores(stores) {
-  const top  = stores.slice(0, 5);
+  const top  = stores.slice(0, 5).map((r, i) => ({ ...r, color: PIE_COLORS_TOP[i] }));
   const rest = stores.slice(5);
   const buckets = {};
   for (const r of rest) {
@@ -395,7 +396,8 @@ function groupStores(stores) {
   }
   const bucketRows = Object.entries(buckets)
     .map(([label, orders]) => ({ store_id: label, orders, isBucket: true }))
-    .sort((a, b) => b.orders - a.orders);
+    .sort((a, b) => b.orders - a.orders)
+    .map((r, i) => ({ ...r, color: PIE_COLORS_BUCKET[i % PIE_COLORS_BUCKET.length] }));
   return { top, bucketRows };
 }
 
@@ -407,7 +409,7 @@ function renderPie(stores) {
   const { top, bucketRows } = groupStores(stores);
   const labels = [...top.map(r => `Store ${r.store_id}`), ...bucketRows.map(r => r.store_id)];
   const data   = [...top.map(r => r.orders),              ...bucketRows.map(r => r.orders)];
-  const colors = [...top.map((_, i) => PIE_COLORS_TOP[i] || '#aaa'), ...bucketRows.map((_, i) => PIE_COLORS_BUCKET[i % PIE_COLORS_BUCKET.length])];
+  const colors = [...top.map(r => r.color),               ...bucketRows.map(r => r.color)];
   const dark = isDarkTheme();
   const borderColor = dark ? '#333' : '#fff';
   if (pieChart) {
@@ -562,34 +564,29 @@ function renderWaveDetail(wave) {
   const tbody = document.getElementById('storeTableBody');
   tbody.innerHTML = '';
 
-  top.forEach(r => {
-    const pct = totalStoreOrders > 0 ? ((r.orders / totalStoreOrders) * 100).toFixed(0) : '0';
+  function storeRow(r, muted) {
+    const pct  = totalStoreOrders > 0 ? ((r.orders / totalStoreOrders) * 100).toFixed(0) : '0';
     const barW = ((r.orders / maxOrders) * 100).toFixed(1);
+    const dot  = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${r.color};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>`;
+    const name = muted ? `<td class="muted"><span style="display:inline-flex;align-items:center;">${dot}${r.store_id}</span></td>`
+                       : `<td><span style="display:inline-flex;align-items:center;">${dot}Store ${r.store_id}</span></td>`;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>Store ${r.store_id}</td>
+      ${name}
       <td class="r">${r.orders.toLocaleString()}</td>
-      <td class="r"><div class="store-share-cell"><div class="store-share-bar"><div class="store-share-fill" style="width:${barW}%"></div></div><span class="store-share-pct">${pct}%</span></div></td>
+      <td class="r"><div class="store-share-cell"><div class="store-share-bar"><div class="store-share-fill" style="width:${barW}%;background:${r.color};opacity:0.7;"></div></div><span class="store-share-pct">${pct}%</span></div></td>
     `;
     tbody.appendChild(tr);
-  });
+  }
+
+  top.forEach(r => storeRow(r, false));
 
   if (bucketRows.length) {
     const divRow = document.createElement('tr');
     divRow.className = 'bucket-divider';
     divRow.innerHTML = '<td colspan="3">Store Groups</td>';
     tbody.appendChild(divRow);
-    bucketRows.forEach(r => {
-      const pct = totalStoreOrders > 0 ? ((r.orders / totalStoreOrders) * 100).toFixed(0) : '0';
-      const barW = ((r.orders / maxOrders) * 100).toFixed(1);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="muted">${r.store_id}</td>
-        <td class="r">${r.orders.toLocaleString()}</td>
-        <td class="r"><div class="store-share-cell"><div class="store-share-bar"><div class="store-share-fill bucket" style="width:${barW}%"></div></div><span class="store-share-pct">${pct}%</span></div></td>
-      `;
-      tbody.appendChild(tr);
-    });
+    bucketRows.forEach(r => storeRow(r, true));
   }
 
   document.getElementById('storeTotalOrders').textContent = totalStoreOrders.toLocaleString();
