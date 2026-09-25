@@ -10,7 +10,7 @@ This file is read automatically at the start of every Claude Code session. Do no
 **Entry point: always `dc499.bat` — never `node` directly.**
 
 - Main server: option 2 (`:3001`, auto-refresh every 2 min)
-- Sub-agents: options 5–19 (each dept has one-shot / auto-refresh / auth)
+- Sub-agents: options 5–22 (each dept has one-shot / auto-refresh / auth)
 - Git: dc499_refresh.js pushes for everyone — sub-agents only write JSON files locally
 
 **GitHub:** dkarim02/DC499-reports | **Live:** dkarim02.github.io/DC499-reports | **Local:** C:\Users\JLEO\OneDrive - Nordstrom\DC499 Reporter
@@ -31,6 +31,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | scout_reserve_agent.js | reserve_live.json, putaway_live.json | Reserve_v1_7.html, Reserve_putaway.html |
 | scout_expedite_agent.js | expedite_live.json | Backlog_live.html (Expedite tab) |
 | scout_itemprep_agent.js | itemprep_live.json | ItemPrep_live.html |
+| scout_retail_agent.js | retail_backlog_live.json | Retail_backlog.html |
 | eos_agent.js | eos_sos_snapshot.json, eos_report.json | EOS_live.html |
 
 ---
@@ -48,6 +49,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | 11–13 | Reserve Live (one-shot / auto / auth) | scout_reserve_agent.js |
 | 14–16 | Item Prep Live (one-shot / auto / auth) | scout_itemprep_agent.js |
 | 17–19 | Expedite Live (one-shot / auto / auth) | scout_expedite_agent.js |
+| 20–22 | Retail Backlog (one-shot / auto every 5 min / auth) | scout_retail_agent.js |
 
 **EOS:** separate launcher — `eos.bat` (options: 1=SOS snapshot, 2=EOS+finalize, 3=Reconstruct SOS, 4=Auth)
 
@@ -83,7 +85,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 dc499_refresh.js is the single coordinator — sub-agents never push.
 
 ```
-git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json
+git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json ecom_history.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json retail_backlog_live.json
 git commit -m "Live update -- {stamp} [+ecom, +shipping, +reserve]"
 git fetch origin main
 git rebase --autostash origin/main
@@ -94,7 +96,7 @@ git push origin main
 
 **index.lock cleanup:** `gitPush()` calls `fs.unlinkSync('.git/index.lock')` before every `git add` — silently clears stale locks left by killed/crashed cycles.
 
-**Commit message `[+label]` tags:** LABELS map in gitPush() — `ecom_live.json`→`ecom`, `shipping_live.json`→`shipping`, `reserve_live.json`→`reserve`, `putaway_live.json`→`putaway`, `expedite_live.json`→`expedite`. Any sub-agent file that changed gets its tag appended.
+**Commit message `[+label]` tags:** LABELS map in gitPush() — `ecom_live.json`→`ecom`, `shipping_live.json`→`shipping`, `reserve_live.json`→`reserve`, `putaway_live.json`→`putaway`, `expedite_live.json`→`expedite`, `retail_backlog_live.json`→`retail`. Any sub-agent file that changed gets its tag appended.
 
 ---
 
@@ -206,7 +208,7 @@ All agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent.js`,
 - Fast path: if token is fresh, return immediately — no network call
 - Lock path: claim `.mcp_token.lock` (exclusive `wx` write), re-check freshness after acquiring, refresh once, release in `finally`
 
-**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122
+**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122, scout_retail=3123
 
 ---
 
@@ -314,6 +316,24 @@ Entry point: orange "📦 Putaway WIP" pill in Reserve_v1_7.html top bar. Data: 
 **CSV upload mode (v1.1):** User uploads Cognos "Receive to Putaway WIP" xlsx. Carton IDs forward-filled (sparse Cognos format). Matched against live JSON by ILPN_ID. Unmatched cartons are mostly Beauty/Ecom (740/750) — not a data error. SheetJS loaded lazily on first upload. Works on GitHub Pages; requires :3001 server when opened as file://.
 
 **Shelf PP anomaly (deferred):** ~17k shelf LPNs (R1B/D/E/F/H, R2H) at STATUS=3000 — putaway scan never completed. Excluded pending team discussion.
+
+---
+
+## Retail Backlog (scout_retail_agent.js → Retail_backlog.html)
+
+Store replen order progress by wave. Output: retail_backlog_live.json. REDIRECT_PORT 3123. Menu entry: Reserve Stock card → "Retail Backlog" tool chip.
+
+**Scope:** `DCO_ORDER` with `ORDER_TYPE='RETAIL'`, `CANCELLED=0`, `MAXIMUM_STATUS NOT IN ('8000','9000')`, 90-day lookback. One wave per week; wave = PDT date of `CREATED_TIMESTAMP` (`pdtDateToUtcWindow()` — midnight PDT = 07:00 UTC, DST fix applies).
+
+**Wave number:** Full `ORDER_PLANNING_RUN_ID` string (e.g. `W09212026000000000035`) from `DCO_ORDER_PLAN_RUN_STRATEGY` where `PLANNING_STRATEGY_ID='NRDR_CORE_RETAIL_ORDER_PLANNING_STRATEGY'`, matched by PDT date. Not readable from DCO_ORDER directly. Highest sequence wins if a date has several runs.
+
+**Order status = MINIMUM_STATUS, not MAXIMUM_STATUS.** An order with min=Allocated / max=Packed still has lines to pick — it counts as Allocated. MAXIMUM_STATUS is only used to drop shipped/cancelled orders.
+
+**Units gotcha:** On retail lines, `ALLOCATED_QUANTITY`, `PACKED_QUANTITY`, etc. are set once and mirror `ORDERED_QUANTITY` — summing them makes every column equal Ordered. Correct: `SUM(ORDERED_QUANTITY) GROUP BY DCO_ORDER_LINE.STATUS` (strings: ALLOCATED, PACKING, PACKED, LOADED, MANIFESTED, SHIPPED). Agent buckets ALLOCATED+PACKING → `allocated`; `ordered` = sum of all buckets. Always `ol.CANCELLED = 0`.
+
+**Per-wave queries (parallel):** status breakdown (by MINIMUM_STATUS), unit counts (by line STATUS), store breakdown (DESTINATION_FACILITY_ID). Then `allocated_orders[]` (best-effort — failure doesn't drop the wave): orders with MINIMUM_STATUS=2090, only lines still at STATUS='ALLOCATED' → `{order_id, store_id, lines, units}` = what's left to pick, sorted by units desc.
+
+**HTML:** Units view is the default (Orders toggle available). Wave table = one bubble pill per status + totals footer. Clicking the Allocated bubble (either view) or the Allocated tile opens the order list panel (search by order # or store); open state + search survive wave switches and auto-refresh. Store table rows carry colored dots that match pie slices (`groupStores()` assigns colors) — pie has no legend. Pie uses `responsive:false` + in-place `update('none')` so it never resizes between waves.
 
 ---
 
@@ -506,7 +526,8 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 
 **Urgent / active:**
 - [ ] **Backlog date bucketing** — waiting on leader sign-off. Fix: join subquery for `MIN(CREATED_TIMESTAMP)` across ALL lines (incl. cancelled) per order as bucket date, filter `CANCELLED=0` for status counts. Verified vs Cognos 2026-08-17.
-- [ ] **DST fix** — ~Oct 25, 2026: change `-07:00` PDT → `-08:00` PST in scout_ecom_agent.js, scout_reserve_agent.js (shift boundaries + timestamps). See DST fix memory.
+- [ ] **DST fix** — ~Oct 25, 2026: change `-07:00` PDT → `-08:00` PST in scout_ecom_agent.js, scout_reserve_agent.js, scout_retail_agent.js (shift boundaries + timestamps + `pdtDateToUtcWindow` 07:00 → 08:00). See DST fix memory.
+- [ ] **Retail Backlog next:** order lists for other status pills, replen tasks blocking picks, zone task visibility, TM throughput, mixed-SKU case locations, open waves → release date/pending qty, failed orders by reason. See Retail Report Backlog memory.
 
 **Pending build:**
 - [ ] Packed Not Shipped: build PackedNotShipped_live.html + fetchPackedNotShipped() in dc499_refresh.js
