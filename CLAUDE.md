@@ -160,6 +160,7 @@ DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS li
 - Batches → default_workrelease.WR_BATCH (WORK_RELEASE_BATCH_ID = wave-run; BATCH_ID = per-putwall sub-batch)
 - Inventory at location → default_dcinventory.DCI_ILPN + DCI_INVENTORY
 - oLPN status/shipping → default_pickpack.PPK_OLPN
+- Pick Execution Zones (PEZ) → default_dcinventory.DCI_ZONE (`ZONE_TYPE_ID='PICK_EXECUTION'`); location → zone via `DCI_LOCATION.PICK_EXECUTION_ZONE_ID` (`PROFILE_ID='499'`); task lines carry `TSK_TASK_DETAIL.PICK_EXECUTION_ZONE_ID`. Every active zone H location has a PEZ. E1H = `PEZ_PACKHOLD_RTV`, U1H = `PEZ_UNALLOCATED` (not pick/replen work).
 
 **PPK_OLPN query rules:**
 - NEVER use `SELECT *` — PII filter blocks the whole query if any blocked column (e.g. `TOTAL_UNITS`) is included. Always list columns explicitly.
@@ -334,6 +335,21 @@ Store replen order progress by wave. Output: retail_backlog_live.json. REDIRECT_
 **Per-wave queries (parallel):** status breakdown (by MINIMUM_STATUS), unit counts (by line STATUS), store breakdown (DESTINATION_FACILITY_ID). Then `allocated_orders[]` (best-effort — failure doesn't drop the wave): orders with MINIMUM_STATUS=2090, only lines still at STATUS='ALLOCATED' → `{order_id, store_id, lines, units}` = what's left to pick, sorted by units desc.
 
 **Zones tab (v1.1):** `zones` object in the JSON = open/done units + lines per Pick Execution Zone (PEZ), split into `picks[]` and `replen[]`. Source: `TSK_TASK_DETAIL.PICK_EXECUTION_ZONE_ID LIKE 'PEZ_RTL%'` (TSK_TASK.SOURCE_ZONE_ID is empty for these). Open = STATUS not 8000/9000, created in last 48 hrs. Done = STATUS 8000 with `ACTUAL_END_TIME` ≥ shift start (1st 10:00 / 2nd 21:10 UTC). Location ranges come from `DCI_LOCATION.PICK_EXECUTION_ZONE_ID`. Zones whose locations are all R1H/R2H = replen (Retail iLPN Replen Pull); the rest = picks (Non Haz Retail Pick To oLPN Cart / Floor 2). Friendly names come from `zoneName()`: `PEZ_RTL_ZONE_3` → "Zone 3", `PEZ_RTL_ZONE_3_R1H` → "R1H Zone 3", `PEZ_RTL_ZONE_F2H` → "F2H Zone". Retired zones (no locations, no work) are skipped. HTML: Picks/Replen toggle + "Show completed" checkbox (same idea as the Ecom Tasks tab). Share % = zone's slice of the total; bars scale to the busiest zone. The last tab is remembered in `retail_backlog_tab_v1`. **Query gotcha:** a JOIN to TSK_TASK combined with `LIKE 'PEZ_RTL%'` fails server-side — use an explicit IN() list if a join is ever needed.
+
+**Retail zone map (as of 2026-09-24).** Pick zones 1/2/3/F2H/P2H were created 2026-09-17 (a re-zone); the R1H/R2H replen zones date from Feb 2026.
+
+| Zone | Where | Work |
+|---|---|---|
+| Zone 1 | F1H 10–11 + P1H 09–10 | Picks |
+| Zone 2 | F1H 04–08 + P1H 01–04 | Picks |
+| Zone 3 | P1H 11–13 | Picks |
+| F1H Zone 10 | F1H05, 3 locations (first work 9/24) | Picks |
+| F2H Zone | F2H 01–13 (1,254 locations) | Picks (Floor 2) |
+| P2H Zone | P2H 01–08 | Picks (Floor 2) |
+| R1H Zone 1–4 | R1H aisles 01–08, split by aisle + bay (01–30 / 31–46) | Replen |
+| R2H Zone 5–6 | R2H bays 01–10 / 11–55 | Replen |
+
+Older numbered zones (7–12 with F1H/P1H/F2H/P2H suffixes) have few or no locations left.
 
 **HTML:** Units view is the default (Orders toggle available). Wave table = one bubble pill per status + totals footer. Clicking the Allocated bubble (either view) or the Allocated tile opens the order list panel (search by order # or store); open state + search survive wave switches and auto-refresh. Store table rows carry colored dots that match pie slices (`groupStores()` assigns colors) — pie has no legend. Pie uses `responsive:false` + in-place `update('none')` so it never resizes between waves.
 
@@ -516,6 +532,15 @@ Safe at 15 IDs; try 25–30 if count is high. Used in: `fetchTaskData()` for TSK
 
 ---
 
+## Dev tooling (Claude Code sessions)
+
+- **Node isn't on the bash PATH.** Use the bundled copy: `"/c/Users/JLEO/OneDrive - Nordstrom/node/node-v24.18.0-win-x64/node.exe"` (same one dc499.bat uses). `--check file.js` does a syntax check.
+- **Don't run agents one-shot from Claude Code while the serve-mode agents are running.** One-shot `getAccessToken()` refreshes the shared token without the lock and can revoke the session. To test agent logic, stub `mcpQuery` with real rows pulled via the MCP tool.
+- **Page screenshots:** use headless Edge (`/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe --headless=new --virtual-time-budget=2000 --screenshot=C:/path/x.png file:///C:/path/page.html`). Stub `window.fetch` in a temp copy to feed sample JSON. Add `body{animation:none !important}` or the shot comes out dim (pageEnter fade gets frozen). Use forward-slash Windows paths.
+- Agent files are CRLF — split on `/\r?\n/` when loading them in test scripts.
+
+---
+
 ## Disclaimer (required on all dept apps)
 
 ```
@@ -529,6 +554,7 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 **Urgent / active:**
 - [ ] **Backlog date bucketing** — waiting on leader sign-off. Fix: join subquery for `MIN(CREATED_TIMESTAMP)` across ALL lines (incl. cancelled) per order as bucket date, filter `CANCELLED=0` for status counts. Verified vs Cognos 2026-08-17.
 - [ ] **DST fix** — ~Oct 25, 2026: change `-07:00` PDT → `-08:00` PST in scout_ecom_agent.js, scout_reserve_agent.js, scout_retail_agent.js (shift boundaries + timestamps + `pdtDateToUtcWindow` 07:00 → 08:00). See DST fix memory.
+- [ ] **Verify Zones tab live (from 2026-09-24):** restart the Retail agent (option 21) so it runs the v1.1 code. Confirm a `Zones — picks: … · replen: …` line appears in the console and the tab fills in. So far it's been tested with real query results plus a page screenshot, not a full agent run.
 - [ ] **Retail Backlog next:** order lists for other status pills, replen tasks blocking picks, zone task visibility (Zones tab shipped v1.1 — TM-per-zone headcount still open), TM throughput, mixed-SKU case locations, open waves → release date/pending qty, failed orders by reason. See Retail Report Backlog memory.
 
 **Pending build:**
