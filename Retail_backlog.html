@@ -426,7 +426,6 @@ function renderPie(stores) {
     pieChart.data.datasets[0].data = data;
     pieChart.data.datasets[0].backgroundColor = colors;
     pieChart.data.datasets[0].borderColor = borderColor;
-    pieChart.options.plugins.legend.labels.color = dark ? '#999' : '#666';
     pieChart.update('none');
     return;
   }
@@ -437,7 +436,7 @@ function renderPie(stores) {
       responsive: false,
       cutout: '30%',
       plugins: {
-        legend: { display: true, position: 'bottom', labels: { color: dark ? '#999' : '#666', font: { size: 11 }, boxWidth: 10, padding: 8 } },
+        legend: { display: false },
         tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} orders` } },
       },
       animation: { duration: 400 },
