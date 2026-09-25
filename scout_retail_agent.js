@@ -343,6 +343,32 @@ GROUP BY ol.STATUS
 `.trim();
 }
 
+// Step 5: Allocated order list for one wave date window.
+// Orders blocked at Allocated (MINIMUM_STATUS 2090) with their still-allocated lines/units — what's left to pick.
+function sqlAllocatedOrders(utcStart, utcEnd) {
+  return `
+SELECT
+  o.ORDER_ID,
+  o.DESTINATION_FACILITY_ID AS store_id,
+  COUNT(ol.ORDER_LINE_ID) AS line_count,
+  SUM(ol.ORDERED_QUANTITY) AS units
+FROM default_dcorder.DCO_ORDER o
+JOIN default_dcorder.DCO_ORDER_LINE ol
+  ON ol.ORDER_ID = o.ORDER_ID AND ol.FACILITY_ID = o.FACILITY_ID
+WHERE o.FACILITY_ID = '${FACILITY}'
+  AND o.ORDER_TYPE = 'RETAIL'
+  AND o.CANCELLED = 0
+  AND o.CREATED_TIMESTAMP >= '${utcStart}'
+  AND o.CREATED_TIMESTAMP < '${utcEnd}'
+  AND o.MAXIMUM_STATUS NOT IN ('8000', '9000')
+  AND o.MINIMUM_STATUS = '2090'
+  AND ol.CANCELLED = 0
+  AND ol.STATUS = 'ALLOCATED'
+GROUP BY o.ORDER_ID, o.DESTINATION_FACILITY_ID
+ORDER BY units DESC
+`.trim();
+}
+
 // Step 4: Store (destination facility) breakdown for one wave date window.
 function sqlStoreBreakdown(utcStart, utcEnd) {
   return `
@@ -412,7 +438,7 @@ async function fetchRetailBacklog(accessToken) {
     return;
   }
 
-  // Steps 2+3+4: For each wave, fire status + units + store queries in parallel
+  // Steps 2–5: For each wave, fire status + units + store + allocated-order queries in parallel
   const waves = await Promise.all(waveDates.map(async (waveDate) => {
     const { start, end } = pdtDateToUtcWindow(waveDate);
     try {
@@ -421,6 +447,20 @@ async function fetchRetailBacklog(accessToken) {
         mcpQuery(accessToken, sqlUnitCounts(start, end)),
         mcpQuery(accessToken, sqlStoreBreakdown(start, end)),
       ]);
+
+      // Allocated order list is best-effort — a failure here shouldn't drop the wave
+      let allocatedOrders = null;
+      try {
+        const allocResp = await mcpQuery(accessToken, sqlAllocatedOrders(start, end));
+        allocatedOrders = (allocResp.rows || []).map(r => ({
+          order_id: r.ORDER_ID,
+          store_id: r.store_id,
+          lines:    Number(r.line_count) || 0,
+          units:    Math.round(Number(r.units) || 0),
+        }));
+      } catch (e) {
+        console.warn(`[${ts()}] Wave ${waveDate} allocated order list failed (non-fatal):`, e.message);
+      }
 
       const statusCounts = {};
       let totalActive = 0;
@@ -450,7 +490,7 @@ async function fetchRetailBacklog(accessToken) {
 
       const waveNum = waveNumMap[waveDate] || null;
       console.log(`[${ts()}] Wave ${waveDate}${waveNum ? ` (${waveNum})` : ''}: ${totalActive} active orders, ${unitCounts.ordered} ordered units, ${stores.length} stores`);
-      return { wave_date: waveDate, wave_number: waveNum, total_active_orders: totalActive, status_counts: statusCounts, unit_counts: unitCounts, stores };
+      return { wave_date: waveDate, wave_number: waveNum, total_active_orders: totalActive, status_counts: statusCounts, unit_counts: unitCounts, stores, allocated_orders: allocatedOrders };
     } catch (e) {
       console.error(`[${ts()}] Wave ${waveDate} queries failed:`, e.message);
       return { wave_date: waveDate, wave_number: waveNumMap[waveDate] || null, total_active_orders: null, status_counts: {}, stores: [], error: true };

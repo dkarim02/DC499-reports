@@ -186,18 +186,31 @@
   .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
   .section-title{font-size:13px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em;}
 
-  /* ── progress card ── */
-  .progress-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;}
-  .progress-track{background:var(--bar-bg);border-radius:4px;height:8px;overflow:hidden;display:flex;}
-  .progress-seg{height:100%;transition:width 0.5s;}
-  .seg-ready   {background:var(--ready);}
-  .seg-alloc   {background:var(--alloc);}
-  .seg-packing {background:var(--packing);}
-  .seg-packed  {background:var(--packed);}
-  .seg-loaded  {background:var(--loaded);}
-  .progress-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;}
-  .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);}
-  .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  /* ── clickable status (opens order list) ── */
+  .sc-bubble.clickable{cursor:pointer;}
+  .sc-bubble.clickable:hover{transform:scale(1.07);}
+  .sc-bubble.clickable:focus-visible,.metric.clickable:focus-visible{outline:2px solid var(--alloc);outline-offset:2px;}
+  .metric.clickable{cursor:pointer;transition:background 0.12s;}
+  .metric.clickable:hover{background:var(--alloc-bg);}
+  .metric.clickable .metric-sub::after{content:' · view orders';color:var(--alloc);}
+  .metric.clickable.open{background:var(--alloc-bg);box-shadow:inset 0 0 0 1.5px var(--alloc);}
+  .metric.clickable.open .metric-sub::after{content:' · hide orders';}
+
+  /* ── order list panel ── */
+  .order-panel{background:var(--surface);border:0.5px solid var(--border);border-top:3px solid var(--alloc);border-radius:12px;margin-bottom:1.25rem;overflow:hidden;}
+  .op-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--border-mid);flex-wrap:wrap;}
+  .op-title{font-size:13px;font-weight:600;color:var(--alloc);text-transform:uppercase;letter-spacing:0.04em;}
+  .op-sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
+  .op-tools{display:flex;align-items:center;gap:8px;}
+  .op-search{font-family:inherit;font-size:12px;color:var(--text);background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:6px 10px;width:190px;}
+  .op-search:focus{outline:none;border-color:var(--alloc);}
+  .op-close{background:none;border:0.5px solid var(--border);border-radius:8px;color:var(--text-muted);font-family:inherit;font-size:12px;padding:6px 10px;cursor:pointer;}
+  .op-close:hover{background:var(--surface2);color:var(--text);}
+  .op-scroll{max-height:380px;overflow-y:auto;}
+  .op-scroll thead th{position:sticky;top:0;background:var(--surface);z-index:1;}
+  .op-scroll td{font-variant-numeric:tabular-nums;}
+  .op-order{font-weight:600;}
+  .op-empty{padding:1.5rem;text-align:center;font-size:13px;color:var(--text-hint);}
 
   /* ── card + table (shared with Ecom) ── */
   .card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1rem;overflow-x:auto;}
@@ -315,9 +328,28 @@
       <div class="section-title" id="detailTitle">Wave detail</div>
     </div>
     <div class="metrics status-grid" id="statusTiles"></div>
-    <div class="progress-card">
-      <div class="progress-track" id="progressTrack"></div>
-      <div class="progress-legend" id="progressLegend"></div>
+    <div class="order-panel" id="orderPanel" style="display:none">
+      <div class="op-head">
+        <div>
+          <div class="op-title">Allocated orders</div>
+          <div class="op-sub" id="opSub"></div>
+        </div>
+        <div class="op-tools">
+          <input class="op-search" id="opSearch" type="search" placeholder="Find order or store" oninput="renderOrderList()">
+          <button class="op-close" onclick="closeOrderPanel()">Close</button>
+        </div>
+      </div>
+      <div class="op-scroll">
+        <table>
+          <thead><tr>
+            <th>Order</th>
+            <th>Store</th>
+            <th class="r">Lines left</th>
+            <th class="r">Units left</th>
+          </tr></thead>
+          <tbody id="opBody"></tbody>
+        </table>
+      </div>
     </div>
     <div class="page-layout">
       <div class="page-main">
@@ -384,7 +416,6 @@ applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 const STATUS_ORDER  = ['1000','2090','7100','7200','7800'];
 const STATUS_LABELS = { '1000':'Ready','2090':'Allocated','7100':'Packing','7200':'Packed','7800':'Loaded' };
 const STATUS_CLASS  = { '1000':'ready','2090':'alloc','7100':'packing','7200':'packed','7800':'loaded' };
-const SEG_CLASS     = { '1000':'seg-ready','2090':'seg-alloc','7100':'seg-packing','7200':'seg-packed','7800':'seg-loaded' };
 
 function isDarkTheme() {
   return ['dark','solid','pastel','scout'].includes(localStorage.getItem(THEME_KEY) || 'dark');
@@ -491,6 +522,70 @@ function selectWave(idx) {
   renderWaveDetail(currentWave);
 }
 
+// ── allocated order list ───────────────────────────────────────────────────────
+// Open state survives wave switches and auto-refresh; search text is kept too.
+let orderPanelOpen = false;
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function openOrderPanel() {
+  orderPanelOpen = true;
+  renderOrderList();
+  document.getElementById('orderPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function closeOrderPanel() {
+  orderPanelOpen = false;
+  renderOrderList();
+}
+function toggleOrderPanel() {
+  orderPanelOpen ? closeOrderPanel() : openOrderPanel();
+}
+
+function renderOrderList() {
+  const panel = document.getElementById('orderPanel');
+  const tile  = document.querySelector('.metric.s-alloc');
+  if (tile) tile.classList.toggle('open', orderPanelOpen);
+  if (!orderPanelOpen || !currentWave) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  const body   = document.getElementById('opBody');
+  const sub    = document.getElementById('opSub');
+  const orders = currentWave.allocated_orders;
+  const when   = fmtDateShort(currentWave.wave_date);
+
+  if (!Array.isArray(orders)) {
+    sub.textContent = `${when} wave`;
+    body.innerHTML = `<tr><td colspan="4" class="op-empty">Order list isn't in the data yet. Run option 20 to refresh Retail Backlog.</td></tr>`;
+    return;
+  }
+
+  const totalUnits = orders.reduce((s, o) => s + o.units, 0);
+  sub.textContent = `${when} wave · ${orders.length.toLocaleString()} orders · ${totalUnits.toLocaleString()} units left to pick`;
+
+  const q = document.getElementById('opSearch').value.trim().toLowerCase();
+  const shown = q
+    ? orders.filter(o => String(o.order_id).toLowerCase().includes(q) || String(o.store_id).toLowerCase() === q.replace(/^store\s*/, ''))
+    : orders;
+
+  if (!orders.length) {
+    body.innerHTML = `<tr><td colspan="4" class="op-empty">No orders are sitting in Allocated for this wave.</td></tr>`;
+    return;
+  }
+  if (!shown.length) {
+    body.innerHTML = `<tr><td colspan="4" class="op-empty">No allocated orders match "${esc(q)}".</td></tr>`;
+    return;
+  }
+  body.innerHTML = shown.map(o => `
+    <tr>
+      <td class="op-order">${esc(o.order_id)}</td>
+      <td>Store ${esc(o.store_id)}</td>
+      <td class="r">${o.lines.toLocaleString()}</td>
+      <td class="r">${o.units.toLocaleString()}</td>
+    </tr>`).join('');
+}
+
 // ── date format ────────────────────────────────────────────────────────────────
 function fmtDate(isoDate) {
   const [y, m, d] = isoDate.split('-').map(Number);
@@ -532,7 +627,9 @@ function renderWaveTiles(waves) {
       cells = unitCols.map(({ val, cls }) => {
         const v = val || 0;
         const cell = v > 0
-          ? `<span class="sc-bubble ${cls}">${v.toLocaleString()}</span>`
+          ? (cls === 'b-alloc'
+              ? `<span class="sc-bubble ${cls} clickable" data-open-orders role="button" tabindex="0" title="View allocated orders">${v.toLocaleString()}</span>`
+              : `<span class="sc-bubble ${cls}">${v.toLocaleString()}</span>`)
           : `<span class="sc-zero">—</span>`;
         return `<td class="sc">${cell}</td>`;
       }).join('');
@@ -541,7 +638,9 @@ function renderWaveTiles(waves) {
       cells = STATUS_ORDER.map(s => {
         const val = sc[s] || 0;
         const cell = val > 0
-          ? `<span class="sc-bubble ${BUBBLE_CLASS[s]}">${val.toLocaleString()}</span>`
+          ? (s === '2090'
+              ? `<span class="sc-bubble ${BUBBLE_CLASS[s]} clickable" data-open-orders role="button" tabindex="0" title="View allocated orders">${val.toLocaleString()}</span>`
+              : `<span class="sc-bubble ${BUBBLE_CLASS[s]}">${val.toLocaleString()}</span>`)
           : `<span class="sc-zero">—</span>`;
         return `<td class="sc">${cell}</td>`;
       }).join('');
@@ -550,7 +649,17 @@ function renderWaveTiles(waves) {
 
     const tr = document.createElement('tr');
     tr.className = `wave-row${idx === selectedIdx ? ' active' : ''}`;
-    tr.onclick = () => selectWave(idx);
+    tr.onclick = e => {
+      selectWave(idx);
+      if (e.target.closest('[data-open-orders]')) openOrderPanel();
+    };
+    tr.onkeydown = e => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-open-orders]')) {
+        e.preventDefault();
+        selectWave(idx);
+        openOrderPanel();
+      }
+    };
     tr.innerHTML = `
       <td class="wave-date-col">${dateLabel}${nearlyTag}${waveTag}</td>
       ${cells}
@@ -624,20 +733,18 @@ function renderWaveDetail(wave) {
       <div class="metric-value">${count.toLocaleString()}</div>
       <div class="metric-sub">${pct}% of wave</div>
     `;
+    if (s === '2090' && count > 0) {
+      tile.classList.add('clickable');
+      tile.setAttribute('role', 'button');
+      tile.tabIndex = 0;
+      tile.onclick = toggleOrderPanel;
+      tile.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleOrderPanel(); } };
+    }
     tilesContainer.appendChild(tile);
   });
 
-  // progress bar
-  const track = document.getElementById('progressTrack');
-  track.innerHTML = STATUS_ORDER.filter(s => sc[s] && total > 0).map(s =>
-    `<div class="progress-seg ${SEG_CLASS[s]}" style="width:${(sc[s]/total*100).toFixed(1)}%"></div>`
-  ).join('');
-
-  const legend = document.getElementById('progressLegend');
-  legend.innerHTML = STATUS_ORDER.filter(s => sc[s]).map(s => {
-    const colors = { '1000':'var(--ready)','2090':'var(--alloc)','7100':'var(--packing)','7200':'var(--packed)','7800':'var(--loaded)' };
-    return `<span class="legend-item"><span class="legend-dot" style="background:${colors[s]}"></span>${STATUS_LABELS[s]}: ${sc[s].toLocaleString()}</span>`;
-  }).join('');
+  // allocated order list (re-renders for the selected wave if open)
+  renderOrderList();
 
   // store table
   const { top, bucketRows } = groupStores(wave.stores);
