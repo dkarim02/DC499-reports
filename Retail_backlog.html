@@ -269,8 +269,8 @@
   <div class="header-row">
     <div class="run-time"><span class="live-dot"></span><span id="runTime">Loading...</span></div>
     <div class="view-toggle" id="viewToggle">
-      <button class="vt-btn active" id="vt-orders" onclick="setView('orders')">Orders</button>
-      <button class="vt-btn" id="vt-units" onclick="setView('units')">Units</button>
+      <button class="vt-btn" id="vt-orders" onclick="setView('orders')">Orders</button>
+      <button class="vt-btn active" id="vt-units" onclick="setView('units')">Units</button>
     </div>
   </div>
 
@@ -286,12 +286,12 @@
     <table id="waveTable">
       <thead id="waveTableHead"><tr>
         <th>Wave — tap a row for details</th>
-        <th class="sc">Ready</th>
         <th class="sc">Allocated</th>
-        <th class="sc">Packing</th>
         <th class="sc">Packed</th>
         <th class="sc">Loaded</th>
-        <th class="tc">Total Open</th>
+        <th class="sc">Manifested</th>
+        <th class="sc">Shipped</th>
+        <th class="tc">Total Units</th>
       </tr></thead>
       <tbody id="waveTableBody">
         <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-hint)">Loading wave data...</td></tr>
@@ -446,7 +446,7 @@ function renderPie(stores) {
 }
 
 // ── view toggle ────────────────────────────────────────────────────────────────
-let currentView = 'orders'; // 'orders' | 'units'
+let currentView = 'units'; // 'orders' | 'units'
 
 function setView(v) {
   currentView = v;
@@ -457,12 +457,12 @@ function setView(v) {
   if (v === 'units') {
     head.innerHTML = `<tr>
       <th>Wave — tap a row for details</th>
-      <th class="sc">Ordered</th>
       <th class="sc">Allocated</th>
       <th class="sc">Packed</th>
+      <th class="sc">Loaded</th>
       <th class="sc">Manifested</th>
       <th class="sc">Shipped</th>
-      <th class="tc">Total Ordered</th>
+      <th class="tc">Total Units</th>
     </tr>`;
   } else {
     head.innerHTML = `<tr>
@@ -524,11 +524,11 @@ function renderWaveTiles(waves) {
     if (currentView === 'units') {
       const uc = wave.unit_counts || {};
       const unitCols = [
-        { val: uc.ordered,    cls: 'b-ready'   },
         { val: uc.allocated,  cls: 'b-alloc'   },
         { val: uc.packed,     cls: 'b-packed'  },
-        { val: uc.manifested, cls: 'b-loaded'  },
-        { val: uc.shipped,    cls: 'b-packing' },
+        { val: uc.loaded,     cls: 'b-loaded'  },
+        { val: uc.manifested, cls: 'b-packing' },
+        { val: uc.shipped,    cls: 'b-ready'   },
       ];
       cells = unitCols.map(({ val, cls }) => {
         const v = val || 0;
@@ -562,13 +562,13 @@ function renderWaveTiles(waves) {
 
   // totals footer
   if (currentView === 'units') {
-    const unitKeys = ['ordered','allocated','packed','manifested','shipped'];
+    const unitKeys  = ['allocated','packed','loaded','manifested','shipped'];
     const unitFtIds = ['ft-ready','ft-alloc','ft-packed','ft-loaded','ft-packing'];
-    const unitCls   = ['b-ready','b-alloc','b-packed','b-loaded','b-packing'];
-    const unitTotals = { ordered:0, allocated:0, packed:0, manifested:0, shipped:0 };
+    const unitCls   = ['b-alloc','b-packed','b-loaded','b-packing','b-ready'];
+    const unitTotals = { ordered:0, allocated:0, packed:0, loaded:0, manifested:0, shipped:0 };
     waves.forEach(w => {
       const uc = w.unit_counts || {};
-      unitKeys.forEach(k => { unitTotals[k] += uc[k] || 0; });
+      Object.keys(unitTotals).forEach(k => { unitTotals[k] += uc[k] || 0; });
     });
     unitKeys.forEach((k, i) => {
       const el = document.getElementById(unitFtIds[i]);

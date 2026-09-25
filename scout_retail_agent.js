@@ -320,16 +320,15 @@ ORDER BY MINIMUM_STATUS
 `.trim();
 }
 
-// Step 3: Unit quantity totals for one wave date window.
-// Joins ORDER → ORDER_LINE, excludes cancelled lines, excludes shipped/cancelled orders.
+// Step 3: Unit counts by line STATUS for one wave date window.
+// MAWM retail: ALLOCATED/PACKED/MANIFESTED_QUANTITY columns mirror ORDERED_QUANTITY (set once, never decremented).
+// Correct approach: sum ORDERED_QUANTITY grouped by line STATUS, then bucket by status string.
+// STATUS strings: ALLOCATED, PACKING, PACKED, LOADED, SHIPPED
 function sqlUnitCounts(utcStart, utcEnd) {
   return `
 SELECT
-  SUM(ol.ORDERED_QUANTITY)    AS ordered_qty,
-  SUM(ol.ALLOCATED_QUANTITY)  AS allocated_qty,
-  SUM(ol.PACKED_QUANTITY)     AS packed_qty,
-  SUM(ol.MANIFESTED_QUANTITY) AS manifested_qty,
-  SUM(ol.SHIPPED_QUANTITY)    AS shipped_qty
+  ol.STATUS AS line_status,
+  SUM(ol.ORDERED_QUANTITY) AS units
 FROM default_dcorder.DCO_ORDER o
 JOIN default_dcorder.DCO_ORDER_LINE ol
   ON ol.ORDER_ID = o.ORDER_ID AND ol.FACILITY_ID = o.FACILITY_ID
@@ -340,6 +339,7 @@ WHERE o.FACILITY_ID = '${FACILITY}'
   AND o.CREATED_TIMESTAMP < '${utcEnd}'
   AND o.MAXIMUM_STATUS NOT IN ('8000', '9000')
   AND ol.CANCELLED = 0
+GROUP BY ol.STATUS
 `.trim();
 }
 
@@ -429,14 +429,19 @@ async function fetchRetailBacklog(accessToken) {
         totalActive += Number(row.orders);
       }
 
-      const ur = (unitResp.rows || [])[0] || {};
-      const unitCounts = {
-        ordered:    Math.round(Number(ur.ordered_qty)    || 0),
-        allocated:  Math.round(Number(ur.allocated_qty)  || 0),
-        packed:     Math.round(Number(ur.packed_qty)     || 0),
-        manifested: Math.round(Number(ur.manifested_qty) || 0),
-        shipped:    Math.round(Number(ur.shipped_qty)    || 0),
-      };
+      // Map line STATUS strings → unit buckets
+      // ALLOCATED_QUANTITY etc. mirror ORDERED_QUANTITY in MAWM retail — use STATUS grouping instead
+      const unitByStatus = {};
+      for (const row of (unitResp.rows || [])) {
+        unitByStatus[row.line_status] = Math.round(Number(row.units) || 0);
+      }
+      const allocated  = (unitByStatus['ALLOCATED']  || 0) + (unitByStatus['PACKING'] || 0);
+      const packed     = unitByStatus['PACKED']     || 0;
+      const manifested = unitByStatus['MANIFESTED'] || 0;
+      const shipped    = unitByStatus['SHIPPED']    || 0;
+      const loaded     = unitByStatus['LOADED']     || 0;
+      const ordered    = allocated + packed + manifested + shipped + loaded;
+      const unitCounts = { ordered, allocated, packed, manifested, shipped, loaded };
 
       const stores = (storeResp.rows || []).map(r => ({
         store_id: r.store_id,
