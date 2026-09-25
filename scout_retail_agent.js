@@ -3,6 +3,7 @@
  * SCOUT — Retail Backlog Agent
  * Queries DCO_ORDER for Retail (store replen) order progress by wave date.
  * Wave-based: one wave per week, date bucketing used as wave identifier.
+ * Also writes zone workload (open/done pick + replen units per Pick Execution Zone, zone H).
  * Writes retail_backlog_live.json.
  *
  * Usage:
@@ -264,6 +265,125 @@ function lookbackUtc() {
   return d.toISOString().replace('T', ' ').slice(0, 19);
 }
 
+// Shift boundaries match scout_reserve_agent.js: 1st = 10:00 UTC, 2nd = 21:10 UTC (prev day if before 10:00).
+function currentShift() {
+  const now = new Date();
+  const h   = now.getUTCHours();
+  const is1st = h >= 10 && h < 22;
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), is1st ? 10 : 21, is1st ? 0 : 10, 0));
+  if (!is1st && h < 10) start.setUTCDate(start.getUTCDate() - 1);
+  return { shift: is1st ? '1st' : '2nd', start: start.toISOString().replace('T', ' ').slice(0, 19) };
+}
+
+// ── zone work (Pick Execution Zones, zone H) ─────────────────────────────────
+// Open work looks back 48 hrs so carryover lines still count. Done = completed this shift.
+const ZONE_LOOKBACK_HRS = 48;
+
+function sqlZoneWork(since, shiftStart) {
+  const done = `STATUS = '8000' AND ACTUAL_END_TIME >= '${shiftStart}'`;
+  return `
+SELECT
+  PICK_EXECUTION_ZONE_ID AS zone,
+  SUM(CASE WHEN STATUS NOT IN ('8000','9000') THEN 1 ELSE 0 END)        AS open_lines,
+  SUM(CASE WHEN STATUS NOT IN ('8000','9000') THEN QUANTITY ELSE 0 END) AS open_units,
+  SUM(CASE WHEN ${done} THEN 1 ELSE 0 END)                              AS done_lines,
+  SUM(CASE WHEN ${done} THEN COMPLETED_QUANTITY ELSE 0 END)             AS done_units
+FROM default_task.TSK_TASK_DETAIL
+WHERE FACILITY_ID = '${FACILITY}'
+  AND CREATED_TIMESTAMP >= '${since}'
+  AND PICK_EXECUTION_ZONE_ID LIKE 'PEZ_RTL%'
+GROUP BY PICK_EXECUTION_ZONE_ID
+`.trim();
+}
+
+function sqlZoneLocations() {
+  return `
+SELECT
+  PICK_EXECUTION_ZONE_ID AS zone,
+  LEFT(LOCATION_ID, 3) AS area,
+  MIN(AISLE) AS a1, MAX(AISLE) AS a2,
+  MIN(BAY)   AS b1, MAX(BAY)   AS b2,
+  COUNT(*)   AS locs
+FROM default_dcinventory.DCI_LOCATION
+WHERE PROFILE_ID = '${FACILITY}'
+  AND IS_ACTIVE = 1
+  AND PICK_EXECUTION_ZONE_ID LIKE 'PEZ_RTL%'
+GROUP BY PICK_EXECUTION_ZONE_ID, LEFT(LOCATION_ID, 3)
+`.trim();
+}
+
+// PEZ_RTL_ZONE_3 → "Zone 3" · PEZ_RTL_ZONE_3_R1H → "R1H Zone 3" · PEZ_RTL_ZONE_F2H → "F2H Zone"
+function zoneName(id) {
+  let m;
+  if ((m = id.match(/^PEZ_RTL_ZONE_(\d+)_([A-Z]\dH)$/))) return `${m[2]} Zone ${Number(m[1])}`;
+  if ((m = id.match(/^PEZ_RTL_ZONE_(\d+)$/)))            return `Zone ${Number(m[1])}`;
+  if ((m = id.match(/^PEZ_RTL_ZONE_([A-Z]\dH)$/)))       return `${m[1]} Zone`;
+  return id.replace(/^PEZ_/, '').replace(/_/g, ' ');
+}
+
+// Replen zones pull from reserve shelving (R1H/R2H); everything else is picking.
+function zoneKind(id, areas) {
+  if (areas.length) return areas.every(a => a[0] === 'R') ? 'replen' : 'picks';
+  return /_R\dH$/.test(id) ? 'replen' : 'picks';
+}
+
+function range(a, b) { return a === b ? a : `${a}–${b}`; }
+
+async function fetchZoneWork(accessToken) {
+  const { shift, start } = currentShift();
+  const since = new Date(Date.now() - ZONE_LOOKBACK_HRS * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+
+  const [workResp, locResp] = await Promise.all([
+    mcpQuery(accessToken, sqlZoneWork(since, start)),
+    mcpQuery(accessToken, sqlZoneLocations()),
+  ]);
+
+  const zones = {};
+  const get = id => zones[id] || (zones[id] = { zone_id: id, areas: [], locations: 0, open_lines: 0, open_units: 0, done_lines: 0, done_units: 0 });
+
+  for (const r of (locResp.rows || [])) {
+    const z = get(r.zone);
+    z.areas.push({ area: r.area, a1: r.a1, a2: r.a2, b1: r.b1, b2: r.b2 });
+    z.locations += Number(r.locs) || 0;
+  }
+  for (const r of (workResp.rows || [])) {
+    const z = get(r.zone);
+    z.open_lines = Number(r.open_lines) || 0;
+    z.open_units = Math.round(Number(r.open_units) || 0);
+    z.done_lines = Number(r.done_lines) || 0;
+    z.done_units = Math.round(Number(r.done_units) || 0);
+  }
+
+  const out = { shift, shift_start_utc: start, lookback_hours: ZONE_LOOKBACK_HRS, picks: [], replen: [] };
+  for (const z of Object.values(zones)) {
+    // Retired zones: no locations and no work — skip
+    if (!z.locations && !z.open_lines && !z.done_lines) continue;
+    const areaIds = z.areas.map(a => a.area).sort();
+    const kind    = zoneKind(z.zone_id, areaIds);
+    const where   = z.areas
+      .sort((a, b) => a.area.localeCompare(b.area))
+      .map(a => kind === 'replen'
+        ? `${a.area} aisles ${range(a.a1, a.a2)} · bays ${range(a.b1, a.b2)}`
+        : `${a.area} ${range(a.a1, a.a2)}`)
+      .join(' + ');
+    const floorSrc = areaIds[0] || (z.zone_id.match(/([A-Z]\dH)$/) || [])[1] || '';
+    out[kind].push({
+      zone_id:    z.zone_id,
+      name:       zoneName(z.zone_id),
+      where:      where || '—',
+      floor:      Number(floorSrc[1]) || null,
+      locations:  z.locations,
+      open_lines: z.open_lines,
+      open_units: z.open_units,
+      done_lines: z.done_lines,
+      done_units: z.done_units,
+    });
+  }
+  const sum = (arr, k) => arr.reduce((s, z) => s + z[k], 0);
+  console.log(`[${ts()}] Zones — picks: ${sum(out.picks, 'open_units')} open / ${sum(out.picks, 'done_units')} done · replen: ${sum(out.replen, 'open_units')} open / ${sum(out.replen, 'done_units')} done`);
+  return out;
+}
+
 // ── queries ────────────────────────────────────────────────────────────────────
 
 // Step 0: Get retail wave run IDs from the planning run table.
@@ -406,6 +526,14 @@ async function fetchRetailBacklog(accessToken) {
   console.log(`[${ts()}] Retail Backlog — fetching active waves...`);
   const since = lookbackUtc();
 
+  // Zone workload is best-effort — a failure here shouldn't block the wave data
+  let zoneWork = null;
+  try {
+    zoneWork = await fetchZoneWork(accessToken);
+  } catch (e) {
+    console.warn(`[${ts()}] Zone work query failed (non-fatal):`, e.message);
+  }
+
   // Step 0: Get wave run IDs for wave number labeling (best-effort)
   let waveNumMap = {};
   try {
@@ -432,6 +560,7 @@ async function fetchRetailBacklog(accessToken) {
       generated: new Date().toISOString(),
       facility: FACILITY,
       waves: [],
+      zones: zoneWork,
     };
     fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
     console.log(`[${ts()}] ✓ retail_backlog_live.json written — no active waves`);
@@ -502,6 +631,7 @@ async function fetchRetailBacklog(accessToken) {
     facility: FACILITY,
     status_labels: STATUS_LABELS,
     waves,
+    zones: zoneWork,
   };
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));

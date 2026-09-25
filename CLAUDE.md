@@ -103,7 +103,7 @@ git push origin main
 ## Transaction IDs by dept
 
 **Ecom:**
-- Replen: iLPN Replen Fill, Retail iLPN Replen Pull, iLPN Replen Pull, iLPN Replen Fill Large, iLPN Replen Pull Large → Sum Completed Quantity
+- Replen: iLPN Replen Fill, iLPN Replen Fill Large → Sum Completed Quantity (agent also fetches iLPN Replen Pull/Pull Large but doesn't count them). Retail iLPN Replen Pull = Retail work, removed from the Ecom query 2026-09-24 — it never counted toward the tile.
 - Putaway: System Directed Putaway, User Directed Putaway → Count rows
 - Picking: Ecom Mezz Pick To Putwall Cart, Ecom Non-Mezz Pick To Putwall Cart → Sum Quantity
 - Packing: NRDR CORE PACK FOR ECOM PACK STATION → Sum Quantity
@@ -333,6 +333,8 @@ Store replen order progress by wave. Output: retail_backlog_live.json. REDIRECT_
 
 **Per-wave queries (parallel):** status breakdown (by MINIMUM_STATUS), unit counts (by line STATUS), store breakdown (DESTINATION_FACILITY_ID). Then `allocated_orders[]` (best-effort — failure doesn't drop the wave): orders with MINIMUM_STATUS=2090, only lines still at STATUS='ALLOCATED' → `{order_id, store_id, lines, units}` = what's left to pick, sorted by units desc.
 
+**Zones tab (v1.1):** `zones` object in the JSON = open/done units + lines per Pick Execution Zone (PEZ), split into `picks[]` and `replen[]`. Source: `TSK_TASK_DETAIL.PICK_EXECUTION_ZONE_ID LIKE 'PEZ_RTL%'` (TSK_TASK.SOURCE_ZONE_ID is empty for these). Open = STATUS not 8000/9000, created in last 48 hrs. Done = STATUS 8000 with `ACTUAL_END_TIME` ≥ shift start (1st 10:00 / 2nd 21:10 UTC). Location ranges come from `DCI_LOCATION.PICK_EXECUTION_ZONE_ID`. Zones whose locations are all R1H/R2H = replen (Retail iLPN Replen Pull); the rest = picks (Non Haz Retail Pick To oLPN Cart / Floor 2). Friendly names come from `zoneName()`: `PEZ_RTL_ZONE_3` → "Zone 3", `PEZ_RTL_ZONE_3_R1H` → "R1H Zone 3", `PEZ_RTL_ZONE_F2H` → "F2H Zone". Retired zones (no locations, no work) are skipped. HTML: Picks/Replen toggle + "Show completed" checkbox (same idea as the Ecom Tasks tab). Share % = zone's slice of the total; bars scale to the busiest zone. The last tab is remembered in `retail_backlog_tab_v1`. **Query gotcha:** a JOIN to TSK_TASK combined with `LIKE 'PEZ_RTL%'` fails server-side — use an explicit IN() list if a join is ever needed.
+
 **HTML:** Units view is the default (Orders toggle available). Wave table = one bubble pill per status + totals footer. Clicking the Allocated bubble (either view) or the Allocated tile opens the order list panel (search by order # or store); open state + search survive wave switches and auto-refresh. Store table rows carry colored dots that match pie slices (`groupStores()` assigns colors) — pie has no legend. Pie uses `responsive:false` + in-place `update('none')` so it never resizes between waves.
 
 ---
@@ -527,7 +529,7 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 **Urgent / active:**
 - [ ] **Backlog date bucketing** — waiting on leader sign-off. Fix: join subquery for `MIN(CREATED_TIMESTAMP)` across ALL lines (incl. cancelled) per order as bucket date, filter `CANCELLED=0` for status counts. Verified vs Cognos 2026-08-17.
 - [ ] **DST fix** — ~Oct 25, 2026: change `-07:00` PDT → `-08:00` PST in scout_ecom_agent.js, scout_reserve_agent.js, scout_retail_agent.js (shift boundaries + timestamps + `pdtDateToUtcWindow` 07:00 → 08:00). See DST fix memory.
-- [ ] **Retail Backlog next:** order lists for other status pills, replen tasks blocking picks, zone task visibility, TM throughput, mixed-SKU case locations, open waves → release date/pending qty, failed orders by reason. See Retail Report Backlog memory.
+- [ ] **Retail Backlog next:** order lists for other status pills, replen tasks blocking picks, zone task visibility (Zones tab shipped v1.1 — TM-per-zone headcount still open), TM throughput, mixed-SKU case locations, open waves → release date/pending qty, failed orders by reason. See Retail Report Backlog memory.
 
 **Pending build:**
 - [ ] Packed Not Shipped: build PackedNotShipped_live.html + fetchPackedNotShipped() in dc499_refresh.js

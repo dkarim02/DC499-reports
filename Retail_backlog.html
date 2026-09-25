@@ -4,7 +4,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Retail Backlog Live v1.0 -- DC499</title>
+  <title>Retail Backlog Live v1.1 -- DC499</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
@@ -240,6 +240,39 @@
   .pie-wrap{width:210px;height:210px;margin:0 auto;position:relative;flex-shrink:0;}
   .pie-wrap canvas{position:absolute;inset:0;}
 
+  /* ── tabs (same pattern as Ecom Backlog) ── */
+  .tab-bar{display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:1.25rem;}
+  .tab-btn{font-family:inherit;font-size:13px;font-weight:500;padding:9px 18px;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.12s,border-color 0.12s;}
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-pane{display:none;}
+  .tab-pane.active{display:block;}
+
+  /* ── zones tab ── */
+  .zn-view-bar{display:flex;align-items:center;gap:12px;margin-bottom:1rem;flex-wrap:wrap;}
+  .zn-done-wrap{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;margin-left:auto;}
+  .zn-done-wrap input{cursor:pointer;}
+  .zn-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.25rem;}
+  @media(max-width:700px){.zn-tiles{grid-template-columns:repeat(2,1fr);}}
+  .zn-tiles .metric{border-top-color:var(--accent);}
+  .zn-tiles .metric.t-replen{border-top-color:var(--alloc);}
+  .zn-tiles .metric.t-done{border-top-color:var(--green);}
+  .zn-tiles .metric.t-done .metric-value{color:var(--green);}
+  .zn-tiles .metric.selected{box-shadow:inset 0 0 0 1.5px var(--border);}
+  .zn-floor{display:flex;gap:18px;font-size:12px;color:var(--text-muted);}
+  .zn-floor b{color:var(--text);font-weight:600;}
+  .zn-name{font-weight:600;}
+  .zn-where{color:var(--text-muted);font-size:12px;}
+  .zn-share-cell{display:flex;align-items:center;gap:10px;justify-content:flex-end;}
+  .zn-share-bar{width:140px;height:8px;background:var(--bar-bg);border-radius:4px;overflow:hidden;flex-shrink:0;}
+  .zn-share-fill{height:100%;border-radius:4px;background:var(--accent);transition:width 0.4s;}
+  .zn-share-fill.replen{background:var(--alloc);}
+  .zn-share-fill.done{background:var(--green);}
+  .zn-share-pct{font-size:13px;font-weight:600;min-width:38px;text-align:right;}
+  .zn-top-tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:6px;background:var(--alloc-bg);color:var(--alloc);margin-left:8px;vertical-align:middle;}
+  .zn-row-zero td{opacity:0.45;}
+  .zn-note{font-size:11px;color:var(--text-hint);margin-top:-0.25rem;margin-bottom:1rem;}
+
   /* ── empty / error ── */
   .empty-state{text-align:center;padding:3rem;color:var(--text-hint);font-size:14px;}
 
@@ -279,14 +312,67 @@
     </div>
   </div>
 
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tb-waves" onclick="setTab('waves')">Wave Backlog</button>
+    <button class="tab-btn"        id="tb-zones" onclick="setTab('zones')">Zones</button>
+  </div>
+
   <div class="header-row">
     <div class="run-time"><span class="live-dot"></span><span id="runTime">Loading...</span></div>
     <div class="view-toggle" id="viewToggle">
       <button class="vt-btn" id="vt-orders" onclick="setView('orders')">Orders</button>
       <button class="vt-btn active" id="vt-units" onclick="setView('units')">Units</button>
     </div>
+    <div class="view-toggle" id="zoneToggle" style="display:none">
+      <button class="vt-btn active" id="zt-picks" onclick="setZoneKind('picks')">Picks</button>
+      <button class="vt-btn"        id="zt-replen" onclick="setZoneKind('replen')">Replen</button>
+    </div>
   </div>
 
+  <!-- ══ Zones tab ══ -->
+  <div class="tab-pane" id="tab-zones">
+    <div class="zn-tiles" id="znTiles">
+      <div class="metric" id="zn-t-picks-open"><div class="metric-label">Picks — Open</div><div class="metric-value" id="zn-picks-open">—</div><div class="metric-sub" id="zn-picks-open-sub">units</div></div>
+      <div class="metric t-done" id="zn-t-picks-done"><div class="metric-label">Picks — Done</div><div class="metric-value" id="zn-picks-done">—</div><div class="metric-sub" id="zn-picks-done-sub">units this shift</div></div>
+      <div class="metric t-replen" id="zn-t-replen-open"><div class="metric-label">Replen — Open</div><div class="metric-value" id="zn-replen-open">—</div><div class="metric-sub" id="zn-replen-open-sub">units</div></div>
+      <div class="metric t-done" id="zn-t-replen-done"><div class="metric-label">Replen — Done</div><div class="metric-value" id="zn-replen-done">—</div><div class="metric-sub" id="zn-replen-done-sub">units this shift</div></div>
+    </div>
+
+    <div class="zn-view-bar">
+      <div class="zn-floor" id="znFloor"></div>
+      <label class="zn-done-wrap">
+        <input type="checkbox" id="zn-show-done" onchange="renderZones()">
+        Show completed
+      </label>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="znCardTitle">Open picks by zone</div>
+      <table>
+        <thead><tr>
+          <th>Zone</th>
+          <th>Where</th>
+          <th class="r">Lines</th>
+          <th class="r">Units</th>
+          <th class="r" id="znShareHead">Share of open work</th>
+        </tr></thead>
+        <tbody id="znBody">
+          <tr><td colspan="5" class="op-empty">Loading zone data...</td></tr>
+        </tbody>
+        <tfoot id="znFoot" style="display:none"><tr>
+          <td>Total</td>
+          <td></td>
+          <td class="r" id="znTotLines">—</td>
+          <td class="r" id="znTotUnits">—</td>
+          <td class="r">100%</td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <div class="zn-note" id="znNote"></div>
+  </div>
+
+  <!-- ══ Wave Backlog tab ══ -->
+  <div class="tab-pane active" id="tab-waves">
   <div class="total-capsule" id="totalCapsule" style="display:none">
     <div class="total-capsule-left">
       <span class="total-capsule-label">Active Orders</span>
@@ -378,6 +464,7 @@
       </div>
     </div>
   </div>
+  </div><!-- /tab-waves -->
 
   <div class="disclaimer">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>
 </div>
@@ -785,6 +872,131 @@ function renderWaveDetail(wave) {
   renderPie(wave.stores);
 }
 
+// ── tabs ───────────────────────────────────────────────────────────────────────
+const TAB_KEY = 'retail_backlog_tab_v1';
+let activeTab = 'waves';
+
+function setTab(tab) {
+  activeTab = tab;
+  localStorage.setItem(TAB_KEY, tab);
+  ['waves', 'zones'].forEach(t => {
+    document.getElementById(`tb-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+  document.getElementById('viewToggle').style.display = tab === 'waves' ? '' : 'none';
+  document.getElementById('zoneToggle').style.display = tab === 'zones' ? '' : 'none';
+  if (tab === 'zones') renderZones();
+}
+
+// ── zones tab ──────────────────────────────────────────────────────────────────
+// Share % = this zone's slice of all open (or completed) units for Picks or Replen.
+let lastZones = null;
+let zoneKind  = 'picks'; // 'picks' | 'replen'
+
+function setZoneKind(k) {
+  zoneKind = k;
+  document.getElementById('zt-picks').classList.toggle('active', k === 'picks');
+  document.getElementById('zt-replen').classList.toggle('active', k === 'replen');
+  renderZones();
+}
+
+// Tile click jumps straight to that view (e.g. Replen — Done → Replen + Show completed)
+function pickZoneTile(kind, done) {
+  document.getElementById('zn-show-done').checked = done;
+  setZoneKind(kind);
+}
+[['picks-open','picks',false],['picks-done','picks',true],['replen-open','replen',false],['replen-done','replen',true]].forEach(([id, kind, done]) => {
+  const el = document.getElementById(`zn-t-${id}`);
+  el.style.cursor = 'pointer';
+  el.onclick = () => pickZoneTile(kind, done);
+});
+
+function fmtShiftStart(utcStr) {
+  const d = new Date(utcStr.replace(' ', 'T') + 'Z');
+  return d.toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit' });
+}
+
+function renderZoneTiles(zd) {
+  const sum = (arr, k) => (arr || []).reduce((s, z) => s + (z[k] || 0), 0);
+  ['picks', 'replen'].forEach(kind => {
+    const list = zd[kind] || [];
+    const openZones = list.filter(z => z.open_units > 0).length;
+    document.getElementById(`zn-${kind}-open`).textContent = sum(list, 'open_units').toLocaleString();
+    document.getElementById(`zn-${kind}-open-sub`).textContent = `units · ${sum(list, 'open_lines').toLocaleString()} lines · ${openZones} zone${openZones !== 1 ? 's' : ''}`;
+    document.getElementById(`zn-${kind}-done`).textContent = sum(list, 'done_units').toLocaleString();
+    document.getElementById(`zn-${kind}-done-sub`).textContent = `units · ${sum(list, 'done_lines').toLocaleString()} lines this shift`;
+  });
+}
+
+function renderZones() {
+  const body = document.getElementById('znBody');
+  const foot = document.getElementById('znFoot');
+  const zd   = lastZones;
+  const showDone = document.getElementById('zn-show-done').checked;
+
+  // highlight the tile that matches the current view
+  document.querySelectorAll('#znTiles .metric').forEach(el => el.classList.remove('selected'));
+  document.getElementById(`zn-t-${zoneKind}-${showDone ? 'done' : 'open'}`).classList.add('selected');
+
+  const what = zoneKind === 'picks' ? 'picks' : 'replen';
+  document.getElementById('znCardTitle').textContent = `${showDone ? 'Completed' : 'Open'} ${what} by zone`;
+  document.getElementById('znShareHead').textContent = showDone ? 'Share of completed' : 'Share of open work';
+
+  if (!zd) {
+    body.innerHTML = `<tr><td colspan="5" class="op-empty">Zone data isn't in the file yet. Run option 20 to refresh Retail Backlog.</td></tr>`;
+    foot.style.display = 'none';
+    document.getElementById('znFloor').innerHTML = '';
+    document.getElementById('znNote').textContent = '';
+    return;
+  }
+  renderZoneTiles(zd);
+
+  const uKey = showDone ? 'done_units' : 'open_units';
+  const lKey = showDone ? 'done_lines' : 'open_lines';
+  const list = [...(zd[zoneKind] || [])].sort((a, b) => (b[uKey] - a[uKey]) || a.name.localeCompare(b.name));
+  const totalUnits = list.reduce((s, z) => s + z[uKey], 0);
+  const totalLines = list.reduce((s, z) => s + z[lKey], 0);
+
+  // floor split
+  const floors = {};
+  list.forEach(z => { if (z.floor) floors[z.floor] = (floors[z.floor] || 0) + z[uKey]; });
+  document.getElementById('znFloor').innerHTML = totalUnits > 0
+    ? Object.keys(floors).sort().map(f => `<span>Floor ${f}: <b>${Math.round(floors[f] / totalUnits * 100)}%</b></span>`).join('')
+    : '';
+
+  if (!list.length) {
+    body.innerHTML = `<tr><td colspan="5" class="op-empty">No ${what} zones found.</td></tr>`;
+    foot.style.display = 'none';
+  } else {
+    const fillCls  = showDone ? 'done' : (zoneKind === 'replen' ? 'replen' : '');
+    const maxUnits = list[0][uKey] || 1; // bars scale to the busiest zone; % label is share of total
+    body.innerHTML = list.map((z, i) => {
+      const units = z[uKey];
+      const pct   = totalUnits > 0 ? units / totalUnits * 100 : 0;
+      const barW  = units / maxUnits * 100;
+      const tag   = !showDone && i === 0 && units > 0 ? '<span class="zn-top-tag">Most work</span>' : '';
+      const share = units > 0
+        ? `<div class="zn-share-cell"><div class="zn-share-bar"><div class="zn-share-fill ${fillCls}" style="width:${barW.toFixed(1)}%"></div></div><span class="zn-share-pct">${Math.round(pct)}%</span></div>`
+        : `<span class="sc-zero">—</span>`;
+      return `
+        <tr class="${units > 0 ? '' : 'zn-row-zero'}" title="${esc(z.zone_id)} · ${z.locations.toLocaleString()} locations">
+          <td><span class="zn-name">${esc(z.name)}</span>${tag}</td>
+          <td class="zn-where">${esc(z.where)}</td>
+          <td class="r">${z[lKey].toLocaleString()}</td>
+          <td class="r">${units.toLocaleString()}</td>
+          <td class="r">${share}</td>
+        </tr>`;
+    }).join('');
+    document.getElementById('znTotLines').textContent = totalLines.toLocaleString();
+    document.getElementById('znTotUnits').textContent = totalUnits.toLocaleString();
+    foot.style.display = '';
+  }
+
+  document.getElementById('znNote').textContent = showDone
+    ? `Completed = lines finished since ${zd.shift} shift start (${fmtShiftStart(zd.shift_start_utc)}).`
+    : `Open = lines not yet ${zoneKind === 'picks' ? 'picked' : 'pulled'}, released in the last ${zd.lookback_hours} hrs.`;
+}
+
 // ── data fetch ─────────────────────────────────────────────────────────────────
 function getLiveBase() {
   const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -810,6 +1022,9 @@ async function loadData() {
 
     renderWaveTiles(allWaves);
 
+    lastZones = data.zones || null;
+    renderZones();
+
     if (allWaves.length) {
       currentWave = allWaves[selectedIdx] || allWaves[0];
       selectedIdx = allWaves.indexOf(currentWave);
@@ -820,10 +1035,13 @@ async function loadData() {
   } catch (e) {
     document.getElementById('waveTableBody').innerHTML =
       `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-hint)">Could not load data — ${e.message}</td></tr>`;
+    if (!lastZones) document.getElementById('znBody').innerHTML =
+      `<tr><td colspan="5" class="op-empty">Could not load data — ${esc(e.message)}</td></tr>`;
     document.getElementById('runTime').textContent = 'Data unavailable';
   }
 }
 
+setTab(localStorage.getItem(TAB_KEY) === 'zones' ? 'zones' : 'waves');
 loadData();
 setInterval(loadData, 5 * 60 * 1000);
 </script>

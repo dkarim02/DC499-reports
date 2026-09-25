@@ -46,7 +46,6 @@ const INTERVAL   = (() => {
 // Group E: sorting only            (~4k rows typical on busy days)
 const ECOM_TX_A = [
   'iLPN Replen Fill',
-  'Retail iLPN Replen Pull',
   'iLPN Replen Pull',
   'iLPN Replen Fill Large',
   'iLPN Replen Pull Large',
