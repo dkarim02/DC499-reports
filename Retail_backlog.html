@@ -259,8 +259,9 @@
   .zn-tiles .metric.t-done{border-top-color:var(--green);}
   .zn-tiles .metric.t-done .metric-value{color:var(--green);}
   .zn-tiles .metric.selected{box-shadow:inset 0 0 0 1.5px var(--border);}
-  .zn-floor{display:flex;gap:18px;font-size:12px;color:var(--text-muted);}
-  .zn-floor b{color:var(--text);font-weight:600;}
+  .zn-group td{background:var(--surface2);font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;padding:6px 12px;border-bottom:0.5px solid var(--border-mid);}
+  .zn-group td.r{font-size:12px;color:var(--text);letter-spacing:0;}
+  td.zn-indent{padding-left:24px;}
   .zn-name{font-weight:600;}
   .zn-where{color:var(--text-muted);font-size:12px;}
   .zn-share-cell{display:flex;align-items:center;gap:10px;justify-content:flex-end;}
@@ -339,7 +340,6 @@
     </div>
 
     <div class="zn-view-bar">
-      <div class="zn-floor" id="znFloor"></div>
       <label class="zn-done-wrap">
         <input type="checkbox" id="zn-show-done" onchange="renderZones()">
         Show completed
@@ -892,6 +892,7 @@ function setTab(tab) {
 // Share % = this zone's slice of all open (or completed) units for Picks or Replen.
 let lastZones = null;
 let zoneKind  = 'picks'; // 'picks' | 'replen'
+const FLOOR_LABELS = { 1: 'Downstairs · 1H', 2: 'Upstairs · 2H' };
 
 function setZoneKind(k) {
   zoneKind = k;
@@ -945,7 +946,6 @@ function renderZones() {
   if (!zd) {
     body.innerHTML = `<tr><td colspan="5" class="op-empty">Zone data isn't in the file yet. Run option 20 to refresh Retail Backlog.</td></tr>`;
     foot.style.display = 'none';
-    document.getElementById('znFloor').innerHTML = '';
     document.getElementById('znNote').textContent = '';
     return;
   }
@@ -957,35 +957,46 @@ function renderZones() {
   const totalUnits = list.reduce((s, z) => s + z[uKey], 0);
   const totalLines = list.reduce((s, z) => s + z[lKey], 0);
 
-  // floor split
-  const floors = {};
-  list.forEach(z => { if (z.floor) floors[z.floor] = (floors[z.floor] || 0) + z[uKey]; });
-  document.getElementById('znFloor').innerHTML = totalUnits > 0
-    ? Object.keys(floors).sort().map(f => `<span>Floor ${f}: <b>${Math.round(floors[f] / totalUnits * 100)}%</b></span>`).join('')
-    : '';
-
   if (!list.length) {
     body.innerHTML = `<tr><td colspan="5" class="op-empty">No ${what} zones found.</td></tr>`;
     foot.style.display = 'none';
   } else {
     const fillCls  = showDone ? 'done' : (zoneKind === 'replen' ? 'replen' : '');
     const maxUnits = list[0][uKey] || 1; // bars scale to the busiest zone; % label is share of total
-    body.innerHTML = list.map((z, i) => {
-      const units = z[uKey];
-      const pct   = totalUnits > 0 ? units / totalUnits * 100 : 0;
-      const barW  = units / maxUnits * 100;
-      const tag   = !showDone && i === 0 && units > 0 ? '<span class="zn-top-tag">Most work</span>' : '';
-      const share = units > 0
-        ? `<div class="zn-share-cell"><div class="zn-share-bar"><div class="zn-share-fill ${fillCls}" style="width:${barW.toFixed(1)}%"></div></div><span class="zn-share-pct">${Math.round(pct)}%</span></div>`
-        : `<span class="sc-zero">—</span>`;
-      return `
+    const topId    = !showDone && list[0][uKey] > 0 ? list[0].zone_id : null;
+
+    // Group by floor (1H = downstairs, 2H = upstairs); zones stay whole
+    const groups = {};
+    list.forEach(z => { const f = z.floor || 0; (groups[f] = groups[f] || []).push(z); });
+    const pctOf = u => totalUnits > 0 ? Math.round(u / totalUnits * 100) : 0;
+
+    body.innerHTML = Object.keys(groups).sort((a, b) => (Number(a) || 9) - (Number(b) || 9)).map(f => {
+      const zs     = groups[f];
+      const gUnits = zs.reduce((s, z) => s + z[uKey], 0);
+      const gLines = zs.reduce((s, z) => s + z[lKey], 0);
+      const header = `
+        <tr class="zn-group">
+          <td colspan="2">${esc(FLOOR_LABELS[f] || 'Other')}</td>
+          <td class="r">${gLines.toLocaleString()}</td>
+          <td class="r">${gUnits.toLocaleString()}</td>
+          <td class="r">${gUnits > 0 ? pctOf(gUnits) + '%' : '—'}</td>
+        </tr>`;
+      return header + zs.map(z => {
+        const units = z[uKey];
+        const barW  = units / maxUnits * 100;
+        const tag   = z.zone_id === topId ? '<span class="zn-top-tag">Most work</span>' : '';
+        const share = units > 0
+          ? `<div class="zn-share-cell"><div class="zn-share-bar"><div class="zn-share-fill ${fillCls}" style="width:${barW.toFixed(1)}%"></div></div><span class="zn-share-pct">${pctOf(units)}%</span></div>`
+          : `<span class="sc-zero">—</span>`;
+        return `
         <tr class="${units > 0 ? '' : 'zn-row-zero'}" title="${esc(z.zone_id)} · ${z.locations.toLocaleString()} locations">
-          <td><span class="zn-name">${esc(z.name)}</span>${tag}</td>
+          <td class="zn-indent"><span class="zn-name">${esc(z.name)}</span>${tag}</td>
           <td class="zn-where">${esc(z.where)}</td>
           <td class="r">${z[lKey].toLocaleString()}</td>
           <td class="r">${units.toLocaleString()}</td>
           <td class="r">${share}</td>
         </tr>`;
+      }).join('');
     }).join('');
     document.getElementById('znTotLines').textContent = totalLines.toLocaleString();
     document.getElementById('znTotUnits').textContent = totalUnits.toLocaleString();
