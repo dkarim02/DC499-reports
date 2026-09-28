@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="scout_file_mode.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -747,16 +748,8 @@ function escHtml(s) {
 buildThemeMenu();
 var saved = localStorage.getItem(THEME_KEY);
 applyTheme(THEME_VALS.includes(saved) ? saved : 'solid');
-if (window.location.protocol === 'file:') {
-  liveFetchError = true;
-  document.getElementById('live-dot').style.background = '#ef4444';
-  document.getElementById('top-sub').textContent = 'Open via localhost:3001 to load live data';
-  document.getElementById('wip-body').innerHTML =
-    '<tr><td colspan="8" class="empty-state">Live data requires the server.<br>Run dc499.bat option 2, then open this page at <strong>localhost:3001/Reserve_putaway.html</strong></td></tr>';
-} else {
-  fetchLiveData();
-  setInterval(fetchLiveData, 3 * 60 * 1000);
-}
+fetchLiveData();   // file:// works too — scout_file_mode.js serves filedata/putaway_live.js
+setInterval(fetchLiveData, 3 * 60 * 1000);
 </script>
 </body>
 </html>

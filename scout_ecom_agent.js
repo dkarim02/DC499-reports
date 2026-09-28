@@ -14,6 +14,7 @@
 
 const fs     = require('fs');
 const path   = require('path');
+require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');

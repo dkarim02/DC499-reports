@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="scout_file_mode.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -2405,8 +2406,7 @@ function nailThePlan(btn) {
 
 // ── BACKLOG STRIP ───────────────────────────────────────
 function openEOS() {
-  const base = window.location.hostname === 'localhost' ? '' : '/DC499-reports';
-  window.open(base + '/EOS_live.html', '_blank');
+  window.open('EOS_live.html', '_blank');   // relative — works on Pages, localhost, and file://
 }
 
 function openBacklog() {

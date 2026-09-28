@@ -11,6 +11,7 @@
 
 const fs     = require('fs');
 const path   = require('path');
+require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -1515,9 +1516,9 @@ function gitPush() {
     const extras = staged.map(f => LABELS[f]).filter(Boolean);
     const suffix = extras.length ? ` [+${extras.join(', ')}]` : '';
     execSync(`git commit -m "Live update -- ${stamp}${suffix}"`,    { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync('git fetch origin main',                               { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git fetch origin main',                               { cwd: REPORT_DIR, stdio: 'pipe', timeout: 60000 });
     execSync('git rebase --autostash origin/main',                  { cwd: REPORT_DIR, stdio: 'pipe' });
-    execSync('git push origin main',                                { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git push origin main',                                { cwd: REPORT_DIR, stdio: 'pipe', timeout: 60000 });
     console.log(`[${ts()}] ✓ Pushed to git${suffix}`);
   } catch (e) {
     const msg = e.stderr?.toString() || e.stdout?.toString() || e.message;
