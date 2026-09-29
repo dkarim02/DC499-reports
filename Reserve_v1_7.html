@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reserve Stock Report Processor v2.0</title>
+<title>Reserve Stock Report Processor v2.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -360,6 +360,9 @@
   .rs-hourly .hval-total.c-red{background:#dc2626;}
   .rs-hourly .hval-total.c-empty{background:var(--surface2);color:var(--text-hint);font-size:12px;font-weight:700;text-shadow:none;}
   .rs-hourly tfoot td{border-top:2px solid var(--border-mid);border-bottom:none;background:var(--surface2);}
+  .rs-htype-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+  .rs-htype{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;font-family:inherit;}
+  .rs-htype.on{color:#fff;}
   .rs-hourly-legend{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;margin-bottom:10px;flex-wrap:wrap;}
   .rs-lc{display:inline-flex;align-items:center;border-radius:5px;overflow:hidden;border:0.5px solid var(--border);}
   .rs-lc-dot{width:9px;height:24px;flex-shrink:0;}
@@ -481,7 +484,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v2.0</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v2.1</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Reserve Stock &middot; Last updated: <span id="last-updated"></span></p>
@@ -2036,6 +2039,20 @@ setInterval(function() {
 }, 5 * 60 * 1000);
 
 // ── HOURLY VIEW ─────────────────────────────────────────────────────────────────
+// Type pills — keys match the Live card keys so per-card TM disables carry over
+var RS_HOURLY_TYPES = [
+  { key:'all',      label:'All',           color:'#7C3AAD', fields:['pick_f1','pick_f2','replen','putaway','bulk_lpn'] },
+  { key:'picking',  label:'Picking',       color:'#0891B2', fields:['pick_f1','pick_f2'] },
+  { key:'replen',   label:'Replenishment', color:'#6366F1', fields:['replen'] },
+  { key:'putaway',  label:'Putaway',       color:'#059669', fields:['putaway'] },
+  { key:'bulk_lpn', label:'Full LPN Pick', color:'#E11D48', fields:['bulk_lpn'] },
+];
+function getHourlyType() { try { return localStorage.getItem('rs_hourly_type_v1') || 'all'; } catch(e) { return 'all'; } }
+function setHourlyType(k) {
+  try { localStorage.setItem('rs_hourly_type_v1', k); } catch(e) {}
+  if (rsLiveData) renderLiveHourly(rsLiveData);
+}
+
 function renderLiveHourly(d) {
   var meta    = document.getElementById('live-meta');
   var content = document.getElementById('live-content');
@@ -2076,8 +2093,9 @@ function renderLiveHourly(d) {
     return;
   }
 
+  var type = RS_HOURLY_TYPES.filter(function(t) { return t.key === getHourlyType(); })[0] || RS_HOURLY_TYPES[0];
   function sumMetrics(a) {
-    return a ? (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0)+(a.bulk_lpn||0) : 0;
+    return a ? type.fields.reduce(function(s, f) { return s + (a[f]||0); }, 0) : 0;
   }
   function liveSum(emp) { return sumMetrics(assoc[emp]); }
   function getHrUnits(emp, h) {
@@ -2096,9 +2114,26 @@ function renderLiveHourly(d) {
   }
 
   var TEAM = getTeamSet();
-  var roster = loadRoster().filter(function(m) { return m.enabled && (TEAM.size === 0 || TEAM.has(m.email)) && liveSum(m.email) > 0; });
+  var fullRoster = loadRoster();
+  // A type pill lists the same people as that Live card (respects per-card disables)
+  var roster = fullRoster.filter(function(m) {
+    var on = type.key === 'all' ? m.enabled : isTMEnabledForCard(fullRoster, m.email, type.key);
+    return on && (TEAM.size === 0 || TEAM.has(m.email)) && liveSum(m.email) > 0;
+  });
 
   var html = '<div class="rs-hourly">';
+  html += '<div class="rs-htype-row">';
+  RS_HOURLY_TYPES.forEach(function(t) {
+    var on = t.key === type.key;
+    html += '<button class="rs-htype' + (on ? ' on' : '') + '" data-htype="' + t.key + '" onclick="setHourlyType(this.dataset.htype)"' +
+            (on ? ' style="background:' + t.color + ';border-color:' + t.color + ';"' : '') + '>' + t.label + '</button>';
+  });
+  html += '</div>';
+  if (!roster.length) {
+    html += '<div class="full-empty">No ' + type.label + ' units yet this shift.</div></div>';
+    if (content) content.innerHTML = html;
+    return;
+  }
   // legend
   html += '<div class="rs-hourly-legend">';
   html += '<span style="font-size:11px;color:var(--text-hint);font-weight:500;margin-right:2px;">Units/hr:</span>';
