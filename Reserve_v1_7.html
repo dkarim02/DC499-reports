@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reserve Stock Report Processor v1.9</title>
+<title>Reserve Stock Report Processor v2.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -481,7 +481,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v1.9</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v2.0</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Reserve Stock &middot; Last updated: <span id="last-updated"></span></p>
@@ -1602,7 +1602,7 @@ function loadLiveData() {
   if (meta) meta.textContent = 'Fetching...';
   fetch(getLiveBase() + '/reserve_live.json?_=' + Date.now())
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(d) { rsLiveData = d; if (d.shift && d.shift !== getShift()) setShift(d.shift); scMaybeSnapshot(d); renderLiveDispatch(d); })
+    .then(function(d) { rsLiveData = d; if (d.shift && d.shift !== getShift()) setShift(d.shift); renderLiveDispatch(d); })
     .catch(function(e) {
       if (content) content.innerHTML = '<div class="full-empty">Could not load reserve_live.json — run Option 11 in dc499.bat first.<br><small style="color:var(--text-hint);">' + e.message + '</small></div>';
       if (meta) meta.textContent = 'Error loading data';
@@ -2048,45 +2048,41 @@ function renderLiveHourly(d) {
   if (meta) meta.textContent = shift + ' shift \xb7 updated ' + gen + ' \xb7 Hourly view';
 
   var assoc = d.associates;
+  var empKeys = Object.keys(assoc);
+  // Hourly buckets come from the agent (associates[emp].hourly, keyed by PDT hour 0–23).
+  // Old JSON from before the agent update has no hourly field.
+  if (empKeys.length && !empKeys.some(function(e) { return assoc[e] && assoc[e].hourly; })) {
+    if (content) content.innerHTML = '<div class="full-empty">Hourly data needs agent update — restart option 12 in dc499.bat.</div>';
+    return;
+  }
+
   var nowPdt = new Date(new Date().toLocaleString('en-US', { timeZone:'America/Los_Angeles' }));
   var nowHr  = nowPdt.getHours();
   var hourStart = shift === '1st' ? 3  : 14;
   var hourEnd   = shift === '1st' ? 14 : 22;
-  var hours = [];
-  for (var h = hourStart; h <= Math.min(nowHr, hourEnd - 1); h++) hours.push(h);
+  // Order hours by position in the shift so 2nd-shift hours past midnight sort after 11p
+  function shiftPos(h) { return (h - hourStart + 24) % 24; }
+  var nowPos = shiftPos(nowHr);
+  var hourSet = {};
+  for (var h = hourStart; h < hourEnd && shiftPos(h) <= nowPos; h++) hourSet[h] = true;
+  // Add any hour outside the normal columns that has scans (early start, OT past 10 PM)
+  // so each row still adds up to its Total.
+  empKeys.forEach(function(e) {
+    Object.keys((assoc[e] && assoc[e].hourly) || {}).forEach(function(k) { hourSet[Number(k)] = true; });
+  });
+  var hours = Object.keys(hourSet).map(Number).sort(function(a, b) { return shiftPos(a) - shiftPos(b); });
   if (!hours.length) {
     if (content) content.innerHTML = '<div class="full-empty">Shift hasn\'t started yet.</div>';
     return;
   }
 
-  // snapshot key for a given PDT hour
-  var pdt = new Date(new Date().toLocaleString('en-US', { timeZone:'America/Los_Angeles' }));
-  var yr = pdt.getFullYear(), mo = pdt.getMonth()+1, dy = pdt.getDate();
-  function snapHrKey(h) {
-    var hr = h % 24;
-    return yr+'-'+(mo<10?'0'+mo:mo)+'-'+(dy<10?'0'+dy:dy)+' '+(hr<10?'0'+hr:hr)+':00';
+  function sumMetrics(a) {
+    return a ? (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0)+(a.bulk_lpn||0) : 0;
   }
-  var snaps = scLoadSnaps(shift);
-
-  function snapSum(snap, emp) {
-    var a = snap && snap[emp] ? snap[emp] : {};
-    return (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0)+(a.bulk_lpn||0);
-  }
-  function liveSum(emp) {
-    var a = assoc[emp]; if (!a) return 0;
-    return (a.pick_f1||0)+(a.pick_f2||0)+(a.replen||0)+(a.putaway||0)+(a.bulk_lpn||0);
-  }
+  function liveSum(emp) { return sumMetrics(assoc[emp]); }
   function getHrUnits(emp, h) {
-    if (h === nowHr) {
-      // current hour: live minus last closed snapshot
-      var lastSnap = null;
-      for (var i = h; i >= hourStart; i--) { var sk = snapHrKey(i); if (snaps[sk]) { lastSnap = snaps[sk]; break; } }
-      return Math.max(0, liveSum(emp) - snapSum(lastSnap, emp));
-    }
-    var vNext = snapSum(snaps[snapHrKey(h+1)], emp);
-    var vThis = snapSum(snaps[snapHrKey(h)], emp);
-    if (!snaps[snapHrKey(h+1)] && !snaps[snapHrKey(h)]) return null;
-    return Math.max(0, vNext - vThis);
+    var a = assoc[emp];
+    return sumMetrics(a && a.hourly ? a.hourly[h] : null);
   }
 
   function hrLabel(h) { var h12 = h % 12 || 12; return h12 + (h < 12 || h === 24 ? 'a' : 'p'); }
@@ -2163,64 +2159,15 @@ function renderLiveHourly(d) {
   if (content) content.innerHTML = html;
 }
 
-// ── SCORECARD SNAPSHOT (localStorage) ────────────────────────────────────────
-// Snapshots are written to localStorage every time the PDT hour changes.
-// Key format: rs_sc_v1_{shift}_{YYYY-MM-DD HH:00}
-// Value: JSON of d.associates at that moment.
-// Per-hour delta = units at snapshot(h+1) minus units at snapshot(h).
-// Current in-progress hour = live totals minus last snapshot.
-// Total column always mirrors live tab (d.associates directly).
-
-var SC_KEY_PFX    = 'rs_sc_v1_';
-var SC_MAX_SNAPS  = 48; // prune oldest beyond this
-
-function scPdtHourKey(date) {
-  var pdt = new Date((date || new Date()).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
-  var y = pdt.getFullYear(), mo = pdt.getMonth() + 1, d = pdt.getDate(), h = pdt.getHours();
-  return (y + '-' + (mo<10?'0'+mo:mo) + '-' + (d<10?'0'+d:d) + ' ' + (h<10?'0'+h:h) + ':00');
-}
-
-function scSnapKey(shift, hourKey) {
-  return SC_KEY_PFX + shift + '_' + hourKey;
-}
-
-// Called after every successful loadLiveData — writes snapshot if hour has ticked
-function scMaybeSnapshot(d) {
-  if (!d || !d.associates) return;
-  var shift    = d.shift || getShift();
-  var hourKey  = scPdtHourKey();
-  var storeKey = scSnapKey(shift, hourKey);
-  if (!localStorage.getItem(storeKey)) {
-    localStorage.setItem(storeKey, JSON.stringify(d.associates));
-    scPruneOldSnaps(shift);
-  }
-}
-
-function scPruneOldSnaps(shift) {
-  var prefix = SC_KEY_PFX + shift + '_';
-  var keys = [];
-  for (var i = 0; i < localStorage.length; i++) {
-    var k = localStorage.key(i);
-    if (k && k.indexOf(prefix) === 0) keys.push(k);
-  }
-  keys.sort();
-  while (keys.length > SC_MAX_SNAPS) {
-    localStorage.removeItem(keys.shift());
-  }
-}
-
-function scLoadSnaps(shift) {
-  var prefix = SC_KEY_PFX + shift + '_';
-  var snaps = {};
-  for (var i = 0; i < localStorage.length; i++) {
-    var k = localStorage.key(i);
-    if (k && k.indexOf(prefix) === 0) {
-      var hourKey = k.slice(prefix.length);
-      try { snaps[hourKey] = JSON.parse(localStorage.getItem(k)); } catch(e) {}
-    }
-  }
-  return snaps; // { 'YYYY-MM-DD HH:00': associatesObj, ... }
-}
+// Hourly view used to rebuild hours from localStorage snapshots (rs_sc_v1_*).
+// The agent now sends per-hour data, so clear any leftover snapshot keys once.
+(function() {
+  try {
+    var old = [];
+    for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf('rs_sc_v1_') === 0) old.push(k); }
+    old.forEach(function(k) { localStorage.removeItem(k); });
+  } catch (e) {}
+})();
 
 </script>
 </body>

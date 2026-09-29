@@ -279,6 +279,10 @@ function ts() {
   return new Date().toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour12: false });
 }
 
+// DC499 local offset used for hourly bucketing. DST fix (~Oct 25, 2026): change to '-08:00' (PST),
+// and move the UTC shift boundaries in shiftStartUtc() by one hour.
+const PDT_OFFSET = '-07:00';
+
 function shiftStartUtc() {
   const nowUtc = new Date();
   const h = nowUtc.getUTCHours();
@@ -298,20 +302,35 @@ function shiftStartUtc() {
 }
 
 // ── SQL builder ────────────────────────────────────────────────────────────────
+// Per-employee, per-PDT-hour sums. Shift totals are rolled up from these rows in Node,
+// so each associate's hourly values always add up to their total.
 function buildGroupSql(shiftStart, group) {
   const txList = group.txIds.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
   const zoneFilter = group.zoneH ? `  AND SUBSTR(TARGET_LOCATION_ID, 3, 1) = 'H'\n` : '';
-  const containerCol = group.containerCount
-    ? `,\n  COUNT(DISTINCT CASE WHEN COMPLETED_QUANTITY > 0 THEN CONTAINER_ID END) AS container_count`
-    : '';
   return [
-    `SELECT CREATED_BY AS Employee, SUM(${group.metric}) AS total_qty${containerCol}`,
+    `SELECT CREATED_BY AS Employee,`,
+    `  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '${PDT_OFFSET}'), '%H') AS pdt_hr,`,
+    `  SUM(${group.metric}) AS total_qty`,
+    `FROM default_task.TSK_ACTIVITY_TRACKING`,
+    `WHERE FACILITY_ID = '${FACILITY}'`,
+    `  AND TRANSACTION_ID IN (${txList})`,
+    `  AND CREATED_TIMESTAMP >= '${shiftStart}'`,
+    zoneFilter + `GROUP BY CREATED_BY, pdt_hr`,
+  ].join('\n');
+}
+
+// Distinct containers can't be summed across hours, so replen containers keep a shift-level query.
+function buildContainerSql(shiftStart, group) {
+  const txList = group.txIds.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
+  const zoneFilter = group.zoneH ? `  AND SUBSTR(TARGET_LOCATION_ID, 3, 1) = 'H'\n` : '';
+  return [
+    `SELECT CREATED_BY AS Employee,`,
+    `  COUNT(DISTINCT CASE WHEN COMPLETED_QUANTITY > 0 THEN CONTAINER_ID END) AS container_count`,
     `FROM default_task.TSK_ACTIVITY_TRACKING`,
     `WHERE FACILITY_ID = '${FACILITY}'`,
     `  AND TRANSACTION_ID IN (${txList})`,
     `  AND CREATED_TIMESTAMP >= '${shiftStart}'`,
     zoneFilter + `GROUP BY CREATED_BY`,
-    `ORDER BY total_qty DESC`,
   ].join('\n');
 }
 
@@ -325,31 +344,48 @@ async function fetchReserveLive(accessToken) {
   const rowCounts  = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, bulk_lpn: 0 };
 
   console.log(`[${ts()}] Querying all groups in parallel...`);
-  const results = await Promise.all(RS_GROUPS.map(async group => {
+  const runQuery = async (label, sql) => {
     try {
-      const resp = await mcpQuery(accessToken, buildGroupSql(shiftStart, group));
-      return { group, rows: resp.rows || [] };
+      const resp = await mcpQuery(accessToken, sql);
+      return resp.rows || [];
     } catch (e) {
-      console.error(`[${ts()}] ${group.label} query failed:`, e.message);
-      return { group, rows: [] };
+      console.error(`[${ts()}] ${label} query failed:`, e.message);
+      return [];
     }
-  }));
+  };
+  const containerGroup = RS_GROUPS.find(g => g.containerCount);
+  const [results, containerRows] = await Promise.all([
+    Promise.all(RS_GROUPS.map(async group => ({
+      group, rows: await runQuery(group.label, buildGroupSql(shiftStart, group)),
+    }))),
+    runQuery(`${containerGroup.label} containers`, buildContainerSql(shiftStart, containerGroup)),
+  ]);
 
+  const newAssoc = () => ({ pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, bulk_lpn: 0, hourly: {} });
   for (const { group, rows } of results) {
-    console.log(`[${ts()}] ${group.label}: ${rows.length} associates`);
-    rowCounts[group.key] = rows.length;
+    const emps = new Set();
     for (const row of rows) {
       const emp = row.Employee;
+      const hr  = String(Number(row.pdt_hr));   // "05" → "5" (PDT hour 0–23)
       const qty = Math.round(Number(row.total_qty) || 0);
-      if (!associates[emp]) associates[emp] = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, bulk_lpn: 0 };
-      associates[emp][group.key] = qty;
+      emps.add(emp);
+      if (!associates[emp]) associates[emp] = newAssoc();
+      const a = associates[emp];
+      if (!a.hourly[hr]) a.hourly[hr] = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, bulk_lpn: 0 };
+      a.hourly[hr][group.key] += qty;
+      a[group.key] += qty;
       totals[group.key] += qty;
-      if (group.containerCount) {
-        const cCount = Math.round(Number(row.container_count) || 0);
-        associates[emp].replen_containers = cCount;
-        totals.replen_containers += cCount;
-      }
     }
+    console.log(`[${ts()}] ${group.label}: ${emps.size} associates`);
+    rowCounts[group.key] = emps.size;
+  }
+
+  for (const row of containerRows) {
+    const emp = row.Employee;
+    const cCount = Math.round(Number(row.container_count) || 0);
+    if (!associates[emp]) associates[emp] = newAssoc();
+    associates[emp].replen_containers = cCount;
+    totals.replen_containers += cCount;
   }
 
   const output = {
