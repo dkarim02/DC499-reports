@@ -1,5 +1,5 @@
 {
-    "generated": "2026-09-29T23:11:49.778Z",
+    "generated": "2026-09-29T23:14:05.308Z",
     "shift": "2nd",
     "shift_start": "2026-09-29 21:00:00",
     "facility": "499",
@@ -433,11 +433,11 @@
         ]
     },
     "replen": {
-        "queued": 1,
+        "queued": 0,
         "assigned": 0,
         "in_progress": 1,
-        "completed": 13,
-        "total_open": 2,
+        "completed": 14,
+        "total_open": 1,
         "tasks": [
             {
                 "task_id": "WRPICK0000276054",
@@ -571,9 +571,9 @@
             },
             {
                 "task_id": "WRPICK0000276251",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "REPLEN PULL",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1C0123B02",
                 "target": "F1D0801C03",
                 "created_pdt": "2026-09-29T16:06:07.401000",
@@ -582,12 +582,12 @@
             {
                 "task_id": "WRPICK0000276254",
                 "subtype": "REPLEN PULL",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "R1B0307B01",
                 "target": "F1D1105B01",
                 "created_pdt": "2026-09-29T16:06:07.715000",
-                "detail_count": 1
+                "detail_count": null
             }
         ]
     },
@@ -599,36 +599,30 @@
                     "ilpn_id": "00008856090013464934",
                     "on_hand": 1,
                     "updated_pst": "2026-09-29T15:06:26.028000",
-                    "age_min": 5
+                    "age_min": 8
                 },
                 {
                     "ilpn_id": "00037005780002091411",
                     "on_hand": 15,
                     "updated_pst": "2026-09-29T15:10:18.034000",
-                    "age_min": 2
+                    "age_min": 4
                 }
             ],
             "total_units": 16,
-            "oldest_min": 5
+            "oldest_min": 8
         },
         {
             "location": "P1-PK-18",
             "ilpns": [
                 {
-                    "ilpn_id": "00060332321424742674",
-                    "on_hand": 48,
-                    "updated_pst": "2026-09-29T15:04:26.924000",
-                    "age_min": 7
-                },
-                {
                     "ilpn_id": "LPN000000047982",
                     "on_hand": 15,
                     "updated_pst": "2026-09-29T15:05:47.546000",
-                    "age_min": 6
+                    "age_min": 8
                 }
             ],
-            "total_units": 63,
-            "oldest_min": 7
+            "total_units": 15,
+            "oldest_min": 8
         }
     ],
     "flow_carts": [
@@ -639,17 +633,17 @@
                     "ilpn_id": "00207912220024674479",
                     "on_hand": 4,
                     "updated_pst": "2026-09-21T11:42:21.539000",
-                    "age_min": 11729
+                    "age_min": 11732
                 },
                 {
                     "ilpn_id": "00006499300003755443",
                     "on_hand": 3,
                     "updated_pst": "2026-09-22T14:40:48.957000",
-                    "age_min": 10111
+                    "age_min": 10113
                 }
             ],
             "total_units": 7,
-            "oldest_min": 11729
+            "oldest_min": 11732
         },
         {
             "location": "P1-FC-010010",
@@ -658,17 +652,17 @@
                     "ilpn_id": "00000999410082409564",
                     "on_hand": 9,
                     "updated_pst": "2026-09-24T15:00:29.109000",
-                    "age_min": 7211
+                    "age_min": 7214
                 },
                 {
                     "ilpn_id": "00006499300003731270",
                     "on_hand": 60,
                     "updated_pst": "2026-09-24T16:37:00.095000",
-                    "age_min": 7115
+                    "age_min": 7117
                 }
             ],
             "total_units": 69,
-            "oldest_min": 7211
+            "oldest_min": 7214
         },
         {
             "location": "P1-FC-010011",
@@ -677,17 +671,17 @@
                     "ilpn_id": "00008407320091235767",
                     "on_hand": 9,
                     "updated_pst": "2026-09-19T19:08:07.822000",
-                    "age_min": 14164
+                    "age_min": 14166
                 },
                 {
                     "ilpn_id": "00006499300003771337",
                     "on_hand": 5,
                     "updated_pst": "2026-09-25T07:57:31.074000",
-                    "age_min": 6194
+                    "age_min": 6197
                 }
             ],
             "total_units": 14,
-            "oldest_min": 14164
+            "oldest_min": 14166
         }
     ]
 }
