@@ -1813,7 +1813,13 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
   let reauthing      = false;
   let authNotified   = false;
 
+  let refreshing     = false;
+
   async function refresh() {
+    // Skip if the previous cycle is still running — overlapping cycles share the 2-slot
+    // query semaphore, slow each other down, and pile up (data landed 6–11 min stale).
+    if (refreshing) { console.log(`[${ts()}] Previous cycle still running — skipping this tick`); return; }
+    refreshing = true;
     try {
       try {
         accessToken = await getAccessTokenSilent();
@@ -1835,6 +1841,8 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
       console.log(`[${ts()}] ✓ Cache updated`);
     } catch (e) {
       console.error(`[${ts()}] Refresh failed: ${e.message}`);
+    } finally {
+      refreshing = false;
     }
   }
 
