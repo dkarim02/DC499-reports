@@ -1,13 +1,13 @@
 {
-    "generated": "2026-09-30T19:59:21",
+    "generated": "2026-09-30T20:01:23",
     "facility": "499",
     "today": "2026-09-30",
     "dates": [
         {
             "date": "2026-09-30",
-            "ready": 332,
-            "allocated": 1114,
-            "packed": 157,
+            "ready": 347,
+            "allocated": 1109,
+            "packed": 162,
             "shipped": 231,
             "orders": [
                 {
@@ -1006,7 +1006,7 @@
                 },
                 {
                     "order_id": "1063928978-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-09-30T13:58:44.513000",
                     "hazmat": "E"
@@ -1160,7 +1160,7 @@
                 },
                 {
                     "order_id": "1063931547-50001",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-09-30T14:29:59.345000",
                     "hazmat": "E"
@@ -4212,7 +4212,7 @@
                 },
                 {
                     "order_id": "1063962003-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-09-30T18:19:41.923000",
                     "hazmat": "E"
@@ -4527,14 +4527,14 @@
                 },
                 {
                     "order_id": "1063964138-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-09-30T17:24:02.330000",
                     "hazmat": "E"
                 },
                 {
                     "order_id": "1063964164-50000",
-                    "status": "ALLOCATED",
+                    "status": "PACKED",
                     "line_count": 1,
                     "oldest_line_utc": "2026-09-30T17:24:03.219000",
                     "hazmat": null
@@ -5926,6 +5926,13 @@
                     "hazmat": "E"
                 },
                 {
+                    "order_id": "1063976724-50000",
+                    "status": "READY",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-09-30T20:00:49.298000",
+                    "hazmat": null
+                },
+                {
                     "order_id": "1063976739-50000",
                     "status": "ALLOCATED",
                     "line_count": 1,
@@ -5933,10 +5940,31 @@
                     "hazmat": null
                 },
                 {
+                    "order_id": "1063976914-50001",
+                    "status": "READY",
+                    "line_count": 5,
+                    "oldest_line_utc": "2026-09-30T20:00:51.278000",
+                    "hazmat": "E"
+                },
+                {
+                    "order_id": "1063977018-50000",
+                    "status": "READY",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-09-30T20:00:50.268000",
+                    "hazmat": null
+                },
+                {
                     "order_id": "1063977053-50001",
                     "status": "READY",
                     "line_count": 1,
                     "oldest_line_utc": "2026-09-30T18:51:23.951000",
+                    "hazmat": null
+                },
+                {
+                    "order_id": "1063977125-50000",
+                    "status": "READY",
+                    "line_count": 2,
+                    "oldest_line_utc": "2026-09-30T20:00:57.516000",
                     "hazmat": null
                 },
                 {
@@ -6603,9 +6631,37 @@
                     "line_count": 1,
                     "oldest_line_utc": "2026-09-30T19:59:09.624000",
                     "hazmat": null
+                },
+                {
+                    "order_id": "1063987256-50000",
+                    "status": "READY",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-09-30T19:59:50.616000",
+                    "hazmat": "Y"
+                },
+                {
+                    "order_id": "1063987270-50001",
+                    "status": "READY",
+                    "line_count": 2,
+                    "oldest_line_utc": "2026-09-30T19:59:49.429000",
+                    "hazmat": "E"
+                },
+                {
+                    "order_id": "1063987400-50001",
+                    "status": "READY",
+                    "line_count": 2,
+                    "oldest_line_utc": "2026-09-30T20:00:22.553000",
+                    "hazmat": null
+                },
+                {
+                    "order_id": "1063987468-50000",
+                    "status": "READY",
+                    "line_count": 1,
+                    "oldest_line_utc": "2026-09-30T20:00:54.765000",
+                    "hazmat": null
                 }
             ],
-            "daily_total": 1931
+            "daily_total": 1946
         },
         {
             "date": "2026-09-29",
@@ -9329,21 +9385,29 @@
         },
         {
             "hour": 12,
-            "lines": 283
+            "lines": 286
+        },
+        {
+            "hour": 13,
+            "lines": 12
         }
     ],
     "waves": [
         {
             "type": "Ecom",
-            "count": 9
+            "count": 19
         },
         {
             "type": "Replen",
+            "count": 5
+        },
+        {
+            "type": "Single Chase",
             "count": 2
         },
         {
             "type": "Multi Chase",
-            "count": 2
+            "count": 3
         },
         {
             "type": "Fill/Kill",
@@ -9351,33 +9415,33 @@
         },
         {
             "type": "Total",
-            "count": 15
+            "count": 31
         }
     ],
-    "rfp_units": 35,
-    "rfp_single": 25,
-    "rfp_multi": 10,
-    "shift_label": "1st shift",
-    "hazmat_orders": 499,
-    "hazmat_lines": 1098,
+    "rfp_units": 98,
+    "rfp_single": 39,
+    "rfp_multi": 59,
+    "shift_label": "2nd shift",
+    "hazmat_orders": 502,
+    "hazmat_lines": 1106,
     "hazmat_breakdown": {
-        "Y": 66,
-        "E": 429,
+        "Y": 67,
+        "E": 431,
         "LIT": 4
     },
     "top_items": [
         {
             "item_id": "B0427884",
             "description": "SEPT WHATS HOT",
-            "units": 349,
-            "orders": 349,
+            "units": 351,
+            "orders": 351,
             "gwp": false
         },
         {
             "item_id": "B2832738",
             "description": "GWP NATL FALL 2026 MAIN",
-            "units": 41,
-            "orders": 41,
+            "units": 42,
+            "orders": 42,
             "gwp": true
         },
         {
@@ -9430,11 +9494,11 @@
             "gwp": true
         },
         {
-            "item_id": "8930733",
-            "description": "Firming Vegan Collagen Prep Serum",
-            "units": 7,
-            "orders": 3,
-            "gwp": false
+            "item_id": "AAA58745",
+            "description": "Gift with Purchase",
+            "units": 8,
+            "orders": 8,
+            "gwp": true
         }
     ]
 }
