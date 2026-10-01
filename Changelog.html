@@ -23,7 +23,7 @@
   @media print{
     body{padding:0;font-size:12px;}
     .toolbar{display:none;}
-    .day:not(.hidden) ~ .day:not(.hidden){break-before:page;page-break-before:always;}
+    .day.pg-break{break-before:page;page-break-before:always;}
     @page{size:letter;margin:0.6in;}
   }
 </style>
@@ -35,6 +35,7 @@
 
   <div class="toolbar">
     <label>Print from <input type="date" id="from"></label>
+    <label>Days per page <input type="number" id="per-page" min="1" max="20" value="5" style="width:52px;"></label>
     <button onclick="window.print()">Print</button>
     <span id="count" style="color:#555;"></span>
   </div>
@@ -119,19 +120,31 @@
 </div>
 <script>
   var fromEl = document.getElementById('from');
+  var perEl  = document.getElementById('per-page');
   var days = document.querySelectorAll('.day');
   function applyFrom() {
     var f = fromEl.value, shown = 0;
+    var per = Math.max(1, parseInt(perEl.value, 10) || 5);
     days.forEach(function(d) {
       var hide = f && d.dataset.date < f;
       d.classList.toggle('hidden', hide);
+      // Start a new printed page every `per` visible days
+      d.classList.toggle('pg-break', !hide && shown > 0 && shown % per === 0);
       if (!hide) shown++;
     });
-    document.getElementById('count').textContent = shown + ' of ' + days.length + ' days';
-    try { localStorage.setItem('scout_changelog_from_v1', f); } catch(e) {}
+    var pages = Math.ceil(shown / per);
+    document.getElementById('count').textContent = shown + ' of ' + days.length + ' days · about ' + pages + ' page' + (pages === 1 ? '' : 's');
+    try {
+      localStorage.setItem('scout_changelog_from_v1', f);
+      localStorage.setItem('scout_changelog_per_page_v1', String(per));
+    } catch(e) {}
   }
-  try { fromEl.value = localStorage.getItem('scout_changelog_from_v1') || ''; } catch(e) {}
+  try {
+    fromEl.value = localStorage.getItem('scout_changelog_from_v1') || '';
+    perEl.value  = localStorage.getItem('scout_changelog_per_page_v1') || '5';
+  } catch(e) {}
   fromEl.addEventListener('change', applyFrom);
+  perEl.addEventListener('change', applyFrom);
   applyFrom();
 </script>
 </body>
