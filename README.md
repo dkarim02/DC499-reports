@@ -90,8 +90,8 @@ The suite has two modes:
 | `dc499.bat` | Main launcher — all agents, auth, and server options in one menu |
 | `eos.bat` | EOS agent launcher |
 | `dc499_watchdog.ps1` | Watchdog — restarts coordinator if process dies (runs as Scheduled Task) |
-| `dc499_watchdog_setup.bat` | One-time setup for the Scheduled Task |
-| `SETUP_NEW_PC.md` | New PC setup walkthrough |
+| `setup/dc499_watchdog_setup.bat` | One-time setup for the Scheduled Task |
+| `docs/SETUP_NEW_PC.md` | New PC setup walkthrough |
 
 ---
 

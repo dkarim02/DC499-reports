@@ -62,7 +62,7 @@ This is what keeps the reports live for Sunday crew and 1st shift Monday.
 
 ## Optional — Auto-refresh safety net
 
-If you want the data to keep updating even if the terminal gets closed, double-click **dc499_install_task.bat**. It registers a scheduled task that runs a one-shot refresh every 20 hours in the background.
+If you want the data to keep updating even if the terminal gets closed, double-click **setup/dc499_install_task.bat**. It registers a scheduled task that runs a one-shot refresh every 20 hours in the background.
 
 This is a backup, not a replacement for Step 4. It won't give 2-minute updates — just keeps data from going completely stale.
 
@@ -82,4 +82,4 @@ Open **dc499_autorefresh.log** in the project folder to see when the scheduled t
 
 ## Moving the project to a different folder
 
-Everything is portable — all paths are relative. Just move the whole folder. If you registered the scheduled task, run **dc499_install_task.bat** again to update its path.
+Everything is portable — all paths are relative. Just move the whole folder. If you registered the scheduled task, run **setup/dc499_install_task.bat** again to update its path.

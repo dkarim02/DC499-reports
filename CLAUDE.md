@@ -413,7 +413,7 @@ Animated MP4 (`remi.mp4`) along top of progress bars. `mix-blend-mode:multiply` 
 
 ## Watchdog (dc499_watchdog.ps1)
 
-Scheduled Task every 30 min. Checks for node.exe with `*dc499_refresh*`. If not running: relaunches with `--serve`. Log: dc499_watchdog.log. Setup: run `dc499_watchdog_setup.bat` once. **Lock PC (Win+L) — do NOT log out.**
+Scheduled Task every 30 min. Checks for node.exe with `*dc499_refresh*`. If not running: relaunches with `--serve`. Log: dc499_watchdog.log. Setup: run `setup/dc499_watchdog_setup.bat` once. **Lock PC (Win+L) — do NOT log out.**
 
 ---
 

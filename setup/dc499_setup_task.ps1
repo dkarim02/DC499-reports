@@ -1,5 +1,6 @@
 $TaskName  = "DC499 Auto-Refresh"
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+# Lives in setup - the bat and log sit one level up in the main folder
+$ScriptDir = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Definition)
 $BatFile   = Join-Path $ScriptDir "dc499_autorefresh.bat"
 
 if (-not (Test-Path $BatFile)) {
