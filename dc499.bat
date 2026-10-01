@@ -44,6 +44,10 @@ echo  20 Retail Backlog - one-shot refresh
 echo  21 Retail Backlog - start auto-refresh (every 5 min)
 echo  22 Retail Backlog - auth
 echo ──────────────────────────────
+echo  23 Container Watch - one-shot refresh
+echo  24 Container Watch - start auto-refresh (every 15 min)
+echo  25 Container Watch - auth
+echo ──────────────────────────────
 set /p choice="Select: "
 
 if "%choice%"=="1" (
@@ -198,6 +202,27 @@ if "%choice%"=="22" (
     echo.
     echo Starting Retail Backlog auth flow...
     "%NODE_EXE%" "%~dp0scout_retail_agent.js" --auth
+    pause
+    exit /b
+)
+if "%choice%"=="23" (
+    echo.
+    echo Running Container Watch one-shot refresh...
+    "%NODE_EXE%" "%~dp0scout_watch_agent.js"
+    pause
+    exit /b
+)
+if "%choice%"=="24" (
+    echo.
+    echo Starting Container Watch auto-refresh every 15 min...
+    "%NODE_EXE%" "%~dp0scout_watch_agent.js" --serve --interval=15
+    pause
+    exit /b
+)
+if "%choice%"=="25" (
+    echo.
+    echo Starting Container Watch auth flow...
+    "%NODE_EXE%" "%~dp0scout_watch_agent.js" --auth
     pause
     exit /b
 )

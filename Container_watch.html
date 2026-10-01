@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="scout_file_mode.js"></script>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Container Watch v1.0 -- DC499</title>
+<style>
+  :root {
+    --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
+    --text:#1a1a1a;--text-muted:#666;--text-hint:#888;--bar-bg:#e5e5e5;
+    --accent:#C8B420;--accent-bg:#faf6dc;
+    --green:#2E7D32;--green-bg:#E8F5E9;
+    --amber:#E65100;--amber-bg:#FFF3E0;
+    --red:#C62828;--red-bg:#FFEBEE;
+    --purple:#6D28D9;--purple-bg:#EDE9FE;
+    --blue:#185FA5;--blue-bg:#e8f0fb;
+    --teal:#00838F;--teal-bg:#E0F7FA;
+  }
+  [data-theme="dark"]{
+    --bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;
+    --text:#f0f0ee;--text-muted:#999;--text-hint:#777;--bar-bg:#3a3a3a;
+    --accent:#E0CC40;--accent-bg:#2e2a0a;
+    --green:#4CAF50;--green-bg:#1a2e1a;--amber:#FFB74D;--amber-bg:#2e1a00;--red:#EF9A9A;--red-bg:#2e1010;
+    --purple:#a78bfa;--purple-bg:#2e1a50;--blue:#5B9BD5;--blue-bg:#0d2340;--teal:#26C6DA;--teal-bg:#0d2e32;
+  }
+  [data-theme="solid"]{
+    --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;
+    --text:#e4e8f4;--text-muted:#8090b0;--text-hint:#4a5570;--bar-bg:#2e3650;
+    --accent:#E0CC40;--accent-bg:#2a2608;
+    --green:#22c55e;--green-bg:#052e16;--amber:#FFB74D;--amber-bg:#2a1f00;--red:#EF9A9A;--red-bg:#2d0a0a;
+    --purple:#a78bfa;--purple-bg:#1e1040;--blue:#5B9BD5;--blue-bg:#0d2340;--teal:#22d3ee;--teal-bg:#0a2830;
+  }
+  [data-theme="pastel"]{
+    --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
+    --text:#d4d0e8;--text-muted:#8b8aaa;--text-hint:#565670;--bar-bg:#3c3f52;
+    --accent:#fde68a;--accent-bg:#2e2410;
+    --green:#86efac;--green-bg:#162b22;--amber:#fdba74;--amber-bg:#2e2010;--red:#fca5a5;--red-bg:#2e1a1a;
+    --purple:#c4b5fd;--purple-bg:#1e1840;--blue:#93c5fd;--blue-bg:#152238;--teal:#67e8f9;--teal-bg:#0c2830;
+  }
+  [data-theme="starr"]{
+    --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
+    --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;--bar-bg:#e8c0d8;
+    --accent:#b0003a;--accent-bg:#f8d0e8;
+    --green:#1b5e20;--green-bg:#f0d8e8;--amber:#8b3000;--amber-bg:#fad0e0;--red:#7b0020;--red-bg:#f8c8d8;
+    --purple:#6D28D9;--purple-bg:#EDE9FE;--blue:#185FA5;--blue-bg:#e8f0fb;--teal:#00838F;--teal-bg:#d0f0f4;
+  }
+  [data-theme="scout"]{
+    --bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-light:#141825;--border-mid:#222a3c;
+    --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;--bar-bg:#1c2232;
+    --accent:#0E9E8E;--accent-bg:#0c2e2b;
+    --green:#27ae60;--green-bg:#0c2e1a;--amber:#e67e22;--amber-bg:#2e1a00;--red:#e74c3c;--red-bg:#2d0a0a;
+    --purple:#9b59b6;--purple-bg:#1e1040;--blue:#2196f3;--blue-bg:#0d2340;--teal:#0E9E8E;--teal-bg:#0c2e2b;
+  }
+  [data-theme="scout"] body{
+    background:radial-gradient(ellipse 70% 55% at 0% 0%,rgba(14,158,142,0.13) 0%,transparent 65%),
+               radial-gradient(ellipse 60% 50% at 100% 100%,rgba(24,95,165,0.12) 0%,transparent 65%),
+               #0c0d14;
+  }
+  [data-theme="scout"] .theme-option.active{color:#0E9E8E;}
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
+  .container{max-width:1150px;margin:0 auto;}
+
+  /* ── top bar ── */
+  .top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;gap:1rem;}
+  .dept-label{font-size:11px;color:var(--accent);font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;}
+  h1{font-size:20px;font-weight:500;margin-bottom:2px;}
+  .subtitle{font-size:14px;color:var(--text-muted);}
+  .top-bar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+
+  /* ── theme picker ── */
+  .theme-picker{position:relative;}
+  .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
+  .theme-btn:hover{background:var(--surface2);}
+  .theme-btn-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
+  .theme-picker.open .theme-btn-chevron{transform:rotate(180deg);}
+  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;min-width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:200;}
+  .theme-picker.open .theme-menu{display:block;}
+  .theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
+  .theme-option:hover{background:var(--surface2);color:var(--text);}
+  .theme-option.active{color:var(--accent);}
+
+  /* ── live dot / header ── */
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:5px;animation:livepulse 2s infinite;flex-shrink:0;}
+  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.75);}}
+  .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:12px;flex-wrap:wrap;}
+  .run-time{display:flex;align-items:center;font-size:12px;color:var(--text-hint);}
+
+  /* ── tiles ── */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.25rem;}
+  @media(max-width:800px){.metrics{grid-template-columns:repeat(2,1fr);}}
+  .metric{background:var(--surface2);border-radius:10px;padding:1rem;text-align:center;border-top:3px solid var(--border);cursor:pointer;transition:background 0.12s;}
+  .metric:hover{background:var(--surface);}
+  .metric.t-fc{border-top-color:var(--amber);}
+  .metric.t-pk{border-top-color:var(--blue);}
+  .metric.t-ghost{border-top-color:var(--purple);}
+  .metric.t-match{border-top-color:var(--green);}
+  .metric-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .metric-value{font-size:26px;font-weight:500;color:var(--text);}
+  .metric.t-ghost .metric-value{color:var(--purple);}
+  .metric.t-match .metric-value{color:var(--green);}
+  .metric-sub{font-size:11px;color:var(--text-hint);margin-top:4px;}
+  .metric-sub b{color:var(--amber);font-weight:600;}
+
+  /* ── tabs ── */
+  .tab-bar{display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:1rem;}
+  .tab-btn{font-family:inherit;font-size:13px;font-weight:500;padding:9px 18px;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.12s,border-color 0.12s;}
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-count{font-size:11px;color:var(--text-hint);margin-left:4px;}
+
+  /* ── filter bar ── */
+  .filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:0.75rem;flex-wrap:wrap;}
+  .pill{font-family:inherit;font-size:12px;font-weight:500;padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-muted);cursor:pointer;}
+  .pill:hover{color:var(--text);}
+  .pill.active{background:var(--surface2);color:var(--text);border-color:var(--text-muted);}
+  .search{font-family:inherit;font-size:12px;color:var(--text);background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:6px 10px;width:210px;margin-left:auto;}
+  .search:focus{outline:none;border-color:var(--accent);}
+  .tab-note{font-size:12px;color:var(--text-hint);margin-bottom:0.75rem;line-height:1.5;}
+
+  /* ── table ── */
+  .card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1rem;}
+  .scroll{max-height:620px;overflow-y:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;font-size:11px;font-weight:500;color:var(--text-muted);padding:9px 12px;border-bottom:0.5px solid var(--border-mid);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1;}
+  th.r,td.r{text-align:right;}
+  td{padding:9px 12px;border-bottom:0.5px solid var(--border-light);color:var(--text);vertical-align:middle;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  tr.row{cursor:pointer;transition:background 0.1s;}
+  tr.row:hover{background:var(--surface2);}
+  tr.row.open{background:var(--accent-bg);}
+  .lpn{font-weight:600;}
+  .muted{color:var(--text-muted);}
+  .hint{color:var(--text-hint);font-size:12px;}
+  .empty{padding:2rem;text-align:center;font-size:13px;color:var(--text-hint);}
+  .age-amber{color:var(--amber);font-weight:600;}
+  .age-red{color:var(--red);font-weight:600;}
+
+  /* ── tags ── */
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;margin-right:4px;letter-spacing:0.03em;text-transform:uppercase;white-space:nowrap;}
+  .tag-stuck{background:var(--amber-bg);color:var(--amber);}
+  .tag-stuck_week{background:var(--red-bg);color:var(--red);}
+  .tag-replen_dropped{background:var(--blue-bg);color:var(--blue);}
+  .tag-ghost{background:var(--purple-bg);color:var(--purple);}
+  .tag-never_located{background:var(--surface2);color:var(--text-muted);}
+  .tag-found{background:var(--teal-bg);color:var(--teal);}
+  .tag-lost_match{background:var(--green-bg);color:var(--green);}
+  .tag-research{background:var(--surface2);color:var(--text-hint);}
+
+  /* ── detail ── */
+  tr.detail td{background:var(--surface2);white-space:normal;padding:14px 18px;}
+  .why{font-size:13px;line-height:1.55;margin-bottom:10px;}
+  .why div{margin-bottom:4px;}
+  .why b{font-weight:600;}
+  .tl-grid{display:grid;grid-template-columns:1fr;gap:14px;}
+  .tl-grid.two{grid-template-columns:1fr 1fr;}
+  @media(max-width:800px){.tl-grid.two{grid-template-columns:1fr;}}
+  .tl-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;}
+  .tl{border-left:2px solid var(--border);margin-left:4px;}
+  .tl-step{position:relative;padding:3px 0 7px 14px;font-size:12px;line-height:1.4;}
+  .tl-step::before{content:'';position:absolute;left:-5px;top:7px;width:8px;height:8px;border-radius:50%;background:var(--border);}
+  .tl-step.hl::before{background:var(--purple);}
+  .tl-step.bad::before{background:var(--red);}
+  .tl-time{color:var(--text-hint);font-variant-numeric:tabular-nums;margin-right:6px;}
+  .tl-who{color:var(--text-hint);margin-left:6px;}
+  .tl-empty{font-size:12px;color:var(--text-hint);font-style:italic;}
+
+  .disclaimer{margin-top:2rem;font-size:11px;color:var(--text-hint);text-align:center;line-height:1.5;}
+
+  @keyframes pageEnter{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  body{animation:pageEnter 0.28s ease-out both;}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div>
+      <div class="dept-label">DC499 — Item Prep</div>
+      <h1>Container Watch</h1>
+      <div class="subtitle">Containers to research before they end up on the CUP report</div>
+    </div>
+    <div class="top-bar-right">
+      <div class="theme-picker" id="themePicker">
+        <button class="theme-btn" onclick="toggleThemeMenu()">
+          <span id="themeLabel">Theme</span>
+          <span class="theme-btn-chevron">&#9660;</span>
+        </button>
+        <div class="theme-menu">
+          <div class="theme-option" onclick="setTheme('light')">Light</div>
+          <div class="theme-option" onclick="setTheme('dark')">Dark</div>
+          <div class="theme-option" onclick="setTheme('solid')">Solid</div>
+          <div class="theme-option" onclick="setTheme('pastel')">Pastel</div>
+          <div class="theme-option" onclick="setTheme('starr')">Starr</div>
+          <div class="theme-option" onclick="setTheme('scout')">Scout</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="header-row">
+    <div class="run-time"><span class="live-dot"></span><span id="runTime">Loading...</span></div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric t-fc" onclick="setTab('staging','P1-FC')">
+      <div class="metric-label">At P1-FC</div>
+      <div class="metric-value" id="m-fc">—</div>
+      <div class="metric-sub" id="m-fc-sub">Item Prep conveyor drop</div>
+    </div>
+    <div class="metric t-pk" onclick="setTab('staging','P1-PK')">
+      <div class="metric-label">At P1-PK</div>
+      <div class="metric-value" id="m-pk">—</div>
+      <div class="metric-sub" id="m-pk-sub">Replen staging</div>
+    </div>
+    <div class="metric t-ghost" onclick="setTab('splits','ghost')">
+      <div class="metric-label">Ghost suspects</div>
+      <div class="metric-value" id="m-ghost">—</div>
+      <div class="metric-sub" id="m-ghost-sub">Item Prep splits</div>
+    </div>
+    <div class="metric t-match" onclick="setTab('found','lost_match')">
+      <div class="metric-label">Lost matches</div>
+      <div class="metric-value" id="m-match">—</div>
+      <div class="metric-sub" id="m-match-sub">Found freight</div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn" id="tb-staging" onclick="setTab('staging')">Staging<span class="tab-count" id="tc-staging"></span></button>
+    <button class="tab-btn" id="tb-splits"  onclick="setTab('splits')">Item Prep Splits<span class="tab-count" id="tc-splits"></span></button>
+    <button class="tab-btn" id="tb-found"   onclick="setTab('found')">Found Freight<span class="tab-count" id="tc-found"></span></button>
+  </div>
+
+  <div class="filter-bar">
+    <div id="pills"></div>
+    <input class="search" id="search" placeholder="Search container or SKU" oninput="render()">
+  </div>
+  <div class="tab-note" id="tabNote"></div>
+
+  <div class="card"><div class="scroll"><table>
+    <thead id="thead"></thead>
+    <tbody id="tbody"><tr><td class="empty">Loading...</td></tr></tbody>
+  </table></div></div>
+
+  <div class="disclaimer">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.<br>Tags point to containers worth a look — they are leads for research, not conclusions.</div>
+</div>
+
+<script>
+// ── theme ──────────────────────────────────────────────────────────────────────
+const THEME_KEY = 'container_watch_theme_v1';
+const THEME_NAMES = { light:'Light', dark:'Dark', solid:'Solid', pastel:'Pastel', starr:'Starr', scout:'Scout' };
+
+function applyTheme(t) {
+  const entering = document.body.classList.contains('is-entering');
+  const exiting  = document.body.classList.contains('is-exiting');
+  document.documentElement.setAttribute('data-theme', t === 'light' ? '' : t);
+  document.body.className = '';
+  if (entering) document.body.classList.add('is-entering');
+  if (exiting)  document.body.classList.add('is-exiting');
+  document.getElementById('themeLabel').textContent = THEME_NAMES[t] || 'Theme';
+  document.querySelectorAll('.theme-option').forEach(el => {
+    el.classList.toggle('active', el.textContent.toLowerCase() === t);
+  });
+}
+function setTheme(t) { localStorage.setItem(THEME_KEY, t); applyTheme(t); closeThemeMenu(); }
+function toggleThemeMenu() { document.getElementById('themePicker').classList.toggle('open'); }
+function closeThemeMenu()  { document.getElementById('themePicker').classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (!document.getElementById('themePicker').contains(e.target)) closeThemeMenu();
+});
+applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+
+// ── helpers ────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+const PT = { timeZone: 'America/Los_Angeles' };
+function fmtWhen(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { ...PT, month: 'numeric', day: 'numeric' }) + ' ' +
+         d.toLocaleTimeString('en-US', { ...PT, hour: 'numeric', minute: '2-digit' });
+}
+function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString('en-US', { ...PT, month: 'numeric', day: 'numeric' }) : '—'; }
+function ageHrs(iso) { return iso ? (Date.now() - new Date(iso).getTime()) / 36e5 : null; }
+function fmtAge(h) {
+  if (h == null) return '—';
+  if (h < 1)  return '<1h';
+  if (h < 24) return `${Math.floor(h)}h`;
+  return `${Math.floor(h / 24)}d`;
+}
+function ageCls(h) { return h >= 168 ? 'age-red' : h >= 24 ? 'age-amber' : ''; }
+
+// ── tags ───────────────────────────────────────────────────────────────────────
+const TAG_LABELS = {
+  stuck: 'Stuck 24h+', stuck_week: 'Stuck 7d+', replen_dropped: 'Replen dropped',
+  ghost: 'Ghost', never_located: 'Never located',
+  found: 'Found freight', lost_match: 'Lost match', research: 'Research',
+};
+const tagHtml = tags => (tags || []).map(t => `<span class="tag tag-${t}">${esc(TAG_LABELS[t] || t)}</span>`).join('');
+
+// Plain-language reason for each tag on this container
+function whyLines(c) {
+  const out = [];
+  for (const t of c.tags) {
+    if (t === 'stuck' || t === 'stuck_week')
+      out.push(`<b>${TAG_LABELS[t]}:</b> no scan since ${fmtWhen(c.last_scan)} (${fmtAge(ageHrs(c.last_scan))}). Check ${esc(c.loc)} for it.`);
+    if (t === 'replen_dropped')
+      out.push(`<b>Replen dropped:</b> a replen fill came up short or the container was deallocated here — it may never have reached its pick slot.`);
+    if (t === 'ghost') {
+      const p = c.parent || {};
+      out.push(`<b>Ghost:</b> vendor carton <b>${esc(c.parent_lpn)}</b> received <b>${p.recv_qty ?? '?'}</b> of this item but <b>${p.split_qty}</b> were split out across ${p.splits} containers. This one was never scanned after the split — it likely never had units. Check that the other split moved normally before clearing.`);
+    }
+    if (t === 'never_located')
+      out.push(`<b>Never located:</b> split off vendor carton <b>${esc(c.parent_lpn)}</b> on ${fmtDate(c.created)} and never scanned again. The units are probably real — check the Item Prep stations and P1-FC.`);
+    if (t === 'found')
+      out.push(`<b>Found freight:</b> made by hand on ${fmtDate(c.created)} with no PO or vendor carton — product that turned up without a label.`);
+    if (t === 'lost_match' && c.match)
+      out.push(`<b>Lost match:</b> same item and units as <b>${esc(c.match.lpn)}</b> (${c.match.units} units, ${c.match.status === '10000' ? 'status Lost' : 'in Z1'}), last seen ${fmtWhen(c.match.last_seen)}${c.match.prev_loc ? ' at ' + esc(c.match.prev_loc) : ''} — this one was made ${c.match.gap_days} days later${c.match.gap_days > 60 ? ' (long gap, weaker lead)' : ''}. Look under the label for the old carton or LPN markings.`);
+    if (t === 'research')
+      out.push(`<b>Research:</b> placeholder item — contents not identified yet.`);
+  }
+  return out;
+}
+
+// One timeline step in plain words
+function stepText(s) {
+  const q = s.qty != null ? s.qty : '';
+  switch (s.tx) {
+    case 'LPN Level Receive': case 'Small Parcel LPN Level Receive': case 'NRDR MHE LPN Level Receive': case 'Item Level Receive':
+      return `Received ${q}${s.to ? ' at ' + s.to : ''}`;
+    case 'Split iLPN':        return `Split ${q} into ${s.new_lpn || 'new container'}`;
+    case 'Audit iLPN':        return s.ui === 'applyConditionCode' ? `Audit hold applied${s.code ? ' (' + s.code + ')' : ''}`
+                                   : `Audit counted ${q}${s.adj ? ` <b>(+${s.adj} added back)</b>` : ''}`;
+    case 'Modify LPN':        return `Count changed by hand${s.adj ? ` <b>(+${s.adj})</b>` : ''}`;
+    case 'Create iLPN':       return `Created by hand — ${q} units`;
+    case 'Locate iLPN':       return `Moved to ${s.to || '?'}`;
+    case 'User Directed Putaway': case 'System Directed Putaway':
+      return `Put away ${s.from ? s.from + ' → ' : ''}${s.to || '?'}`;
+    case 'iLPN Replen Pull':  return `Replen pull from ${s.from || '?'}`;
+    case 'iLPN Replen Fill':  return `Replen fill to ${s.to || '?'} (${s.done ?? '?'} of ${q})`;
+    case 'UI_Deallocate_Ilpn': return 'Deallocated';
+    case 'IlpnConditionCodeApplication': return `Hold applied: ${s.code || ''}`;
+    case 'IlpnConditionCodeRemoval':     return `Hold removed: ${s.code || ''}`;
+    case 'Quarterly Count': case 'NRDR CORE PICK EXCEPTION COUNT':
+      return s.status === 'Lost' ? '<b>Count: not found → Lost</b>' : `Counted ${q}${s.from ? ' at ' + s.from : ''}`;
+    case 'Palletize iLPN':    return `Put on pallet ${s.pallet || ''}`;
+    default: return esc(s.tx || s.status || 'Update') + (q !== '' ? ` (${q})` : '');
+  }
+}
+function stepClass(s) {
+  if ((s.tx === 'Audit iLPN' && s.adj > 0 && s.ui !== 'applyConditionCode') || s.tx === 'Modify LPN') return 'hl';
+  if (s.status === 'Lost' || s.to === 'Z1-Z-0499Z01' || s.code === 'LW' || (s.tx === 'iLPN Replen Fill' && s.done === 0)) return 'bad';
+  return '';
+}
+function timeline(title, steps) {
+  const body = steps && steps.length
+    ? `<div class="tl">${steps.map(s => `<div class="tl-step ${stepClass(s)}"><span class="tl-time">${fmtWhen(s.t)}</span>${stepText(s)}${s.who ? `<span class="tl-who">· ${esc(s.who)}</span>` : ''}</div>`).join('')}</div>`
+    : `<div class="tl-empty">No scans on record.</div>`;
+  return `<div><div class="tl-title">${esc(title)}</div>${body}</div>`;
+}
+function detailHtml(c, cols) {
+  const why = whyLines(c).map(l => `<div>${l}</div>`).join('');
+  let tls;
+  if (c.match) tls = `<div class="tl-grid two">${timeline('Lost container ' + c.match.lpn, c.match.steps)}${timeline('Found container ' + c.lpn, c.steps)}</div>`;
+  else if (activeTab === 'splits') tls = `<div class="tl-grid">${timeline('Vendor carton ' + (c.parent_lpn || '') + ' — this item', c.steps)}</div>`;
+  else tls = `<div class="tl-grid">${timeline('Scan history', c.steps)}</div>`;
+  return `<tr class="detail"><td colspan="${cols}"><div class="why">${why}</div>${tls}</td></tr>`;
+}
+
+// ── tabs ───────────────────────────────────────────────────────────────────────
+const TAB_KEY = 'container_watch_tab_v1';
+const TABS = {
+  staging: {
+    note: d => `Containers sitting at the Item Prep conveyor drop (P1-FC) or replen staging (P1-PK). Age = time since the last scan. Anything past 24 hours should be worked or escalated.`,
+    pills: ['P1-FC', 'P1-PK', 'stuck', 'stuck_week', 'replen_dropped', 'found', 'lost_match'],
+    head: ['Container', 'SKU', 'Units', 'Where', 'Last scan', 'Age', 'Tags'],
+    row: c => [`<span class="lpn">${esc(c.lpn)}</span>`, esc(c.sku || '—'), c.units, esc(c.loc), fmtWhen(c.last_scan),
+               `<span class="${ageCls(ageHrs(c.last_scan))}">${fmtAge(ageHrs(c.last_scan))}</span>`, tagHtml(c.tags)],
+    right: [2],
+  },
+  splits: {
+    note: d => `Containers split off a vendor carton at Item Prep and never scanned again (last ${d.windows.split_days} days). Ghost = more units split out than the carton received for that item, so this split likely never had units. Never located = real units that may still be at a station.`,
+    pills: ['ghost', 'never_located'],
+    head: ['Container', 'SKU', 'Units', 'Vendor carton', 'Split / received', 'Made', 'Tags'],
+    row: c => [`<span class="lpn">${esc(c.lpn)}</span>`, esc(c.sku || '—'), c.units, `<span class="muted">${esc(c.parent_lpn || '—')}</span>`,
+               c.parent ? `${c.parent.split_qty} / ${c.parent.recv_qty ?? '?'}` : '—', `${fmtDate(c.created)} <span class="hint">(${fmtAge(ageHrs(c.created))})</span>`, tagHtml(c.tags)],
+    right: [2],
+  },
+  found: {
+    note: d => `Containers made by hand with no PO (product found without a label). Lost match = same item and units as a container in Z1 or marked Lost that was last seen before this one was made (last ${d.windows.found_days} days). Closest gap first. Unmatched found freight shows for the last ${d.windows.recent_found_days} days.`,
+    pills: ['lost_match', 'found', 'research'],
+    head: ['Container', 'SKU', 'Units', 'Where', 'Made', 'Possible match', 'Tags'],
+    row: c => [`<span class="lpn">${esc(c.lpn)}</span>`, esc(c.sku || '—'), c.units, esc(c.loc || '—'), fmtDate(c.created),
+               c.match ? `<span class="lpn">${esc(c.match.lpn)}</span> <span class="hint">· ${c.match.gap_days}d gap</span>` : '<span class="hint">—</span>', tagHtml(c.tags)],
+    right: [2],
+  },
+};
+
+let data = null;
+let activeTab = 'staging';
+let activePill = 'all';
+const expanded = new Set();
+
+function setTab(tab, pill) {
+  activeTab = tab;
+  activePill = pill || 'all';
+  localStorage.setItem(TAB_KEY, tab);
+  Object.keys(TABS).forEach(t => document.getElementById(`tb-${t}`).classList.toggle('active', t === tab));
+  render();
+}
+function setPill(p) { activePill = p; render(); }
+
+function matchesPill(c, p) {
+  if (p === 'all') return true;
+  if (p === 'P1-FC' || p === 'P1-PK') return c.area === p;
+  return c.tags.includes(p);
+}
+
+function render() {
+  const cfg = TABS[activeTab];
+  if (!data) return;
+  const list = data[activeTab] || [];
+  const term = document.getElementById('search').value.trim().toUpperCase();
+
+  const counts = { all: list.length };
+  cfg.pills.forEach(p => { counts[p] = list.filter(c => matchesPill(c, p)).length; });
+  document.getElementById('pills').innerHTML = ['all', ...cfg.pills].filter(p => p === 'all' || counts[p] || p === activePill)
+    .map(p => `<button class="pill ${p === activePill ? 'active' : ''}" data-pill="${esc(p)}">${esc(p === 'all' ? 'All' : (TAG_LABELS[p] || p))} · ${counts[p] || 0}</button>`).join(' ');
+  document.getElementById('tabNote').textContent = cfg.note(data);
+
+  const rows = list.filter(c => matchesPill(c, activePill))
+    .filter(c => !term || String(c.lpn).toUpperCase().includes(term) || String(c.sku || '').toUpperCase().includes(term)
+                 || String(c.match?.lpn || '').toUpperCase().includes(term));
+
+  const cols = cfg.head.length;
+  document.getElementById('thead').innerHTML = `<tr>${cfg.head.map((h, i) => `<th class="${cfg.right.includes(i) ? 'r' : ''}">${h}</th>`).join('')}</tr>`;
+  document.getElementById('tbody').innerHTML = rows.length
+    ? rows.map(c => {
+        const open = expanded.has(c.lpn);
+        const tds = cfg.row(c).map((v, i) => `<td class="${cfg.right.includes(i) ? 'r' : ''}">${v}</td>`).join('');
+        return `<tr class="row ${open ? 'open' : ''}" data-key="${esc(c.lpn)}">${tds}</tr>` + (open ? detailHtml(c, cols) : '');
+      }).join('')
+    : `<tr><td colspan="${cols}" class="empty">Nothing here right now.</td></tr>`;
+}
+
+document.getElementById('pills').addEventListener('click', e => {
+  const b = e.target.closest('[data-pill]');
+  if (b) setPill(b.dataset.pill);
+});
+document.getElementById('tbody').addEventListener('click', e => {
+  const tr = e.target.closest('tr.row');
+  if (!tr) return;
+  const k = tr.dataset.key;
+  expanded.has(k) ? expanded.delete(k) : expanded.add(k);
+  render();
+});
+
+// ── data fetch ─────────────────────────────────────────────────────────────────
+function getLiveBase() {
+  const local = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  return local ? 'http://localhost:3001' : 'https://dkarim02.github.io/DC499-reports';
+}
+
+async function loadData() {
+  try {
+    const res = await fetch(`${getLiveBase()}/container_watch_live.json?_=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = await res.json();
+    const pdt = new Date(data.generated).toLocaleTimeString('en-US', { ...PT, hour12: true, hour: 'numeric', minute: '2-digit' });
+    document.getElementById('runTime').textContent = `Updated ${pdt} PT`;
+
+    const s = data.summary;
+    document.getElementById('m-fc').textContent = s.fc;
+    document.getElementById('m-fc-sub').innerHTML = s.fc_stuck ? `<b>${s.fc_stuck}</b> stuck 24h+` : 'none stuck';
+    document.getElementById('m-pk').textContent = s.pk;
+    document.getElementById('m-pk-sub').innerHTML = s.pk_stuck ? `<b>${s.pk_stuck}</b> stuck 24h+` : 'none stuck';
+    document.getElementById('m-ghost').textContent = s.ghosts;
+    document.getElementById('m-ghost-sub').textContent = `${s.ghost_units} units · ${s.never_located} never located`;
+    document.getElementById('m-match').textContent = s.lost_matches;
+    document.getElementById('m-match-sub').textContent = `of ${s.lost_pool.toLocaleString()} lost / Z1`;
+    document.getElementById('tc-staging').textContent = data.staging.length;
+    document.getElementById('tc-splits').textContent  = data.splits.length;
+    document.getElementById('tc-found').textContent   = data.found.length;
+    render();
+  } catch (e) {
+    document.getElementById('tbody').innerHTML = `<tr><td class="empty">Could not load data — ${esc(e.message)}</td></tr>`;
+    document.getElementById('runTime').textContent = 'Data unavailable';
+  }
+}
+
+setTab(['staging', 'splits', 'found'].includes(localStorage.getItem(TAB_KEY)) ? localStorage.getItem(TAB_KEY) : 'staging');
+loadData();
+setInterval(loadData, 5 * 60 * 1000);
+</script>
+</body>
+</html>

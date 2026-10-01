@@ -10,7 +10,7 @@ This file is read automatically at the start of every Claude Code session. Do no
 **Entry point: always `dc499.bat` — never `node` directly.**
 
 - Main server: option 2 (`:3001`, auto-refresh every 2 min)
-- Sub-agents: options 5–22 (each dept has one-shot / auto-refresh / auth)
+- Sub-agents: options 5–25 (each dept has one-shot / auto-refresh / auth)
 - Git: dc499_refresh.js pushes for everyone — sub-agents only write JSON files locally
 
 **GitHub:** dkarim02/DC499-reports | **Live:** dkarim02.github.io/DC499-reports | **Local:** C:\Users\JLEO\OneDrive - Nordstrom\DC499 Reporter
@@ -32,6 +32,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | scout_expedite_agent.js | expedite_live.json | Backlog_live.html (Expedite tab) |
 | scout_itemprep_agent.js | itemprep_live.json | ItemPrep_live.html |
 | scout_retail_agent.js | retail_backlog_live.json | Retail_backlog.html |
+| scout_watch_agent.js | container_watch_live.json | Container_watch.html |
 | eos_agent.js | eos_sos_snapshot.json, eos_report.json | EOS_live.html |
 
 ---
@@ -50,6 +51,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | 14–16 | Item Prep Live (one-shot / auto / auth) | scout_itemprep_agent.js |
 | 17–19 | Expedite Live (one-shot / auto / auth) | scout_expedite_agent.js |
 | 20–22 | Retail Backlog (one-shot / auto every 5 min / auth) | scout_retail_agent.js |
+| 23–25 | Container Watch (one-shot / auto every 15 min / auth) | scout_watch_agent.js |
 
 **EOS:** separate launcher — `eos.bat` (options: 1=SOS snapshot, 2=EOS+finalize, 3=Reconstruct SOS, 4=Auth)
 
@@ -96,7 +98,7 @@ Backup path if GitHub is lost: share the folder through OneDrive and open pages 
 dc499_refresh.js is the single coordinator — sub-agents never push.
 
 ```
-git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json ecom_history.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json retail_backlog_live.json
+git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json ecom_history.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json retail_backlog_live.json container_watch_live.json
 git commit -m "Live update -- {stamp} [+ecom, +shipping, +reserve]"
 git fetch origin main
 git rebase --autostash origin/main
@@ -107,7 +109,7 @@ git push origin main
 
 **index.lock cleanup:** `gitPush()` calls `fs.unlinkSync('.git/index.lock')` before every `git add` — silently clears stale locks left by killed/crashed cycles.
 
-**Commit message `[+label]` tags:** LABELS map in gitPush() — `ecom_live.json`→`ecom`, `shipping_live.json`→`shipping`, `reserve_live.json`→`reserve`, `putaway_live.json`→`putaway`, `expedite_live.json`→`expedite`, `retail_backlog_live.json`→`retail`. Any sub-agent file that changed gets its tag appended.
+**Commit message `[+label]` tags:** LABELS map in gitPush() — `ecom_live.json`→`ecom`, `shipping_live.json`→`shipping`, `reserve_live.json`→`reserve`, `putaway_live.json`→`putaway`, `expedite_live.json`→`expedite`, `retail_backlog_live.json`→`retail`, `container_watch_live.json`→`watch`. Any sub-agent file that changed gets its tag appended.
 
 ---
 
@@ -220,7 +222,7 @@ All agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent.js`,
 - Fast path: if token is fresh, return immediately — no network call
 - Lock path: claim `.mcp_token.lock` (exclusive `wx` write), re-check freshness after acquiring, refresh once, release in `finally`
 
-**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122, scout_retail=3123
+**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122, scout_retail=3123, scout_watch=3124
 
 ---
 
@@ -365,6 +367,21 @@ Store replen order progress by wave. Output: retail_backlog_live.json. REDIRECT_
 Older numbered zones (7–12 with F1H/P1H/F2H/P2H suffixes) have few or no locations left.
 
 **HTML:** Units view is the default (Orders toggle available). Wave table = one bubble pill per status + totals footer. Clicking the Allocated bubble (either view) or the Allocated tile opens the order list panel (search by order # or store); open state + search survive wave switches and auto-refresh. Store table rows carry colored dots that match pie slices (`groupStores()` assigns colors) — pie has no legend. Pie uses `responsive:false` + in-place `update('none')` so it never resizes between waves.
+
+---
+
+## Container Watch (scout_watch_agent.js → Container_watch.html)
+
+CUP-report prevention tool (built 2026-09-30). Menu: Item Prep card → "Container Watch" chip. Output container_watch_live.json (~370 KB, ~45 KB gzipped), refresh 15 min, a full cycle takes ~1 min (~30 queries). `--once` = one-shot via getAccessTokenSilent (safe to run from Claude Code while serve agents run).
+
+**Tabs:**
+- **Staging** — DCI_ILPN STATUS 3000/5000 at `P1-FC%` (Item Prep conveyor drop) or `P1-PK%` (replen staging). Age = since last scan. Tags: stuck (24h+), stuck_week (7d+), replen_dropped (P1-PK + deallocated or fill completed 0). 44% of Ecom lost containers on the Wk34 CUP were last seen at one of these two spots.
+- **Item Prep Splits** — STATUS 3000, no location, SOURCE_LPN_ID set, last 180 days, **zero scans**. Ghost = parent vendor carton split_qty > received qty for that SKU (same units split twice after an audit/Modify LPN re-adds them; the first LPN is never deleted). Else never_located (real units, probably at a station). Detail = parent carton steps for that SKU.
+- **Found Freight** — ASN/PO/SOURCE all null, made by a person (checked in Node — LIKE on CREATED_BY is blocked), last 60 days, not in Z1. Lost match = same SKU (leading zeros stripped) + same units as a Z1 / status-10000 container whose **last good sighting** (ignores Z1 moves, LW codes, Lost counts) is before the found one was made; the found side must have no Receive scan. Sorted by gap days (>60 = weaker lead). "Research" placeholder items never match.
+
+**Names:** shown only in the row detail timeline ("First L."), never in the table — Dean's call, so it reads as research, not blame.
+
+**Limits:** consumed found-containers lose ITEM_ID in DCI_ILPN (can't match); "Recover from LOST" adjustments into active slots aren't searched (TSK_ACTIVITY_TRACKING by ITEM_ID over weeks times out).
 
 ---
 
