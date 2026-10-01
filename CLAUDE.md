@@ -80,6 +80,17 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 
 ---
 
+## OneDrive / file:// mode (added 2026-09-28)
+
+Backup path if GitHub is lost: share the folder through OneDrive and open pages straight from disk.
+- Browsers block `fetch()` of local JSON on file://. Every agent `require('./scout_file_mirror')`, which wraps `fs.writeFileSync` so every data JSON in the folder also writes `filedata/<name>.js` (compact, `window.SCOUT_FILE_DATA[...]`).
+- Every data page loads `<script src="scout_file_mode.js">` first. On file:// it catches GET fetches for `*.json` (relative, localhost:3001, or the github.io URL) and serves them from `filedata/`. It does nothing on Pages or localhost. Webhook POSTs pass through.
+- **New agent → add the require. New page that fetches JSON → add the script tag at the top of `<head>`.** Keep page links relative (no `/DC499-reports/` paths).
+- `filedata/` is gitignored (OneDrive-only). `git fetch`/`push` have a 60s timeout so a GitHub outage can't hang the cycle.
+- localStorage (rosters, headcount, PPH, NTP) is per site: settings on github.io don't carry over to file://. Each user sets them up once in file mode.
+
+---
+
 ## Git push pattern
 
 dc499_refresh.js is the single coordinator — sub-agents never push.
@@ -255,6 +266,8 @@ Output: reserve_live.json + putaway_live.json. Pre-aggregated `GROUP BY CREATED_
 **Metrics:** pick_f1, pick_f2, replen (iLPN Replen Fill/Large), putaway (System/User Directed Putaway). Zone H filter on replen + putaway.
 
 **Shift detection (agent):** `is1st = h >= 10 && h < 22` (UTC). 1st shift start: 10:00 UTC. 2nd shift start: 21:10 UTC (previous day if h < 10).
+
+**Hourly view (v2.0, 2026-09-29):** Each group query is `GROUP BY CREATED_BY, pdt_hr` (PDT hour via `PDT_OFFSET` constant). Shift totals are rolled up from the hourly rows, so `associates[emp].hourly["15"] = {pick_f1,…,bulk_lpn}` always adds up to the total. Replen containers use a separate shift-level query (distinct counts can't be summed across hours). The page reads `hourly` directly. The old localStorage snapshots (`rs_sc_v1_*`) are removed and get cleared on load. Hour columns add any off-range hour with scans (2nd shift often scans into 10 PM). v2.1 adds type pills (`RS_HOURLY_TYPES`: All / Picking F1+F2 / Replenishment / Putaway / Full LPN Pick). Keys match the Live card keys, so `isTMEnabledForCard` disables carry over. The choice is saved in `rs_hourly_type_v1`.
 
 **Shift sync (HTML):** `loadLiveData()` auto-syncs app shift to `d.shift` from JSON before calling `renderLiveReport`. Never call `setShift()` from inside `renderLiveReport` — flips storage keys mid-render and crashes headcount reads.
 
@@ -565,7 +578,7 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 
 **Urgent / active:**
 - [ ] **Backlog date bucketing** — waiting on leader sign-off. Fix: join subquery for `MIN(CREATED_TIMESTAMP)` across ALL lines (incl. cancelled) per order as bucket date, filter `CANCELLED=0` for status counts. Verified vs Cognos 2026-08-17.
-- [ ] **DST fix** — ~Oct 25, 2026: change `-07:00` PDT → `-08:00` PST in scout_ecom_agent.js, scout_reserve_agent.js, scout_retail_agent.js (shift boundaries + timestamps + `pdtDateToUtcWindow` 07:00 → 08:00). See DST fix memory.
+- [ ] **DST fix** — ~Oct 25, 2026: change `-07:00` PDT → `-08:00` PST in scout_ecom_agent.js, scout_reserve_agent.js, scout_retail_agent.js (shift boundaries + timestamps + `pdtDateToUtcWindow` 07:00 → 08:00; Reserve hourly bucketing = `PDT_OFFSET` in scout_reserve_agent.js). See DST fix memory.
 - [ ] **Verify Zones tab live (from 2026-09-24):** restart the Retail agent (option 21) so it runs the v1.1 code. Confirm a `Zones — picks: … · replen: …` line appears in the console and the tab fills in. So far it's been tested with real query results plus a page screenshot, not a full agent run.
 - [ ] **NEXT SESSION — Zones tab v2:** (1) rename zones to what the team calls them (ask Dean for names first), (2) tap a zone to expand its running list of open tasks (task ID, status, units, age, source), (3) show Tasks + Units instead of Lines + Units, (4) ~~group downstairs/upstairs~~ DONE 2026-09-24 (P/F split rejected — keep zones whole). Mock up first. See Zones Tab v2 memory.
 - [ ] **Retail Backlog next:** order lists for other status pills, replen tasks blocking picks, zone task visibility (Zones tab shipped v1.1 — TM-per-zone headcount still open), TM throughput, mixed-SKU case locations, open waves → release date/pending qty, failed orders by reason. See Retail Report Backlog memory.
