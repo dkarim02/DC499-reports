@@ -542,6 +542,16 @@ Safe at 15 IDs; try 25–30 if count is high. Used in: `fetchTaskData()` for TSK
 
 ---
 
+## Change log (Changelog.html — printed for Dean's binder)
+
+After every **finalized major change** (new report/tab/column, a fix to a number, a version bump), add a line to `Changelog.html` in the same commit. Skip small tweaks (spacing, colors, label wording, chart cosmetics), CLAUDE.md edits, and live data pushes.
+- Newest day on top: `<div class="day" data-date="YYYY-MM-DD">` + `<h2>Weekday, Mon D, YYYY</h2>`. Check the weekday with node — don't guess.
+- One line per change: `<span class="rpt">Report vX.Y:</span>` + one short plain-supervisor sentence. No technical details.
+- Roll several same-day edits to one report into a single line.
+- "Print from" date box hides older days, so Dean prints only the new pages.
+
+---
+
 ## Disclaimer (required on all dept apps)
 
 ```

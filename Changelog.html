@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCOUT Change Log -- DC499</title>
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:'Segoe UI',Arial,sans-serif;color:#111;background:#fff;margin:0;padding:32px;font-size:14px;line-height:1.45;}
+  .page{max-width:760px;margin:0 auto;}
+  h1{font-size:22px;margin:0 0 2px;}
+  .sub{font-size:12px;color:#555;margin-bottom:18px;}
+  .toolbar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f3f4f6;border:1px solid #ddd;border-radius:6px;margin-bottom:22px;font-size:13px;}
+  .toolbar input{font:inherit;padding:3px 6px;}
+  .toolbar button{font:inherit;padding:4px 14px;cursor:pointer;}
+  .day{border-top:2px solid #111;padding-top:6px;margin-bottom:16px;break-inside:avoid;page-break-inside:avoid;}
+  .day h2{font-size:15px;margin:0 0 6px;}
+  .day ul{margin:0;padding-left:20px;}
+  .day li{margin-bottom:4px;}
+  .rpt{font-weight:600;}
+  .hidden{display:none;}
+  .foot{font-size:11px;color:#666;text-align:center;margin-top:28px;}
+  @media print{
+    body{padding:0;font-size:12px;}
+    .toolbar{display:none;}
+    @page{size:letter;margin:0.6in;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>SCOUT Reporter Suite — Change Log</h1>
+  <div class="sub">Nordstrom DC499 · Finalized major changes only, newest first</div>
+
+  <div class="toolbar">
+    <label>Print from <input type="date" id="from"></label>
+    <button onclick="window.print()">Print</button>
+    <span id="count" style="color:#555;"></span>
+  </div>
+
+  <!-- Add new days at the top. One line per change, plain language. -->
+
+  <div class="day" data-date="2026-09-30">
+    <h2>Wednesday, Sept 30, 2026</h2>
+    <ul>
+      <li><span class="rpt">Ecom Backlog:</span> Batches tab now shows how many order lines are in each batch.</li>
+      <li><span class="rpt">All live reports:</span> Data refresh no longer backs up, so numbers stay current during busy periods.</li>
+    </ul>
+  </div>
+
+  <div class="day" data-date="2026-09-29">
+    <h2>Tuesday, Sept 29, 2026</h2>
+    <ul>
+      <li><span class="rpt">Reserve v2.1:</span> Hourly view rebuilt from live data and broken out by task type.</li>
+    </ul>
+  </div>
+
+  <div class="day" data-date="2026-09-28">
+    <h2>Monday, Sept 28, 2026</h2>
+    <ul>
+      <li><span class="rpt">All reports:</span> Reports now work when opened straight from the OneDrive folder.</li>
+    </ul>
+  </div>
+
+  <div class="day" data-date="2026-09-24">
+    <h2>Thursday, Sept 24, 2026</h2>
+    <ul>
+      <li><span class="rpt">Retail Backlog v1.1:</span> New Zones tab with open and completed picks and replen by zone, downstairs and upstairs side by side.</li>
+      <li><span class="rpt">Retail Backlog:</span> Tap Allocated to see the list of orders still left to pick.</li>
+    </ul>
+  </div>
+
+  <div class="day" data-date="2026-09-23">
+    <h2>Wednesday, Sept 23, 2026</h2>
+    <ul>
+      <li><span class="rpt">Retail Backlog v1.0:</span> New report showing store replen order progress by wave, units by status, and store breakdown. Added to the menu under Reserve Stock.</li>
+      <li><span class="rpt">Ecom:</span> Fixed packing count running high.</li>
+      <li><span class="rpt">Reserve:</span> Fixed 2nd shift start time.</li>
+    </ul>
+  </div>
+
+  <div class="day" data-date="2026-09-22">
+    <h2>Tuesday, Sept 22, 2026</h2>
+    <ul>
+      <li><span class="rpt">Ecom Backlog:</span> Tasks tab adds a pie chart view by zone. New Hospital Putwall tab. Bridge shows the current hour live with no skipped hours.</li>
+      <li><span class="rpt">Ecom Archive:</span> 2nd shift is now saved after 9:10 PM so the full shift is captured.</li>
+    </ul>
+  </div>
+
+  <div class="day" data-date="2026-09-21">
+    <h2>Monday, Sept 21, 2026</h2>
+    <ul>
+      <li><span class="rpt">CustomerCare v1.0:</span> New CC Pick List tool. Upload a pick list to get totals by SKU, with customer info removed.</li>
+      <li><span class="rpt">Reserve v1.9:</span> New Full LPN Pick card.</li>
+      <li><span class="rpt">Ecom Backlog:</span> Tasks tab groups tasks by zone with counts and share of total.</li>
+      <li><span class="rpt">Ecom Archive:</span> Past-shift numbers now match what the live tab showed.</li>
+    </ul>
+  </div>
+
+  <div class="day" data-date="2026-09-18">
+    <h2>Friday, Sept 18, 2026</h2>
+    <ul>
+      <li><span class="rpt">Ecom v3.0:</span> New Archive tab to look up past shifts by date, plus Export to CSV.</li>
+      <li><span class="rpt">Menu v2.0:</span> New menu layout with a tools menu. New Scout theme on all reports.</li>
+    </ul>
+  </div>
+
+  <div class="day" data-date="2026-09-17">
+    <h2>Thursday, Sept 17, 2026</h2>
+    <ul>
+      <li><span class="rpt">Putaway WIP v1.1:</span> Upload the Cognos WIP report to filter the list. Containers under 5 days old are hidden. Ecom and Retail split.</li>
+      <li><span class="rpt">Ecom Backlog:</span> Expedite tab adds carrier, pallet ID, and true Ship By time.</li>
+      <li><span class="rpt">Ecom Backlog:</span> Top Items list added to the sidebar.</li>
+    </ul>
+  </div>
+
+  <div class="foot">SCOUT · Shift Centralized Output Utilization Tracker · DC499</div>
+</div>
+<script>
+  var fromEl = document.getElementById('from');
+  var days = document.querySelectorAll('.day');
+  function applyFrom() {
+    var f = fromEl.value, shown = 0;
+    days.forEach(function(d) {
+      var hide = f && d.dataset.date < f;
+      d.classList.toggle('hidden', hide);
+      if (!hide) shown++;
+    });
+    document.getElementById('count').textContent = shown + ' of ' + days.length + ' days';
+    try { localStorage.setItem('scout_changelog_from_v1', f); } catch(e) {}
+  }
+  try { fromEl.value = localStorage.getItem('scout_changelog_from_v1') || ''; } catch(e) {}
+  fromEl.addEventListener('change', applyFrom);
+  applyFrom();
+</script>
+</body>
+</html>
