@@ -549,6 +549,7 @@ After every **finalized major change** (new report/tab/column, a fix to a number
 - One line per change: `<span class="rpt">Report vX.Y:</span>` + one short plain-supervisor sentence. No technical details.
 - Roll several same-day edits to one report into a single line.
 - "Print from" date box hides older days, so Dean prints only the new pages.
+- Each day prints on its own page (print CSS page break per `.day`).
 
 ---
 

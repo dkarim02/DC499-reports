@@ -23,6 +23,7 @@
   @media print{
     body{padding:0;font-size:12px;}
     .toolbar{display:none;}
+    .day:not(.hidden) ~ .day:not(.hidden){break-before:page;page-break-before:always;}
     @page{size:letter;margin:0.6in;}
   }
 </style>
