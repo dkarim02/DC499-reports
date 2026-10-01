@@ -13,8 +13,14 @@
   .toolbar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f3f4f6;border:1px solid #ddd;border-radius:6px;margin-bottom:22px;font-size:13px;}
   .toolbar input{font:inherit;padding:3px 6px;}
   .toolbar button{font:inherit;padding:4px 14px;cursor:pointer;}
-  .day{border-top:2px solid #111;padding-top:6px;margin-bottom:16px;break-inside:avoid;page-break-inside:avoid;}
-  .day h2{font-size:15px;margin:0 0 6px;}
+  .week{margin-bottom:26px;}
+  .wk-doc{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.6px;}
+  .wk-head{border-bottom:3px solid #111;padding-bottom:4px;margin:2px 0 10px;display:flex;align-items:baseline;gap:12px;}
+  .wk-head h2{font-size:18px;margin:0;}
+  .wk-range{font-size:13px;color:#444;}
+  .day{border-top:1px solid #bbb;padding-top:5px;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid;}
+  .day h2{font-size:14px;margin:0 0 4px;}
+  .wk-head + .day{border-top:none;padding-top:0;}
   .day ul{margin:0;padding-left:20px;}
   .day li{margin-bottom:4px;}
   .rpt{font-weight:600;}
@@ -23,7 +29,7 @@
   @media print{
     body{padding:0;font-size:12px;}
     .toolbar{display:none;}
-    .day.pg-break{break-before:page;page-break-before:always;}
+    .week:not(.hidden) ~ .week:not(.hidden){break-before:page;page-break-before:always;}
     @page{size:letter;margin:0.6in;}
   }
 </style>
@@ -34,13 +40,12 @@
   <div class="sub">Nordstrom DC499 · Finalized major changes only, newest first</div>
 
   <div class="toolbar">
-    <label>Print from <input type="date" id="from"></label>
-    <label>Days per page <input type="number" id="per-page" min="1" max="20" value="5" style="width:52px;"></label>
+    <label>Print from <select id="from"><option value="">All weeks</option></select></label>
     <button onclick="window.print()">Print</button>
     <span id="count" style="color:#555;"></span>
   </div>
 
-  <!-- Add new days at the top. One line per change, plain language. -->
+  <!-- Add new days at the top. One line per change, plain language. Days are grouped into fiscal weeks automatically. -->
 
   <div class="day" data-date="2026-09-30">
     <h2>Wednesday, Sept 30, 2026</h2>
@@ -119,32 +124,63 @@
   <div class="foot">SCOUT · Shift Centralized Output Utilization Tracker · DC499</div>
 </div>
 <script>
+  // Nordstrom fiscal year starts the Sunday after the Saturday closest to Jan 31.
+  // Weeks run Sunday–Saturday. FY2026 Week 1 = Feb 1–7, 2026.
+  var DAY = 86400000;
+  var MON = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
+  function fyStart(y) {
+    var j = new Date(Date.UTC(y, 0, 31)), dow = j.getUTCDay();
+    var off = dow === 6 ? 0 : (dow <= 2 ? -(dow + 1) : 6 - dow);
+    return new Date(j.getTime() + (off + 1) * DAY);
+  }
+  function fiscalWeek(iso) {
+    var d = new Date(iso + 'T00:00:00Z'), y = d.getUTCFullYear(), s = fyStart(y);
+    if (d < s) { y--; s = fyStart(y); }
+    var wk = Math.floor((d - s) / DAY / 7) + 1;
+    var ws = new Date(s.getTime() + (wk - 1) * 7 * DAY);
+    return { fy: y, wk: wk, start: ws, end: new Date(ws.getTime() + 6 * DAY), key: y + '-' + (wk < 10 ? '0' : '') + wk };
+  }
+  function fmtD(d, withYear) {
+    return MON[d.getUTCMonth()] + ' ' + d.getUTCDate() + (withYear ? ', ' + d.getUTCFullYear() : '');
+  }
+
+  // Group the day blocks into fiscal-week sections (newest first, as written)
+  var page = document.querySelector('.page'), foot = document.querySelector('.foot');
+  var weeks = [], byKey = {};
+  document.querySelectorAll('.day').forEach(function(day) {
+    var w = fiscalWeek(day.dataset.date);
+    if (!byKey[w.key]) {
+      var sec = document.createElement('div');
+      sec.className = 'week';
+      sec.dataset.week = w.key;
+      sec.innerHTML = '<div class="wk-doc">SCOUT Change Log · DC499</div>' +
+        '<div class="wk-head"><h2>Fiscal Week ' + w.wk + ' · FY' + w.fy + '</h2>' +
+        '<span class="wk-range">' + fmtD(w.start) + ' – ' + fmtD(w.end, true) + '</span></div>';
+      page.insertBefore(sec, foot);
+      byKey[w.key] = sec;
+      weeks.push({ key: w.key, label: 'Week ' + w.wk + ' · FY' + w.fy + ' (' + fmtD(w.start) + ' – ' + fmtD(w.end) + ')' });
+    }
+    byKey[w.key].appendChild(day);
+  });
+
   var fromEl = document.getElementById('from');
-  var perEl  = document.getElementById('per-page');
-  var days = document.querySelectorAll('.day');
+  weeks.forEach(function(w) {
+    var o = document.createElement('option');
+    o.value = w.key; o.textContent = w.label;
+    fromEl.appendChild(o);
+  });
   function applyFrom() {
     var f = fromEl.value, shown = 0;
-    var per = Math.max(1, parseInt(perEl.value, 10) || 5);
-    days.forEach(function(d) {
-      var hide = f && d.dataset.date < f;
-      d.classList.toggle('hidden', hide);
-      // Start a new printed page every `per` visible days
-      d.classList.toggle('pg-break', !hide && shown > 0 && shown % per === 0);
+    document.querySelectorAll('.week').forEach(function(sec) {
+      var hide = f && sec.dataset.week < f;
+      sec.classList.toggle('hidden', hide);
       if (!hide) shown++;
     });
-    var pages = Math.ceil(shown / per);
-    document.getElementById('count').textContent = shown + ' of ' + days.length + ' days · about ' + pages + ' page' + (pages === 1 ? '' : 's');
-    try {
-      localStorage.setItem('scout_changelog_from_v1', f);
-      localStorage.setItem('scout_changelog_per_page_v1', String(per));
-    } catch(e) {}
+    document.getElementById('count').textContent = shown + ' of ' + weeks.length + ' weeks · ' + shown + ' page' + (shown === 1 ? '' : 's');
+    try { localStorage.setItem('scout_changelog_from_week_v1', f); } catch(e) {}
   }
-  try {
-    fromEl.value = localStorage.getItem('scout_changelog_from_v1') || '';
-    perEl.value  = localStorage.getItem('scout_changelog_per_page_v1') || '5';
-  } catch(e) {}
+  try { var saved = localStorage.getItem('scout_changelog_from_week_v1'); if (saved && byKey[saved]) fromEl.value = saved; } catch(e) {}
   fromEl.addEventListener('change', applyFrom);
-  perEl.addEventListener('change', applyFrom);
   applyFrom();
 </script>
 </body>

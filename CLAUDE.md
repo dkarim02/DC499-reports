@@ -561,8 +561,8 @@ After every **finalized major change** (new report/tab/column, a fix to a number
 - Newest day on top: `<div class="day" data-date="YYYY-MM-DD">` + `<h2>Weekday, Mon D, YYYY</h2>`. Check the weekday with node — don't guess.
 - One line per change: `<span class="rpt">Report vX.Y:</span>` + one short plain-supervisor sentence. No technical details.
 - Roll several same-day edits to one report into a single line.
-- "Print from" date box hides older days, so Dean prints only the new pages.
-- "Days per page" box (default 5) — JS adds `.pg-break` to every Nth visible day; days never split across pages.
+- One page per **Nordstrom fiscal week** (Sun–Sat), labeled "Fiscal Week N · FY2026". JS groups the `.day` blocks into `.week` sections at load. You only add day blocks. FY starts the Sunday after the Saturday closest to Jan 31 (FY2026 Wk 1 = Feb 1, 2026; Sept 27–Oct 3 = Wk 35).
+- "Print from" week dropdown hides older weeks, so Dean prints only the new pages.
 
 ---
 
