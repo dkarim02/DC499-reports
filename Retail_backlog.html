@@ -73,6 +73,19 @@
     --amber:#8b3000;--amber-bg:#fad0e0;
     --red:#7b0020;--red-bg:#f8c8d8;
   }
+  [data-theme="carrie"] {
+    --bg:#b4d9f4;--surface:#f5faff;--surface2:#ddeefb;--border:#8ebfe6;--border-light:#e3f0fb;--border-mid:#c2def4;
+    --text:#0c2340;--text-muted:#2f5884;--text-hint:#5d84ab;--bar-bg:#c2def4;
+    --accent:#1457b0;--accent-bg:#d6e8fa;--accent-muted:#5e9be0;
+    --ready:#17663a;--ready-bg:#dcf1e6;
+    --alloc:#9a4500;--alloc-bg:#fbe6d2;
+    --packing:#5a34c4;--packing-bg:#e6e0fb;
+    --packed:#1457b0;--packed-bg:#d6e8fa;
+    --loaded:#00707a;--loaded-bg:#d2eff2;
+    --green:#17663a;--green-bg:#dcf1e6;
+    --amber:#9a4500;--amber-bg:#fbe6d2;
+    --red:#a3122a;--red-bg:#fadbe0;
+  }
   [data-theme="scout"]{
     --bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-light:#141825;--border-mid:#222a3c;
     --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;--bar-bg:#1c2232;
@@ -287,6 +300,7 @@
 
   @keyframes pageEnter{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
   body{animation:pageEnter 0.28s ease-out both;}
+  [data-theme="carrie"] body, body[data-theme="carrie"]{background:linear-gradient(180deg,#a6d2f2 0%,#c4e2f7 45%,#e2f1fc 100%) fixed;}
 </style>
 </head>
 <body>
@@ -311,6 +325,7 @@
             <div class="theme-option" onclick="setTheme('solid')">Solid</div>
             <div class="theme-option" onclick="setTheme('pastel')">Pastel</div>
             <div class="theme-option" onclick="setTheme('starr')">Starr</div>
+            <div class="theme-option" onclick="setTheme('carrie')">Carrie ☁</div>
             <div class="theme-option" onclick="setTheme('scout')">Scout</div>
           </div>
         </div>
@@ -459,7 +474,7 @@
 <script>
 // ── theme ──────────────────────────────────────────────────────────────────────
 const THEME_KEY = 'retail_backlog_theme_v1';
-const THEME_NAMES = { light:'Light', dark:'Dark', solid:'Solid', pastel:'Pastel', starr:'Starr', scout:'Scout' };
+const THEME_NAMES = { light:'Light', dark:'Dark', solid:'Solid', pastel:'Pastel', starr:'Starr', carrie:'Carrie ☁', scout:'Scout' };
 
 function applyTheme(t) {
   const entering = document.body.classList.contains('is-entering');
@@ -470,7 +485,7 @@ function applyTheme(t) {
   if (exiting)  document.body.classList.add('is-exiting');
   document.getElementById('themeLabel').textContent = THEME_NAMES[t] || 'Theme';
   document.querySelectorAll('.theme-option').forEach(el => {
-    el.classList.toggle('active', el.textContent.toLowerCase() === t);
+    el.classList.toggle('active', el.textContent.toLowerCase().split(' ')[0] === t);
   });
 }
 function setTheme(t) {

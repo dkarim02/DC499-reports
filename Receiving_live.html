@@ -28,6 +28,11 @@
     --bg:#1a0a14;--surface:#261020;--surface2:#311528;--border:#4a2040;--border-light:#311528;--border-mid:#5a2850;
     --text:#f4d0e8;--text-muted:#c080a8;--text-hint:#7a4068;
   }
+  [data-theme="carrie"]{
+    --bg:#b4d9f4;--surface:#f5faff;--surface2:#ddeefb;--border:#8ebfe6;--border-light:#e3f0fb;--border-mid:#c2def4;
+    --text:#0c2340;--text-muted:#2f5884;--text-hint:#5d84ab;
+    --accent:#1457b0;
+  }
   [data-theme="light"]{
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
     --text:#1a1a1a;--text-muted:#666;--text-hint:#aaa;
@@ -74,7 +79,7 @@
 
   /* Stale banner */
   .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px;margin-bottom:1rem;text-align:center;}
-  [data-theme="light"] .stale-banner{background:#FFF3CD;color:#7A4F00;}
+  [data-theme="light"] .stale-banner,[data-theme="carrie"] .stale-banner{background:#FFF3CD;color:#7A4F00;}
 
   /* Legend */
   .legend{display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;}
@@ -170,6 +175,7 @@
   .meta-line.amber{color:var(--amber);}
 @keyframes pageEnter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 body { animation: pageEnter 0.28s ease-out both; }
+  [data-theme="carrie"] body, body[data-theme="carrie"]{background:linear-gradient(180deg,#a6d2f2 0%,#c4e2f7 45%,#e2f1fc 100%) fixed;}
 </style>
 </head>
 <body>
@@ -193,6 +199,7 @@ body { animation: pageEnter 0.28s ease-out both; }
           <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
           <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
           <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr</div>
+          <div class="theme-option" data-tv="carrie"  onclick="pickTheme('carrie')">Carrie ☁</div>
           <div class="theme-option" data-tv="scout"  onclick="pickTheme('scout')">✦ Scout</div>
           <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
         </div>
@@ -299,8 +306,8 @@ function totalCls(n) {
 }
 
 // -- Theme --------------------------------------------------------------------
-var THEME_VALS  = ['dark','solid','pastel','starr','scout','light'];
-var THEME_NAMES = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr',scout:'✦ Scout',light:'Light'};
+var THEME_VALS  = ['dark','solid','pastel','starr','carrie','scout','light'];
+var THEME_NAMES = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr',carrie:'Carrie ☁',scout:'✦ Scout',light:'Light'};
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   document.getElementById('toggle-label').textContent = THEME_NAMES[t] || t;

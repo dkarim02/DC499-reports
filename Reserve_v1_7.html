@@ -43,6 +43,13 @@
     --bar-bg: #e8c0d8; --drop-hover: #f5cfe8;
     --accent: #b0003a; --accent-bg: #f8d0e8;
   }
+  [data-theme="carrie"] {
+    --bg: #b4d9f4; --surface: #f5faff; --surface2: #ddeefb;
+    --border: #8ebfe6; --border-light: #e3f0fb; --border-mid: #c2def4;
+    --text: #0c2340; --text-muted: #2f5884; --text-hint: #5d84ab;
+    --bar-bg: #c2def4; --drop-hover: #ddeefb;
+    --accent: #1457b0; --accent-bg: #d6e8fa;
+  }
   [data-theme="remi"] {
     --bg: #0e0b18; --surface: #16112a; --surface2: #1e1838;
     --border: #2e2550; --border-light: #1e1838; --border-mid: #3a3060;
@@ -416,6 +423,7 @@
   .rs-lc-label{padding:0 7px;font-size:11px;font-weight:800;color:var(--text-muted);background:var(--surface2);height:24px;display:flex;align-items:center;}
 @keyframes pageEnter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 body { animation: pageEnter 0.28s ease-out both; }
+  [data-theme="carrie"] body, body[data-theme="carrie"]{background:linear-gradient(180deg,#a6d2f2 0%,#c4e2f7 45%,#e2f1fc 100%) fixed;}
 </style>
 </head>
 <body>
@@ -441,6 +449,7 @@ body { animation: pageEnter 0.28s ease-out both; }
             <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
             <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
             <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
+            <div class="theme-option" data-tv="carrie"  onclick="pickTheme('carrie')">Carrie ☁</div>
             <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Rem 🧙</div>
             <div class="theme-option" data-tv="scout"  onclick="pickTheme('scout')">✦ Scout</div>
           </div>
@@ -627,8 +636,8 @@ var RES_METRIC = {pick:'Quantity',pick2:'Quantity',replen:'Completed Quantity',p
 // ── THEME ──────────────────────────────────────────────
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
 var THEME_KEY_RS   = 'dc499_reserve_theme_v1';
-var THEME_VALS_RS  = ['light','dark','solid','pastel','starr','remi','scout'];
-var THEME_NAMES_RS = {light:'Light',dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',remi:'Rem 🧙',scout:'✦ Scout'};
+var THEME_VALS_RS  = ['light','dark','solid','pastel','starr','carrie','remi','scout'];
+var THEME_NAMES_RS = {light:'Light',dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',carrie:'Carrie ☁',remi:'Rem 🧙',scout:'✦ Scout'};
 var DARK_THEMES_RS = ['dark','solid','pastel','remi','scout'];
 function isDarkTheme() { return document.documentElement.classList.contains('dk'); }
 function applyTheme(t, noSave) {

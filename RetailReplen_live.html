@@ -44,6 +44,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
   --yellow:#b45309;--yellow-bg:#fef3c7;--yellow-border:#fcd34d;
   --green:#15803d;--green-bg:#dcfce7;--green-border:#86efac;
 }
+[data-theme="carrie"] {
+  --bg:#b4d9f4;--surface:#f5faff;--surface2:#ddeefb;--border:#8ebfe6;--border-light:#e3f0fb;
+  --text:#0c2340;--text-muted:#2f5884;--text-hint:#5d84ab;
+  --accent:#1457b0;--accent-bg:#d6e8fa;
+  --red:#be123c;--red-bg:#ffe4e6;--red-border:#fda4af;
+  --yellow:#b45309;--yellow-bg:#fef3c7;--yellow-border:#fcd34d;
+  --green:#15803d;--green-bg:#dcfce7;--green-border:#86efac;
+}
 [data-theme="light"]{
   --bg:#f5f7fa;--surface:#fff;--surface2:#eef1f7;--border:#dde2ef;--border-light:#eef1f7;
   --text:#1a1d2e;--text-muted:#5a6080;--text-hint:#9aaac8;
@@ -154,6 +162,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-siz
 .loading{text-align:center;padding:60px;color:var(--text-muted);font-size:14px}
 @keyframes pageEnter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 body { animation: pageEnter 0.28s ease-out both; }
+  [data-theme="carrie"] body, body[data-theme="carrie"]{background:linear-gradient(180deg,#a6d2f2 0%,#c4e2f7 45%,#e2f1fc 100%) fixed;}
 </style>
 </head>
 <body>
@@ -175,6 +184,7 @@ body { animation: pageEnter 0.28s ease-out both; }
         <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
         <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
         <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
+        <div class="theme-option" data-tv="carrie"  onclick="pickTheme('carrie')">Carrie ☁</div>
         <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
       </div>
     </div>
@@ -199,8 +209,8 @@ body { animation: pageEnter 0.28s ease-out both; }
 </div>
 
 <script>
-var THEME_VALS  = ['dark','solid','pastel','starr','light'];
-var THEME_NAMES = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',light:'Light'};
+var THEME_VALS  = ['dark','solid','pastel','starr','carrie','light'];
+var THEME_NAMES = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',carrie:'Carrie ☁',light:'Light'};
 var lastData    = null;
 var staleTimer  = null;
 
