@@ -20,7 +20,7 @@ body {
   transition: background 0.4s, color 0.4s;
 }
 body.light,body.carrie  { background: #ecedf2; color: #1a1a1a; }
-body.carrie { background: linear-gradient(180deg,#a6d2f2 0%,#c4e2f7 45%,#e2f1fc 100%) fixed; color: #0c2340; }
+body.carrie { background: linear-gradient(180deg,#b3d9f5 0%,#cfe7f9 45%,#e8f3fd 100%) fixed; color: #0a1f3a; }
 body.solid  { background: #0a0e1e; color: #e4e8f4; }
 body.pastel { background: #11121b; color: #d4d0e8; }
 body.scout  {
@@ -164,7 +164,7 @@ body.is-exiting .content     { animation: contentExit     0.30s ease-in forwards
   text-indent: 0.38em;
 }
 body.light  .header-wordmark,body.carrie  .header-wordmark { color: #1a1a1a; }
-body.carrie .header-wordmark { color: #0c2340; }
+body.carrie .header-wordmark { color: #0a1f3a; }
 body.solid  .header-wordmark { color: #e4e8f4; }
 body.pastel .header-wordmark { color: #d4d0e8; }
 
@@ -478,6 +478,25 @@ body.light .menu-theme-option:hover,body.carrie .menu-theme-option:hover { backg
   backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
 }
 body.light #whats-new-panel,body.carrie #whats-new-panel { background: rgba(255,255,255,0.97); border-color: rgba(0,0,0,0.1); }
+/* Carrie: blue-grey text instead of Light's neutral greys, so it reads on the sky */
+body.carrie .shift-pill { background: rgba(255,255,255,0.5); border-color: rgba(15,76,156,0.18); color: #24496f; }
+body.carrie .shift-dot.inactive { background: #7fb0db; }
+body.carrie .header-clock { color: #24496f; }
+body.carrie .tab-bar { background: rgba(255,255,255,0.4); border-color: rgba(15,76,156,0.15); }
+body.carrie .tab-btn { color: #4a6f96; }
+body.carrie .tab-btn:hover { color: #0a1f3a; }
+body.carrie .tab-btn.active { background: rgba(255,255,255,0.75); color: #0a1f3a; }
+body.carrie .card { background: rgba(247,251,255,0.82); border-color: rgba(15,76,156,0.14); box-shadow: 0 2px 10px rgba(15,76,156,0.08); }
+body.carrie .card-recent-label { color: rgba(10,31,58,0.3); }
+body.carrie .tool-chip { background: rgba(15,76,156,0.04); border-color: rgba(15,76,156,0.14); color: #0a1f3a; }
+body.carrie .tool-chip:hover { background: rgba(15,76,156,0.09); }
+body.carrie .card-version, body.carrie .card-sub, body.carrie .tool-chip-ver { color: #4a6f96; }
+body.carrie .footer, body.carrie .footer button { color: #24496f; }
+body.carrie .footer button:hover { color: #0a1f3a; }
+body.carrie .menu-theme-btn { background: rgba(255,255,255,0.55); border-color: rgba(15,76,156,0.2); color: #24496f; }
+body.carrie .menu-theme-btn:hover { background: rgba(255,255,255,0.8); color: #0a1f3a; }
+body.carrie .menu-theme-option { color: #4a6f96; }
+body.carrie .menu-theme-option:hover { background: rgba(15,76,156,0.08); color: #0a1f3a; }
 </style>
 </head>
 <body>
