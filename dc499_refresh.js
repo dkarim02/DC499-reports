@@ -11,7 +11,7 @@
 
 const fs     = require('fs');
 const path   = require('path');
-require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
+const { syncSharePages } = require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -1592,6 +1592,10 @@ async function queryAndWrite(accessToken) {
     fs.writeFileSync(SHIPPED_FILE, JSON.stringify(shippedData, null, 4));
     console.log(`[${ts()}] ✓ shipped_live.json — ${shippedData.shipped_olpns} oLPNs, ${shippedData.shipped_units} units`);
   }
+
+  // Keep the team's OneDrive share folder (SCOUT Live) up to date with any page edits
+  const shared = syncSharePages();
+  if (shared) console.log(`[${ts()}] ✓ Share folder — ${shared} page file(s) updated`);
 
   const gitStart = Date.now();
   gitPush();
