@@ -695,6 +695,14 @@ renderBento();
 document.body.classList.add('is-entering');
 setTimeout(function() { document.body.classList.remove('is-entering'); }, 700);
 
+/* Back button restores the page from bfcache still faded out by the exit animation */
+window.addEventListener('pageshow', function(e) {
+  if (!e.persisted) return;
+  document.body.classList.remove('is-exiting');
+  document.body.classList.add('is-entering');
+  setTimeout(function() { document.body.classList.remove('is-entering'); }, 700);
+});
+
 /* ── WHATS NEW ────────────────────────────────────────────────── */
 function toggleWhatsNew() {
   var panel = document.getElementById('whats-new-panel');
