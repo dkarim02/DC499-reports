@@ -34,7 +34,6 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | scout_retail_agent.js | retail_backlog_live.json | Retail_backlog.html |
 | scout_watch_agent.js | container_watch_live.json | Container_watch.html |
 | scout_untasked_agent.js | untasked_live.json | Backlog_live.html (No Task tab) |
-| eos_agent.js | eos_sos_snapshot.json, eos_report.json | EOS_live.html |
 
 ---
 
@@ -55,7 +54,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | 23–25 | Container Watch (one-shot / auto every 15 min / auth) | scout_watch_agent.js |
 | 26–28 | Untasked Orders (one-shot / auto every 5 min / auth) | scout_untasked_agent.js |
 
-**EOS:** separate launcher — `eos.bat` (options: 1=SOS snapshot, 2=EOS+finalize, 3=Reconstruct SOS, 4=Auth)
+**EOS:** archived 2026-10-01 (archived/eos/) — see EOS section.
 
 ---
 
@@ -209,22 +208,25 @@ Writes `rfp_units` to backlog_live.json.
 
 ---
 
-## Token locking (all agents)
+## Shared sign-in + query slots — scout_mcp.js (all agents, 2026-10-01)
 
-All agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent.js`, `scout_shipping_agent.js`, `scout_expedite_agent.js`, `scout_itemprep_agent.js`) share `.mcp_token.json`. Running concurrently caused token collision — one agent would consume the refresh token before another could use it, revoking the session.
+All 9 agents share `.mcp_token.json`. The login/query code lives in ONE file, `scout_mcp.js`; each agent does `const mcp = require('./scout_mcp')({ redirectPort: REDIRECT_PORT })` and destructures `getAccessToken, getAccessTokenSilent, doAuthFlow, AuthError, mcpQuery` (+ `jsonPost` in dc499_refresh). **New agent → use that require, never copy the OAuth block.** Fix login/query behavior in scout_mcp.js only. Untasked keeps a local `mcpQuery` wrapper that also throws on `{success:false}`.
 
-**MCP query concurrency (dc499_refresh.js):** Uses a 2-slot in-memory semaphore (`_queryActive`, `_queryQueue`) inside `mcpQuery()`. Do NOT add a file-based query lock — the old `.query_lock` approach serialized all queries and was replaced 2026-09-17. 3+ concurrent slots caused empty responses from the server; 2 is the safe max.
+**Query slots:** at most `POOL_SLOTS = 3` MCP queries in flight across ALL agents together (`.mcp_slot_0..2.lock` files; in-process queue in front so queued queries don't all poll disk). Before 10/1 it was 2 in-memory slots for dc499_refresh + one `.query_lock` file shared single-file by every sub-agent, uncoordinated (peaks of 3+). More than 3 has caused empty responses — don't raise it. `SCOUT_MCP_SLOTS` env var overrides for testing.
 
-**Stale query_lock diagnosis:** If `ecom_live.json` updates fine but `ecom_history.json` stops updating, the root cause is almost always a stale `.mcp_token.json.query_lock` or `.mcp_token.json-*.query_lock` file left by a killed process. Delete it and the agent recovers on next run. `acquireQueryLock()` now checks if the locking PID is still alive and clears stale locks automatically.
+**Priority (2026-10-02):** dc499_refresh is created with `{ priority: true }`. While it has a query waiting it keeps `.mcp_priority.lock` fresh (pid + time, ignored after 10 s or if the pid is gone); sub-agents won't take a freed slot while it's fresh, and refresh hands a slot straight to its own next queued query. Between live cycles the sub-agents get all 3. Why: after the 10/1 switch, refresh shared slots evenly with 7 sub-agents (aligned start times + Watch's 30-query burst) and pushes slipped to 4–6 min apart. Test: 28-query burst vs a full pool 6.5 s → 1.8 s (`.tmp_audit/test_priority.js`). Only one agent should ever be priority.
 
-**Fix (2026-08-13):** File-based lock + freshness check in `getAccessTokenSilent()`:
-- `_saved_at` timestamp written to token file on every save
-- `TOKEN_TTL = 55 * 60 * 1000` — fallback TTL if `expires_in` missing
-- `isTokenFresh()` uses `stored.expires_in * 900` (90% of actual lifetime) when available, falls back to TOKEN_TTL
-- Fast path: if token is fresh, return immediately — no network call
-- Lock path: claim `.mcp_token.lock` (exclusive `wx` write), re-check freshness after acquiring, refresh once, release in `finally`
+**Cycle timing line (dc499_refresh):** every cycle prints `⏱ cycle Xs — queries Ys (last to finish: <section>), git Zs · N queries, longest slot wait, slowest: <table> Ns …` (`takeStats()` from scout_mcp.js). Read it before tuning anything — the section that finishes last is the one setting the cycle time.
 
-**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122, scout_retail=3123, scout_watch=3124, scout_untasked=3125
+**Lock rules:** lock files hold `{id,pid,at}`; only the owner (matching id) deletes on release. Stale = owner PID gone, or older than `SLOT_STALE_MS` (5 min) / 60 s for the token lock — cleared automatically with a `[scout_mcp] cleared stale lock` console line. A waiting query never runs unprotected; after 5 min of waiting it fails instead. Hung queries are dropped after `QUERY_TIMEOUT_MS` (4 min, absolute timer — the server's pings would reset an idle timeout). Token/webhook POSTs: 30 s.
+
+**Token:** fast path if fresh (`expires_in * 900` = 90% of lifetime, else 55 min); otherwise claim `.mcp_token.json.lock`, re-check, refresh once (tries `.bak` refresh token as fallback), save via temp+rename. A refresh response without `access_token` is treated as a failure (it used to get merged into the token file). **One-shot `getAccessToken()` now goes through the same locked path** and only opens a browser if that fails — so one-shots and the "DC499 Auto-Refresh" scheduled task are safe alongside serve agents.
+
+**Serve loops:** every sub-agent skips a tick if its previous cycle is still running (dc499_refresh already did).
+
+**Rollback:** git tag `pre-shared-mcp` = the commit before this change (`git checkout pre-shared-mcp -- scout_*_agent.js dc499_refresh.js` and delete scout_mcp.js, then restart agents). Offline tests: `.tmp_audit/test_mcp.js` (local, gitignored).
+
+**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122, scout_retail=3123, scout_watch=3124, scout_untasked=3125, scout_shipping=3126 (was 3120, clashed with Reserve)
 
 ---
 
@@ -503,9 +505,11 @@ Wave shift start: 2nd = 20:40 UTC, 1st = 10:00 UTC.
 
 ---
 
-## EOS (End of Shift) Report system
+## EOS (End of Shift) Report system — ARCHIVED 2026-10-01
 
-**Files:** eos_agent.js, eos.bat (launcher), EOS_live.html.
+Unused for a long time. eos_agent.js, eos.bat, EOS_live.html moved to `archived/eos/`; the EOS Report button was removed from Ecom_v3.html. Notes below kept for reference if it's ever revived (it would need converting to scout_mcp.js).
+
+**Files:** archived/eos/eos_agent.js, eos.bat (launcher), EOS_live.html.
 
 **eos.bat options:** 1=SOS snapshot (run at 2:10 PM), 2=EOS+finalize, 3=Reconstruct SOS, 4=Auth.
 
@@ -588,7 +592,7 @@ Safe at 15 IDs; try 25–30 if count is high. Used in: `fetchTaskData()` for TSK
 ## Dev tooling (Claude Code sessions)
 
 - **Node isn't on the bash PATH.** Use the bundled copy: `"/c/Users/JLEO/OneDrive - Nordstrom/node/node-v24.18.0-win-x64/node.exe"` (same one dc499.bat uses). `--check file.js` does a syntax check.
-- **Don't run agents one-shot from Claude Code while the serve-mode agents are running.** One-shot `getAccessToken()` refreshes the shared token without the lock and can revoke the session. To test agent logic, stub `mcpQuery` with real rows pulled via the MCP tool.
+- **One-shot runs are lock-safe since 2026-10-01** (scout_mcp.js), but still prefer stubbing for logic tests — a one-shot uses real query slots and writes the live JSON. To test agent logic, stub `mcpQuery` with real rows pulled via the MCP tool (or swap in a stub `scout_mcp.js` in a temp folder).
 - **Page screenshots:** use headless Edge (`/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe --headless=new --virtual-time-budget=2000 --screenshot=C:/path/x.png file:///C:/path/page.html`). Stub `window.fetch` in a temp copy to feed sample JSON. Add `body{animation:none !important}` or the shot comes out dim (pageEnter fade gets frozen). Use forward-slash Windows paths.
 - **Commit edits fast — the 2-min live push can eat them.** dc499_refresh.js runs `git rebase --autostash` every cycle. If a file is edited while that's mid-flight, the autostash can fail to re-apply and the edit gets stranded in `git stash list` (one autostash entry per event). Recover with `git show stash@{N}:<file>`. Prefer doing edit + commit in one step. Cleared 2026-09-30: 129 entries reviewed, the stranded file-mode/Reserve-hourly notes + pick-to-light gitignore line restored, and every code/doc diff saved as patches in `archived/stash_backup/` (local only).
 - Agent files are CRLF — split on `/\r?\n/` when loading them in test scripts.
@@ -617,6 +621,7 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 ## Pending work
 
 **Urgent / active:**
+- [ ] **Verify scout_mcp.js live (from 2026-10-01):** after all agents are restarted on the new code, watch one shift — every agent should keep updating, no "No free MCP query slot" / "timed out" errors, no sign-in prompts. If anything goes wrong, roll back via tag `pre-shared-mcp` (see Shared sign-in section). Also consider disabling the redundant "DC499 Auto-Refresh" Windows scheduled task (one-shot dc499_refresh run alongside serve mode → two git pushes racing).
 - [ ] **Backlog date bucketing** — waiting on leader sign-off. Fix: join subquery for `MIN(CREATED_TIMESTAMP)` across ALL lines (incl. cancelled) per order as bucket date, filter `CANCELLED=0` for status counts. Verified vs Cognos 2026-08-17.
 - [ ] **DST fix** — ~Oct 25, 2026: change `-07:00` PDT → `-08:00` PST in scout_ecom_agent.js, scout_reserve_agent.js, scout_retail_agent.js (shift boundaries + timestamps + `pdtDateToUtcWindow` 07:00 → 08:00; Reserve hourly bucketing = `PDT_OFFSET` in scout_reserve_agent.js; `PDT_OFFSET_HRS` in scout_untasked_agent.js). See DST fix memory.
 - [ ] **Verify Zones tab live (from 2026-09-24):** restart the Retail agent (option 21) so it runs the v1.1 code. Confirm a `Zones — picks: … · replen: …` line appears in the console and the tab fills in. So far it's been tested with real query results plus a page screenshot, not a full agent run.
@@ -625,7 +630,6 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 
 **Pending build:**
 - [ ] Packed Not Shipped: build PackedNotShipped_live.html + fetchPackedNotShipped() in dc499_refresh.js
-- [ ] EOS: add EOS time cap to orders_not_released — `AND CREATED_TIMESTAMP < '{captureTime}'`
 - [ ] EOD Email: verify Outlook dark mode rendering with bgcolor attrs (addBgcolor post-pass)
 - [ ] Pack Line Order Locator — need from Dean: Line 1/2 tote capacity, pizza tote footprint (inches), diverter trigger
 
