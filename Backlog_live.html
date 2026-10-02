@@ -541,33 +541,88 @@
   .tab-btn.xpd-tab-btn:not(.active):hover{color:var(--xpd);}
 
   /* ── No Task tab (untasked_live.json) ─────────────────────────────────── */
+  /* Each group owns one color (--lane) — tile, section rule and reason text all use it. */
   .tab-btn.ut-tab-btn.active{color:var(--red);border-bottom-color:var(--red);}
   .tab-btn.ut-tab-btn:not(.active):hover{color:var(--red);}
-  .ut-count{display:inline-block;min-width:16px;font-size:10px;font-weight:800;padding:0 5px;margin-left:5px;border-radius:8px;background:var(--red);color:#fff;line-height:16px;vertical-align:1px;}
-  .ut-note{font-size:12px;color:var(--text-muted);margin:-0.5rem 0 1rem;}
-  .ut-sec{margin-bottom:1rem;}
-  .ut-sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:0.6rem;}
-  .ut-sec-head .card-title{margin-bottom:0;}
-  .ut-hint{font-size:11px;color:var(--text-hint);margin-top:2px;}
-  .ut-copy{font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;border:0.5px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;white-space:nowrap;}
-  .ut-copy:hover{color:var(--accent);border-color:var(--accent-muted);}
-  .ut-row{cursor:pointer;}
-  .ut-row:hover td{background:var(--surface2);}
-  .ut-chev{display:inline-block;font-size:9px;color:var(--text-hint);width:10px;transition:transform 0.15s;}
+  .ut-count{display:inline-block;min-width:16px;font-size:10px;font-weight:800;padding:0 5px;margin-left:6px;border-radius:8px;background:var(--red);color:var(--surface);line-height:16px;vertical-align:1px;}
+  .ut-lanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:0.75rem;}
+  .ut-lane{font-family:inherit;text-align:left;cursor:pointer;background:var(--surface);border:0.5px solid var(--border);border-left:4px solid var(--lane);border-radius:10px;padding:10px 14px 11px;color:var(--text);transition:background 0.12s,opacity 0.12s,border-color 0.12s;}
+  .ut-lane:hover{background:var(--surface2);}
+  .ut-lane-top{display:flex;align-items:baseline;gap:8px;}
+  .ut-lane-n{font-size:24px;font-weight:700;line-height:1;color:var(--lane);font-variant-numeric:tabular-nums;}
+  .ut-lane-name{font-size:13px;font-weight:600;}
+  .ut-lane-owner{font-size:11px;color:var(--text-muted);margin-top:5px;}
+  .ut-lane.zero .ut-lane-n{color:var(--text-hint);}
+  .ut-lanes.filtered .ut-lane:not(.on){opacity:0.45;}
+  .ut-lane.on{background:var(--surface2);border-color:var(--lane);}
+  .ut-note{font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.5;}
+  .ut-note b{color:var(--text);font-weight:600;}
+
+  .ut-sec{background:var(--surface);border:0.5px solid var(--border);border-top:3px solid var(--lane);border-radius:12px;margin-bottom:1rem;overflow:hidden;}
+  .ut-sec-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 18px 12px;border-bottom:0.5px solid var(--border-light);}
+  .ut-sec-title{font-size:14px;font-weight:700;color:var(--text);margin:0;}
+  .ut-sec-meta{font-size:12px;font-weight:500;color:var(--text-muted);margin-left:6px;}
+  .ut-sec-do{font-size:12px;color:var(--text-muted);margin:4px 0 0;line-height:1.45;max-width:640px;}
+  .ut-copy{font-family:inherit;font-size:12px;font-weight:600;padding:5px 12px;border-radius:6px;border:0.5px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;white-space:nowrap;flex-shrink:0;}
+  .ut-copy:hover{color:var(--text);border-color:var(--border-mid);}
+  .ut-clear{padding:14px 18px;font-size:13px;color:var(--text-hint);}
+
+  /* Order rows — chevron | svc | order # | item dots | reason | age */
+  .ut-row{display:grid;grid-template-columns:14px 46px minmax(150px,170px) 74px minmax(0,1fr) 64px;align-items:center;gap:12px;padding:10px 18px;border-bottom:0.5px solid var(--border-light);}
+  .ut-row:last-child{border-bottom:none;}
+  .ut-row.click{cursor:pointer;}
+  .ut-row.click:hover{background:var(--surface2);}
+  .ut-row:focus-visible,.ut-lane:focus-visible,.ut-copy:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+  .ut-chev{font-size:9px;color:var(--text-hint);transition:transform 0.15s;}
   .ut-chev.open{transform:rotate(90deg);}
-  .ut-detail td{background:var(--surface2);padding:6px 10px 10px 28px !important;}
-  .ut-line{display:flex;gap:10px;align-items:baseline;font-size:12px;padding:3px 0;}
-  .ut-line .ut-mark{width:14px;flex-shrink:0;font-weight:800;}
-  .ut-line.short .ut-mark{color:var(--red);}
-  .ut-line.ok .ut-mark{color:var(--green);}
-  .ut-mono{font-family:monospace;font-size:11px;color:var(--text-muted);}
-  .ut-why{font-size:11px;color:var(--text-muted);}
-  .ut-line.short .ut-why{color:var(--red);font-weight:600;}
-  .ut-gwp{display:inline-block;font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px;margin-left:4px;background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber);vertical-align:1px;}
+  .ut-oid{font-family:ui-monospace,Consolas,monospace;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0.01em;}
+  .ut-osub{font-size:11px;color:var(--text-hint);margin-top:2px;}
+  .ut-what{min-width:0;}
+  .ut-item{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ut-item b{font-weight:700;}
+  .ut-desc{color:var(--text-muted);}
+  .ut-why{font-size:12px;color:var(--lane);font-weight:600;margin-top:2px;}
+  .ut-why .ut-loc{color:var(--text-muted);font-weight:500;}
+  .ut-loc{font-family:ui-monospace,Consolas,monospace;font-size:11px;}
+  .ut-age{text-align:right;font-size:13px;font-weight:600;color:var(--text-muted);font-variant-numeric:tabular-nums;}
+  .ut-age.mid{color:var(--amber);}
+  .ut-age.old{color:var(--red);font-weight:700;}
   .ut-svc-std{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;color:var(--text-hint);border:0.5px solid var(--border);}
-  .ut-age-old{color:var(--red);font-weight:700;}
-  .ut-age-mid{color:var(--amber);font-weight:600;}
-  .ut-clear{text-align:center;padding:1.25rem;color:var(--green);font-size:13px;font-weight:600;}
+  .ut-gwp{display:inline-block;font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px;margin:0 2px 0 4px;background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber);vertical-align:1px;}
+
+  /* Signature: one dot per item in the order — filled = the short item, ring = has stock */
+  .ut-dots{display:flex;flex-wrap:wrap;gap:3px;align-items:center;}
+  .ut-dot{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--green);box-sizing:border-box;}
+  .ut-dot.short{background:var(--lane);border-color:var(--lane);}
+  .ut-dot-more{font-size:10px;color:var(--text-hint);margin-left:2px;}
+
+  /* Expanded order: every item, aligned under the order # */
+  .ut-lines{padding:4px 18px 12px 98px;background:var(--surface2);border-bottom:0.5px solid var(--border-light);}
+  .ut-line{display:grid;grid-template-columns:12px minmax(0,1fr) 110px minmax(0,1.1fr);gap:12px;align-items:baseline;padding:5px 0;font-size:12px;border-bottom:0.5px dashed var(--border);}
+  .ut-line:last-child{border-bottom:none;}
+  .ut-line .ut-dot{transform:translateY(1px);}
+  .ut-line-say{color:var(--text-muted);}
+  .ut-line.short .ut-line-say{color:var(--lane);font-weight:600;}
+
+  /* Replen loop: shelf header with its orders nested underneath */
+  .ut-shelf{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 18px;background:var(--surface2);border-bottom:0.5px solid var(--border-light);}
+  .ut-shelf-facts{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;}
+  .ut-shelf-facts b{color:var(--text);font-weight:700;}
+  .ut-shelf-facts .zero b{color:var(--red);}
+  .ut-verdict{font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;color:var(--lane);border:0.5px solid var(--lane);white-space:nowrap;}
+  .ut-row.nested{padding-left:34px;}
+
+  @media(max-width:760px){
+    .ut-row{grid-template-columns:14px 46px minmax(0,1fr) 56px;row-gap:6px;}
+    .ut-row .ut-dots{display:none;}
+    .ut-row .ut-what{grid-column:2 / -1;}
+    .ut-row .ut-age{grid-column:4;grid-row:1;}
+    .ut-lines{padding-left:18px;}
+    .ut-line{grid-template-columns:12px minmax(0,1fr);}
+    .ut-line .ut-loc,.ut-line .ut-line-say{grid-column:2;}
+    .ut-sec-head{flex-direction:column;}
+  }
+  @media(prefers-reduced-motion:reduce){.ut-chev,.ut-lane{transition:none;}}
 
   /* ── Retail Replen widget ─────────────────────────────────────────────── */
   .rr-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;margin-top:1rem;overflow:hidden;}
@@ -1298,35 +1353,13 @@ body { animation: pageEnter 0.28s ease-out both; }
       </div>
     </div>
 
-    <div class="xpd-summary" id="ut-tiles" style="display:none;">
-      <div class="xpd-tile t-red" style="border-top-color:var(--red);">
-        <div class="xpd-tile-label">Short Shelf</div>
-        <div class="xpd-tile-value" id="ut-t-short" style="color:var(--red);">--</div>
-        <div class="xpd-tile-sub" id="ut-t-short-sub"></div>
-      </div>
-      <div class="xpd-tile t-amber">
-        <div class="xpd-tile-label">Replen Loop</div>
-        <div class="xpd-tile-value" id="ut-t-loop">--</div>
-        <div class="xpd-tile-sub" id="ut-t-loop-sub"></div>
-      </div>
-      <div class="xpd-tile t-accent">
-        <div class="xpd-tile-label">Shipped But Holding</div>
-        <div class="xpd-tile-value" id="ut-t-ghost">--</div>
-        <div class="xpd-tile-sub" id="ut-t-ghost-sub"></div>
-      </div>
-      <div class="xpd-tile t-xpd">
-        <div class="xpd-tile-label">No Task Made</div>
-        <div class="xpd-tile-value" id="ut-t-ntm">--</div>
-        <div class="xpd-tile-sub">released, never tasked</div>
-      </div>
-    </div>
+    <div class="ut-lanes" id="ut-lanes" style="display:none;"></div>
     <div class="ut-note" id="ut-note"></div>
-
     <div id="ut-sections"></div>
 
     <div class="empty-state" id="ut-empty-state" style="display:none;">
       <div style="font-size:32px;margin-bottom:10px;">&#x1F50D;</div>
-      No untasked order data yet. Start option 27 (Untasked Orders) in dc499.bat.
+      No data yet. Start option 27 (Untasked Orders) in dc499.bat, then click Refresh.
     </div>
   </div><!-- /#tab-untasked -->
 
@@ -3392,7 +3425,7 @@ function fetchUntaskedData(manual) {
       var el = document.getElementById('ut-run-time');
       if (el) el.textContent = 'Failed to load: ' + err.message;
       document.getElementById('ut-empty-state').style.display = 'block';
-      document.getElementById('ut-tiles').style.display = 'none';
+      document.getElementById('ut-lanes').style.display = 'none';
     });
 }
 setInterval(fetchUntaskedData, 2 * 60 * 1000);
@@ -3410,35 +3443,55 @@ function utUpdateTabCount(d) {
   el.style.display = n ? 'inline-block' : 'none';
 }
 
+// Groups, in the order a supervisor works them. Each owns one color and names who fixes it.
+var UT_LANES = [
+  { key: 'short', name: 'Short shelf',            owner: 'Floor — create a replen',  color: 'var(--red)' },
+  { key: 'loop',  name: 'Replen loop',            owner: 'Floor — check shelf space', color: 'var(--amber)' },
+  { key: 'stock', name: 'Stock but no task',      owner: 'Check batch release',       color: 'var(--text-muted)', hideEmpty: true },
+  { key: 'ghost', name: 'Shipped, still holding', owner: 'Send to ICQA',              color: 'var(--accent)' },
+  { key: 'ntm',   name: 'No task made',           owner: 'Send to MA support',        color: 'var(--xpd)' },
+];
+var utLane = localStorage.getItem('ut_lane_v1') || 'all';
+
+function utSetLane(key) {
+  utLane = (utLane === key) ? 'all' : key;
+  localStorage.setItem('ut_lane_v1', utLane);
+  if (lastUtData) renderUntaskedData(lastUtData);
+}
+
 function utAge(m) {
   if (m == null) return '—';
   if (m < 60)   return m + 'm';
   if (m < 1440) return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
   return Math.floor(m / 1440) + 'd';
 }
-function utAgeCls(m) { return m >= 240 ? 'ut-age-old' : m >= 90 ? 'ut-age-mid' : ''; }
+function utAgeHtml(m) {
+  return '<div class="ut-age' + (m >= 240 ? ' old' : m >= 90 ? ' mid' : '') + '">' + utAge(m) + '</div>';
+}
 function utSvc(svc) {
   if (svc === '1DD') return '<span class="xpd-svc-1dd">1DD</span>';
   if (svc === '2DD') return '<span class="xpd-svc-2dd">2DD</span>';
   return '<span class="ut-svc-std">STD</span>';
 }
 function utItem(l) {
-  return '<strong>' + escHtml(l.item) + '</strong>' + (l.gwp ? '<span class="ut-gwp">GWP</span>' : '') +
-    (l.desc ? ' <span class="ut-why">' + escHtml(l.desc) + '</span>' : '');
+  return '<b>' + escHtml(l.item) + '</b>' + (l.gwp ? '<span class="ut-gwp">GWP</span>' : '') +
+    (l.desc ? ' <span class="ut-desc">' + escHtml(l.desc) + '</span>' : '');
 }
+function utPlural(n, one, many) { return fmt(n) + ' ' + (n === 1 ? one : many); }
 
-// Plain-language reason + next step for a short shelf
-function utShelfWhy(s) {
-  if (!s) return 'No pick shelf';
-  var res = s.reserve_free > 0 ? 'reserve has ' + fmt(s.reserve_free) : 'reserve is empty';
-  if (s.state === 'replen_loop') return 'Replen cancelled ' + s.replen_cancelled + '× in 12 hrs · ' + res + (s.reserve_free > 0 ? ' — check shelf space' : ' — research inventory');
-  if (s.state === 'replen_open') return 'Replen open — should clear when it lands';
-  return 'No replen · ' + res + (s.reserve_free > 0 ? ' — create a replen' : ' — research inventory');
-}
 function utShelfFor(d, l) {
   var list = d.shelves || [];
   for (var i = 0; i < list.length; i++) if (list[i].loc === l.loc && list[i].item === l.item) return list[i];
   return null;
+}
+// One plain line: why this shelf can't cover the order
+function utShelfWhy(s) {
+  if (!s) return 'No pick shelf assigned';
+  var res = s.reserve_free > 0 ? fmt(s.reserve_free) + ' in reserve' : 'reserve is empty';
+  var base = 'needs ' + fmt(s.need) + ', shelf has ' + fmt(s.on_hand);
+  if (s.state === 'replen_loop') return base + ' · replen cancelled ' + s.replen_cancelled + '× · ' + res;
+  if (s.state === 'replen_open') return base + ' · replen on the way';
+  return base + ' · no replen · ' + res;
 }
 
 function utToggle(el) {
@@ -3446,10 +3499,14 @@ function utToggle(el) {
   if (utExpanded.has(key)) utExpanded.delete(key); else utExpanded.add(key);
   if (lastUtData) renderUntaskedData(lastUtData);
 }
+function utKey(e, el) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); utToggle(el); }
+}
 
 function utCopy(btn) {
   var text = btn.dataset.copy.split(',').join('\n');
-  var done = function() { var t = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(function(){ btn.textContent = t; }, 2000); };
+  var label = btn.textContent;
+  var done = function() { btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = label; }, 2000); };
   try { navigator.clipboard.writeText(text).then(done, function() { utCopyFallback(text); done(); }); }
   catch(e) { utCopyFallback(text); done(); }
 }
@@ -3460,29 +3517,49 @@ function utCopyFallback(text) {
   document.body.removeChild(ta);
 }
 
-function utSection(title, hint, ids, head, rows) {
-  return '<div class="card ut-sec"><div class="ut-sec-head"><div><div class="card-title">' + title + '</div>' +
-    '<div class="ut-hint">' + hint + '</div></div>' +
-    (ids.length ? '<button class="ut-copy" data-copy="' + escHtml(ids.join(',')) + '" onclick="utCopy(this)">Copy order #s</button>' : '') +
-    '</div><div class="xpd-table-wrap"><table><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+// One dot per item in the order: filled = the item holding it up, ring = has stock
+function utDots(o) {
+  var shown = o.lines.slice(0, 10).map(function(l) { return '<span class="ut-dot' + (l.short ? ' short' : '') + '"></span>'; }).join('');
+  var nShort = o.lines.filter(function(l) { return l.short; }).length;
+  var more = o.lines.length > 10 ? '<span class="ut-dot-more">+' + (o.lines.length - 10) + '</span>' : '';
+  return '<div class="ut-dots" title="' + nShort + ' of ' + o.lines.length + ' items short">' + shown + more + '</div>';
 }
 
-// One expandable order row + its line detail
-function utOrderRows(d, o, cols, cells) {
+function utSection(lane, meta, does, ids, body) {
+  return '<section class="ut-sec" style="--lane:' + lane.color + '"><div class="ut-sec-head"><div>' +
+    '<h3 class="ut-sec-title">' + lane.name + '<span class="ut-sec-meta">' + meta + '</span></h3>' +
+    '<p class="ut-sec-do">' + does + '</p></div>' +
+    (ids.length ? '<button class="ut-copy" data-copy="' + escHtml(ids.join(',')) + '" onclick="utCopy(this)">Copy ' + utPlural(ids.length, 'order #', 'order #s') + '</button>' : '') +
+    '</div>' + (body || '<div class="ut-clear">Nothing here right now.</div>') + '</section>';
+}
+
+// Expandable order row (short shelf / replen loop / stock): every item shows when opened
+function utOrderRow(d, o, nested) {
   var key = 'o:' + o.order_id, open = utExpanded.has(key);
-  var html = '<tr class="ut-row" data-utkey="' + escHtml(key) + '" onclick="utToggle(this)">' +
-    '<td><span class="ut-chev' + (open ? ' open' : '') + '">&#x25B6;</span></td>' + cells + '</tr>';
+  var blk = o.lines.filter(function(l) { return l.short; })[0] || o.lines[0];
+  var s = blk.short ? utShelfFor(d, blk) : null;
+  var why = blk.short ? utShelfWhy(s) : 'every shelf has stock — still no task';
+  var html = '<div class="ut-row click' + (nested ? ' nested' : '') + '" role="button" tabindex="0" aria-expanded="' + open + '"' +
+    ' data-utkey="' + escHtml(key) + '" onclick="utToggle(this)" onkeydown="utKey(event,this)">' +
+    '<span class="ut-chev' + (open ? ' open' : '') + '">&#x25B6;</span>' + utSvc(o.svc) +
+    '<div><div class="ut-oid">' + escHtml(o.order_id) + '</div><div class="ut-osub">' + (o.single ? 'Single' : 'Multi') + ' · ' + utPlural(o.units, 'unit', 'units') + '</div></div>' +
+    utDots(o) +
+    // Nested under a shelf header: the shelf already says why, so just say what else is in the order
+    (nested
+      ? '<div class="ut-what"><div class="ut-item ut-desc">' + (o.lines.length > 1
+          ? utPlural(o.lines.length - 1, 'other item has', 'other items have') + ' stock — waiting on this shelf'
+          : 'Only item in the order') + '</div></div>'
+      : '<div class="ut-what"><div class="ut-item">' + utItem(blk) + '</div>' +
+        '<div class="ut-why"><span class="ut-loc">' + escHtml(blk.loc || '—') + '</span> · ' + why + '</div></div>') +
+    utAgeHtml(o.mins) + '</div>';
   if (open) {
-    var lines = o.lines.map(function(l) {
-      var s = l.short ? utShelfFor(d, l) : null;
-      var why = l.short
-        ? (s ? 'Needs ' + fmt(s.need) + ' · shelf has ' + fmt(s.on_hand) + ' · ' + utShelfWhy(s) : 'No pick shelf assigned')
-        : 'Shelf has stock (' + fmt(l.on_hand) + ') — waiting on the rest of the order';
-      return '<div class="ut-line ' + (l.short ? 'short' : 'ok') + '"><span class="ut-mark">' + (l.short ? '!' : '✓') + '</span>' +
-        '<span>' + utItem(l) + ' × ' + l.units + '</span><span class="ut-mono">' + escHtml(l.loc || '—') + '</span>' +
-        '<span class="ut-why">' + why + '</span></div>';
-    }).join('');
-    html += '<tr class="ut-detail"><td colspan="' + cols + '">' + lines + '</td></tr>';
+    html += '<div class="ut-lines">' + o.lines.map(function(l) {
+      var ls = l.short ? utShelfFor(d, l) : null;
+      var say = l.short ? utShelfWhy(ls) : 'shelf has ' + fmt(l.on_hand) + ' — waiting on the short item';
+      return '<div class="ut-line' + (l.short ? ' short' : '') + '"><span class="ut-dot' + (l.short ? ' short' : '') + '"></span>' +
+        '<span class="ut-item">' + utItem(l) + ' × ' + l.units + '</span><span class="ut-loc">' + escHtml(l.loc || '—') + '</span>' +
+        '<span class="ut-line-say">' + say + '</span></div>';
+    }).join('') + '</div>';
   }
   return html;
 }
@@ -3491,86 +3568,102 @@ function renderUntaskedData(d) {
   if (!d) return;
   var s = d.summary || {};
   document.getElementById('ut-empty-state').style.display = 'none';
-  document.getElementById('ut-tiles').style.display = '';
   var rtEl = document.getElementById('ut-run-time');
-  if (rtEl) rtEl.textContent = 'Updated ' + (d.generated ? fmtPdt(d.generated) : '—') + (isStale(d.generated, 20) ? ' — data is old, check option 27' : '');
-
-  document.getElementById('ut-t-short').textContent     = fmt(s.short_shelf);
-  document.getElementById('ut-t-short-sub').textContent = fmt(s.short_shelf_units) + ' units waiting';
-  document.getElementById('ut-t-loop').textContent      = fmt(s.replen_loop);
-  document.getElementById('ut-t-loop-sub').textContent  = fmt(s.loop_shelves) + (s.loop_shelves === 1 ? ' shelf' : ' shelves') + ' cancelling';
-  document.getElementById('ut-t-ghost').textContent     = fmt(s.ghosts);
-  document.getElementById('ut-t-ghost-sub').textContent = fmt(s.ghost_units) + ' units locked on shelves';
-  document.getElementById('ut-t-ntm').textContent       = fmt(s.no_task_made);
-  document.getElementById('ut-note').textContent =
-    'Orders without a task for ' + (d.grace_min || 60) + '+ min. ' + fmt(s.waiting) + ' newer order' + (s.waiting === 1 ? ' is' : 's are') +
-    ' waiting for the next batch release (normal).' + (s.expedite ? ' ' + s.expedite + ' flagged order' + (s.expedite === 1 ? ' is' : 's are') + ' 1DD/2DD.' : '');
+  if (rtEl) rtEl.textContent = 'Updated ' + (d.generated ? fmtPdt(d.generated) : '—') +
+    (isStale(d.generated, 20) ? ' — data is over 20 min old, check option 27' : '');
 
   var orders = d.orders || [];
   var byCat  = function(c) { return orders.filter(function(o) { return o.category === c; }); };
   var ids    = function(list) { return list.map(function(o) { return o.order_id; }); };
-  var html   = '';
-  var OH     = '<th></th><th>SVC</th><th>Order #</th><th>Type</th><th>Holding it up</th><th>Shelf</th><th class="r">Units</th><th class="r">No task for</th>';
-
-  var orderTable = function(list) {
-    return list.map(function(o) {
-      var blk = o.lines.filter(function(l) { return l.short; })[0] || o.lines[0];
-      return utOrderRows(d, o, 8,
-        '<td>' + utSvc(o.svc) + '</td><td class="ut-mono">' + escHtml(o.order_id) + '</td>' +
-        '<td>' + (o.single ? 'Single' : 'Multi') + '</td><td>' + utItem(blk) + '</td>' +
-        '<td class="ut-mono">' + escHtml(blk.loc || '—') + '</td><td class="r">' + o.units + '</td>' +
-        '<td class="r ' + utAgeCls(o.mins) + '">' + utAge(o.mins) + '</td>');
-    }).join('');
+  var groups = {
+    short: byCat('short_shelf'), loop: byCat('replen_loop'), stock: byCat('has_stock'),
+    ghost: d.ghosts || [], ntm: d.no_task_made || [],
   };
 
-  var shortList = byCat('short_shelf');
-  html += utSection('Short Shelf', 'One item\'s shelf doesn\'t have enough stock, so the whole order waits. Tap a row for the details.',
-    ids(shortList), OH, shortList.length ? orderTable(shortList) : '<tr><td colspan="8" class="ut-clear">None — every shelf can cover its orders</td></tr>');
-
-  var loopList   = byCat('replen_loop');
-  var loopShelves = (d.shelves || []).filter(function(x) { return x.state === 'replen_loop'; });
-  var loopShelfRows = loopShelves.map(function(x) {
-    return '<tr><td></td><td class="ut-mono">' + escHtml(x.loc) + '</td><td>' + utItem(x) + '</td>' +
-      '<td class="r">' + fmt(x.on_hand) + '</td><td class="r">' + fmt(x.orders) + '</td><td class="r">' + x.replen_cancelled + '×</td>' +
-      '<td class="r">' + (x.reserve_free > 0 ? fmt(x.reserve_free) : '<span style="color:var(--red);font-weight:700;">0</span>') + '</td></tr>';
+  // Lane filters
+  var lanes = UT_LANES.filter(function(l) { return !(l.hideEmpty && !groups[l.key].length); });
+  if (utLane !== 'all' && !lanes.some(function(l) { return l.key === utLane; })) utLane = 'all';
+  var lanesEl = document.getElementById('ut-lanes');
+  lanesEl.style.display = '';
+  lanesEl.classList.toggle('filtered', utLane !== 'all');
+  lanesEl.innerHTML = lanes.map(function(l) {
+    var n = groups[l.key].length;
+    return '<button class="ut-lane' + (n ? '' : ' zero') + (utLane === l.key ? ' on' : '') + '" style="--lane:' + l.color + '"' +
+      ' aria-pressed="' + (utLane === l.key) + '" onclick="utSetLane(\'' + l.key + '\')">' +
+      '<div class="ut-lane-top"><span class="ut-lane-n">' + fmt(n) + '</span><span class="ut-lane-name">' + l.name + '</span></div>' +
+      '<div class="ut-lane-owner">' + l.owner + '</div></button>';
   }).join('');
-  html += utSection('Replen Loop', 'The replen for these shelves keeps getting cancelled. Reserve has stock → check shelf space. Reserve 0 → research inventory.',
-    ids(loopList),
-    '<th></th><th>Shelf</th><th>Item</th><th class="r">On shelf</th><th class="r">Orders</th><th class="r">Cancelled (12h)</th><th class="r">Reserve</th>',
-    loopShelves.length ? loopShelfRows : '<tr><td colspan="7" class="ut-clear">None</td></tr>');
-  if (loopList.length) {
-    html += utSection('Orders Behind The Replen Loop', 'Tap a row to see every item in the order.', [], OH, orderTable(loopList));
+
+  var waiting = s.waiting || 0;
+  document.getElementById('ut-note').innerHTML =
+    'Orders with no pick task for <b>' + (d.grace_min || 60) + '+ minutes</b>. ' +
+    utPlural(waiting, 'newer order is', 'newer orders are') + ' waiting for the next batch release, which is normal.' +
+    (s.expedite ? ' <b>' + utPlural(s.expedite, 'flagged order is', 'flagged orders are') + ' 1DD/2DD</b> — those sort to the top.' : '') +
+    (utLane !== 'all' ? ' Showing one group — tap it again to see all.' : '');
+
+  var show = function(k) { return utLane === 'all' || utLane === k; };
+  var lane = function(k) { return UT_LANES.filter(function(l) { return l.key === k; })[0]; };
+  var html = '';
+
+  if (show('short')) {
+    var su = groups.short.reduce(function(t, o) { return t + o.units; }, 0);
+    html += utSection(lane('short'), utPlural(groups.short.length, 'order', 'orders') + ' · ' + utPlural(su, 'unit', 'units'),
+      'One item\'s shelf can\'t cover the order, so the whole order waits. Create a replen, or research the item if reserve is empty. Tap an order to see every item.',
+      ids(groups.short), groups.short.map(function(o) { return utOrderRow(d, o); }).join(''));
   }
 
-  var stockList = byCat('has_stock');
-  if (stockList.length) {
-    html += utSection('Stock On Shelf, Still No Task', 'Every shelf has stock but no task was made. Check the batch / work release.',
-      ids(stockList), OH, orderTable(stockList));
-  }
-
-  var ghosts = d.ghosts || [];
-  var ghostRows = ghosts.map(function(g) {
-    return g.lines.map(function(l, i) {
-      return '<tr><td></td><td class="ut-mono">' + (i ? '' : escHtml(g.order_id)) + '</td><td>' + (i ? '' : g.status) + '</td>' +
-        '<td>' + utItem(l) + '</td><td class="ut-mono">' + escHtml(l.loc || '—') + '</td>' +
-        '<td class="r">' + fmt(l.on_hand) + ' / ' + fmt(l.allocated) + '</td>' +
-        '<td class="r ' + (i ? '' : utAgeCls(g.mins)) + '">' + (i ? '' : utAge(g.mins)) + '</td></tr>';
+  if (show('loop')) {
+    // Group orders under the looping shelf that's holding them
+    var loopShelves = (d.shelves || []).filter(function(x) { return x.state === 'replen_loop'; });
+    var body = loopShelves.map(function(x) {
+      var mine = groups.loop.filter(function(o) {
+        return o.lines.some(function(l) { return l.short && l.loc === x.loc && l.item === x.item; });
+      });
+      return '<div class="ut-shelf"><div class="ut-item"><span class="ut-loc">' + escHtml(x.loc) + '</span> · ' + utItem(x) + '</div>' +
+        '<div class="ut-shelf-facts"><span><b>' + fmt(x.on_hand) + '</b> on shelf</span>' +
+        '<span>cancelled <b>' + x.replen_cancelled + '×</b> in 12 hrs</span>' +
+        '<span class="' + (x.reserve_free > 0 ? '' : 'zero') + '"><b>' + fmt(x.reserve_free) + '</b> in reserve</span>' +
+        '<span class="ut-verdict">' + (x.reserve_free > 0 ? 'Check shelf space' : 'Research inventory') + '</span></div></div>' +
+        mine.map(function(o) { return utOrderRow(d, o, true); }).join('');
     }).join('');
-  }).join('');
-  html += utSection('Shipped But Still Holding Stock', 'Order is done but stock on the shelf is still set aside for it — nobody else can pick it. Send to ICQA / MA to unallocate.',
-    ids(ghosts), '<th></th><th>Order #</th><th>Status</th><th>Item</th><th>Shelf</th><th class="r">On shelf / held</th><th class="r">Since</th>',
-    ghosts.length ? ghostRows : '<tr><td colspan="7" class="ut-clear">None</td></tr>');
+    html += utSection(lane('loop'),
+      utPlural(groups.loop.length, 'order', 'orders') + ' · ' + utPlural(loopShelves.length, 'shelf', 'shelves'),
+      'The replen for these shelves keeps getting cancelled. If reserve has stock, the shelf is probably out of room. If reserve is 0, the item needs research.',
+      ids(groups.loop), body);
+  }
 
-  var ntm = d.no_task_made || [];
-  var ntmRows = ntm.map(function(n) {
-    var l = n.lines[0] || {};
-    return '<tr><td></td><td>' + utSvc(n.svc) + '</td><td class="ut-mono">' + escHtml(n.order_id) + '</td>' +
-      '<td>' + (n.single ? 'Single' : 'Multi') + '</td><td>' + utItem(l) + (n.lines.length > 1 ? ' +' + (n.lines.length - 1) : '') + '</td>' +
-      '<td>' + (fmtPdt(n.released) || '—') + '</td><td class="r ' + utAgeCls(n.mins) + '">' + utAge(n.mins) + '</td></tr>';
-  }).join('');
-  html += utSection('Released, No Task Made', 'The system released these but never made a pick task. Send to MA support.',
-    ids(ntm), '<th></th><th>SVC</th><th>Order #</th><th>Type</th><th>Item</th><th>Released</th><th class="r">Waiting</th>',
-    ntm.length ? ntmRows : '<tr><td colspan="7" class="ut-clear">None</td></tr>');
+  if (show('stock') && groups.stock.length) {
+    html += utSection(lane('stock'), utPlural(groups.stock.length, 'order', 'orders'),
+      'Every shelf has stock, but no task was made. Check whether the batch released.',
+      ids(groups.stock), groups.stock.map(function(o) { return utOrderRow(d, o); }).join(''));
+  }
+
+  if (show('ghost')) {
+    var gu = groups.ghost.reduce(function(t, g) { return t + g.lines.reduce(function(u, l) { return u + l.units; }, 0); }, 0);
+    html += utSection(lane('ghost'), utPlural(groups.ghost.length, 'order', 'orders') + ' · ' + utPlural(gu, 'unit', 'units') + ' held',
+      'These orders are done, but stock on the shelf is still set aside for them, so nobody else can pick it. Send the list to ICQA to unallocate.',
+      ids(groups.ghost), groups.ghost.map(function(g) {
+        return '<div class="ut-row"><span></span><span class="ut-svc-std">' + g.status + '</span>' +
+          '<div><div class="ut-oid">' + escHtml(g.order_id) + '</div><div class="ut-osub">' + utPlural(g.lines.length, 'item', 'items') + ' held</div></div><span></span>' +
+          '<div class="ut-what">' + g.lines.map(function(l) {
+            return '<div class="ut-item">' + utItem(l) + '</div><div class="ut-why"><span class="ut-loc">' + escHtml(l.loc || '—') + '</span> · ' +
+              fmt(l.on_hand) + ' on shelf, ' + fmt(l.allocated) + ' held</div>';
+          }).join('') + '</div>' + utAgeHtml(g.mins) + '</div>';
+      }).join(''));
+  }
+
+  if (show('ntm')) {
+    html += utSection(lane('ntm'), utPlural(groups.ntm.length, 'order', 'orders'),
+      'MA released these orders but never made a pick task. Send the list to MA support.',
+      ids(groups.ntm), groups.ntm.map(function(n) {
+        var l = n.lines[0] || {};
+        return '<div class="ut-row"><span></span>' + utSvc(n.svc) +
+          '<div><div class="ut-oid">' + escHtml(n.order_id) + '</div><div class="ut-osub">' + (n.single ? 'Single' : 'Multi') + '</div></div><span></span>' +
+          '<div class="ut-what"><div class="ut-item">' + utItem(l) + (n.lines.length > 1 ? ' <span class="ut-desc">+' + (n.lines.length - 1) + ' more</span>' : '') + '</div>' +
+          '<div class="ut-why">released ' + (fmtPdt(n.released) || '—') + ' · no task ever made</div></div>' +
+          utAgeHtml(n.mins) + '</div>';
+      }).join(''));
+  }
 
   document.getElementById('ut-sections').innerHTML = html;
 }
