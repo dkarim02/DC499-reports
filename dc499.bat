@@ -48,6 +48,10 @@ echo  23 Container Watch - one-shot refresh
 echo  24 Container Watch - start auto-refresh (every 15 min)
 echo  25 Container Watch - auth
 echo ──────────────────────────────
+echo  26 Untasked Orders - one-shot refresh
+echo  27 Untasked Orders - start auto-refresh (every 5 min)
+echo  28 Untasked Orders - auth
+echo ──────────────────────────────
 set /p choice="Select: "
 
 if "%choice%"=="1" (
@@ -223,6 +227,27 @@ if "%choice%"=="25" (
     echo.
     echo Starting Container Watch auth flow...
     "%NODE_EXE%" "%~dp0scout_watch_agent.js" --auth
+    pause
+    exit /b
+)
+if "%choice%"=="26" (
+    echo.
+    echo Running Untasked Orders one-shot refresh...
+    "%NODE_EXE%" "%~dp0scout_untasked_agent.js"
+    pause
+    exit /b
+)
+if "%choice%"=="27" (
+    echo.
+    echo Starting Untasked Orders auto-refresh every 5 min...
+    "%NODE_EXE%" "%~dp0scout_untasked_agent.js" --serve --interval=5
+    pause
+    exit /b
+)
+if "%choice%"=="28" (
+    echo.
+    echo Starting Untasked Orders auth flow...
+    "%NODE_EXE%" "%~dp0scout_untasked_agent.js" --auth
     pause
     exit /b
 )

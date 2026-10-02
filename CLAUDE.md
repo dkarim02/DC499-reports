@@ -10,7 +10,7 @@ This file is read automatically at the start of every Claude Code session. Do no
 **Entry point: always `dc499.bat` — never `node` directly.**
 
 - Main server: option 2 (`:3001`, auto-refresh every 2 min)
-- Sub-agents: options 5–25 (each dept has one-shot / auto-refresh / auth)
+- Sub-agents: options 5–28 (each dept has one-shot / auto-refresh / auth)
 - Git: dc499_refresh.js pushes for everyone — sub-agents only write JSON files locally
 
 **GitHub:** dkarim02/DC499-reports | **Live:** dkarim02.github.io/DC499-reports | **Local:** C:\Users\JLEO\OneDrive - Nordstrom\DC499 Reporter
@@ -33,6 +33,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | scout_itemprep_agent.js | itemprep_live.json | ItemPrep_live.html |
 | scout_retail_agent.js | retail_backlog_live.json | Retail_backlog.html |
 | scout_watch_agent.js | container_watch_live.json | Container_watch.html |
+| scout_untasked_agent.js | untasked_live.json | Backlog_live.html (No Task tab) |
 | eos_agent.js | eos_sos_snapshot.json, eos_report.json | EOS_live.html |
 
 ---
@@ -52,6 +53,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | 17–19 | Expedite Live (one-shot / auto / auth) | scout_expedite_agent.js |
 | 20–22 | Retail Backlog (one-shot / auto every 5 min / auth) | scout_retail_agent.js |
 | 23–25 | Container Watch (one-shot / auto every 15 min / auth) | scout_watch_agent.js |
+| 26–28 | Untasked Orders (one-shot / auto every 5 min / auth) | scout_untasked_agent.js |
 
 **EOS:** separate launcher — `eos.bat` (options: 1=SOS snapshot, 2=EOS+finalize, 3=Reconstruct SOS, 4=Auth)
 
@@ -98,7 +100,7 @@ Backup path if GitHub is lost: share the folder through OneDrive and open pages 
 dc499_refresh.js is the single coordinator — sub-agents never push.
 
 ```
-git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json ecom_history.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json retail_backlog_live.json container_watch_live.json
+git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json ecom_history.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json retail_backlog_live.json container_watch_live.json untasked_live.json
 git commit -m "Live update -- {stamp} [+ecom, +shipping, +reserve]"
 git fetch origin main
 git rebase --autostash origin/main
@@ -109,7 +111,7 @@ git push origin main
 
 **index.lock cleanup:** `gitPush()` calls `fs.unlinkSync('.git/index.lock')` before every `git add` — silently clears stale locks left by killed/crashed cycles.
 
-**Commit message `[+label]` tags:** LABELS map in gitPush() — `ecom_live.json`→`ecom`, `shipping_live.json`→`shipping`, `reserve_live.json`→`reserve`, `putaway_live.json`→`putaway`, `expedite_live.json`→`expedite`, `retail_backlog_live.json`→`retail`, `container_watch_live.json`→`watch`. Any sub-agent file that changed gets its tag appended.
+**Commit message `[+label]` tags:** LABELS map in gitPush() — `ecom_live.json`→`ecom`, `shipping_live.json`→`shipping`, `reserve_live.json`→`reserve`, `putaway_live.json`→`putaway`, `expedite_live.json`→`expedite`, `retail_backlog_live.json`→`retail`, `container_watch_live.json`→`watch`, `untasked_live.json`→`untasked`. Any sub-agent file that changed gets its tag appended.
 
 ---
 
@@ -222,7 +224,7 @@ All agents (`dc499_refresh.js`, `scout_ecom_agent.js`, `scout_reserve_agent.js`,
 - Fast path: if token is fresh, return immediately — no network call
 - Lock path: claim `.mcp_token.lock` (exclusive `wx` write), re-check freshness after acquiring, refresh once, release in `finally`
 
-**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122, scout_retail=3123, scout_watch=3124
+**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122, scout_retail=3123, scout_watch=3124, scout_untasked=3125
 
 ---
 
@@ -382,6 +384,22 @@ CUP-report prevention tool (built 2026-09-30). Menu: Item Prep card → "Contain
 **Names:** shown only in the row detail timeline ("First L."), never in the table — Dean's call, so it reads as research, not blame.
 
 **Limits:** consumed found-containers lose ITEM_ID in DCI_ILPN (can't match); "Recover from LOST" adjustments into active slots aren't searched (TSK_ACTIVITY_TRACKING by ITEM_ID over weeks times out).
+
+---
+
+## Untasked Orders (scout_untasked_agent.js → Backlog_live.html No Task tab)
+
+Ecom orders allocated with no pick task, grouped by why (built 2026-10-01). Output untasked_live.json, refresh 5 min, ~4–6 queries. `--once` = safe one-shot. Backlog v1.3 fetches it every 2 min for the tab + red count badge.
+
+**Method (from Shubham Dalal's retail dashboard):** `DCI_ALLOCATION` is the source, not "NOT EXISTS in TSK_TASK_DETAIL". STATUS 3000 = allocated, no task yet; 5000 = released. **STATUS is stored as '3000.0'** — always `IN ('3000','3000.0')` or it silently returns 0 rows. No date bound on the 3000 query (indexed, small set — a window would hide the aged ones).
+
+**Categories:**
+- Grace: untasked < 60 min (`GRACE_MIN`) = waiting for batch release, counted not flagged. Age = oldest 3000 allocation CREATED_TIMESTAMP.
+- **short_shelf** — a line's shelf is short: `on_hand < max(untasked need, DCI_INVENTORY.ALLOCATED)` (ALLOCATED covers tasked + untasked picks). Work release only tasks stock on the shelf, and the whole order waits on its one short item — the other lines are "hostage".
+- **replen_loop** — short shelf whose replen (TSK_TASK_DETAIL TYPE_ID='REPLENISHMENT', TARGET_LOCATION_ID) was cancelled ≥2× in 12 hrs. Page shows reserve free (R1B–R1F on_hand − allocated): reserve > 0 → shelf space; 0 → research.
+- **has_stock** — past grace, every shelf covers it, still no task (hidden when empty).
+- **ghost** — 3000 allocation on a shipped/cancelled order. Locks shelf stock. On 10/1 all 4 were GWPs (oldest 7/13).
+- **no_task_made** — 5000 allocation on an open order with **no** TSK_TASK_DETAIL row by ALLOCATION_ID (not even cancelled). TYPE_ID 'PACK', no location. Cancelled-only = short-pick leftover that re-allocates itself — not flagged.
 
 ---
 

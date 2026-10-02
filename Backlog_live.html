@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Backlog Live v1.2 -- DC499</title>
+<title>Ecom Backlog Live v1.3 -- DC499</title>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -540,6 +540,35 @@
   .tab-btn.xpd-tab-btn.active{color:var(--xpd);border-bottom-color:var(--xpd);}
   .tab-btn.xpd-tab-btn:not(.active):hover{color:var(--xpd);}
 
+  /* ── No Task tab (untasked_live.json) ─────────────────────────────────── */
+  .tab-btn.ut-tab-btn.active{color:var(--red);border-bottom-color:var(--red);}
+  .tab-btn.ut-tab-btn:not(.active):hover{color:var(--red);}
+  .ut-count{display:inline-block;min-width:16px;font-size:10px;font-weight:800;padding:0 5px;margin-left:5px;border-radius:8px;background:var(--red);color:#fff;line-height:16px;vertical-align:1px;}
+  .ut-note{font-size:12px;color:var(--text-muted);margin:-0.5rem 0 1rem;}
+  .ut-sec{margin-bottom:1rem;}
+  .ut-sec-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:0.6rem;}
+  .ut-sec-head .card-title{margin-bottom:0;}
+  .ut-hint{font-size:11px;color:var(--text-hint);margin-top:2px;}
+  .ut-copy{font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;border:0.5px solid var(--border);background:var(--surface2);color:var(--text-muted);cursor:pointer;white-space:nowrap;}
+  .ut-copy:hover{color:var(--accent);border-color:var(--accent-muted);}
+  .ut-row{cursor:pointer;}
+  .ut-row:hover td{background:var(--surface2);}
+  .ut-chev{display:inline-block;font-size:9px;color:var(--text-hint);width:10px;transition:transform 0.15s;}
+  .ut-chev.open{transform:rotate(90deg);}
+  .ut-detail td{background:var(--surface2);padding:6px 10px 10px 28px !important;}
+  .ut-line{display:flex;gap:10px;align-items:baseline;font-size:12px;padding:3px 0;}
+  .ut-line .ut-mark{width:14px;flex-shrink:0;font-weight:800;}
+  .ut-line.short .ut-mark{color:var(--red);}
+  .ut-line.ok .ut-mark{color:var(--green);}
+  .ut-mono{font-family:monospace;font-size:11px;color:var(--text-muted);}
+  .ut-why{font-size:11px;color:var(--text-muted);}
+  .ut-line.short .ut-why{color:var(--red);font-weight:600;}
+  .ut-gwp{display:inline-block;font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px;margin-left:4px;background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber);vertical-align:1px;}
+  .ut-svc-std{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;color:var(--text-hint);border:0.5px solid var(--border);}
+  .ut-age-old{color:var(--red);font-weight:700;}
+  .ut-age-mid{color:var(--amber);font-weight:600;}
+  .ut-clear{text-align:center;padding:1.25rem;color:var(--green);font-size:13px;font-weight:600;}
+
   /* ── Retail Replen widget ─────────────────────────────────────────────── */
   .rr-widget{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;margin-top:1rem;overflow:hidden;}
   .rr-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;}
@@ -682,7 +711,7 @@ body { animation: pageEnter 0.28s ease-out both; }
   <div class="top-bar">
     <div>
       <button class="back-btn" id="back-btn" onclick="window.close()" style="margin-bottom:10px;">&#x2190; Back to Ecom</button>
-      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.2</p>
+      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.3</p>
       <h1>Ecom Backlog &mdash; DC499</h1>
       <p class="subtitle">Live data &middot; Auto-refreshes every 2 min</p>
     </div>
@@ -718,6 +747,7 @@ body { animation: pageEnter 0.28s ease-out both; }
     <button class="tab-btn"        id="tb-tasks"   onclick="setTab('tasks')">Tasks</button>
     <button class="tab-btn xpd-tab-btn" id="tb-expedite" onclick="setTab('expedite')">Expedite</button>
     <button class="tab-btn hpw-tab-btn" id="tb-hospital" onclick="setTab('hospital')">Hospital PW</button>
+    <button class="tab-btn ut-tab-btn"  id="tb-untasked" onclick="setTab('untasked')">No Task<span class="ut-count" id="ut-tab-count" style="display:none;"></span></button>
     <div style="flex:1;"></div>
     <a href="https://nrdrp.sce.manh.com/udc/dm-config/screen/dcorder/OrderPlanningStrategy" target="_blank"
        style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-muted);text-decoration:none;white-space:nowrap;margin-right:4px;transition:background 0.12s,color 0.12s,border-color 0.12s;"
@@ -1257,6 +1287,49 @@ body { animation: pageEnter 0.28s ease-out both; }
     </div>
   </div><!-- /#tab-expedite -->
 
+  <!-- ── Tab: No Task (allocated orders with no pick task) ──────────────────── -->
+  <div class="tab-pane" id="tab-untasked">
+    <div class="header-row">
+      <div>
+        <div id="ut-run-time" class="run-time">Loading...</div>
+      </div>
+      <div class="header-btns">
+        <button class="refresh-btn" onclick="fetchUntaskedData(true)">&#x21BA; Refresh</button>
+      </div>
+    </div>
+
+    <div class="xpd-summary" id="ut-tiles" style="display:none;">
+      <div class="xpd-tile t-red" style="border-top-color:var(--red);">
+        <div class="xpd-tile-label">Short Shelf</div>
+        <div class="xpd-tile-value" id="ut-t-short" style="color:var(--red);">--</div>
+        <div class="xpd-tile-sub" id="ut-t-short-sub"></div>
+      </div>
+      <div class="xpd-tile t-amber">
+        <div class="xpd-tile-label">Replen Loop</div>
+        <div class="xpd-tile-value" id="ut-t-loop">--</div>
+        <div class="xpd-tile-sub" id="ut-t-loop-sub"></div>
+      </div>
+      <div class="xpd-tile t-accent">
+        <div class="xpd-tile-label">Shipped But Holding</div>
+        <div class="xpd-tile-value" id="ut-t-ghost">--</div>
+        <div class="xpd-tile-sub" id="ut-t-ghost-sub"></div>
+      </div>
+      <div class="xpd-tile t-xpd">
+        <div class="xpd-tile-label">No Task Made</div>
+        <div class="xpd-tile-value" id="ut-t-ntm">--</div>
+        <div class="xpd-tile-sub">released, never tasked</div>
+      </div>
+    </div>
+    <div class="ut-note" id="ut-note"></div>
+
+    <div id="ut-sections"></div>
+
+    <div class="empty-state" id="ut-empty-state" style="display:none;">
+      <div style="font-size:32px;margin-bottom:10px;">&#x1F50D;</div>
+      No untasked order data yet. Start option 27 (Untasked Orders) in dc499.bat.
+    </div>
+  </div><!-- /#tab-untasked -->
+
   <!-- ── Tab: Hospital Putwall ─────────────────────────────────────────────── -->
   <div class="tab-pane" id="tab-hospital">
     <div class="header-row">
@@ -1423,7 +1496,10 @@ function setTab(tab) {
   document.getElementById('tab-tasks').classList.toggle('active',     tab === 'tasks');
   document.getElementById('tab-expedite').classList.toggle('active',  tab === 'expedite');
   document.getElementById('tab-hospital').classList.toggle('active',  tab === 'hospital');
+  document.getElementById('tb-untasked').classList.toggle('active',  tab === 'untasked');
+  document.getElementById('tab-untasked').classList.toggle('active', tab === 'untasked');
   document.getElementById('stale-banner').style.display = 'none';
+  if (tab === 'untasked') { if (lastUtData) renderUntaskedData(lastUtData); else fetchUntaskedData(); }
   if (tab === 'batches')  { if (lastBtData)  renderBatchData(lastBtData);     else fetchBatchData(); }
   if (tab === 'tasks')    { if (lastTkData)  renderTasksData(lastTkData);     else fetchTasksData(); }
   if (tab === 'expedite') { if (lastXpdData) renderExpediteData(lastXpdData); else fetchExpediteData(); }
@@ -3295,6 +3371,209 @@ setTimeout(fetchBatchData,  800);
 setTimeout(fetchTasksData, 1600);
 setInterval(fetchRrData, 2 * 60 * 1000);
 setInterval(fetchShippedData, 5 * 60 * 1000);
+
+// ── NO TASK TAB (untasked_live.json — scout_untasked_agent.js) ────────────────
+// Ecom orders allocated with no pick task, grouped by why. Expanded rows survive refresh.
+var lastUtData  = null;
+var utExpanded  = new Set();
+
+function fetchUntaskedData(manual) {
+  var rtEl = document.getElementById('ut-run-time');
+  if (manual && rtEl) rtEl.textContent = 'Refreshing...';
+  fetch(getBase() + '/untasked_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(data) {
+      lastUtData = data;
+      utUpdateTabCount(data);
+      if (activeTab === 'untasked') renderUntaskedData(data);
+    })
+    .catch(function(err) {
+      if (activeTab !== 'untasked') return;
+      var el = document.getElementById('ut-run-time');
+      if (el) el.textContent = 'Failed to load: ' + err.message;
+      document.getElementById('ut-empty-state').style.display = 'block';
+      document.getElementById('ut-tiles').style.display = 'none';
+    });
+}
+setInterval(fetchUntaskedData, 2 * 60 * 1000);
+fetchUntaskedData();
+
+function utFlaggedCount(d) {
+  var s = d.summary || {};
+  return (s.short_shelf || 0) + (s.replen_loop || 0) + (s.has_stock || 0) + (s.ghosts || 0) + (s.no_task_made || 0);
+}
+function utUpdateTabCount(d) {
+  var el = document.getElementById('ut-tab-count');
+  if (!el) return;
+  var n = utFlaggedCount(d);
+  el.textContent = n;
+  el.style.display = n ? 'inline-block' : 'none';
+}
+
+function utAge(m) {
+  if (m == null) return '—';
+  if (m < 60)   return m + 'm';
+  if (m < 1440) return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+  return Math.floor(m / 1440) + 'd';
+}
+function utAgeCls(m) { return m >= 240 ? 'ut-age-old' : m >= 90 ? 'ut-age-mid' : ''; }
+function utSvc(svc) {
+  if (svc === '1DD') return '<span class="xpd-svc-1dd">1DD</span>';
+  if (svc === '2DD') return '<span class="xpd-svc-2dd">2DD</span>';
+  return '<span class="ut-svc-std">STD</span>';
+}
+function utItem(l) {
+  return '<strong>' + escHtml(l.item) + '</strong>' + (l.gwp ? '<span class="ut-gwp">GWP</span>' : '') +
+    (l.desc ? ' <span class="ut-why">' + escHtml(l.desc) + '</span>' : '');
+}
+
+// Plain-language reason + next step for a short shelf
+function utShelfWhy(s) {
+  if (!s) return 'No pick shelf';
+  var res = s.reserve_free > 0 ? 'reserve has ' + fmt(s.reserve_free) : 'reserve is empty';
+  if (s.state === 'replen_loop') return 'Replen cancelled ' + s.replen_cancelled + '× in 12 hrs · ' + res + (s.reserve_free > 0 ? ' — check shelf space' : ' — research inventory');
+  if (s.state === 'replen_open') return 'Replen open — should clear when it lands';
+  return 'No replen · ' + res + (s.reserve_free > 0 ? ' — create a replen' : ' — research inventory');
+}
+function utShelfFor(d, l) {
+  var list = d.shelves || [];
+  for (var i = 0; i < list.length; i++) if (list[i].loc === l.loc && list[i].item === l.item) return list[i];
+  return null;
+}
+
+function utToggle(el) {
+  var key = el.dataset.utkey;
+  if (utExpanded.has(key)) utExpanded.delete(key); else utExpanded.add(key);
+  if (lastUtData) renderUntaskedData(lastUtData);
+}
+
+function utCopy(btn) {
+  var text = btn.dataset.copy.split(',').join('\n');
+  var done = function() { var t = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(function(){ btn.textContent = t; }, 2000); };
+  try { navigator.clipboard.writeText(text).then(done, function() { utCopyFallback(text); done(); }); }
+  catch(e) { utCopyFallback(text); done(); }
+}
+function utCopyFallback(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+function utSection(title, hint, ids, head, rows) {
+  return '<div class="card ut-sec"><div class="ut-sec-head"><div><div class="card-title">' + title + '</div>' +
+    '<div class="ut-hint">' + hint + '</div></div>' +
+    (ids.length ? '<button class="ut-copy" data-copy="' + escHtml(ids.join(',')) + '" onclick="utCopy(this)">Copy order #s</button>' : '') +
+    '</div><div class="xpd-table-wrap"><table><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+}
+
+// One expandable order row + its line detail
+function utOrderRows(d, o, cols, cells) {
+  var key = 'o:' + o.order_id, open = utExpanded.has(key);
+  var html = '<tr class="ut-row" data-utkey="' + escHtml(key) + '" onclick="utToggle(this)">' +
+    '<td><span class="ut-chev' + (open ? ' open' : '') + '">&#x25B6;</span></td>' + cells + '</tr>';
+  if (open) {
+    var lines = o.lines.map(function(l) {
+      var s = l.short ? utShelfFor(d, l) : null;
+      var why = l.short
+        ? (s ? 'Needs ' + fmt(s.need) + ' · shelf has ' + fmt(s.on_hand) + ' · ' + utShelfWhy(s) : 'No pick shelf assigned')
+        : 'Shelf has stock (' + fmt(l.on_hand) + ') — waiting on the rest of the order';
+      return '<div class="ut-line ' + (l.short ? 'short' : 'ok') + '"><span class="ut-mark">' + (l.short ? '!' : '✓') + '</span>' +
+        '<span>' + utItem(l) + ' × ' + l.units + '</span><span class="ut-mono">' + escHtml(l.loc || '—') + '</span>' +
+        '<span class="ut-why">' + why + '</span></div>';
+    }).join('');
+    html += '<tr class="ut-detail"><td colspan="' + cols + '">' + lines + '</td></tr>';
+  }
+  return html;
+}
+
+function renderUntaskedData(d) {
+  if (!d) return;
+  var s = d.summary || {};
+  document.getElementById('ut-empty-state').style.display = 'none';
+  document.getElementById('ut-tiles').style.display = '';
+  var rtEl = document.getElementById('ut-run-time');
+  if (rtEl) rtEl.textContent = 'Updated ' + (d.generated ? fmtPdt(d.generated) : '—') + (isStale(d.generated, 20) ? ' — data is old, check option 27' : '');
+
+  document.getElementById('ut-t-short').textContent     = fmt(s.short_shelf);
+  document.getElementById('ut-t-short-sub').textContent = fmt(s.short_shelf_units) + ' units waiting';
+  document.getElementById('ut-t-loop').textContent      = fmt(s.replen_loop);
+  document.getElementById('ut-t-loop-sub').textContent  = fmt(s.loop_shelves) + (s.loop_shelves === 1 ? ' shelf' : ' shelves') + ' cancelling';
+  document.getElementById('ut-t-ghost').textContent     = fmt(s.ghosts);
+  document.getElementById('ut-t-ghost-sub').textContent = fmt(s.ghost_units) + ' units locked on shelves';
+  document.getElementById('ut-t-ntm').textContent       = fmt(s.no_task_made);
+  document.getElementById('ut-note').textContent =
+    'Orders without a task for ' + (d.grace_min || 60) + '+ min. ' + fmt(s.waiting) + ' newer order' + (s.waiting === 1 ? ' is' : 's are') +
+    ' waiting for the next batch release (normal).' + (s.expedite ? ' ' + s.expedite + ' flagged order' + (s.expedite === 1 ? ' is' : 's are') + ' 1DD/2DD.' : '');
+
+  var orders = d.orders || [];
+  var byCat  = function(c) { return orders.filter(function(o) { return o.category === c; }); };
+  var ids    = function(list) { return list.map(function(o) { return o.order_id; }); };
+  var html   = '';
+  var OH     = '<th></th><th>SVC</th><th>Order #</th><th>Type</th><th>Holding it up</th><th>Shelf</th><th class="r">Units</th><th class="r">No task for</th>';
+
+  var orderTable = function(list) {
+    return list.map(function(o) {
+      var blk = o.lines.filter(function(l) { return l.short; })[0] || o.lines[0];
+      return utOrderRows(d, o, 8,
+        '<td>' + utSvc(o.svc) + '</td><td class="ut-mono">' + escHtml(o.order_id) + '</td>' +
+        '<td>' + (o.single ? 'Single' : 'Multi') + '</td><td>' + utItem(blk) + '</td>' +
+        '<td class="ut-mono">' + escHtml(blk.loc || '—') + '</td><td class="r">' + o.units + '</td>' +
+        '<td class="r ' + utAgeCls(o.mins) + '">' + utAge(o.mins) + '</td>');
+    }).join('');
+  };
+
+  var shortList = byCat('short_shelf');
+  html += utSection('Short Shelf', 'One item\'s shelf doesn\'t have enough stock, so the whole order waits. Tap a row for the details.',
+    ids(shortList), OH, shortList.length ? orderTable(shortList) : '<tr><td colspan="8" class="ut-clear">None — every shelf can cover its orders</td></tr>');
+
+  var loopList   = byCat('replen_loop');
+  var loopShelves = (d.shelves || []).filter(function(x) { return x.state === 'replen_loop'; });
+  var loopShelfRows = loopShelves.map(function(x) {
+    return '<tr><td></td><td class="ut-mono">' + escHtml(x.loc) + '</td><td>' + utItem(x) + '</td>' +
+      '<td class="r">' + fmt(x.on_hand) + '</td><td class="r">' + fmt(x.orders) + '</td><td class="r">' + x.replen_cancelled + '×</td>' +
+      '<td class="r">' + (x.reserve_free > 0 ? fmt(x.reserve_free) : '<span style="color:var(--red);font-weight:700;">0</span>') + '</td></tr>';
+  }).join('');
+  html += utSection('Replen Loop', 'The replen for these shelves keeps getting cancelled. Reserve has stock → check shelf space. Reserve 0 → research inventory.',
+    ids(loopList),
+    '<th></th><th>Shelf</th><th>Item</th><th class="r">On shelf</th><th class="r">Orders</th><th class="r">Cancelled (12h)</th><th class="r">Reserve</th>',
+    loopShelves.length ? loopShelfRows : '<tr><td colspan="7" class="ut-clear">None</td></tr>');
+  if (loopList.length) {
+    html += utSection('Orders Behind The Replen Loop', 'Tap a row to see every item in the order.', [], OH, orderTable(loopList));
+  }
+
+  var stockList = byCat('has_stock');
+  if (stockList.length) {
+    html += utSection('Stock On Shelf, Still No Task', 'Every shelf has stock but no task was made. Check the batch / work release.',
+      ids(stockList), OH, orderTable(stockList));
+  }
+
+  var ghosts = d.ghosts || [];
+  var ghostRows = ghosts.map(function(g) {
+    return g.lines.map(function(l, i) {
+      return '<tr><td></td><td class="ut-mono">' + (i ? '' : escHtml(g.order_id)) + '</td><td>' + (i ? '' : g.status) + '</td>' +
+        '<td>' + utItem(l) + '</td><td class="ut-mono">' + escHtml(l.loc || '—') + '</td>' +
+        '<td class="r">' + fmt(l.on_hand) + ' / ' + fmt(l.allocated) + '</td>' +
+        '<td class="r ' + (i ? '' : utAgeCls(g.mins)) + '">' + (i ? '' : utAge(g.mins)) + '</td></tr>';
+    }).join('');
+  }).join('');
+  html += utSection('Shipped But Still Holding Stock', 'Order is done but stock on the shelf is still set aside for it — nobody else can pick it. Send to ICQA / MA to unallocate.',
+    ids(ghosts), '<th></th><th>Order #</th><th>Status</th><th>Item</th><th>Shelf</th><th class="r">On shelf / held</th><th class="r">Since</th>',
+    ghosts.length ? ghostRows : '<tr><td colspan="7" class="ut-clear">None</td></tr>');
+
+  var ntm = d.no_task_made || [];
+  var ntmRows = ntm.map(function(n) {
+    var l = n.lines[0] || {};
+    return '<tr><td></td><td>' + utSvc(n.svc) + '</td><td class="ut-mono">' + escHtml(n.order_id) + '</td>' +
+      '<td>' + (n.single ? 'Single' : 'Multi') + '</td><td>' + utItem(l) + (n.lines.length > 1 ? ' +' + (n.lines.length - 1) : '') + '</td>' +
+      '<td>' + (fmtPdt(n.released) || '—') + '</td><td class="r ' + utAgeCls(n.mins) + '">' + utAge(n.mins) + '</td></tr>';
+  }).join('');
+  html += utSection('Released, No Task Made', 'The system released these but never made a pick task. Send to MA support.',
+    ids(ntm), '<th></th><th>SVC</th><th>Order #</th><th>Type</th><th>Item</th><th>Released</th><th class="r">Waiting</th>',
+    ntm.length ? ntmRows : '<tr><td colspan="7" class="ut-clear">None</td></tr>');
+
+  document.getElementById('ut-sections').innerHTML = html;
+}
 
 // ── EOD Email Export ──────────────────────────────────────────────────────────
 function closeEodModal() {
