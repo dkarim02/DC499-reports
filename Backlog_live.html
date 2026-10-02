@@ -616,6 +616,18 @@
   .ut-verdict{font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;color:var(--lane);border:0.5px solid var(--lane);white-space:nowrap;}
   .ut-row.nested{padding-left:34px;}
 
+  /* Won't fit the shelf — its own hue, lighter on the dark themes */
+  :root{--ut-fit:#6d28d9;}
+  [data-theme="dark"],[data-theme="solid"],[data-theme="pastel"],[data-theme="remi"],[data-theme="scout"]{--ut-fit:#a78bfa;}
+  .ut-notes{padding:8px 18px 11px 34px;background:var(--surface2);border-bottom:0.5px solid var(--border-light);font-size:12px;color:var(--text-muted);}
+  .ut-note-line{padding:3px 0;line-height:1.45;}
+  .ut-note-line b{color:var(--text);font-weight:600;}
+  .ut-note-line.act{color:var(--lane);font-weight:600;}
+  .ut-note-line.warn{color:var(--amber);font-weight:600;}
+  .ut-space{display:inline-flex;align-items:center;gap:6px;}
+  .ut-space-bar{display:inline-block;width:70px;height:6px;border-radius:3px;background:var(--border);overflow:hidden;vertical-align:middle;}
+  .ut-space-bar i{display:block;height:100%;background:var(--lane);}
+
   @media(max-width:760px){
     .ut-row{grid-template-columns:14px 46px minmax(0,1fr) 56px;row-gap:6px;}
     .ut-row .ut-dots{display:none;}
@@ -3492,7 +3504,7 @@ fetchUntaskedData();
 
 function utFlaggedCount(d) {
   var s = d.summary || {};
-  return (s.short_shelf || 0) + (s.replen_loop || 0) + (s.has_stock || 0) + (s.ghosts || 0) + (s.no_task_made || 0);
+  return (s.short_shelf || 0) + (s.wont_fit || 0) + (s.replen_loop || 0) + (s.has_stock || 0) + (s.ghosts || 0) + (s.no_task_made || 0);
 }
 function utUpdateTabCount(d) {
   var el = document.getElementById('ut-tab-count');
@@ -3505,6 +3517,7 @@ function utUpdateTabCount(d) {
 // Groups, in the order a supervisor works them. Each owns one color and names who fixes it.
 var UT_LANES = [
   { key: 'short', name: 'Short shelf',            owner: 'Floor — create a replen',  color: 'var(--red)' },
+  { key: 'fit',   name: 'Won\'t fit the shelf',   owner: 'Floor — make room on the shelf', color: 'var(--ut-fit)' },
   { key: 'loop',  name: 'Replen loop',            owner: 'Floor — check shelf space', color: 'var(--amber)' },
   { key: 'stock', name: 'Stock but no task',      owner: 'Check batch release',       color: 'var(--text-muted)', hideEmpty: true },
   { key: 'ghost', name: 'Shipped, still holding', owner: 'Send to ICQA',              color: 'var(--accent)' },
@@ -3548,6 +3561,7 @@ function utShelfWhy(s) {
   if (!s) return 'No pick shelf assigned';
   var res = s.reserve_free > 0 ? fmt(s.reserve_free) + ' in reserve' : 'reserve is empty';
   var base = 'needs ' + fmt(s.need) + ', shelf has ' + fmt(s.on_hand);
+  if (s.state === 'wont_fit') return base + ' · replen won\'t fit the shelf (stuck since ' + utTime(s.deferred_since) + ')';
   if (s.state === 'replen_loop') return base + ' · replen cancelled ' + s.replen_cancelled + '× · ' + res;
   if (s.state === 'replen_open') return base + ' · replen on the way';
   return base + ' · no replen · ' + res;
@@ -3571,6 +3585,57 @@ function utStockWhy(o) {
     case 'after_last_release': return ready + ', after tonight\'s last batch (' + last + ') · first batch ~5 AM unless released by hand';
     default:                   return ready + ', after the ' + last + ' batch · goes out with the next one';
   }
+}
+
+function utCuft(v) { return v == null ? '—' : (Math.round(v * 100) / 100).toFixed(2); }
+
+// Shelf space line: "0.26 of 2.09 cuft free" with a fill bar
+function utSpace(x) {
+  if (x.max_cuft == null || x.free_cuft == null) return '';
+  var usedPct = Math.min(100, Math.round(100 * (x.max_cuft - x.free_cuft) / x.max_cuft));
+  return '<span class="ut-space"><span class="ut-space-bar"><i style="width:' + usedPct + '%"></i></span>' +
+    '<span><b>' + utCuft(x.free_cuft) + '</b> of ' + utCuft(x.max_cuft) + ' cuft free</span></span>';
+}
+
+// Notes under a blocking shelf: what's taking the space, what to do, open counts
+function utShelfNotes(x) {
+  var lines = [];
+  if (x.state === 'wont_fit') {
+    var d = x.deferred || [], c = d[0] || {};
+    var cartons = d.length + ' carton' + (d.length === 1 ? '' : 's') + ' of ' + fmt(c.units) + (c.cuft != null ? ' (' + utCuft(c.cuft) + ' cuft each)' : '') +
+      ' waiting in reserve at <span class="ut-loc">' + escHtml(c.src || '—') + '</span>';
+    lines.push('<div class="ut-note-line">' + cartons + '. Firing another replen won\'t help — it will be deferred again.</div>');
+    if ((x.others || []).length) {
+      lines.push('<div class="ut-note-line">Also on this shelf: ' + x.others.map(function(o) {
+        return '<b>' + escHtml(o.item) + '</b> × ' + fmt(o.on_hand) + (o.pct != null ? ' (' + o.pct + '% of shelf' : ' (') +
+          (o.has_orders ? '' : (o.pct != null ? ', ' : '') + 'no orders') + ')';
+      }).join(' · ') + '</div>');
+    }
+    var act;
+    if (x.fit === 'too_big') act = 'The carton is bigger than the whole shelf (' + utCuft(c.cuft) + ' vs ' + utCuft(x.max_cuft) + ' cuft) — re-slot this item to a bigger shelf.';
+    else if (x.fit === 'fits_now') act = 'There\'s room now — the replen should land on its next try.';
+    else if (x.fit === 'needs_space') {
+      var picks = x.picks_queued || [];
+      if (picks.length) act = 'Pick these down first: ' + picks.map(function(p) { return '<span class="ut-loc">' + escHtml(p.task_id) + '</span> (' + escHtml(p.item || '') + ' × ' + p.units + ')'; }).join(', ');
+      else {
+        var big = (x.others || []).filter(function(o) { return !o.has_orders; })[0] || (x.others || [])[0];
+        act = 'Nothing is queued to pick here, so this won\'t clear on its own — make room' +
+          (big ? ' (e.g. move <b>' + escHtml(big.item) + '</b>' + (big.pct != null ? ', ' + big.pct + '% of the shelf' : '') + (big.has_orders ? '' : ', no orders') + ')' : '') + '.';
+      }
+    } else act = 'Check the shelf in MA — the space numbers are incomplete.';
+    lines.push('<div class="ut-note-line act">' + act + '</div>');
+  }
+  if (x.count_open_since) {
+    lines.push('<div class="ut-note-line warn">A cycle count has been open on this shelf since ' + utTime(x.count_open_since) + ' — finish it; it may be holding the replen.</div>');
+  }
+  return lines.length ? '<div class="ut-notes">' + lines.join('') + '</div>' : '';
+}
+
+// Orders nested under one shelf (Won't fit / Replen loop)
+function utOrdersOnShelf(d, list, x) {
+  return list.filter(function(o) {
+    return o.lines.some(function(l) { return l.short && l.loc === x.loc && l.item === x.item; });
+  }).map(function(o) { return utOrderRow(d, o, true); }).join('');
 }
 
 function utToggle(el) {
@@ -3656,7 +3721,7 @@ function renderUntaskedData(d) {
   var byCat  = function(c) { return orders.filter(function(o) { return o.category === c; }); };
   var ids    = function(list) { return list.map(function(o) { return o.order_id; }); };
   var groups = {
-    short: byCat('short_shelf'), loop: byCat('replen_loop'), stock: byCat('has_stock'),
+    short: byCat('short_shelf'), fit: byCat('wont_fit'), loop: byCat('replen_loop'), stock: byCat('has_stock'),
     ghost: d.ghosts || [], ntm: d.no_task_made || [],
   };
 
@@ -3694,23 +3759,37 @@ function renderUntaskedData(d) {
       ids(groups.short), groups.short.map(function(o) { return utOrderRow(d, o); }).join(''));
   }
 
+  if (show('fit')) {
+    // Group orders under the shelf whose replen is deferred for capacity
+    var fitShelves = (d.shelves || []).filter(function(x) { return x.state === 'wont_fit'; });
+    var FIT_VERDICT = { needs_space: 'Make room', too_big: 'Re-slot', fits_now: 'Should land next try', unknown: 'Check in MA' };
+    var fitBody = fitShelves.map(function(x) {
+      return '<div class="ut-shelf"><div class="ut-item"><span class="ut-loc">' + escHtml(x.loc) + '</span> · ' + utItem(x) + '</div>' +
+        '<div class="ut-shelf-facts"><span><b>' + fmt(x.on_hand) + '</b> on shelf, needs <b>' + fmt(x.need) + '</b></span>' + utSpace(x) +
+        '<span class="ut-verdict">' + (FIT_VERDICT[x.fit] || 'Check in MA') + '</span></div></div>' +
+        utShelfNotes(x) + utOrdersOnShelf(d, groups.fit, x);
+    }).join('');
+    html += utSection(lane('fit'),
+      utPlural(groups.fit.length, 'order', 'orders') + ' · ' + utPlural(fitShelves.length, 'shelf', 'shelves'),
+      'MA made the replen, but the carton won\'t fit in the space left on the shelf, so it waits in reserve. Usually the carton would fit an empty shelf — the fix is making room, not another replen.',
+      ids(groups.fit), fitBody);
+  }
+
   if (show('loop')) {
     // Group orders under the looping shelf that's holding them
     var loopShelves = (d.shelves || []).filter(function(x) { return x.state === 'replen_loop'; });
     var body = loopShelves.map(function(x) {
-      var mine = groups.loop.filter(function(o) {
-        return o.lines.some(function(l) { return l.short && l.loc === x.loc && l.item === x.item; });
-      });
+      var verdict = x.count_open_since ? 'Finish the count' : x.reserve_free > 0 ? 'Check the replen in MA' : 'Research inventory';
       return '<div class="ut-shelf"><div class="ut-item"><span class="ut-loc">' + escHtml(x.loc) + '</span> · ' + utItem(x) + '</div>' +
         '<div class="ut-shelf-facts"><span><b>' + fmt(x.on_hand) + '</b> on shelf</span>' +
         '<span>cancelled <b>' + x.replen_cancelled + '×</b> in 12 hrs</span>' +
-        '<span class="' + (x.reserve_free > 0 ? '' : 'zero') + '"><b>' + fmt(x.reserve_free) + '</b> in reserve</span>' +
-        '<span class="ut-verdict">' + (x.reserve_free > 0 ? 'Check shelf space' : 'Research inventory') + '</span></div></div>' +
-        mine.map(function(o) { return utOrderRow(d, o, true); }).join('');
+        '<span class="' + (x.reserve_free > 0 ? '' : 'zero') + '"><b>' + fmt(x.reserve_free) + '</b> in reserve</span>' + utSpace(x) +
+        '<span class="ut-verdict">' + verdict + '</span></div></div>' +
+        utShelfNotes(x) + utOrdersOnShelf(d, groups.loop, x);
     }).join('');
     html += utSection(lane('loop'),
       utPlural(groups.loop.length, 'order', 'orders') + ' · ' + utPlural(loopShelves.length, 'shelf', 'shelves'),
-      'The replen for these shelves keeps getting cancelled. If reserve has stock, the shelf is probably out of room. If reserve is 0, the item needs research.',
+      'The replen for these shelves keeps getting made and cancelled. Shelf space is shown — if there\'s room, space isn\'t the problem. Look for an open cycle count, an empty reserve, or ask MA why the replen cancels.',
       ids(groups.loop), body);
   }
 

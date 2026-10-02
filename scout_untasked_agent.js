@@ -340,6 +340,49 @@ WHERE d.FACILITY_ID='${FACILITY}' AND d.TYPE_ID='REPLENISHMENT'
   AND d.CREATED_TIMESTAMP >= '${since}'`.trim();
 }
 
+// ── shelf detail (blocking shelves only) ───────────────────────────────────────
+// Replen allocations aimed at a shelf. STATUS 1000 = Deferred For Capacity: the whole carton
+// (FULL_CONTAINER_ALLOCATED=1) won't fit, and re-firing the replen just defers again.
+// LOCATION_ID is the reserve SOURCE, TO_LOCATION_ID is the shelf — easy to invert.
+function sqlReplenAllocs(locs) {
+  return `
+SELECT a.TO_LOCATION_ID, a.ITEM_ID, a.STATUS, a.INVENTORY_CONTAINER_ID, a.LOCATION_ID AS SRC, a.QUANTITY, a.CREATED_TIMESTAMP
+FROM default_dcinventory.DCI_ALLOCATION a
+WHERE a.FACILITY_ID='${FACILITY}' AND a.TYPE_ID='REPLENISHMENT'
+  AND a.STATUS IN ('1000','1000.0','5000','5000.0')
+  AND a.TO_LOCATION_ID IN (${sqlList(locs)})`.trim();
+}
+// Everything on the shelf — Ecom shelves hold up to MAX_ITEMS (3) different items
+function sqlShelfInv(locs) {
+  return `
+SELECT i.LOCATION_ID, i.ITEM_ID, SUM(i.ON_HAND) AS oh, SUM(COALESCE(i.ALLOCATED,0)) AS alloc
+FROM default_dcinventory.DCI_INVENTORY i
+WHERE i.FACILITY_ID='${FACILITY}' AND i.LOCATION_ID IN (${sqlList(locs)})
+GROUP BY i.LOCATION_ID, i.ITEM_ID`.trim();
+}
+function sqlShelfCap(locs) {
+  return `
+SELECT LOCATION_ID, MAX_VOLUME, MAX_ITEMS FROM default_dcinventory.DCI_LOCATION
+WHERE PROFILE_ID='${FACILITY}' AND LOCATION_ID IN (${sqlList(locs)})`.trim();
+}
+// Unit cube. default_item_master (default_item.ITE_ITEM is rejected). VOLUME is cuft;
+// ORIGINAL_VOLUME is cubic inches — never use it.
+function sqlItemCube(items) {
+  return `
+SELECT ITEM_ID, VOLUME, VOLUME_UOM_ID FROM default_item_master.ITE_ITEM
+WHERE ITEM_ID IN (${sqlList(items)})`.trim();
+}
+// Open work sourced from the shelf: queued picks a lead can assign, and open cycle counts
+function sqlShelfTasks(locs, since) {
+  return `
+SELECT td.SOURCE_LOCATION_ID, td.ITEM_ID, td.TASK_ID, td.QUANTITY, td.CREATED_TIMESTAMP, t.STATUS AS task_status, t.TRANSACTION_ID
+FROM default_task.TSK_TASK_DETAIL td
+JOIN default_task.TSK_TASK t ON t.TASK_ID = td.TASK_ID
+WHERE td.FACILITY_ID='${FACILITY}' AND td.SOURCE_LOCATION_ID IN (${sqlList(locs)})
+  AND td.STATUS NOT IN ('8000','9000') AND td.TYPE_ID <> 'REPLENISHMENT'
+  AND td.CREATED_TIMESTAMP >= '${since}'`.trim();
+}
+
 // Putwall batch releases in the last day — multis only get a task when one of these fires
 function sqlBatchReleases(since) {
   return `
@@ -465,6 +508,22 @@ async function fetchUntasked(token) {
   const reserveFree = {};
   for (const r of reserveRows) reserveFree[r.ITEM_ID] = Math.max(0, num(r.oh) - num(r.alloc));
 
+  // Shelf detail: replen allocations (deferred?), what's on the shelf, its size, item cube, open work
+  const blockLocs = [...new Set(blocking.map(s => s.loc))];
+  const [allocRows, invRows, capRows, taskRows] = blockLocs.length ? await Promise.all([
+    batched(token, blockLocs, 15, sqlReplenAllocs, 'replen allocation'),
+    batched(token, blockLocs, 15, sqlShelfInv, 'shelf inventory'),
+    batched(token, blockLocs, 25, sqlShelfCap, 'shelf size'),
+    batched(token, blockLocs, 15, locs => sqlShelfTasks(locs, utcAgo(72)), 'shelf tasks'),
+  ]) : [[], [], [], []];
+  const cubeItems = [...new Set([...invRows.map(r => r.ITEM_ID), ...allocRows.map(r => r.ITEM_ID)])];
+  const cubeRows  = cubeItems.length ? await batched(token, cubeItems, 25, sqlItemCube, 'item cube') : [];
+  const cube = {};
+  for (const r of cubeRows) if (String(r.VOLUME_UOM_ID).toLowerCase() === 'cuft' && num(r.VOLUME) > 0) cube[r.ITEM_ID] = num(r.VOLUME);
+  const cap = {};
+  for (const r of capRows) cap[r.LOCATION_ID] = { max: num(r.MAX_VOLUME) || null, max_items: num(r.MAX_ITEMS) || null };
+  const r3 = v => v == null ? null : Math.round(v * 1000) / 1000;
+
   const loopCut = new Date(now - LOOP_HRS * 36e5).toISOString();
   for (const s of blocking) {
     const rs = replenRows.filter(r => r.TARGET_LOCATION_ID === s.loc && r.ITEM_ID === s.item);
@@ -474,7 +533,48 @@ async function fetchUntasked(token) {
     const done = rs.filter(r => st(r) === '8000').map(r => toIso(r.UPDATED_TIMESTAMP)).sort();
     s.last_replen_done = done.length ? done[done.length - 1] : null;
     s.reserve_free     = reserveFree[s.item] ?? 0;
-    s.state = s.replen_cancelled >= LOOP_MIN ? 'replen_loop' : s.replen_open ? 'replen_open' : 'no_replen';
+
+    // Shelf space: used = on-hand × unit cube for every item on it
+    const inv  = invRows.filter(r => r.LOCATION_ID === s.loc && num(r.oh) > 0);
+    const c    = cap[s.loc] || {};
+    const allCubed = inv.every(r => cube[r.ITEM_ID]);
+    const used = inv.reduce((t, r) => t + num(r.oh) * (cube[r.ITEM_ID] || 0), 0);
+    s.max_cuft  = r3(c.max);
+    s.used_cuft = allCubed ? r3(used) : null;
+    s.free_cuft = (c.max && allCubed) ? r3(Math.max(0, c.max - used)) : null;
+    s.max_items = c.max_items;
+    s.others = inv.filter(r => r.ITEM_ID !== s.item).map(r => {
+      const cf = cube[r.ITEM_ID] ? num(r.oh) * cube[r.ITEM_ID] : null;
+      return { item: r.ITEM_ID, on_hand: num(r.oh), cuft: r3(cf), pct: (cf != null && c.max) ? Math.round(100 * cf / c.max) : null,
+               has_orders: num(r.alloc) > 0 };
+    }).sort((a, b) => (b.cuft || 0) - (a.cuft || 0));
+
+    // Deferred cartons for this item → why they won't fit
+    s.deferred = allocRows.filter(r => r.TO_LOCATION_ID === s.loc && r.ITEM_ID === s.item && st(r) === '1000').map(r => ({
+      ilpn: r.INVENTORY_CONTAINER_ID, src: r.SRC, units: num(r.QUANTITY), since: toIso(r.CREATED_TIMESTAMP),
+      cuft: cube[s.item] ? r3(num(r.QUANTITY) * cube[s.item]) : null,
+    }));
+    if (s.deferred.length) {
+      const sizes = s.deferred.map(d => d.cuft).filter(v => v != null);
+      const biggest = sizes.length ? Math.max(...sizes) : null, smallest = sizes.length ? Math.min(...sizes) : null;
+      s.fit = biggest == null || s.max_cuft == null ? 'unknown'
+        : biggest > s.max_cuft ? 'too_big'                                  // bigger than the empty shelf → re-slot
+        : (s.free_cuft != null && smallest > s.free_cuft) ? 'needs_space'   // fits empty, not the space left → make room
+        : 'fits_now';                                                       // room opened up → lands next replen
+      s.deferred_since = s.deferred.map(d => d.since).sort()[0];
+    }
+
+    // Open work on the shelf
+    const tasks = taskRows.filter(r => r.SOURCE_LOCATION_ID === s.loc);
+    const isCount = r => /COUNT/i.test(r.TRANSACTION_ID || '');
+    s.picks_queued = tasks.filter(r => !isCount(r)).map(r => ({
+      task_id: r.TASK_ID, item: r.ITEM_ID, units: num(r.QUANTITY), status: String(r.task_status).split('.')[0],
+    }));
+    const counts = tasks.filter(isCount).map(r => toIso(r.CREATED_TIMESTAMP)).sort();
+    s.count_open_since = counts.length ? counts[0] : null;
+
+    s.state = s.deferred.length ? 'wont_fit'
+      : s.replen_cancelled >= LOOP_MIN ? 'replen_loop' : s.replen_open ? 'replen_open' : 'no_replen';
   }
 
   // Classify flagged orders
@@ -485,6 +585,7 @@ async function fetchUntasked(token) {
     }).sort((a, b) => (b.short - a.short) || (b.units - a.units));
     const short = lines.filter(l => l.short);
     const category = !short.length ? 'has_stock'
+      : short.some(l => l.state === 'wont_fit') ? 'wont_fit'
       : short.some(l => l.state === 'replen_loop') ? 'replen_loop' : 'short_shelf';
     const out = {
       order_id: o.order_id, svc: o.svc, single: o.single, category,
@@ -500,6 +601,9 @@ async function fetchUntasked(token) {
     loc: s.loc, item: s.item, desc: s.desc, gwp: s.gwp, on_hand: s.on_hand, need: s.need,
     orders: s.orders.size, state: s.state, replen_open: s.replen_open, replen_cancelled: s.replen_cancelled,
     last_replen_done: s.last_replen_done, reserve_free: s.reserve_free,
+    max_cuft: s.max_cuft, used_cuft: s.used_cuft, free_cuft: s.free_cuft, max_items: s.max_items, others: s.others,
+    deferred: s.deferred, fit: s.fit || null, deferred_since: s.deferred_since || null,
+    picks_queued: s.picks_queued, count_open_since: s.count_open_since,
   })).sort((a, b) => b.orders - a.orders || b.need - a.need);
 
   // Ghosts: done orders still holding untasked stock on a shelf
@@ -544,6 +648,8 @@ async function fetchUntasked(token) {
     summary: {
       short_shelf: cat('short_shelf').length,
       short_shelf_units: cat('short_shelf').reduce((t, o) => t + o.units, 0),
+      wont_fit: cat('wont_fit').length,
+      wont_fit_shelves: outShelves.filter(s => s.state === 'wont_fit').length,
       replen_loop: cat('replen_loop').length,
       loop_shelves: outShelves.filter(s => s.state === 'replen_loop').length,
       has_stock: cat('has_stock').length,
@@ -563,7 +669,7 @@ async function fetchUntasked(token) {
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output));
   const s = output.summary;
   console.log(`[${ts()}] ✓ untasked_live.json written in ${Math.round((Date.now() - t0) / 1000)}s — ` +
-    `short shelf ${s.short_shelf} · replen loop ${s.replen_loop} · has stock ${s.has_stock} · ` +
+    `short shelf ${s.short_shelf} · won't fit ${s.wont_fit} · replen loop ${s.replen_loop} · has stock ${s.has_stock} · ` +
     `ghosts ${s.ghosts} · no task made ${s.no_task_made} · waiting ${s.waiting}`);
   console.log(`[${ts()}] untasked_live.json ready — dc499_refresh will push on next cycle`);
 }
