@@ -1,14 +1,14 @@
 {
-    "generated": "2026-10-02T14:36:17",
+    "generated": "2026-10-02T14:45:22",
     "facility": "499",
     "shift_label": "1st shift",
     "shift_start_utc": "2026-10-02 10:00:00",
     "summary": {
-        "total_batches": 1,
-        "cleared_batches": 0,
+        "total_batches": 2,
+        "cleared_batches": 1,
         "active_batches": 1,
-        "avg_mins_to_clear": null,
-        "avg_release_interval_mins": null,
+        "avg_mins_to_clear": 120,
+        "avg_release_interval_mins": 115,
         "queued_orders": 10,
         "queued_units": 39,
         "batch_threshold": 36
@@ -23,16 +23,36 @@
             "open_tasks": null,
             "total_tasks": 7,
             "total_task_details": 343,
-            "status_code": "5600",
-            "status_label": "Work Started",
+            "status_code": "5800",
+            "status_label": "Cleared",
             "released_pdt": "5:35 AM",
-            "cleared_pdt": null,
+            "cleared_pdt": "7:35 AM",
             "released_utc": "2026-10-02T12:35:16.800000",
+            "cleared_utc": "2026-10-02T14:35:34.623000",
+            "mins_to_clear": 120,
+            "is_cleared": true,
+            "mins_since_prev_release": null,
+            "status_updated_utc": "2026-10-02T14:35:34.623000"
+        },
+        {
+            "batch_num": 2,
+            "batch_id": "B_0000016280412",
+            "work_release_batch_id": "20261002-143000802802038-499-499",
+            "total_orders": 36,
+            "total_olpns": 37,
+            "open_tasks": null,
+            "total_tasks": 6,
+            "total_task_details": 145,
+            "status_code": "5200",
+            "status_label": "Picking Started",
+            "released_pdt": "7:30 AM",
+            "cleared_pdt": null,
+            "released_utc": "2026-10-02T14:30:04.447000",
             "cleared_utc": null,
             "mins_to_clear": null,
             "is_cleared": false,
-            "mins_since_prev_release": null,
-            "status_updated_utc": "2026-10-02T12:49:49.823000"
+            "mins_since_prev_release": 115,
+            "status_updated_utc": "2026-10-02T14:32:34.614000"
         }
     ]
 }
