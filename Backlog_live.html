@@ -3494,6 +3494,26 @@ function utShelfWhy(s) {
   return base + ' · no replen · ' + res;
 }
 
+// "9:25 PM" — short PDT clock time for reason lines
+function utTime(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' }); }
+  catch(e) { return iso; }
+}
+// Stock but no task: every shelf covers it, so say which part of the release is holding it
+var UT_STOCK_ORDER = ['single_skipped', 'missed_batch', 'release_late', 'after_last_release', 'next_batch', 'single_waiting'];
+function utStockWhy(o) {
+  var ready = 'ready ' + utTime(o.ready_at), last = utTime(o.last_release);
+  switch (o.stock_reason) {
+    case 'single_skipped':     return 'Single · ' + ready + ' — singles release every 5 min, so this was skipped · check the shelf in MA';
+    case 'single_waiting':     return 'Single · ' + ready + ' — should get a task in the next 5-min cycle';
+    case 'missed_batch':       return ready + ', before the ' + last + ' batch (' + fmt(o.last_release_orders) + ' orders) but left out · batch may have been full — check work release';
+    case 'release_late':       return ready + ' · no batch since ' + last + ' (2+ hrs) · check work release';
+    case 'after_last_release': return ready + ', after tonight\'s last batch (' + last + ') · first batch ~5 AM unless released by hand';
+    default:                   return ready + ', after the ' + last + ' batch · goes out with the next one';
+  }
+}
+
 function utToggle(el) {
   var key = el.dataset.utkey;
   if (utExpanded.has(key)) utExpanded.delete(key); else utExpanded.add(key);
@@ -3538,7 +3558,7 @@ function utOrderRow(d, o, nested) {
   var key = 'o:' + o.order_id, open = utExpanded.has(key);
   var blk = o.lines.filter(function(l) { return l.short; })[0] || o.lines[0];
   var s = blk.short ? utShelfFor(d, blk) : null;
-  var why = blk.short ? utShelfWhy(s) : 'every shelf has stock — still no task';
+  var why = blk.short ? utShelfWhy(s) : utStockWhy(o);
   var html = '<div class="ut-row click' + (nested ? ' nested' : '') + '" role="button" tabindex="0" aria-expanded="' + open + '"' +
     ' data-utkey="' + escHtml(key) + '" onclick="utToggle(this)" onkeydown="utKey(event,this)">' +
     '<span class="ut-chev' + (open ? ' open' : '') + '">&#x25B6;</span>' + utSvc(o.svc) +
@@ -3555,7 +3575,8 @@ function utOrderRow(d, o, nested) {
   if (open) {
     html += '<div class="ut-lines">' + o.lines.map(function(l) {
       var ls = l.short ? utShelfFor(d, l) : null;
-      var say = l.short ? utShelfWhy(ls) : 'shelf has ' + fmt(l.on_hand) + ' — waiting on the short item';
+      var say = l.short ? utShelfWhy(ls)
+        : 'shelf has ' + fmt(l.on_hand) + (blk.short ? ' — waiting on the short item' : ' — covered');
       return '<div class="ut-line' + (l.short ? ' short' : '') + '"><span class="ut-dot' + (l.short ? ' short' : '') + '"></span>' +
         '<span class="ut-item">' + utItem(l) + ' × ' + l.units + '</span><span class="ut-loc">' + escHtml(l.loc || '—') + '</span>' +
         '<span class="ut-line-say">' + say + '</span></div>';
@@ -3599,6 +3620,8 @@ function renderUntaskedData(d) {
     'Orders with no pick task for <b>' + (d.grace_min || 60) + '+ minutes</b>. ' +
     utPlural(waiting, 'newer order is', 'newer orders are') + ' waiting for the next batch release, which is normal.' +
     (s.expedite ? ' <b>' + utPlural(s.expedite, 'flagged order is', 'flagged orders are') + ' 1DD/2DD</b> — those sort to the top.' : '') +
+    (d.last_release ? ' Last putwall batch: <b>' + utTime(d.last_release.at) + '</b> (' + utAge(d.last_release.mins_ago) + ' ago' +
+      (d.night ? ', last of the night — next ~5 AM' : '') + ').' : '') +
     (utLane !== 'all' ? ' Showing one group — tap it again to see all.' : '');
 
   var show = function(k) { return utLane === 'all' || utLane === k; };
@@ -3633,9 +3656,11 @@ function renderUntaskedData(d) {
   }
 
   if (show('stock') && groups.stock.length) {
+    var rank = function(o) { var i = UT_STOCK_ORDER.indexOf(o.stock_reason); return i < 0 ? 99 : i; };
+    var stockSorted = groups.stock.slice().sort(function(a, b) { return rank(a) - rank(b) || b.mins - a.mins; });
     html += utSection(lane('stock'), utPlural(groups.stock.length, 'order', 'orders'),
-      'Every shelf has stock, but no task was made. Check whether the batch released.',
-      ids(groups.stock), groups.stock.map(function(o) { return utOrderRow(d, o); }).join(''));
+      'Every shelf can cover these orders, so the hold-up is the release, not the stock. Multi-line orders only get tasks when a putwall batch releases; singles release every 5 minutes. Each row says which part is holding it.',
+      ids(groups.stock), stockSorted.map(function(o) { return utOrderRow(d, o); }).join(''));
   }
 
   if (show('ghost')) {

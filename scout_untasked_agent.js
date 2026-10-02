@@ -43,6 +43,12 @@ const REPLEN_HRS    = 24;    // replen history looked at per shelf
 const LOOP_HRS      = 12;    // cancelled replens in this window …
 const LOOP_MIN      = 2;     // … at least this many = replen loop
 const RESERVE_AREAS = ['R1B', 'R1C', 'R1D', 'R1E', 'R1F'];   // Ecom reserve (replen source)
+// Stock-but-no-task reasons. Multis only release with a putwall batch (WR_BATCH, every ~35–105 min);
+// singles release every 5 min. Observed 9/30–10/1: last batch of the night ~9:20 PM, first ~5:10 AM.
+const PDT_OFFSET_HRS   = -7;      // DST: change to -8 ~Oct 25 (see DST fix memory)
+const NIGHT_START_MIN  = 21 * 60 + 30;   // 9:30 PM PDT — after this, no more batches tonight
+const NIGHT_END_MIN    = 5 * 60;         // 5:00 AM PDT — first batch of the morning
+const SINGLE_GRACE_MIN = 15;      // singles should task within a few 5-min cycles
 const ALLOC_3000    = "'3000','3000.0'";
 const ALLOC_5000    = "'5000','5000.0'";
 
@@ -296,7 +302,7 @@ async function batched(token, ids, size, sqlFn, label) {
 // a window could only hide the aged ones we're looking for.
 function sqlUntasked() {
   return `
-SELECT a.ALLOCATION_ID, a.ORDER_ID, a.TYPE_ID, a.ITEM_ID, a.LOCATION_ID, a.QUANTITY, a.CREATED_TIMESTAMP,
+SELECT a.ALLOCATION_ID, a.ORDER_ID, a.TYPE_ID, a.ITEM_ID, a.LOCATION_ID, a.QUANTITY, a.CREATED_TIMESTAMP, a.UPDATED_TIMESTAMP,
   o.MINIMUM_STATUS, o.MAXIMUM_STATUS, o.CANCELLED AS order_cancelled, o.SINGLE_LINE_ORDER,
   o.DESIGNATED_SERVICE_LEVEL_ID AS svc, ol.DESCRIPTION,
   COALESCE((SELECT SUM(i.ON_HAND) FROM default_dcinventory.DCI_INVENTORY i
@@ -334,6 +340,15 @@ WHERE d.FACILITY_ID='${FACILITY}' AND d.TYPE_ID='REPLENISHMENT'
   AND d.CREATED_TIMESTAMP >= '${since}'`.trim();
 }
 
+// Putwall batch releases in the last day — multis only get a task when one of these fires
+function sqlBatchReleases(since) {
+  return `
+SELECT WORK_RELEASE_BATCH_ID, MIN(CREATED_TIMESTAMP) AS released, SUM(TOTAL_ORDERS) AS orders
+FROM default_workrelease.WR_BATCH
+WHERE FACILITY_ID='${FACILITY}' AND CREATED_TIMESTAMP >= '${since}'
+GROUP BY WORK_RELEASE_BATCH_ID`.trim();
+}
+
 function sqlReserve(items) {
   return `
 SELECT i.ITEM_ID, SUM(i.ON_HAND) AS oh, SUM(COALESCE(i.ALLOCATED,0)) AS alloc
@@ -343,18 +358,43 @@ WHERE i.FACILITY_ID='${FACILITY}' AND i.ITEM_ID IN (${sqlList(items)})
 GROUP BY i.ITEM_ID`.trim();
 }
 
+// ── stock-but-no-task reasoning ────────────────────────────────────────────────
+const pdtMinOfDay = ms => ((Math.floor(ms / 6e4) + PDT_OFFSET_HRS * 60) % 1440 + 1440) % 1440;
+const isNight     = ms => { const m = pdtMinOfDay(ms); return m >= NIGHT_START_MIN || m < NIGHT_END_MIN; };
+
+// Every shelf can cover the order, so the hold-up is the release, not the stock. Say which part.
+//   single_skipped     — singles release every 5 min; this one has been ready 15+ min
+//   single_waiting     — single, ready < 15 min (next 5-min cycle)
+//   missed_batch       — multi was ready before the last putwall batch but wasn't put in it
+//   release_late       — multi ready after the last batch, and no batch for 2+ hrs during the shift
+//   next_batch         — multi ready after the last batch; next one should pick it up
+//   after_last_release — multi ready after tonight's last batch; first batch is ~5 AM
+function stockReason(o, last, now) {
+  const readyMs   = new Date(o.ready).getTime();
+  const readyMins = Math.max(0, Math.round((now - readyMs) / 6e4));
+  const base = { ready_at: o.ready, ready_mins: readyMins, last_release: last ? last.at : null };
+  if (o.single) return { ...base, stock_reason: readyMins >= SINGLE_GRACE_MIN ? 'single_skipped' : 'single_waiting' };
+  if (!last) return { ...base, stock_reason: 'next_batch' };
+  const lastMs = new Date(last.at).getTime();
+  if (readyMs <= lastMs) return { ...base, stock_reason: 'missed_batch', last_release_orders: last.orders };
+  if (isNight(now)) return { ...base, stock_reason: 'after_last_release' };
+  if (now - lastMs > 120 * 6e4) return { ...base, stock_reason: 'release_late' };
+  return { ...base, stock_reason: 'next_batch' };
+}
+
 // ── main fetch ─────────────────────────────────────────────────────────────────
 async function fetchUntasked(token) {
   const t0 = Date.now();
   console.log(`[${ts()}] Fetching untasked Ecom allocations...`);
 
-  const [respU, respN] = await Promise.all([
+  const nonFatal = label => e => { console.warn(`[${ts()}]   ${label} query failed (non-fatal): ${e.message}`); return { rows: [] }; };
+  const [respU, respN, respB] = await Promise.all([
     mcpQuery(token, sqlUntasked()),
-    mcpQuery(token, sqlNoTaskMade(utcAgo(GRACE_MIN / 60))).catch(e => {
-      console.warn(`[${ts()}]   no-task-made query failed (non-fatal): ${e.message}`);
-      return { rows: [] };
-    }),
+    mcpQuery(token, sqlNoTaskMade(utcAgo(GRACE_MIN / 60))).catch(nonFatal('no-task-made')),
+    mcpQuery(token, sqlBatchReleases(utcAgo(24))).catch(nonFatal('batch release')),
   ]);
+  const releases = (respB.rows || []).map(r => ({ at: toIso(r.released), orders: num(r.orders) })).sort((a, b) => a.at < b.at ? -1 : 1);
+  const lastRelease = releases.length ? releases[releases.length - 1] : null;
   const rows = respU.rows || [];
 
   // Split: ghosts (order done) vs open orders
@@ -386,11 +426,14 @@ async function fetchUntasked(token) {
     let o = orders.get(r.ORDER_ID);
     if (!o) {
       o = { order_id: r.ORDER_ID, svc: svcLabel(r.svc), single: num(r.SINGLE_LINE_ORDER) === 1,
-            min_status: String(r.MINIMUM_STATUS), since: null, lines: new Map() };
+            min_status: String(r.MINIMUM_STATUS), since: null, ready: null, lines: new Map() };
       orders.set(r.ORDER_ID, o);
     }
     const created = toIso(r.CREATED_TIMESTAMP);
     if (!o.since || created < o.since) o.since = created;
+    // Last time any allocation changed (MA re-points allocations when a replen lands)
+    const updated = toIso(r.UPDATED_TIMESTAMP) || created;
+    if (!o.ready || updated > o.ready) o.ready = updated;
     const k = r.LOCATION_ID ? shelfKey(r.LOCATION_ID, r.ITEM_ID) : `none|${r.ITEM_ID}`;
     let l = o.lines.get(k);
     if (!l) {
@@ -443,12 +486,14 @@ async function fetchUntasked(token) {
     const short = lines.filter(l => l.short);
     const category = !short.length ? 'has_stock'
       : short.some(l => l.state === 'replen_loop') ? 'replen_loop' : 'short_shelf';
-    return {
+    const out = {
       order_id: o.order_id, svc: o.svc, single: o.single, category,
       untasked_since: o.since, mins: ageMin(o.since),
       units: lines.reduce((t, l) => t + l.units, 0),
       lines,
     };
+    if (category === 'has_stock') Object.assign(out, stockReason(o, lastRelease, now));
+    return out;
   }).sort(bySvcThenAge);
 
   const outShelves = blocking.map(s => ({
@@ -494,6 +539,8 @@ async function fetchUntasked(token) {
     generated: new Date().toISOString(),
     facility: FACILITY,
     grace_min: GRACE_MIN,
+    last_release: lastRelease ? { at: lastRelease.at, orders: lastRelease.orders, mins_ago: ageMin(lastRelease.at) } : null,
+    night: isNight(now),
     summary: {
       short_shelf: cat('short_shelf').length,
       short_shelf_units: cat('short_shelf').reduce((t, o) => t + o.units, 0),
