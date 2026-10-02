@@ -62,6 +62,14 @@ const DEAD_FRESH_DAYS = 7;    // stocked onto the shelf this recently = no histo
 const DEAD_CHUNKS     = ['F1A', 'F1B', 'F1D0', 'F1D1', 'F2C01', 'F2C02', 'F2C03', 'F2C04', 'P1C'];
 const ROW_CAP_WARN    = 9500;
 
+// Empty locations — Ecom pick locations with nothing on hand, per pick execution zone + aisle. Hourly.
+// DCI_LOCATION only filters well on `LOCATION_ID LIKE 'X%'` — LEFT() in WHERE/GROUP BY on that
+// table fails ("Operation failed"), so group by PEZ and do aisles in Node.
+const EMPTY_FILE      = path.join(__dirname, 'empty_locations_live.json');
+const EMPTY_EVERY_HRS = 1;
+const EMPTY_AREAS     = ['F1A', 'F1B', 'F1D', 'F2C', 'P1C'];
+const EMPTY_CHUNKS    = ['F1A', 'F1B', 'F1D', 'F2C01', 'F2C02', 'F2C03', 'F2C04', 'P1C'];   // F2C ≈ 8k empties
+
 const args       = process.argv.slice(2);
 const MODE_AUTH  = args.includes('--auth');
 const MODE_SERVE = args.includes('--serve');
@@ -330,6 +338,78 @@ async function maybeFetchDeadShelves(token) {
   if (age < DEAD_EVERY_HRS * 36e5) return;
   try { await fetchDeadShelves(token); }
   catch (e) { console.warn(`[${ts()}] Dead shelves failed (non-fatal, retries next cycle): ${e.message}`); }
+}
+
+// ── empty locations ────────────────────────────────────────────────────────────
+// kind: free = no inventory record at all · waiting = record with allocation / to-be-filled
+// (stock promised but not there) · assigned = record left behind with nothing on it
+function sqlEmptyLocs(prefix) {
+  const inv = `default_dcinventory.DCI_INVENTORY i WHERE i.FACILITY_ID='${FACILITY}' AND i.LOCATION_ID=l.LOCATION_ID`;
+  return `
+SELECT l.LOCATION_ID, l.PICK_EXECUTION_ZONE_ID AS pez, l.IS_ACTIVE, l.MAX_VOLUME,
+  CASE WHEN NOT EXISTS (SELECT 1 FROM ${inv}) THEN 'free'
+       WHEN EXISTS (SELECT 1 FROM ${inv} AND (COALESCE(i.ALLOCATED,0)>0 OR COALESCE(i.TO_BE_FILLED,0)>0)) THEN 'waiting'
+       ELSE 'assigned' END AS kind
+FROM default_dcinventory.DCI_LOCATION l
+WHERE l.PROFILE_ID='${FACILITY}' AND l.LOCATION_ID LIKE '${prefix}%'
+  AND NOT EXISTS (SELECT 1 FROM ${inv} AND i.ON_HAND > 0)`.trim();
+}
+function sqlZoneTotals(prefix) {
+  return `
+SELECT PICK_EXECUTION_ZONE_ID AS pez, IS_ACTIVE, COUNT(*) AS n FROM default_dcinventory.DCI_LOCATION
+WHERE PROFILE_ID='${FACILITY}' AND LOCATION_ID LIKE '${prefix}%'
+GROUP BY PICK_EXECUTION_ZONE_ID, IS_ACTIVE`.trim();
+}
+// Stocked locations per aisle (LEFT() is fine on DCI_INVENTORY) — aisle total = stocked + empty
+function sqlStockedByAisle() {
+  return `
+SELECT LEFT(LOCATION_ID,5) AS aisle, COUNT(DISTINCT LOCATION_ID) AS n FROM default_dcinventory.DCI_INVENTORY
+WHERE FACILITY_ID='${FACILITY}' AND ON_HAND > 0 AND ILPN_ID IS NULL AND LEFT(LOCATION_ID,3) IN (${sqlList(EMPTY_AREAS)})
+GROUP BY LEFT(LOCATION_ID,5)`.trim();
+}
+
+async function fetchEmptyLocations(token) {
+  const t0 = Date.now();
+  const empties = [], totals = [], truncated = [];
+  for (const p of EMPTY_CHUNKS) {
+    const r = await mcpQuery(token, sqlEmptyLocs(p));
+    if ((r.rows || []).length >= ROW_CAP_WARN) truncated.push(p);
+    empties.push(...(r.rows || []));
+  }
+  for (const a of EMPTY_AREAS) totals.push(...((await mcpQuery(token, sqlZoneTotals(a))).rows || []));
+  const stocked = (await mcpQuery(token, sqlStockedByAisle())).rows || [];
+
+  const zones = {};
+  const zone = pez => zones[pez] || (zones[pez] = { pez, active: 0, inactive: 0, empty: 0, waiting: 0, assigned: 0, inactive_empty: 0 });
+  for (const r of totals) { const z = zone(r.pez || 'NONE'); if (num(r.IS_ACTIVE)) z.active += num(r.n); else z.inactive += num(r.n); }
+  // Compact rows: [location, pez, active 0/1, max_cuft, kind]
+  const locs = empties.map(r => {
+    const z = zone(r.pez || 'NONE'), active = num(r.IS_ACTIVE) ? 1 : 0;
+    if (active) { z.empty++; if (r.kind === 'waiting') z.waiting++; if (r.kind === 'assigned') z.assigned++; }
+    else z.inactive_empty++;
+    return [r.LOCATION_ID, r.pez || 'NONE', active, num(r.MAX_VOLUME) || null, r.kind];
+  });
+  const stockedByAisle = {};
+  for (const r of stocked) stockedByAisle[r.aisle] = num(r.n);
+
+  const output = {
+    generated: new Date().toISOString(), facility: FACILITY, areas: EMPTY_AREAS, truncated,
+    zones: Object.values(zones).sort((a, b) => a.pez < b.pez ? -1 : 1),
+    stocked_by_aisle: stockedByAisle, locs,
+  };
+  fs.writeFileSync(EMPTY_FILE, JSON.stringify(output));
+  const act = output.zones.reduce((t, z) => t + z.empty, 0);
+  console.log(`[${ts()}] ✓ empty_locations_live.json written in ${Math.round((Date.now() - t0) / 1000)}s — ` +
+    `${act} empty active locations in ${output.zones.length} zones` + (truncated.length ? ` · ⚠ near row cap: ${truncated.join(', ')}` : ''));
+}
+
+// Same age check as dead shelves; both side passes share one helper
+async function maybeRun(file, everyHrs, label, fn, token) {
+  let age = Infinity;
+  try { age = Date.now() - new Date(JSON.parse(fs.readFileSync(file, 'utf8')).generated).getTime(); } catch {}
+  if (age < everyHrs * 36e5) return;
+  try { await fn(token); }
+  catch (e) { console.warn(`[${ts()}] ${label} failed (non-fatal, retries next cycle): ${e.message}`); }
 }
 
 // ── stock-but-no-task reasoning ────────────────────────────────────────────────
@@ -620,6 +700,7 @@ async function main() {
     });
     await fetchUntasked(token);
     await maybeFetchDeadShelves(token);
+    await maybeRun(EMPTY_FILE, EMPTY_EVERY_HRS, 'Empty locations', fetchEmptyLocations, token);
     let busy = false;
     setInterval(async () => {
       // Skip if the last cycle is still running, so cycles never stack up
@@ -629,6 +710,7 @@ async function main() {
         const t = await getAccessTokenSilent();
         await fetchUntasked(t);
         await maybeFetchDeadShelves(t);
+        await maybeRun(EMPTY_FILE, EMPTY_EVERY_HRS, 'Empty locations', fetchEmptyLocations, t);
       } catch (e) {
         console.error(`[${ts()}] Error:`, e.message);
       } finally {
@@ -642,6 +724,8 @@ async function main() {
   await fetchUntasked(token);
   if (args.includes('--dead')) await fetchDeadShelves(token);   // force a dead-shelves pass
   else await maybeFetchDeadShelves(token);
+  if (args.includes('--empty')) await fetchEmptyLocations(token);   // force an empty-locations pass
+  else await maybeRun(EMPTY_FILE, EMPTY_EVERY_HRS, 'Empty locations', fetchEmptyLocations, token);
 }
 
 main().catch(e => { console.error(e.message); process.exit(1); });
