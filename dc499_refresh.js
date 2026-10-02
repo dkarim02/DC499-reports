@@ -477,48 +477,23 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY line_date, ORDER_ID, STATUS
 ORDER BY line_date DESC, ORDER_ID`.trim();
 
-  // Query 2: shipped lines per date — kept separate so sqlOrders stays small and 7-day rows aren't cut off by row limit
-  const sqlShipped = `
+  // Query 2: line counts by PDT date + hour over the 7 days, with shipped counted alongside.
+  // Replaces three separate scans of the same lines (shipped per date, total per date, today
+  // by hour) — on 10/2 those took 135s + 66s at a slow moment; this one scan runs ~8s.
+  // Shipped / daily totals / hourly rows are rebuilt from it below in their old shapes.
+  const sqlLineCounts = `
 SELECT
   DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
-  COUNT(*) AS line_count
-FROM default_dcorder.DCO_ORDER_LINE
-WHERE FACILITY_ID = '${FACILITY}'
-  AND ORDER_TYPE  = 'ECOM'
-  AND CANCELLED   = 0
-  AND STATUS      = 'SHIPPED'
-  AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
-  AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
-GROUP BY line_date
-ORDER BY line_date DESC`.trim();
-
-  // Query 4: raw total lines per date (all statuses, by creation date — used for daily Total column, unaffected by pooling)
-  const sqlDailyTotals = `
-SELECT
-  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
-  COUNT(*) AS line_count
-FROM default_dcorder.DCO_ORDER_LINE
-WHERE FACILITY_ID = '${FACILITY}'
-  AND ORDER_TYPE  = 'ECOM'
-  AND CANCELLED   = 0
-  AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
-  AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
-GROUP BY line_date
-ORDER BY line_date DESC`.trim();
-
-  // Query 3: new order lines created by PDT hour — rate at which backlog builds each hour
-  const sqlHourly = `
-SELECT
   HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS hour_pdt,
-  COUNT(*) AS line_count
+  COUNT(*) AS line_count,
+  SUM(CASE WHEN STATUS = 'SHIPPED' THEN 1 ELSE 0 END) AS shipped_count
 FROM default_dcorder.DCO_ORDER_LINE
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE  = 'ECOM'
   AND CANCELLED   = 0
-  AND CREATED_TIMESTAMP >= '${todayUtcStart}'
+  AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
   AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
-GROUP BY hour_pdt
-ORDER BY hour_pdt`.trim();
+GROUP BY line_date, hour_pdt`.trim();
 
   // Query 5: wave runs this shift
   // 2nd shift starts 1:40 PM PDT = 20:40 UTC, 1st shift starts 3:00 AM PDT = 10:00 UTC
@@ -602,16 +577,28 @@ GROUP BY ITEM_ID, DESCRIPTION
 ORDER BY units_ordered DESC
 LIMIT 10`.trim();
 
-  const [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respHazmat, respRfp, respTopItems] = await Promise.all([
+  const [respOrders, respLineCounts, respWaves, respHazmat, respRfp, respTopItems] = await Promise.all([
     mcpQuery(accessToken, sqlOrders),
-    mcpQuery(accessToken, sqlShipped),
-    mcpQuery(accessToken, sqlDailyTotals),
-    mcpQuery(accessToken, sqlHourly),
+    mcpQuery(accessToken, sqlLineCounts),
     mcpQuery(accessToken, sqlWaves),
     mcpQuery(accessToken, sqlHazmat).catch(() => ({ rows: [] })),
     mcpQuery(accessToken, sqlRfp),
     mcpQuery(accessToken, sqlTopItems).catch(() => ({ rows: [] })),
   ]);
+
+  // Rebuild the old per-date shipped / per-date total / today-by-hour rows from the one scan
+  const shippedByDate = {}, totalByDate = {}, todayByHour = {};
+  for (const r of (respLineCounts.rows || [])) {
+    const d = String(r.line_date || '').slice(0, 10);
+    if (d.length < 10) continue;
+    totalByDate[d]   = (totalByDate[d]   || 0) + Number(r.line_count || 0);
+    shippedByDate[d] = (shippedByDate[d] || 0) + Number(r.shipped_count || 0);
+    if (d === todayStr) todayByHour[Number(r.hour_pdt)] = (todayByHour[Number(r.hour_pdt)] || 0) + Number(r.line_count || 0);
+  }
+  const byDateDesc = m => Object.keys(m).sort().reverse().map(d => ({ line_date: d, line_count: m[d] }));
+  const respShipped     = { rows: byDateDesc(shippedByDate).filter(r => r.line_count > 0) };
+  const respDailyTotals = { rows: byDateDesc(totalByDate) };
+  const respHourly      = { rows: Object.keys(todayByHour).map(Number).sort((x, y) => x - y).map(h => ({ hour_pdt: h, line_count: todayByHour[h] })) };
 
   const rowCounts = [respOrders, respShipped, respDailyTotals, respHourly, respWaves, respHazmat, respRfp, respTopItems]
     .map(r => (r?.rows || []).length);

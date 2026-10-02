@@ -51,6 +51,15 @@ function syncSharePages() {
       copied++;
     } catch (e) { console.warn(`  Share copy skipped for ${name}: ${e.message}`); }
   }
+  // Pages renamed or retired here (e.g. a version bump) come out of the share too,
+  // so nobody opens a stale copy. Only *.html — data, assets and README.txt are left alone.
+  try {
+    for (const name of fs.readdirSync(SHARE_DIR)) {
+      if (!name.endsWith('.html') || names.includes(name)) continue;
+      try { fs.unlinkSync(path.join(SHARE_DIR, name)); copied++; console.log(`  Share: removed retired page ${name}`); }
+      catch (e) { console.warn(`  Share remove skipped for ${name}: ${e.message}`); }
+    }
+  } catch {}
   return copied;
 }
 
