@@ -269,9 +269,6 @@
   .nail-btn { border-color: #1a6b2f !important; background: #e6f4eb !important; color: #1a6b2f !important; font-weight: 600; }
   .nail-btn:hover { background: #c2e0cc !important; }
   [data-theme="dark"] .nail-btn { background: #0d2e17 !important; color: #6fcf97 !important; border-color: #1a6b2f !important; }
-  .eos-btn { margin-top: 6px; padding: 4px 12px; border-radius: 20px; border: 1.5px solid #b45309; background: #fef3c7; color: #b45309; font-size: 12px; font-weight: 700; cursor: pointer; transition: opacity .15s, box-shadow .15s; white-space: nowrap; }
-  .eos-btn:hover { opacity: 0.85; box-shadow: 0 0 0 3px rgba(180,83,9,0.2); }
-  [data-theme="dark"] .eos-btn { background: #2d1a00; color: #f59e0b; border-color: #b45309; }
 
 
   .assoc-row { cursor: pointer; transition: background 0.15s; }
@@ -387,7 +384,6 @@ body { animation: pageEnter 0.28s ease-out both; }
           <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
         </div>
       </div>
-      <button class="eos-btn" onclick="openEOS()" title="Open EOS Report">&#x1F4CB; EOS Report</button>
       <div class="backlog-pill" id="backlog-pill" onclick="openBacklog()" title="Open Ecom Backlog">
         <div class="bp-total">
           <span class="bp-total-lbl">Backlog</span>
@@ -2405,10 +2401,6 @@ function nailThePlan(btn) {
 }
 
 // ── BACKLOG STRIP ───────────────────────────────────────
-function openEOS() {
-  window.open('EOS_live.html', '_blank');   // relative — works on Pages, localhost, and file://
-}
-
 function openBacklog() {
   var base = window.location.href.replace(/\/[^\/]*$/, '/');
   window.open(base + 'Backlog_live.html?from=ecom', '_blank');
