@@ -4168,7 +4168,7 @@ function renderDeadShelves() {
   document.getElementById('ut-dead-note').innerHTML =
     'Items on Ecom pick shelves with <b>no picks in ' + d.idle_days + '+ days</b>, no open orders, and not stocked in the last ' + d.fresh_days + ' days. ' +
     fmt(s.pairs) + ' items · ' + fmt(s.units) + ' units on ' + fmt(s.shelves) + ' shelves' + (s.gwp_pairs ? ' · ' + fmt(s.gwp_pairs) + ' are GWPs' : '') +
-    (s.never_picked != null ? ' · <b>' + fmt(s.never_picked) + ' never picked</b> from their shelf' + (d.history_from ? ' since ' + utDeadDate(d.history_from + 'T12:00:00Z') + ' (as far back as pick history goes)' : '') : '') + '. ' +
+    (s.never_picked != null ? ' · <b>' + fmt(s.never_picked) + ' never picked</b> from their shelf' + (d.history_from ? ' since ' + new Date(d.history_from + 'T12:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' (as far back as pick history goes)' : '') : '') + '. ' +
     'Updated ' + (fmtPdt(d.generated) || '—') + ' (every 6 hrs).' +
     ((d.truncated || []).length ? ' <b>Some areas hit the row limit (' + d.truncated.join(', ') + ') — list may be incomplete.</b>' : '');
 
