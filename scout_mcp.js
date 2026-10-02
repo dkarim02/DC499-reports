@@ -89,42 +89,101 @@ function clearIfStale(file, staleMs) {
 
 // ── Query slot pool ───────────────────────────────────────────────────────────
 // In-process queue first (so 20 queued queries don't all poll the disk), then a file slot.
+//
+// Priority: dc499_refresh (the 2-min live cycle) is created with { priority: true }.
+// While it has a query waiting it keeps .mcp_priority.lock fresh, and the sub-agents
+// don't take a slot as one frees up — so the live cycle gets it. It also hands a slot
+// straight to its own next queued query instead of putting it back up for grabs.
+// Between live cycles the sub-agents get all the slots.
+let PRIORITY = false;
 let _localActive = 0;
 const _localQueue = [];
 function _localAcquire() {
   return new Promise(resolve => {
-    if (_localActive < POOL_SLOTS) { _localActive++; resolve(); }
+    if (_localActive < POOL_SLOTS) { _localActive++; resolve(null); }
     else _localQueue.push(resolve);
   });
 }
 function _localRelease() {
-  if (_localQueue.length) _localQueue.shift()();
+  if (_localQueue.length) _localQueue.shift()(null);
   else _localActive--;
 }
 const slotFile = i => path.join(DIR, `.mcp_slot_${i}.lock`);
 
+const PRIO_FILE     = path.join(DIR, '.mcp_priority.lock');
+const PRIO_FRESH_MS = 10 * 1000;   // a flag not touched for 10 s is ignored
+let _prioPolling = 0, _prioWrittenAt = 0;
+function priorityWaiting() {
+  try {
+    const cur = JSON.parse(fs.readFileSync(PRIO_FILE, 'utf8'));
+    return cur.pid !== process.pid && pidAlive(cur.pid) && Date.now() - cur.at < PRIO_FRESH_MS;
+  } catch { return false; }
+}
+function touchPriority() {
+  if (Date.now() - _prioWrittenAt < 2000) return;
+  _prioWrittenAt = Date.now();
+  try { fs.writeFileSync(PRIO_FILE, JSON.stringify({ pid: process.pid, at: _prioWrittenAt })); } catch {}
+}
+function clearPriority() {
+  _prioWrittenAt = 0;
+  try { if (JSON.parse(fs.readFileSync(PRIO_FILE, 'utf8')).pid === process.pid) fs.unlinkSync(PRIO_FILE); } catch {}
+}
+
 async function acquireSlot() {
-  await _localAcquire();
+  const handed = await _localAcquire();
+  if (handed) return handed;                     // priority hand-off, already holds a file slot
   const deadline = Date.now() + SLOT_WAIT_MS;
   const start = Math.floor(Math.random() * POOL_SLOTS);
-  while (true) {
-    for (let k = 0; k < POOL_SLOTS; k++) {
-      const file = slotFile((start + k) % POOL_SLOTS);
-      const id = tryLock(file);
-      if (id) return { file, id };
-      clearIfStale(file, SLOT_STALE_MS);
+  let polling = false;
+  try {
+    while (true) {
+      if (PRIORITY || !priorityWaiting()) {
+        for (let k = 0; k < POOL_SLOTS; k++) {
+          const file = slotFile((start + k) % POOL_SLOTS);
+          const id = tryLock(file);
+          if (id) return { file, id };
+          clearIfStale(file, SLOT_STALE_MS);
+        }
+      }
+      if (Date.now() > deadline) {
+        _localRelease();
+        throw new Error(`No free MCP query slot after ${SLOT_WAIT_MS / 60000} min`);
+      }
+      if (PRIORITY) { if (!polling) { polling = true; _prioPolling++; } touchPriority(); }
+      await sleep(PRIORITY ? 100 + Math.random() * 100 : 150 + Math.random() * 250);
     }
-    if (Date.now() > deadline) {
-      _localRelease();
-      throw new Error(`No free MCP query slot after ${SLOT_WAIT_MS / 60000} min`);
-    }
-    await sleep(150 + Math.random() * 250);
+  } finally {
+    if (polling && --_prioPolling === 0) clearPriority();
   }
 }
 function releaseSlot(slot) {
+  if (PRIORITY && _localQueue.length) {
+    // Keep the file slot and pass it to our next queued query (refresh its timestamp)
+    try { fs.writeFileSync(slot.file, JSON.stringify({ id: slot.id, pid: process.pid, at: Date.now() })); } catch {}
+    _localQueue.shift()(slot);
+    return;
+  }
   unlockIfOwner(slot.file, slot.id);
   _localRelease();
 }
+
+// ── Per-query timing (read + reset by the caller each cycle) ─────────────────
+let _stats = null;
+function resetStats() { _stats = { n: 0, failed: 0, waitMax: 0, waitSum: 0, runSum: 0, slow: [] }; }
+resetStats();
+function queryLabel(sql) {
+  const m = String(sql).match(/\bFROM\s+(?:\w+\.)?(\w+)/i);
+  return m ? m[1] : 'query';
+}
+function recordQuery(sql, waitMs, runMs, ok) {
+  _stats.n++; if (!ok) _stats.failed++;
+  _stats.waitSum += waitMs; _stats.waitMax = Math.max(_stats.waitMax, waitMs);
+  _stats.runSum += runMs;
+  _stats.slow.push({ label: queryLabel(sql), runMs });
+  _stats.slow.sort((a, b) => b.runMs - a.runMs);
+  if (_stats.slow.length > 3) _stats.slow.length = 3;
+}
+function takeStats() { const s = _stats; resetStats(); return s; }
 
 // ── Token storage ─────────────────────────────────────────────────────────────
 function loadToken() {
@@ -218,7 +277,8 @@ function jsonPost(url, body, headers = {}, timeoutMs = POST_TIMEOUT_MS) {
 }
 
 // ── Agent-facing API ──────────────────────────────────────────────────────────
-module.exports = function createMcp({ redirectPort }) {
+module.exports = function createMcp({ redirectPort, priority = false }) {
+  if (priority) PRIORITY = true;
   const REDIRECT_URI = `http://localhost:${redirectPort}/callback`;
 
   async function refreshAccessToken(rt) {
@@ -314,7 +374,10 @@ module.exports = function createMcp({ redirectPort }) {
   }
 
   async function mcpQuery(accessToken, sql) {
+    const t0 = Date.now();
     const slot = await acquireSlot();
+    const t1 = Date.now();
+    let ok = false;
     try {
       const result = await jsonPost(`${MCP_BASE}/mcp`, JSON.stringify({
         jsonrpc: '2.0', id: 1, method: 'tools/call',
@@ -328,9 +391,12 @@ module.exports = function createMcp({ redirectPort }) {
       if (result.error) throw new Error(JSON.stringify(result.error));
       const text = result?.result?.content?.[0]?.text;
       if (!text) throw new Error('Empty MCP response');
-      return JSON.parse(text);
+      const parsed = JSON.parse(text);
+      ok = true;
+      return parsed;
     } finally {
       releaseSlot(slot);
+      recordQuery(sql, t1 - t0, Date.now() - t1, ok);
     }
   }
 
@@ -338,9 +404,9 @@ module.exports = function createMcp({ redirectPort }) {
     MCP_BASE, CLIENT_ID, TOKEN_FILE, REDIRECT_URI, AuthError,
     b64url, loadToken, saveToken, isTokenFresh, refreshAccessToken,
     waitForCode, doAuthFlow, getAccessToken, getAccessTokenSilent,
-    jsonPost, mcpQuery,
+    jsonPost, mcpQuery, takeStats,
   };
 };
 
 module.exports.AuthError = AuthError;
-module.exports._internals = { acquireSlot, releaseSlot, acquireLock, releaseLock, jsonPost, slotFile, POOL_SLOTS };   // tests
+module.exports._internals = { setPriority: v => { PRIORITY = v; }, priorityWaiting, acquireSlot, releaseSlot, acquireLock, releaseLock, jsonPost, slotFile, POOL_SLOTS };   // tests

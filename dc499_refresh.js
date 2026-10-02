@@ -35,8 +35,9 @@ const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
 const FACILITY      = '499';
 
 // ── MCP login + queries — shared by every agent, see scout_mcp.js ─────────────
-const mcp = require('./scout_mcp')({ redirectPort: REDIRECT_PORT });
-const { doAuthFlow, getAccessToken, AuthError, getAccessTokenSilent, jsonPost, mcpQuery } = mcp;
+// priority: the live 2-min cycle gets first claim on query slots over the sub-agents
+const mcp = require('./scout_mcp')({ redirectPort: REDIRECT_PORT, priority: true });
+const { doAuthFlow, getAccessToken, AuthError, getAccessTokenSilent, jsonPost, mcpQuery, takeStats } = mcp;
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 function ts() {
@@ -1469,7 +1470,10 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
   const openIds    = [...new Set(allTasks.filter(t => t.status !== '8000').map(t => t.task_id))];
   const BATCH_SZ   = 15;
   const detailMap  = {};
-  for (let i = 0; i < openIds.length; i += BATCH_SZ) {
+  // Batches run side by side — the shared query slots in scout_mcp.js cap how many hit MAWM at once
+  const batchStarts = [];
+  for (let i = 0; i < openIds.length; i += BATCH_SZ) batchStarts.push(i);
+  await Promise.all(batchStarts.map(async i => {
     const batchIds = openIds.slice(i, i + BATCH_SZ).map(id => `'${id}'`).join(',');
     const sqlDetail = `SELECT TASK_ID, COUNT(*) AS detail_count FROM default_task.TSK_TASK_DETAIL WHERE FACILITY_ID = '${FACILITY}' AND TASK_ID IN (${batchIds}) GROUP BY TASK_ID`;
     try {
@@ -1479,7 +1483,7 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
     } catch (e) {
       console.warn(`  Task detail batch ${Math.floor(i/BATCH_SZ)+1} failed: ${e.message}`);
     }
-  }
+  }));
   for (const t of allTasks) {
     t.detail_count = detailMap[t.task_id] ?? null;
   }
@@ -1529,17 +1533,25 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
 // ── core: query + write ────────────────────────────────────────────────────────
 async function queryAndWrite(accessToken) {
   console.log(`[${ts()}] Querying...`);
-  // All 7 fetch functions start together. The 2-slot semaphore inside mcpQuery() keeps
-  // concurrent in-flight requests at ≤2, preventing empty-response throttling from the server.
+  // All 7 fetch functions start together. scout_mcp.js caps MAWM queries in flight across
+  // every agent (and gives this cycle first claim), so starting them all at once is safe.
+  const cycleStart = Date.now();
+  takeStats();   // reset per-query timing for this cycle
+  const sectionMs = {};
+  const timed = (name, p) => p.then(
+    v => { sectionMs[name] = Date.now() - cycleStart; return v; },
+    e => { sectionMs[name] = Date.now() - cycleStart; console.warn(`  ${name} query failed: ${e.message}`); return null; });
   const [backlogData, batchStatusData, retailReplenData, recvData, totesData, shippedData, tasksData] = await Promise.all([
-    fetchBacklog(accessToken)      .catch(e => { console.warn(`  Backlog query failed: ${e.message}`);      return null; }),
-    fetchBatchStatus(accessToken)  .catch(e => { console.warn(`  Batch status query failed: ${e.message}`); return null; }),
-    fetchRetailReplen(accessToken) .catch(e => { console.warn(`  Retail replen query failed: ${e.message}`); return null; }),
-    fetchReceiving(accessToken)    .catch(e => { console.warn(`  Receiving query failed: ${e.message}`);    return null; }),
-    fetchTotes(accessToken)        .catch(e => { console.warn(`  Totes query failed: ${e.message}`);        return null; }),
-    fetchShipped(accessToken)      .catch(e => { console.warn(`  Shipped query failed: ${e.message}`);      return null; }),
-    fetchTaskData(accessToken)     .catch(e => { console.warn(`  Tasks query failed: ${e.message}`);        return null; }),
+    timed('Backlog',       fetchBacklog(accessToken)),
+    timed('Batch status',  fetchBatchStatus(accessToken)),
+    timed('Retail replen', fetchRetailReplen(accessToken)),
+    timed('Receiving',     fetchReceiving(accessToken)),
+    timed('Totes',         fetchTotes(accessToken)),
+    timed('Shipped',       fetchShipped(accessToken)),
+    timed('Tasks',         fetchTaskData(accessToken)),
   ]);
+  const queryMs = Date.now() - cycleStart;
+  const qs = takeStats();
 
   if (recvData) {
     fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
@@ -1581,7 +1593,13 @@ async function queryAndWrite(accessToken) {
     console.log(`[${ts()}] ✓ shipped_live.json — ${shippedData.shipped_olpns} oLPNs, ${shippedData.shipped_units} units`);
   }
 
+  const gitStart = Date.now();
   gitPush();
+  const gitMs = Date.now() - gitStart;
+  // One line per cycle so slow spots are easy to see in the window
+  const sec = ms => (ms / 1000).toFixed(1) + 's';
+  const last = Object.entries(sectionMs).sort((a, b) => b[1] - a[1])[0];
+  console.log(`[${ts()}] ⏱ cycle ${sec(Date.now() - cycleStart)} — queries ${sec(queryMs)} (last to finish: ${last ? last[0] : '-'}), git ${sec(gitMs)} · ${qs.n} queries${qs.failed ? ` (${qs.failed} failed)` : ''}, longest slot wait ${sec(qs.waitMax)}, slowest: ${qs.slow.map(q => q.label + ' ' + sec(q.runMs)).join(', ') || '-'}`);
   return { recvData, totesData, backlogData, batchStatusData, retailReplenData, tasksData, shippedData };
 }
 
