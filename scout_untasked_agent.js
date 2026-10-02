@@ -52,6 +52,16 @@ const SINGLE_GRACE_MIN = 15;      // singles should task within a few 5-min cycl
 const ALLOC_3000    = "'3000','3000.0'";
 const ALLOC_5000    = "'5000','5000.0'";
 
+// Dead shelves — items on Ecom pick shelves nothing has picked lately (idea from Shubham's dead_faces.py).
+// Heavy (~50 queries), so it runs every DEAD_EVERY_HRS into its own file, not every cycle.
+const DEAD_FILE       = path.join(__dirname, 'dead_shelves_live.json');
+const DEAD_EVERY_HRS  = 6;
+const DEAD_IDLE_DAYS  = 30;   // no completed pick from this shelf for this item in 30 days
+const DEAD_FRESH_DAYS = 7;    // stocked onto the shelf this recently = no history yet, never called dead
+// Pick areas split so no answer nears the 10k-row cap (largest, F2C03, is ~4k stocked pairs)
+const DEAD_CHUNKS     = ['F1A', 'F1B', 'F1D0', 'F1D1', 'F2C01', 'F2C02', 'F2C03', 'F2C04', 'P1C'];
+const ROW_CAP_WARN    = 9500;
+
 const args       = process.argv.slice(2);
 const MODE_AUTH  = args.includes('--auth');
 const MODE_SERVE = args.includes('--serve');
@@ -205,6 +215,121 @@ FROM default_dcinventory.DCI_INVENTORY i
 WHERE i.FACILITY_ID='${FACILITY}' AND i.ITEM_ID IN (${sqlList(items)})
   AND LEFT(i.LOCATION_ID,3) IN (${sqlList(RESERVE_AREAS)})
 GROUP BY i.ITEM_ID`.trim();
+}
+
+// ── dead shelves ───────────────────────────────────────────────────────────────
+// Stocked, no open orders, not stocked recently, and no completed pick of THIS item from THIS
+// shelf in the window. Location × item grain: Ecom shelves hold up to 3 items, and a dead item
+// sharing a shelf with a live one is exactly the space hog we want.
+function sqlDeadPairs(prefix, idleSince, freshBefore) {
+  return `
+SELECT i.LOCATION_ID, i.ITEM_ID, SUM(i.ON_HAND) AS oh, MAX(i.LAST_LOCATED_DATE_TIME) AS last_located
+FROM default_dcinventory.DCI_INVENTORY i
+WHERE i.FACILITY_ID='${FACILITY}' AND i.ON_HAND > 0 AND i.ILPN_ID IS NULL AND COALESCE(i.ALLOCATED,0) = 0
+  AND i.LOCATION_ID LIKE '${prefix}%'
+  AND NOT EXISTS (SELECT 1 FROM default_task.TSK_TASK_DETAIL td
+                  WHERE td.SOURCE_LOCATION_ID = i.LOCATION_ID AND td.ITEM_ID = i.ITEM_ID AND td.FACILITY_ID='${FACILITY}'
+                    AND td.STATUS='8000' AND td.TYPE_ID='PICK/PACK' AND td.CREATED_TIMESTAMP >= '${idleSince}')
+GROUP BY i.LOCATION_ID, i.ITEM_ID
+HAVING MAX(i.LAST_LOCATED_DATE_TIME) IS NULL OR MAX(i.LAST_LOCATED_DATE_TIME) < '${freshBefore}'`.trim();
+}
+// Everything stocked in the area — tells us what else shares each dead item's shelf
+function sqlAreaStock(prefix) {
+  return `
+SELECT LOCATION_ID, ITEM_ID, SUM(ON_HAND) AS oh
+FROM default_dcinventory.DCI_INVENTORY
+WHERE FACILITY_ID='${FACILITY}' AND ON_HAND > 0 AND ILPN_ID IS NULL AND LOCATION_ID LIKE '${prefix}%'
+GROUP BY LOCATION_ID, ITEM_ID`.trim();
+}
+function sqlItemInfo(items) {
+  return `
+SELECT ITEM_ID, VOLUME, VOLUME_UOM_ID, DESCRIPTION, STORE_DEPARTMENT FROM default_item_master.ITE_ITEM
+WHERE ITEM_ID IN (${sqlList(items)})`.trim();
+}
+
+async function fetchDeadShelves(token) {
+  const t0 = Date.now();
+  console.log(`[${ts()}] Fetching dead shelves (every ${DEAD_EVERY_HRS} hrs)...`);
+  const idleSince = utcAgo(DEAD_IDLE_DAYS * 24), freshBefore = utcAgo(DEAD_FRESH_DAYS * 24);
+  const dead = [], stock = [], truncated = [];
+  for (const p of DEAD_CHUNKS) {
+    // Dead list is required; a failed chunk is reported, not silently dropped
+    const d = await mcpQuery(token, sqlDeadPairs(p, idleSince, freshBefore));
+    const s = await mcpQuery(token, sqlAreaStock(p));
+    if ((d.rows || []).length >= ROW_CAP_WARN || (s.rows || []).length >= ROW_CAP_WARN) truncated.push(p);
+    dead.push(...(d.rows || []));
+    stock.push(...(s.rows || []));
+  }
+
+  const deadKey = new Set(dead.map(r => shelfKey(r.LOCATION_ID, r.ITEM_ID)));
+  const shelfLocs = [...new Set(dead.map(r => r.LOCATION_ID))];
+  const onShelf = new Map();      // shelf → items stocked on it
+  const shelfSet = new Set(shelfLocs);
+  for (const r of stock) {
+    if (!shelfSet.has(r.LOCATION_ID)) continue;
+    if (!onShelf.has(r.LOCATION_ID)) onShelf.set(r.LOCATION_ID, []);
+    onShelf.get(r.LOCATION_ID).push(r);
+  }
+  const items = [...new Set([...onShelf.values()].flat().map(r => r.ITEM_ID))];
+  const deadItems = [...new Set(dead.map(r => r.ITEM_ID))];
+  const deadItemSet = new Set(deadItems);
+
+  const [capRows, infoRows, resRows] = [
+    await batched(token, shelfLocs, 400, sqlShelfCap, 'dead shelf size'),
+    await batched(token, items, 400, sqlItemInfo, 'dead item info'),
+    await batched(token, deadItems, 400, sqlReserve, 'dead reserve'),
+  ];
+  const cap = {};  for (const r of capRows) cap[r.LOCATION_ID] = num(r.MAX_VOLUME) || null;
+  const info = {}; for (const r of infoRows) info[r.ITEM_ID] = {
+    cube: String(r.VOLUME_UOM_ID).toLowerCase() === 'cuft' && num(r.VOLUME) > 0 ? num(r.VOLUME) : null,
+    desc: r.DESCRIPTION || '', dept: r.STORE_DEPARTMENT || '' };
+  const res = {};  for (const r of resRows) res[r.ITEM_ID] = Math.max(0, num(r.oh) - num(r.alloc));
+  const r3 = v => v == null ? null : Math.round(v * 1000) / 1000;
+
+  // Compact output: shelves hold contents once; items hold description/cube/reserve once.
+  //   shelves[loc] = { max, items: [[item, on_hand, cuft, dead 0/1]] }
+  //   rows         = [[loc, item, on_hand, cuft, pct_of_shelf, stocked_iso]]
+  //   items[item]  = [description, unit_cuft, reserve_free (dead items only), gwp 0/1, store_dept]
+  const shelvesOut = {};
+  for (const loc of shelfLocs) {
+    const max = cap[loc];
+    shelvesOut[loc] = { max: r3(max), items: (onShelf.get(loc) || []).map(r => {
+      const cf = info[r.ITEM_ID] && info[r.ITEM_ID].cube ? num(r.oh) * info[r.ITEM_ID].cube : null;
+      return [r.ITEM_ID, num(r.oh), r3(cf), deadKey.has(shelfKey(loc, r.ITEM_ID)) ? 1 : 0];
+    }) };
+  }
+  const rows = dead.map(r => {
+    const i = info[r.ITEM_ID] || {}, max = cap[r.LOCATION_ID];
+    const cf = i.cube ? num(r.oh) * i.cube : null;
+    return [r.LOCATION_ID, r.ITEM_ID, num(r.oh), r3(cf), (cf != null && max) ? Math.round(100 * cf / max) : null, toIso(r.last_located)];
+  });
+  const itemsOut = {};
+  for (const it of items) {
+    const i = info[it] || {};
+    itemsOut[it] = [i.desc || '', i.cube == null ? null : Math.round(i.cube * 1e6) / 1e6, deadItemSet.has(it) ? (res[it] ?? 0) : null, isGwp(i.desc) ? 1 : 0, i.dept || ''];
+  }
+
+  const output = {
+    generated: new Date().toISOString(), facility: FACILITY,
+    idle_days: DEAD_IDLE_DAYS, fresh_days: DEAD_FRESH_DAYS, areas: DEAD_CHUNKS, truncated,
+    summary: { pairs: rows.length, shelves: shelfLocs.length, units: rows.reduce((t, r) => t + r[2], 0),
+               gwp_pairs: rows.filter(r => isGwp((info[r[1]] || {}).desc)).length,
+               cuft: r3(rows.reduce((t, r) => t + (r[3] || 0), 0)) },
+    rows, shelves: shelvesOut, items: itemsOut,
+  };
+  fs.writeFileSync(DEAD_FILE, JSON.stringify(output));
+  console.log(`[${ts()}] ✓ dead_shelves_live.json written in ${Math.round((Date.now() - t0) / 1000)}s — ` +
+    `${output.summary.pairs} idle items on ${output.summary.shelves} shelves, ${output.summary.units} units` +
+    (truncated.length ? ` · ⚠ near row cap: ${truncated.join(', ')}` : ''));
+}
+
+// Run the dead-shelves pass only when its file is older than DEAD_EVERY_HRS (survives restarts)
+async function maybeFetchDeadShelves(token) {
+  let age = Infinity;
+  try { age = Date.now() - new Date(JSON.parse(fs.readFileSync(DEAD_FILE, 'utf8')).generated).getTime(); } catch {}
+  if (age < DEAD_EVERY_HRS * 36e5) return;
+  try { await fetchDeadShelves(token); }
+  catch (e) { console.warn(`[${ts()}] Dead shelves failed (non-fatal, retries next cycle): ${e.message}`); }
 }
 
 // ── stock-but-no-task reasoning ────────────────────────────────────────────────
@@ -494,6 +619,7 @@ async function main() {
       throw e;
     });
     await fetchUntasked(token);
+    await maybeFetchDeadShelves(token);
     let busy = false;
     setInterval(async () => {
       // Skip if the last cycle is still running, so cycles never stack up
@@ -502,6 +628,7 @@ async function main() {
       try {
         const t = await getAccessTokenSilent();
         await fetchUntasked(t);
+        await maybeFetchDeadShelves(t);
       } catch (e) {
         console.error(`[${ts()}] Error:`, e.message);
       } finally {
@@ -513,6 +640,8 @@ async function main() {
 
   const token = await getAccessToken();
   await fetchUntasked(token);
+  if (args.includes('--dead')) await fetchDeadShelves(token);   // force a dead-shelves pass
+  else await maybeFetchDeadShelves(token);
 }
 
 main().catch(e => { console.error(e.message); process.exit(1); });

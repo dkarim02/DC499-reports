@@ -633,6 +633,41 @@
   .ut-verdict{font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;color:var(--lane);border:0.5px solid var(--lane);white-space:nowrap;}
   .ut-row.nested{padding-left:34px;}
 
+  /* View switch: Stuck orders / Dead shelves */
+  .ut-views{display:inline-flex;border:0.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1rem;}
+  .ut-view{font-family:inherit;font-size:13px;font-weight:600;padding:7px 16px;border:none;background:var(--surface);color:var(--text-muted);cursor:pointer;}
+  .ut-view + .ut-view{border-left:0.5px solid var(--border);}
+  .ut-view.on{background:var(--accent-bg);color:var(--accent);}
+  .ut-view:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+  .ut-view-n{font-size:11px;font-weight:700;margin-left:7px;color:var(--text-hint);font-variant-numeric:tabular-nums;}
+  .ut-view.on .ut-view-n{color:var(--accent);}
+
+  /* Dead shelves */
+  .ut-dead-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-0.25rem 0 1rem;}
+  .ut-pills{display:flex;gap:4px;flex-wrap:wrap;}
+  .ut-pill{font-family:inherit;font-size:12px;font-weight:600;padding:4px 11px;border-radius:12px;border:0.5px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;}
+  .ut-pill.on{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-muted);}
+  .ut-pill:focus-visible,.ut-search:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  .ut-pill .ut-pill-n{font-weight:500;color:var(--text-hint);margin-left:4px;}
+  .ut-check{font-size:12px;color:var(--text-muted);display:inline-flex;align-items:center;gap:5px;cursor:pointer;}
+  .ut-search{font-family:inherit;font-size:12px;padding:5px 10px;border-radius:6px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);min-width:200px;margin-left:auto;}
+  .ut-drow{display:grid;grid-template-columns:14px 112px minmax(0,1fr) 56px 128px 64px 64px;align-items:center;gap:12px;padding:9px 18px;border-bottom:0.5px solid var(--border-light);font-size:13px;cursor:pointer;}
+  .ut-drow:hover{background:var(--surface2);}
+  .ut-drow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+  .ut-drow.head{cursor:default;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);padding-top:8px;padding-bottom:6px;}
+  .ut-drow.head:hover{background:none;}
+  .ut-drow .r{text-align:right;font-variant-numeric:tabular-nums;}
+  .ut-drow .ut-res0{color:var(--red);font-weight:700;}
+  .ut-dsub{font-size:11px;color:var(--text-hint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ut-dsub.lane{color:var(--lane);font-weight:600;}
+  .ut-more{display:block;width:100%;font-family:inherit;font-size:12px;font-weight:600;padding:9px;border:none;background:none;color:var(--accent);cursor:pointer;}
+  .ut-more:hover{background:var(--surface2);}
+  @media(max-width:760px){
+    .ut-drow{grid-template-columns:14px minmax(0,1fr) 56px 64px;}
+    .ut-drow .ut-hide-m{display:none;}
+    .ut-search{margin-left:0;min-width:0;flex:1;}
+  }
+
   /* Won't fit the shelf — its own hue, lighter on the dark themes */
   :root{--ut-fit:#6d28d9;}
   [data-theme="dark"],[data-theme="solid"],[data-theme="pastel"],[data-theme="remi"],[data-theme="scout"]{--ut-fit:#a78bfa;}
@@ -1389,9 +1424,27 @@ body { animation: pageEnter 0.28s ease-out both; }
       </div>
     </div>
 
-    <div class="ut-lanes" id="ut-lanes" style="display:none;"></div>
-    <div class="ut-note" id="ut-note"></div>
-    <div id="ut-sections"></div>
+    <div class="ut-views" role="tablist">
+      <button class="ut-view on" id="ut-vb-orders" role="tab" onclick="utSetView('orders')">Stuck orders<span class="ut-view-n" id="ut-vn-orders"></span></button>
+      <button class="ut-view"    id="ut-vb-dead"   role="tab" onclick="utSetView('dead')">Dead shelves<span class="ut-view-n" id="ut-vn-dead"></span></button>
+    </div>
+
+    <div id="ut-view-orders">
+      <div class="ut-lanes" id="ut-lanes" style="display:none;"></div>
+      <div class="ut-note" id="ut-note"></div>
+      <div id="ut-sections"></div>
+    </div>
+
+    <div id="ut-view-dead" hidden>
+      <div class="ut-lanes" id="ut-dead-lanes"></div>
+      <div class="ut-note" id="ut-dead-note">Loading...</div>
+      <div class="ut-dead-tools">
+        <div class="ut-pills" id="ut-dead-areas"></div>
+        <label class="ut-check"><input type="checkbox" id="ut-dead-gwp" onchange="utDeadFilter()"> GWP only</label>
+        <input type="search" class="ut-search" id="ut-dead-q" placeholder="Search shelf or item" oninput="utDeadFilter()">
+      </div>
+      <div id="ut-dead-sections"></div>
+    </div>
 
     <div class="empty-state" id="ut-empty-state" style="display:none;">
       <div style="font-size:32px;margin-bottom:10px;">&#x1F50D;</div>
@@ -3531,6 +3584,8 @@ function utUpdateTabCount(d) {
   var n = utFlaggedCount(d);
   el.textContent = n;
   el.style.display = n ? 'inline-block' : 'none';
+  var vn = document.getElementById('ut-vn-orders');
+  if (vn) vn.textContent = fmt(n);
 }
 
 // Groups, in the order a supervisor works them. Each owns one color and names who fixes it.
@@ -3848,6 +3903,218 @@ function renderUntaskedData(d) {
   }
 
   document.getElementById('ut-sections').innerHTML = html;
+  if (utView === 'dead' && lastDeadData) renderDeadShelves();   // blocking links use the live order data
+}
+
+// ── Dead shelves view (dead_shelves_live.json, refreshed every 6 hrs by scout_untasked_agent.js) ──
+// Items on Ecom pick shelves with no picks lately. Grouped by what moving them unblocks; the
+// "blocking" group is worked out here from the live No Task data so it's never 6 hours stale.
+var utView = localStorage.getItem('ut_view_v1') || 'orders';
+var lastDeadData = null, utDeadLane = 'all', utDeadArea = 'all', utDeadShown = {};
+var UT_DEAD_LANES = [
+  { key: 'blocking', name: 'Blocking orders',    owner: 'Move first — frees a stuck shelf', color: 'var(--red)' },
+  { key: 'busy',     name: 'Space on a busy shelf', owner: 'Move to make room for replens', color: 'var(--amber)' },
+  { key: 'whole',    name: 'Whole shelf idle',   owner: 'Clear the shelf for slotting',  color: 'var(--accent)' },
+  { key: 'other',    name: 'Everything else',    owner: 'Low priority',                  color: 'var(--text-muted)' },
+];
+var UT_DEAD_PAGE = 50, UT_BUSY_PCT = 25;
+var utDeadCopyText = {};   // lane → move list, kept here so descriptions with commas/quotes can't break it
+
+function utSetView(v) {
+  utView = v; localStorage.setItem('ut_view_v1', v);
+  document.getElementById('ut-view-orders').hidden = v !== 'orders';
+  document.getElementById('ut-view-dead').hidden   = v !== 'dead';
+  document.getElementById('ut-vb-orders').classList.toggle('on', v === 'orders');
+  document.getElementById('ut-vb-dead').classList.toggle('on', v === 'dead');
+  if (v === 'dead') { if (lastDeadData) renderDeadShelves(); else fetchDeadShelves(); }
+}
+
+function fetchDeadShelves() {
+  fetch(getBase() + '/dead_shelves_live.json?t=' + Date.now())
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(d) { lastDeadData = d; utDeadIndex(d); utDeadCount(); if (utView === 'dead') renderDeadShelves(); })
+    .catch(function(err) {
+      var el = document.getElementById('ut-dead-note');
+      if (el) el.textContent = 'No dead-shelf data yet (' + err.message + '). It builds every 6 hours once option 27 is running.';
+    });
+}
+setInterval(fetchDeadShelves, 30 * 60 * 1000);
+fetchDeadShelves();
+document.addEventListener('DOMContentLoaded', function() { utSetView(utView); });
+if (document.readyState !== 'loading') utSetView(utView);
+
+// Unpack the compact rows once: [loc, item, on_hand, cuft, pct, stocked]
+function utDeadIndex(d) {
+  d._rows = (d.rows || []).map(function(r) {
+    var it = (d.items || {})[r[1]] || [];
+    return { loc: r[0], item: r[1], oh: r[2], cuft: r[3], pct: r[4], stocked: r[5],
+             desc: it[0] || '', res: it[2], gwp: !!it[3], area: r[0].slice(0, 3) };
+  });
+}
+
+// Which group each idle item belongs in. Blocking = it sits on a shelf the No Task view says is holding an order.
+function utDeadCategory(d, r) {
+  var block = utDeadBlocking()[r.loc];
+  if (block && block.item !== r.item) return 'blocking';
+  var sh = (d.shelves || {})[r.loc] || { items: [] };
+  var active = sh.items.filter(function(x) { return !x[3]; }).length;
+  if (!active) return 'whole';
+  return (r.pct != null && r.pct >= UT_BUSY_PCT) ? 'busy' : 'other';
+}
+function utDeadBlocking() {
+  var out = {};
+  ((lastUtData && lastUtData.shelves) || []).forEach(function(s) { out[s.loc] = s; });
+  return out;
+}
+
+function utDeadCount() {
+  var el = document.getElementById('ut-vn-dead');
+  if (el && lastDeadData) el.textContent = fmt((lastDeadData.summary || {}).pairs);
+}
+function utDeadSetLane(k) { utDeadLane = utDeadLane === k ? 'all' : k; renderDeadShelves(); }
+function utDeadSetArea(a) { utDeadArea = a; utDeadShown = {}; renderDeadShelves(); }
+function utDeadFilter()  { utDeadShown = {}; renderDeadShelves(); }
+function utDeadMore(k)   { utDeadShown[k] = (utDeadShown[k] || UT_DEAD_PAGE) + UT_DEAD_PAGE; renderDeadShelves(); }
+
+function utDeadDate(iso) {
+  if (!iso) return '—';
+  try { return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' }); }
+  catch(e) { return iso; }
+}
+function utDeadBar(pct) {
+  if (pct == null) return '<span class="ut-desc">—</span>';
+  // Over 100% = MA's shelf size is smaller than what's on it, so don't print "387%"
+  return '<span class="ut-space"><span class="ut-space-bar"><i style="width:' + Math.min(100, pct) + '%"></i></span><span>' + (pct > 100 ? '100%+' : pct + '%') + '</span></span>';
+}
+// What else is on the shelf, in one line
+function utDeadNeighbours(d, r) {
+  var sh = (d.shelves || {})[r.loc] || { items: [] };
+  var others = sh.items.filter(function(x) { return x[0] !== r.item; });
+  if (!others.length) return 'only item on the shelf';
+  var act = others.filter(function(x) { return !x[3]; }).length, idle = others.length - act;
+  return 'shares the shelf with ' + (act ? act + ' active' : '') + (act && idle ? ' + ' : '') + (idle ? idle + ' idle' : '') + ' item' + (others.length === 1 ? '' : 's');
+}
+function utDeadWhy(d, r, cat) {
+  if (cat === 'blocking') {
+    var b = utDeadBlocking()[r.loc];
+    var what = b.state === 'wont_fit' ? 'its replen won\'t fit' : b.state === 'replen_loop' ? 'its replen keeps cancelling' : 'it\'s short';
+    return 'Shares the shelf with ' + b.item + ' — ' + what + ' (holding ' + utPlural(b.orders, 'order', 'orders') + ')';
+  }
+  return utDeadNeighbours(d, r);
+}
+
+function renderDeadShelves() {
+  var d = lastDeadData;
+  if (!d || !d._rows) return;
+  var q = (document.getElementById('ut-dead-q').value || '').trim().toUpperCase();
+  var gwpOnly = document.getElementById('ut-dead-gwp').checked;
+
+  // Group + filter
+  var groups = { blocking: [], busy: [], whole: [], other: [] };
+  var areaCounts = {};
+  d._rows.forEach(function(r) {
+    if (gwpOnly && !r.gwp) return;
+    if (q && r.loc.indexOf(q) < 0 && r.item.toUpperCase().indexOf(q) < 0) return;
+    areaCounts[r.area] = (areaCounts[r.area] || 0) + 1;
+    if (utDeadArea !== 'all' && r.area !== utDeadArea) return;
+    groups[utDeadCategory(d, r)].push(r);
+  });
+  var bySpace = function(a, b) { return (b.cuft || 0) - (a.cuft || 0) || b.oh - a.oh; };
+  Object.keys(groups).forEach(function(k) { groups[k].sort(bySpace); });
+
+  // Lanes
+  var lanesEl = document.getElementById('ut-dead-lanes');
+  lanesEl.classList.toggle('filtered', utDeadLane !== 'all');
+  lanesEl.innerHTML = UT_DEAD_LANES.map(function(l) {
+    var n = groups[l.key].length;
+    return '<button class="ut-lane' + (n ? '' : ' zero') + (utDeadLane === l.key ? ' on' : '') + '" style="--lane:' + l.color + '"' +
+      ' aria-pressed="' + (utDeadLane === l.key) + '" onclick="utDeadSetLane(\'' + l.key + '\')">' +
+      '<div class="ut-lane-top"><span class="ut-lane-n">' + fmt(n) + '</span><span class="ut-lane-name">' + l.name + '</span></div>' +
+      '<div class="ut-lane-owner">' + l.owner + '</div></button>';
+  }).join('');
+
+  // Area pills
+  var areas = ['all'].concat(d.areas ? d.areas.map(function(a) { return a.slice(0, 3); }).filter(function(a, i, arr) { return arr.indexOf(a) === i; }) : []);
+  document.getElementById('ut-dead-areas').innerHTML = areas.map(function(a) {
+    var n = a === 'all' ? Object.keys(areaCounts).reduce(function(t, k) { return t + areaCounts[k]; }, 0) : (areaCounts[a] || 0);
+    return '<button class="ut-pill' + (utDeadArea === a ? ' on' : '') + '" onclick="utDeadSetArea(\'' + a + '\')">' +
+      (a === 'all' ? 'All areas' : a) + '<span class="ut-pill-n">' + fmt(n) + '</span></button>';
+  }).join('');
+
+  var s = d.summary || {};
+  if (d.pending) {
+    document.getElementById('ut-dead-note').textContent = 'The first dead-shelf list is still building. It appears after option 27 (Untasked Orders) runs, then refreshes every 6 hours.';
+    document.getElementById('ut-dead-sections').innerHTML = '';
+    return;
+  }
+  document.getElementById('ut-dead-note').innerHTML =
+    'Items on Ecom pick shelves with <b>no picks in ' + d.idle_days + '+ days</b>, no open orders, and not stocked in the last ' + d.fresh_days + ' days. ' +
+    fmt(s.pairs) + ' items · ' + fmt(s.units) + ' units on ' + fmt(s.shelves) + ' shelves' + (s.gwp_pairs ? ' · ' + fmt(s.gwp_pairs) + ' are GWPs' : '') + '. ' +
+    'Updated ' + (fmtPdt(d.generated) || '—') + ' (every 6 hrs).' +
+    ((d.truncated || []).length ? ' <b>Some areas hit the row limit (' + d.truncated.join(', ') + ') — list may be incomplete.</b>' : '');
+
+  var head = '<div class="ut-drow head"><span></span><span>Shelf</span><span>Item</span><span class="r">Units</span><span class="ut-hide-m">Space on shelf</span><span class="ut-hide-m">Stocked</span><span class="r">Reserve</span></div>';
+  var html = '';
+  UT_DEAD_LANES.forEach(function(l) {
+    if (utDeadLane !== 'all' && utDeadLane !== l.key) return;
+    var list = groups[l.key];
+    if (!list.length && l.key !== 'blocking') return;
+    var shown = utDeadShown[l.key] || UT_DEAD_PAGE;
+    var rows = list.slice(0, shown).map(function(r) {
+      var key = 'd:' + r.loc + '|' + r.item, open = utExpanded.has(key);
+      var row = '<div class="ut-drow" role="button" tabindex="0" aria-expanded="' + open + '" data-utkey="' + escHtml(key) + '"' +
+        ' onclick="utToggleDead(this)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();utToggleDead(this);}">' +
+        '<span class="ut-chev' + (open ? ' open' : '') + '">&#x25B6;</span>' +
+        '<span class="ut-loc">' + escHtml(r.loc) + '</span>' +
+        '<div class="ut-what"><div class="ut-item"><b>' + escHtml(r.item) + '</b>' + (r.gwp ? '<span class="ut-gwp">GWP</span>' : '') +
+          (r.desc && !r.gwp ? ' <span class="ut-desc">' + escHtml(r.desc) + '</span>' : '') + '</div>' +
+          '<div class="ut-dsub' + (l.key === 'blocking' ? ' lane' : '') + '">' + utDeadWhy(d, r, l.key) + '</div></div>' +
+        '<span class="r">' + fmt(r.oh) + '</span>' +
+        '<span class="ut-hide-m">' + utDeadBar(r.pct) + '</span>' +
+        '<span class="ut-hide-m">' + utDeadDate(r.stocked) + '</span>' +
+        '<span class="r' + (r.res === 0 ? ' ut-res0' : '') + '">' + (r.res == null ? '—' : fmt(r.res)) + '</span></div>';
+      if (open) {
+        var sh = (d.shelves || {})[r.loc] || { items: [] };
+        row += '<div class="ut-lines">' + sh.items.map(function(x) {
+          var it = (d.items || {})[x[0]] || [];
+          var pct = (x[2] != null && sh.max) ? Math.round(100 * x[2] / sh.max) : null;
+          return '<div class="ut-line' + (x[3] ? ' short' : '') + '"><span class="ut-dot' + (x[3] ? ' short' : '') + '"></span>' +
+            '<span class="ut-item"><b>' + escHtml(x[0]) + '</b>' + (it[3] ? '<span class="ut-gwp">GWP</span>' : '') + ' <span class="ut-desc">' + escHtml(it[0] || '') + '</span> × ' + fmt(x[1]) + '</span>' +
+            '<span class="ut-loc">' + (pct != null ? pct + '% of shelf' : '') + '</span>' +
+            '<span class="ut-line-say">' + (x[3] ? 'idle — no picks in ' + d.idle_days + ' days' : 'active') + '</span></div>';
+        }).join('') + (sh.max ? '<div class="ut-line"><span></span><span class="ut-desc">Shelf holds ' + utCuft(sh.max) + ' cuft</span></div>' : '') + '</div>';
+      }
+      return row;
+    }).join('');
+    var more = list.length > shown ? '<button class="ut-more" onclick="utDeadMore(\'' + l.key + '\')">Show ' + Math.min(UT_DEAD_PAGE, list.length - shown) + ' more of ' + fmt(list.length - shown) + '</button>' : '';
+    utDeadCopyText[l.key] = 'Shelf\tItem\tUnits\tDescription\n' +
+      list.map(function(r) { return r.loc + '\t' + r.item + '\t' + r.oh + '\t' + (r.desc || ''); }).join('\n');
+    var does = {
+      blocking: 'These idle items sit on a shelf that is holding up an order right now. Moving them makes room for the replen or the pick. Tap a row to see the whole shelf.',
+      busy:     'Idle items taking ' + UT_BUSY_PCT + '%+ of a shelf whose other items still get picked. Moving them gives replens room to land.',
+      whole:    'Every item on these shelves is idle. Clearing the shelf frees it for an item that sells.',
+      other:    'Idle, but small or on a shelf with room to spare. Biggest first.',
+    }[l.key];
+    html += '<section class="ut-sec" style="--lane:' + l.color + '"><div class="ut-sec-head"><div>' +
+      '<h3 class="ut-sec-title">' + l.name + '<span class="ut-sec-meta">' + utPlural(list.length, 'item', 'items') + '</span></h3>' +
+      '<p class="ut-sec-do">' + does + '</p></div>' +
+      (list.length ? '<button class="ut-copy" onclick="utCopyTsv(this, \'' + l.key + '\')">Copy move list</button>' : '') +
+      '</div>' + (list.length ? head + rows + more : '<div class="ut-clear">Nothing here right now.</div>') + '</section>';
+  });
+  document.getElementById('ut-dead-sections').innerHTML = html;
+}
+function utToggleDead(el) {
+  var key = el.dataset.utkey;
+  if (utExpanded.has(key)) utExpanded.delete(key); else utExpanded.add(key);
+  renderDeadShelves();
+}
+// Move list as tab-separated rows (pastes into Excel/Teams as a table)
+function utCopyTsv(btn, key) {
+  var text = utDeadCopyText[key] || '';
+  var label = btn.textContent;
+  var done = function() { btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = label; }, 2000); };
+  try { navigator.clipboard.writeText(text).then(done, function() { utCopyFallback(text); done(); }); }
+  catch(e) { utCopyFallback(text); done(); }
 }
 
 // ── EOD Email Export ──────────────────────────────────────────────────────────
