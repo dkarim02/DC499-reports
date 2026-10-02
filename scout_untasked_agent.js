@@ -61,6 +61,8 @@ const DEAD_FRESH_DAYS = 7;    // stocked onto the shelf this recently = no histo
 // Pick areas split so no answer nears the 10k-row cap (largest, F2C03, is ~4k stocked pairs)
 const DEAD_CHUNKS     = ['F1A', 'F1B', 'F1D0', 'F1D1', 'F2C01', 'F2C02', 'F2C03', 'F2C04', 'P1C'];
 const ROW_CAP_WARN    = 9500;
+// Pick history in TSK_TASK_DETAIL starts here (checked 10/2) — "never picked" = none since this date
+const DEAD_HISTORY_FROM = '2025-10-07';
 
 // Empty locations — Ecom pick locations with nothing on hand, per pick execution zone + aisle. Hourly.
 // DCI_LOCATION only filters well on `LOCATION_ID LIKE 'X%'` — LEFT() in WHERE/GROUP BY on that
@@ -231,7 +233,10 @@ GROUP BY i.ITEM_ID`.trim();
 // sharing a shelf with a live one is exactly the space hog we want.
 function sqlDeadPairs(prefix, idleSince, freshBefore) {
   return `
-SELECT i.LOCATION_ID, i.ITEM_ID, SUM(i.ON_HAND) AS oh, MAX(i.LAST_LOCATED_DATE_TIME) AS last_located
+SELECT i.LOCATION_ID, i.ITEM_ID, SUM(i.ON_HAND) AS oh, MAX(i.LAST_LOCATED_DATE_TIME) AS last_located,
+  (SELECT MAX(td.CREATED_TIMESTAMP) FROM default_task.TSK_TASK_DETAIL td
+    WHERE td.SOURCE_LOCATION_ID = i.LOCATION_ID AND td.ITEM_ID = i.ITEM_ID AND td.FACILITY_ID='${FACILITY}'
+      AND td.STATUS='8000' AND td.TYPE_ID='PICK/PACK') AS last_pick
 FROM default_dcinventory.DCI_INVENTORY i
 WHERE i.FACILITY_ID='${FACILITY}' AND i.ON_HAND > 0 AND i.ILPN_ID IS NULL AND COALESCE(i.ALLOCATED,0) = 0
   AND i.LOCATION_ID LIKE '${prefix}%'
@@ -296,7 +301,8 @@ async function fetchDeadShelves(token) {
 
   // Compact output: shelves hold contents once; items hold description/cube/reserve once.
   //   shelves[loc] = { max, items: [[item, on_hand, cuft, dead 0/1]] }
-  //   rows         = [[loc, item, on_hand, cuft, pct_of_shelf, stocked_iso]]
+  //   rows         = [[loc, item, on_hand, cuft, pct_of_shelf, stocked_iso, last_pick_iso or null = never]]
+  //   history_from = oldest pick on record — "never" means none since then
   //   items[item]  = [description, unit_cuft, reserve_free (dead items only), gwp 0/1, store_dept]
   const shelvesOut = {};
   for (const loc of shelfLocs) {
@@ -309,7 +315,7 @@ async function fetchDeadShelves(token) {
   const rows = dead.map(r => {
     const i = info[r.ITEM_ID] || {}, max = cap[r.LOCATION_ID];
     const cf = i.cube ? num(r.oh) * i.cube : null;
-    return [r.LOCATION_ID, r.ITEM_ID, num(r.oh), r3(cf), (cf != null && max) ? Math.round(100 * cf / max) : null, toIso(r.last_located)];
+    return [r.LOCATION_ID, r.ITEM_ID, num(r.oh), r3(cf), (cf != null && max) ? Math.round(100 * cf / max) : null, toIso(r.last_located), toIso(r.last_pick)];
   });
   const itemsOut = {};
   for (const it of items) {
@@ -320,8 +326,10 @@ async function fetchDeadShelves(token) {
   const output = {
     generated: new Date().toISOString(), facility: FACILITY,
     idle_days: DEAD_IDLE_DAYS, fresh_days: DEAD_FRESH_DAYS, areas: DEAD_CHUNKS, truncated,
+    history_from: DEAD_HISTORY_FROM,
     summary: { pairs: rows.length, shelves: shelfLocs.length, units: rows.reduce((t, r) => t + r[2], 0),
                gwp_pairs: rows.filter(r => isGwp((info[r[1]] || {}).desc)).length,
+               never_picked: rows.filter(r => !r[6]).length,
                cuft: r3(rows.reduce((t, r) => t + (r[3] || 0), 0)) },
     rows, shelves: shelvesOut, items: itemsOut,
   };

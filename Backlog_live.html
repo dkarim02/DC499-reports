@@ -657,6 +657,13 @@
   .ut-drow.head{cursor:default;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);padding-top:8px;padding-bottom:6px;}
   .ut-drow.head:hover{background:none;}
   .ut-drow .r{text-align:right;font-variant-numeric:tabular-nums;}
+  .ut-sort{font:inherit;text-transform:inherit;letter-spacing:inherit;color:inherit;background:none;border:none;padding:2px 0;cursor:pointer;display:inline-flex;align-items:center;gap:3px;}
+  .ut-sort:hover,.ut-sort.on{color:var(--accent);}
+  .ut-sort:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px;}
+  .ut-sort-arrow{font-size:8px;opacity:0.35;}
+  .ut-sort.on .ut-sort-arrow{opacity:1;}
+  .ut-drow.head .r .ut-sort{margin-left:auto;}
+  .ut-drow.head .r{display:flex;justify-content:flex-end;}
   .ut-drow .ut-res0{color:var(--red);font-weight:700;}
   .ut-dsub{font-size:11px;color:var(--text-hint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .ut-dsub.lane{color:var(--lane);font-weight:600;}
@@ -3958,6 +3965,43 @@ var UT_DEAD_LANES = [
 var UT_DEAD_PAGE = 50, UT_BUSY_PCT = 25;
 var utDeadCopyText = {};   // lane → move list, kept here so descriptions with commas/quotes can't break it
 
+// Column sort — one choice for every group, remembered. Blank values always sort last.
+//   key → value getter, first-click direction (1 = A→Z / small→big / oldest first, -1 = reverse)
+var UT_DEAD_COLS = {
+  shelf:   { label: 'Shelf',          get: function(r) { return r.loc; },     first: 1 },
+  item:    { label: 'Item',           get: function(r) { return r.item; },    first: 1 },
+  units:   { label: 'Units',          get: function(r) { return r.oh; },      first: -1, num: true },
+  space:   { label: 'Space on shelf', get: function(r) { return r.pct; },     first: -1, num: true },
+  stocked: { label: 'Stocked',        get: function(r) { return r.stocked; }, first: 1 },
+  // Never picked counts as the oldest (0), so it leads an oldest-first sort
+  last:    { label: 'Last picked',    get: function(r) { return r.lastPick ? new Date(r.lastPick).getTime() : 0; }, first: 1, num: true },
+  reserve: { label: 'Reserve',        get: function(r) { return r.res; },     first: -1, num: true },
+};
+var utDeadSort = (function() {
+  try { var s = JSON.parse(localStorage.getItem('ut_dead_sort_v1')); if (s && UT_DEAD_COLS[s.key]) return s; } catch(e) {}
+  return { key: 'space', dir: -1 };
+})();
+function utDeadSetSort(key) {
+  utDeadSort = utDeadSort.key === key ? { key: key, dir: -utDeadSort.dir } : { key: key, dir: UT_DEAD_COLS[key].first };
+  localStorage.setItem('ut_dead_sort_v1', JSON.stringify(utDeadSort));
+  renderDeadShelves();
+}
+function utDeadCompare(a, b) {
+  var col = UT_DEAD_COLS[utDeadSort.key], va = col.get(a), vb = col.get(b);
+  var na = va == null || va === '', nb = vb == null || vb === '';
+  if (na || nb) return na === nb ? 0 : na ? 1 : -1;            // blanks last either way
+  var c = col.num ? va - vb : String(va).localeCompare(String(vb));
+  return c * utDeadSort.dir || (b.cuft || 0) - (a.cuft || 0);   // ties: biggest space hog first
+}
+// Header cell: a button with an arrow on the active column
+function utDeadTh(key, cls) {
+  var on = utDeadSort.key === key, col = UT_DEAD_COLS[key];
+  var arrow = on ? (utDeadSort.dir === 1 ? '&#x25B2;' : '&#x25BC;') : '&#x25B2;&#x25BC;';
+  return '<span class="' + (cls || '') + '" role="columnheader" aria-sort="' + (on ? (utDeadSort.dir === 1 ? 'ascending' : 'descending') : 'none') + '">' +
+    '<button class="ut-sort' + (on ? ' on' : '') + '" onclick="utDeadSetSort(\'' + key + '\')">' + col.label +
+    '<span class="ut-sort-arrow">' + arrow + '</span></button></span>';
+}
+
 function utSetView(v) {
   if (['orders', 'dead', 'empty'].indexOf(v) < 0) v = 'orders';
   utView = v; localStorage.setItem('ut_view_v1', v);
@@ -3989,9 +4033,26 @@ if (document.readyState !== 'loading') utSetView(utView);
 function utDeadIndex(d) {
   d._rows = (d.rows || []).map(function(r) {
     var it = (d.items || {})[r[1]] || [];
+    var last = r[6] || null;
     return { loc: r[0], item: r[1], oh: r[2], cuft: r[3], pct: r[4], stocked: r[5],
+             lastPick: last, days: last ? Math.floor((Date.now() - new Date(last).getTime()) / 864e5) : null,
              desc: it[0] || '', res: it[2], gwp: !!it[3], area: r[0].slice(0, 3) };
   });
+}
+
+// "Last picked" dropdown buckets — older files (no r[6]) only offer "All"
+var UT_DEAD_AGES = [
+  { key: 'all',   label: 'Any' },
+  { key: 'never', label: 'Never picked',  test: function(r) { return !r.lastPick; } },
+  { key: '30',    label: '30–60 days ago', test: function(r) { return r.days != null && r.days < 60; } },
+  { key: '60',    label: '60–90 days ago', test: function(r) { return r.days != null && r.days >= 60 && r.days < 90; } },
+  { key: '90',    label: '90+ days ago',   test: function(r) { return r.days != null && r.days >= 90; } },
+];
+var utDeadAge = localStorage.getItem('ut_dead_age_v1') || 'all';
+function utDeadSetAge(v) { utDeadAge = v; localStorage.setItem('ut_dead_age_v1', v); utDeadFilter(); }
+function utDeadLastCell(r) {
+  if (!r.lastPick) return '<span class="ut-never" title="No pick from this shelf on record">Never</span>';
+  return '<span title="' + r.days + ' days ago">' + utDeadDate(r.lastPick) + ' <span class="ut-desc">· ' + r.days + 'd</span></span>';
 }
 
 // Which group each idle item belongs in. Blocking = it sits on a shelf the No Task view says is holding an order.
@@ -4061,8 +4122,7 @@ function renderDeadShelves() {
     if (utDeadArea !== 'all' && r.area !== utDeadArea) return;
     groups[utDeadCategory(d, r)].push(r);
   });
-  var bySpace = function(a, b) { return (b.cuft || 0) - (a.cuft || 0) || b.oh - a.oh; };
-  Object.keys(groups).forEach(function(k) { groups[k].sort(bySpace); });
+  Object.keys(groups).forEach(function(k) { groups[k].sort(utDeadCompare); });
 
   // Lanes
   var lanesEl = document.getElementById('ut-dead-lanes');
@@ -4095,7 +4155,8 @@ function renderDeadShelves() {
     'Updated ' + (fmtPdt(d.generated) || '—') + ' (every 6 hrs).' +
     ((d.truncated || []).length ? ' <b>Some areas hit the row limit (' + d.truncated.join(', ') + ') — list may be incomplete.</b>' : '');
 
-  var head = '<div class="ut-drow head"><span></span><span>Shelf</span><span>Item</span><span class="r">Units</span><span class="ut-hide-m">Space on shelf</span><span class="ut-hide-m">Stocked</span><span class="r">Reserve</span></div>';
+  var head = '<div class="ut-drow head" role="row"><span></span>' + utDeadTh('shelf') + utDeadTh('item') + utDeadTh('units', 'r') +
+    utDeadTh('space', 'ut-hide-m') + utDeadTh('stocked', 'ut-hide-m') + utDeadTh('last') + utDeadTh('reserve', 'r') + '</div>';
   var html = '';
   UT_DEAD_LANES.forEach(function(l) {
     if (utDeadLane !== 'all' && utDeadLane !== l.key) return;
@@ -4114,6 +4175,7 @@ function renderDeadShelves() {
         '<span class="r">' + fmt(r.oh) + '</span>' +
         '<span class="ut-hide-m">' + utDeadBar(r.pct) + '</span>' +
         '<span class="ut-hide-m">' + utDeadDate(r.stocked) + '</span>' +
+        '<span>' + utDeadLastCell(r) + '</span>' +
         '<span class="r' + (r.res === 0 ? ' ut-res0' : '') + '">' + (r.res == null ? '—' : fmt(r.res)) + '</span></div>';
       if (open) {
         var sh = (d.shelves || {})[r.loc] || { items: [] };
