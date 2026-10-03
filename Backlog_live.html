@@ -4362,8 +4362,9 @@ function renderEmptyLocations() {
   zEl.innerHTML = zones.map(function(z) {
     var pct = z.active ? Math.round(100 * z.empty / z.active) : 0;
     // One fact per line so cards don't wrap into a paragraph
-    var sub = '<span class="ut-zone-line">empty of ' + fmt(z.active) + ' · ' + pct + '%' + (z.inactive ? ' · +' + fmt(z.inactive) + ' inactive' : '') + '</span>' +
-      (z.partial ? '<span class="ut-zone-line"><b>' + fmt(z.partial) + '</b> partly full · ' + fmt(z.open_slots) + ' open slots</span>' : '') +
+    var sub = '<span class="ut-zone-line">empty of ' + fmt(z.active) + ' · ' + pct + '%</span>' +
+      (z.partial ? '<span class="ut-zone-line"><b>' + fmt(z.partial) + '</b> partly full</span><span class="ut-zone-line">' + fmt(z.open_slots) + ' open item slots</span>' : '') +
+      (z.inactive ? '<span class="ut-zone-line">' + fmt(z.inactive) + ' inactive</span>' : '') +
       (z.waiting ? '<span class="ut-zone-line">' + fmt(z.waiting) + ' waiting on stock</span>' : '') +
       (z.over ? '<span class="ut-zone-line warn">' + z.over + ' over the item limit</span>' : '');
     return '<button class="ut-lane' + (z.empty || z.partial ? '' : ' zero') + (utEmptyZone === z.pez ? ' on' : '') + '" style="--lane:' + color[z.pez] + '"' +
@@ -4474,7 +4475,7 @@ function renderEmptyLocations() {
     utEmptyCopyText[z.pez] = copy.join('\n');
     var meta = (nEmpty ? utPlural(nEmpty, 'empty', 'empty') : '') + (nEmpty && nPartial ? ' · ' : '') + (nPartial ? fmt(nPartial) + ' partly full' : '') + (nOver ? ' · ' + nOver + ' over the item limit' : '');
     html += '<section class="ut-sec" style="--lane:' + color[z.pez] + '"><div class="ut-sec-head"><div>' +
-      '<h3 class="ut-sec-title">' + escHtml(utZoneName(z.pez)) + '<span class="ut-sec-meta">' + meta + ' shown</span></h3>' +
+      '<h3 class="ut-sec-title">' + escHtml(utZoneName(z.pez)) + '<span class="ut-sec-meta">' + meta + '</span></h3>' +
       '</div>' +
       '<button class="ut-copy" onclick="utCopyTsv(this, \'e:' + z.pez + '\')">Copy locations</button></div>' + head + rows + '</section>';
   });
