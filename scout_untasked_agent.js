@@ -350,7 +350,7 @@ async function maybeFetchDeadShelves(token) {
     age = Date.now() - new Date(j.generated).getTime();
     format = j.format || 0;
   } catch {}
-  if (format === DEAD_FORMAT && age < DEAD_EVERY_HRS * 36e5) return;
+  if (format >= DEAD_FORMAT && age < DEAD_EVERY_HRS * 36e5) return;
   try { await fetchDeadShelves(token); }
   catch (e) { console.warn(`[${ts()}] Dead shelves failed (non-fatal, retries next cycle): ${e.message}`); }
 }
@@ -552,7 +552,8 @@ async function fetchEmptyLocations(token) {
 async function maybeRun(file, everyHrs, label, fn, token, format) {
   let age = Infinity, have = 0;
   try { const j = JSON.parse(fs.readFileSync(file, 'utf8')); age = Date.now() - new Date(j.generated).getTime(); have = j.format || 0; } catch {}
-  if (age < everyHrs * 36e5 && (!format || have === format)) return;
+  // A newer file (from a newer agent) is never overwritten by an older one
+  if (age < everyHrs * 36e5 && (!format || have >= format)) return;
   try { await fn(token); }
   catch (e) { console.warn(`[${ts()}] ${label} failed (non-fatal, retries next cycle): ${e.message}`); }
 }
