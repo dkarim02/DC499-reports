@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Report Processor v3.0</title>
+<title>Ecom Report Processor v3.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -571,7 +571,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.0</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.1</p>
   </div>
 
   <p class="nordstrom-tag">Dean Karim &middot; Nordstrom &middot; Ecom &middot; Last updated: <span id="last-updated"></span></p>
@@ -683,6 +683,7 @@ function renderLiveReport(d) {
   html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary — Live <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">· click a tile to see associates</span></div>';
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
   types.forEach(function(typ) {
+    var TEAM = getTeamSet(typ);
     var txList = getTX()[typ], color = FULL_COLORS[typ];
     var filtered = d.rows.filter(function(r) {
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
@@ -745,6 +746,7 @@ function renderLiveReport(d) {
       html += '<div class="card" style="margin-bottom:1rem;padding:10px 14px;">';
       html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px 12px;">';
       pphTypes.forEach(function(typ) {
+        var TEAM = getTeamSet(typ);
         var txList = getTX()[typ];
         var filtered2 = d.rows.filter(function(r) {
           if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
@@ -768,6 +770,7 @@ function renderLiveReport(d) {
   // ── Per-dept associate cards (hidden unless their tile is active) ───────────
   html += '<div>';
   types.forEach(function(typ) {
+    var TEAM = getTeamSet(typ);
     var txList = getTX()[typ], color = FULL_COLORS[typ], label = FULL_LABELS[typ], barClass = 'full-bar-'+typ;
     var isActive = _activeLiveTile === typ;
     var filtered = d.rows.filter(function(r) {
@@ -879,6 +882,7 @@ function getLiveDeptTotals() {
   if (!liveData || !liveData.rows) return null;
   var TEAM = getTeamSet(), totals = {};
   ['replen','putaway','picking','packing','shipping','sorting'].forEach(function(typ) {
+    var TEAM = getTeamSet(typ);
     var txList = getTX()[typ];
     var filtered = liveData.rows.filter(function(r) {
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
@@ -1016,7 +1020,8 @@ function isTMEnabledForTx(roster, emp, typ) {
   return !m.disabled_tx || m.disabled_tx.indexOf(typ) === -1;
 }
 function saveRoster(r) { try { localStorage.setItem(getRosterKey(), JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {} }
-function getTeamSet() { return new Set(loadRoster().filter(function(m) { return m.enabled; }).map(function(m) { return m.email; })); }
+// Pass a type to also drop TMs disabled for just that transaction (disabled_tx)
+function getTeamSet(typ) { return new Set(loadRoster().filter(function(m) { return m.enabled && (!typ || (m.disabled_tx || []).indexOf(typ) === -1); }).map(function(m) { return m.email; })); }
 function renderRoster() {
   const roster = loadRoster(), list = document.getElementById('roster-list');
   list.innerHTML = '';
@@ -1303,6 +1308,7 @@ function detectHeadcounts() {
   var source = fullReportRows.length ? fullReportRows : (liveData && liveData.rows || []);
   var counts = {};
   HC_DEPTS.forEach(function(typ) {
+    var TEAM = getTeamSet(typ);
     var txList = getTX()[typ];
     var threshold = MIN_TX[typ] || 0;
     var empCount = {};
@@ -1857,6 +1863,7 @@ function drawFullChart(filterTyp) {
 
   var TEAM = getTeamSet();
   types.forEach(function(typ) {
+    var TEAM = getTeamSet(typ);
     var txList = getTX()[typ];
     var metricKey = FULL_METRIC[typ];
     var map = {};
@@ -1942,6 +1949,7 @@ function renderFullReport() {
   html += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em;">Shift Summary</div>';
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
   types.forEach(function(typ) {
+    var TEAM = getTeamSet(typ);
     var txList = getTX()[typ], metricKey = FULL_METRIC[typ], color = FULL_COLORS[typ];
     var filtered = fullReportRows.filter(function(r){
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
@@ -2004,6 +2012,7 @@ function renderFullReport() {
   html += '<div id="full-side-panel" class="full-side-panel"></div>';
   html += '<div class="full-layout-with-panel"><div id="full-dept-grid"><div class="full-grid">';
   types.forEach(function(typ) {
+    var TEAM = getTeamSet(typ);
     var txList = getTX()[typ], metricKey = FULL_METRIC[typ], color = FULL_COLORS[typ];
     var label = FULL_LABELS[typ], barClass = 'full-bar-'+typ;
     var filtered = fullReportRows.filter(function(r){
@@ -2168,6 +2177,7 @@ const TEAMS_WEBHOOKS = {
 function getDeptTotals() {
   var TEAM = getTeamSet(), totals = {};
   ['replen','putaway','picking','packing','shipping','sorting'].forEach(function(typ) {
+    var TEAM = getTeamSet(typ);
     var txList = getTX()[typ];
     var filtered = fullReportRows.filter(function(r) {
       if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
