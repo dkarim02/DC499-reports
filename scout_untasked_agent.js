@@ -63,6 +63,8 @@ const DEAD_CHUNKS     = ['F1A', 'F1B', 'F1D0', 'F1D1', 'F2C01', 'F2C02', 'F2C03'
 const ROW_CAP_WARN    = 9500;
 // Pick history in TSK_TASK_DETAIL starts here (checked 10/2) — "never picked" = none since this date
 const DEAD_HISTORY_FROM = '2025-10-07';
+// Bump when the file's shape changes — an older file is rebuilt at once instead of waiting out DEAD_EVERY_HRS
+const DEAD_FORMAT = 2;   // 2 = rows carry last_pick (10/2)
 
 // Empty locations — Ecom pick locations with nothing on hand, per pick execution zone + aisle. Hourly.
 // DCI_LOCATION only filters well on `LOCATION_ID LIKE 'X%'` — LEFT() in WHERE/GROUP BY on that
@@ -326,7 +328,7 @@ async function fetchDeadShelves(token) {
   const output = {
     generated: new Date().toISOString(), facility: FACILITY,
     idle_days: DEAD_IDLE_DAYS, fresh_days: DEAD_FRESH_DAYS, areas: DEAD_CHUNKS, truncated,
-    history_from: DEAD_HISTORY_FROM,
+    format: DEAD_FORMAT, history_from: DEAD_HISTORY_FROM,
     summary: { pairs: rows.length, shelves: shelfLocs.length, units: rows.reduce((t, r) => t + r[2], 0),
                gwp_pairs: rows.filter(r => isGwp((info[r[1]] || {}).desc)).length,
                never_picked: rows.filter(r => !r[6]).length,
@@ -341,9 +343,13 @@ async function fetchDeadShelves(token) {
 
 // Run the dead-shelves pass only when its file is older than DEAD_EVERY_HRS (survives restarts)
 async function maybeFetchDeadShelves(token) {
-  let age = Infinity;
-  try { age = Date.now() - new Date(JSON.parse(fs.readFileSync(DEAD_FILE, 'utf8')).generated).getTime(); } catch {}
-  if (age < DEAD_EVERY_HRS * 36e5) return;
+  let age = Infinity, format = 0;
+  try {
+    const j = JSON.parse(fs.readFileSync(DEAD_FILE, 'utf8'));
+    age = Date.now() - new Date(j.generated).getTime();
+    format = j.format || 0;
+  } catch {}
+  if (format === DEAD_FORMAT && age < DEAD_EVERY_HRS * 36e5) return;
   try { await fetchDeadShelves(token); }
   catch (e) { console.warn(`[${ts()}] Dead shelves failed (non-fatal, retries next cycle): ${e.message}`); }
 }
