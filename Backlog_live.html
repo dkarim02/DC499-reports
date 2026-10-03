@@ -699,7 +699,7 @@
   .ut-chip.assigned{border-style:dashed;}
   .ut-chip.inactive{opacity:0.5;font-style:italic;}
   .ut-chip.partial{border-color:var(--accent-muted);color:var(--accent);}
-  .ut-chip.partial b{font-weight:700;margin-left:4px;font-family:inherit;}
+  .ut-chip b{font-weight:700;margin-left:4px;font-family:inherit;}
   .ut-chip.partial.nofit{color:var(--text-hint);border-color:var(--border);}
   .ut-chip.over{border-color:var(--red);color:var(--red);font-weight:700;}
   @media(max-width:760px){
@@ -4387,14 +4387,15 @@ function renderEmptyLocations() {
     var Z = byZone[z.pez];
     if (!Z) return;
     var aisles = Object.keys(Z).sort().map(function(k) { return Z[k]; });
-    var copy = [], nEmpty = 0, nPartial = 0;
+    var copy = [], nEmpty = 0, nPartial = 0, nOver = 0;
     var rows = aisles.map(function(A) {
       var stocked = (d.stocked_by_aisle || {})[A.aisle] || 0;
       var total = stocked + A.n, pct = total ? Math.round(100 * A.n / total) : 0;
       var key = 'e:' + A.aisle, open = utExpanded.has(key);
       var area = A.aisle.slice(0, 3), name = (area === 'F2C' ? 'Mezz' : area) + ' · Aisle ' + A.aisle.slice(3, 5);
-      nEmpty += A.n; nPartial += A.partial;
+      nEmpty += A.n;
       Object.keys(A.bays).forEach(function(b) { A.bays[b].forEach(function(s) {
+        if (s.kind === 'over') nOver++; else if (s.kind === 'partial') nPartial++;
         copy.push(s.loc + '\t' + (s.kind === 'partial' || s.kind === 'over' ? s.used + ' of ' + s.max + ' items' : 'empty') + '\t' + (s.cuft != null ? utCuft(s.cuft) : ''));
       }); });
       var row = '<div class="ut-erow" role="button" tabindex="0" aria-expanded="' + open + '" data-utkey="' + key + '"' +
@@ -4429,7 +4430,7 @@ function renderEmptyLocations() {
       return row;
     }).join('');
     utEmptyCopyText[z.pez] = copy.join('\n');
-    var meta = (nEmpty ? utPlural(nEmpty, 'empty', 'empty') : '') + (nEmpty && nPartial ? ' · ' : '') + (nPartial ? fmt(nPartial) + ' partly full' : '');
+    var meta = (nEmpty ? utPlural(nEmpty, 'empty', 'empty') : '') + (nEmpty && nPartial ? ' · ' : '') + (nPartial ? fmt(nPartial) + ' partly full' : '') + (nOver ? ' · ' + nOver + ' over the item limit' : '');
     html += '<section class="ut-sec" style="--lane:' + color[z.pez] + '"><div class="ut-sec-head"><div>' +
       '<h3 class="ut-sec-title">' + escHtml(utZoneName(z.pez)) + '<span class="ut-sec-meta">' + meta + ' shown</span></h3>' +
       '<p class="ut-sec-do">Sorted by aisle. Chips show the rest of the location after the aisle (bay · level · position).</p></div>' +
