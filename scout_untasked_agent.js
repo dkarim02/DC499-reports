@@ -71,6 +71,7 @@ const DEAD_FORMAT = 2;   // 2 = rows carry last_pick (10/2)
 // table fails ("Operation failed"), so group by PEZ and do aisles in Node.
 const EMPTY_FILE      = path.join(__dirname, 'empty_locations_live.json');
 const EMPTY_EVERY_HRS = 1;
+const EMPTY_FORMAT    = 2;   // 2 = adds partly-full multi-item shelves (10/2); older files rebuild at once
 const EMPTY_AREAS     = ['F1A', 'F1B', 'F1D', 'F2C', 'P1C'];
 const EMPTY_CHUNKS    = ['F1A', 'F1B', 'F1D', 'F2C01', 'F2C02', 'F2C03', 'F2C04', 'P1C'];   // F2C ≈ 8k empties
 
@@ -479,7 +480,7 @@ async function fetchEmptyLocations(token) {
     generated: new Date().toISOString(), facility: FACILITY, areas: EMPTY_AREAS, truncated,
     zones: Object.values(zones).sort((a, b) => a.pez < b.pez ? -1 : 1),
     stocked_by_aisle: stockedByAisle, locs,
-    partial_areas: PARTIAL_AREAS, partial,
+    format: EMPTY_FORMAT, partial_areas: PARTIAL_AREAS, partial,
   };
   fs.writeFileSync(EMPTY_FILE, JSON.stringify(output));
   const act = output.zones.reduce((t, z) => t + z.empty, 0);
@@ -488,10 +489,10 @@ async function fetchEmptyLocations(token) {
 }
 
 // Same age check as dead shelves; both side passes share one helper
-async function maybeRun(file, everyHrs, label, fn, token) {
-  let age = Infinity;
-  try { age = Date.now() - new Date(JSON.parse(fs.readFileSync(file, 'utf8')).generated).getTime(); } catch {}
-  if (age < everyHrs * 36e5) return;
+async function maybeRun(file, everyHrs, label, fn, token, format) {
+  let age = Infinity, have = 0;
+  try { const j = JSON.parse(fs.readFileSync(file, 'utf8')); age = Date.now() - new Date(j.generated).getTime(); have = j.format || 0; } catch {}
+  if (age < everyHrs * 36e5 && (!format || have === format)) return;
   try { await fn(token); }
   catch (e) { console.warn(`[${ts()}] ${label} failed (non-fatal, retries next cycle): ${e.message}`); }
 }
@@ -784,7 +785,7 @@ async function main() {
     });
     await fetchUntasked(token);
     await maybeFetchDeadShelves(token);
-    await maybeRun(EMPTY_FILE, EMPTY_EVERY_HRS, 'Empty locations', fetchEmptyLocations, token);
+    await maybeRun(EMPTY_FILE, EMPTY_EVERY_HRS, 'Empty locations', fetchEmptyLocations, token, EMPTY_FORMAT);
     let busy = false;
     setInterval(async () => {
       // Skip if the last cycle is still running, so cycles never stack up
@@ -794,7 +795,7 @@ async function main() {
         const t = await getAccessTokenSilent();
         await fetchUntasked(t);
         await maybeFetchDeadShelves(t);
-        await maybeRun(EMPTY_FILE, EMPTY_EVERY_HRS, 'Empty locations', fetchEmptyLocations, t);
+        await maybeRun(EMPTY_FILE, EMPTY_EVERY_HRS, 'Empty locations', fetchEmptyLocations, t, EMPTY_FORMAT);
       } catch (e) {
         console.error(`[${ts()}] Error:`, e.message);
       } finally {
@@ -809,7 +810,7 @@ async function main() {
   if (args.includes('--dead')) await fetchDeadShelves(token);   // force a dead-shelves pass
   else await maybeFetchDeadShelves(token);
   if (args.includes('--empty')) await fetchEmptyLocations(token);   // force an empty-locations pass
-  else await maybeRun(EMPTY_FILE, EMPTY_EVERY_HRS, 'Empty locations', fetchEmptyLocations, token);
+  else await maybeRun(EMPTY_FILE, EMPTY_EVERY_HRS, 'Empty locations', fetchEmptyLocations, token, EMPTY_FORMAT);
 }
 
 main().catch(e => { console.error(e.message); process.exit(1); });
