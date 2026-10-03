@@ -4072,6 +4072,13 @@ var UT_DEAD_AGES = [
 ];
 var utDeadAge = localStorage.getItem('ut_dead_age_v1') || 'all';
 function utDeadSetAge(v) { utDeadAge = v; localStorage.setItem('ut_dead_age_v1', v); utDeadFilter(); }
+// Expanded shelf: say when an idle neighbour was last picked, not just "30+ days"
+function utDeadIdleText(d, loc, item) {
+  var m = (d._rows || []).filter(function(x) { return x.loc === loc && x.item === item; })[0];
+  if (!m || m.lastPick === undefined) return 'idle — no picks in ' + d.idle_days + '+ days';
+  if (!m.lastPick) return 'idle — never picked from this shelf';
+  return 'idle — last picked ' + utDeadDate(m.lastPick) + ' (' + m.days + ' days ago)';
+}
 function utDeadLastCell(r) {
   if (r.lastPick === undefined) return '<span class="ut-desc">—</span>';
   if (!r.lastPick) return '<span class="ut-never" title="No pick from this shelf on record">Never</span>';
@@ -4219,7 +4226,7 @@ function renderDeadShelves() {
           return '<div class="ut-line' + (x[3] ? ' short' : '') + '"><span class="ut-dot' + (x[3] ? ' short' : '') + '"></span>' +
             '<span class="ut-item"><b>' + escHtml(x[0]) + '</b>' + (it[3] ? '<span class="ut-gwp">GWP</span>' : '') + ' <span class="ut-desc">' + escHtml(it[0] || '') + '</span> × ' + fmt(x[1]) + '</span>' +
             '<span class="ut-loc">' + (pct != null ? pct + '% of shelf' : '') + '</span>' +
-            '<span class="ut-line-say">' + (x[3] ? 'idle — no picks in ' + d.idle_days + ' days' : 'active') + '</span></div>';
+            '<span class="ut-line-say">' + (x[3] ? utDeadIdleText(d, r.loc, x[0]) : 'active') + '</span></div>';
         }).join('') + (sh.max ? '<div class="ut-line"><span></span><span class="ut-desc">Shelf holds ' + utCuft(sh.max) + ' cuft</span></div>' : '') + '</div>';
       }
       return row;
