@@ -682,7 +682,7 @@
   .ut-zone-sub{font-size:11px;color:var(--text-muted);margin-top:5px;}
   .ut-zone-bar{display:block;height:5px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:7px;}
   .ut-zone-bar i{display:block;height:100%;background:var(--lane);}
-  .ut-erow{display:grid;grid-template-columns:14px minmax(120px,1fr) 70px 70px 150px 90px 70px;align-items:center;gap:12px;padding:9px 18px;border-bottom:0.5px solid var(--border-light);font-size:13px;cursor:pointer;}
+  .ut-erow{display:grid;grid-template-columns:14px minmax(120px,1fr) 64px 82px 64px 150px 96px 64px;align-items:center;gap:12px;padding:9px 18px;border-bottom:0.5px solid var(--border-light);font-size:13px;cursor:pointer;}
   .ut-erow:hover{background:var(--surface2);}
   .ut-erow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
   .ut-erow.head{cursor:default;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-hint);padding-top:8px;padding-bottom:6px;}
@@ -698,8 +698,12 @@
   .ut-chip.waiting{border-color:var(--amber);color:var(--amber);font-weight:600;}
   .ut-chip.assigned{border-style:dashed;}
   .ut-chip.inactive{opacity:0.5;font-style:italic;}
+  .ut-chip.partial{border-color:var(--accent-muted);color:var(--accent);}
+  .ut-chip.partial b{font-weight:700;margin-left:4px;font-family:inherit;}
+  .ut-chip.partial.nofit{color:var(--text-hint);border-color:var(--border);}
+  .ut-chip.over{border-color:var(--red);color:var(--red);font-weight:700;}
   @media(max-width:760px){
-    .ut-erow{grid-template-columns:14px minmax(0,1fr) 60px 60px;}
+    .ut-erow{grid-template-columns:14px minmax(0,1fr) 54px 64px 54px;}
     .ut-erow .ut-hide-m{display:none;}
     .ut-bays{padding-left:18px;}
   }
@@ -1489,6 +1493,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <div class="ut-note" id="ut-empty-note">Loading...</div>
       <div class="ut-dead-tools">
         <div class="ut-pills" id="ut-empty-sizes"></div>
+        <label class="ut-check">Show <select class="ut-select" id="ut-empty-mode" onchange="utEmptySetMode(this.value)"><option value="both">Empty + partly full</option><option value="empty">Empty only</option><option value="partial">Partly full only</option></select></label>
         <label class="ut-check"><input type="checkbox" id="ut-empty-inactive" onchange="renderEmptyLocations()"> Include inactive</label>
         <input type="search" class="ut-search" id="ut-empty-q" placeholder="Search location (e.g. F1D07)" oninput="renderEmptyLocations()">
       </div>
@@ -4293,6 +4298,9 @@ function utToggleAisle(el) {
   renderEmptyLocations();
 }
 
+var utEmptyMode = localStorage.getItem('ut_empty_mode_v1') || 'both';   // both | empty | partial
+function utEmptySetMode(v) { utEmptyMode = v; localStorage.setItem('ut_empty_mode_v1', v); renderEmptyLocations(); }
+
 function renderEmptyLocations() {
   var d = lastEmptyData;
   if (!d) return;
@@ -4300,24 +4308,31 @@ function renderEmptyLocations() {
     document.getElementById('ut-empty-note').textContent = 'The first empty-location list is still building. It appears after option 27 (Untasked Orders) runs, then refreshes hourly.';
     return;
   }
+  var hasPartial = Array.isArray(d.partial);
+  if (!hasPartial) utEmptyMode = 'empty';
+  var modeSel = document.getElementById('ut-empty-mode');
+  modeSel.value = utEmptyMode; modeSel.disabled = !hasPartial;
+  var showEmpty = utEmptyMode !== 'partial', showPartial = utEmptyMode !== 'empty' && hasPartial;
   var showInactive = document.getElementById('ut-empty-inactive').checked;
   var q = (document.getElementById('ut-empty-q').value || '').trim().toUpperCase();
   // Floor zones (F1A/F1B/F1D) first, then the Mezz, zones with nothing empty last
   var zones = (d.zones || []).filter(function(z) { return z.active || z.inactive; }).sort(function(a, b) {
-    var ka = (a.empty ? 0 : 2) + (/MEZZ/i.test(a.pez) ? 1 : 0), kb = (b.empty ? 0 : 2) + (/MEZZ/i.test(b.pez) ? 1 : 0);
+    var ka = (a.empty || a.partial ? 0 : 2) + (/MEZZ/i.test(a.pez) ? 1 : 0), kb = (b.empty || b.partial ? 0 : 2) + (/MEZZ/i.test(b.pez) ? 1 : 0);
     return ka - kb || (utZoneName(a.pez) < utZoneName(b.pez) ? -1 : 1);
   });
   var color = {};
   zones.forEach(function(z, i) { color[z.pez] = UT_ZONE_COLORS[i % UT_ZONE_COLORS.length]; });
 
-  // Zone cards: empty of active, with a fill bar
+  // Zone cards: empty of active with a fill bar, plus partly-full shelves on multi-item zones
   var zEl = document.getElementById('ut-empty-zones');
   zEl.classList.toggle('filtered', utEmptyZone !== 'all');
   zEl.innerHTML = zones.map(function(z) {
     var pct = z.active ? Math.round(100 * z.empty / z.active) : 0;
     var sub = 'of ' + fmt(z.active) + ' active · ' + pct + '% empty' +
+      (z.partial ? ' · <b>' + fmt(z.partial) + ' partly full</b> (' + fmt(z.open_slots) + ' open item slots)' : '') +
+      (z.over ? ' · <span style="color:var(--red);font-weight:700;">' + z.over + ' over the item limit</span>' : '') +
       (z.waiting ? ' · ' + fmt(z.waiting) + ' waiting on stock' : '') + (z.inactive ? ' · ' + fmt(z.inactive) + ' inactive' : '');
-    return '<button class="ut-lane' + (z.empty ? '' : ' zero') + (utEmptyZone === z.pez ? ' on' : '') + '" style="--lane:' + color[z.pez] + '"' +
+    return '<button class="ut-lane' + (z.empty || z.partial ? '' : ' zero') + (utEmptyZone === z.pez ? ' on' : '') + '" style="--lane:' + color[z.pez] + '"' +
       ' aria-pressed="' + (utEmptyZone === z.pez) + '" onclick="utEmptySetZone(\'' + z.pez + '\')">' +
       '<div class="ut-lane-top"><span class="ut-lane-n">' + fmt(z.empty) + '</span><span class="ut-lane-name">' + escHtml(utZoneName(z.pez)) + '</span></div>' +
       '<div class="ut-zone-sub">' + sub + '</div><span class="ut-zone-bar"><i style="width:' + pct + '%"></i></span></button>';
@@ -4329,74 +4344,103 @@ function renderEmptyLocations() {
 
   var totalEmpty = zones.reduce(function(t, z) { return t + z.empty; }, 0);
   var totalActive = zones.reduce(function(t, z) { return t + z.active; }, 0);
+  var totalPartial = zones.reduce(function(t, z) { return t + (z.partial || 0); }, 0);
+  var totalSlots = zones.reduce(function(t, z) { return t + (z.open_slots || 0); }, 0);
   document.getElementById('ut-empty-note').innerHTML =
-    'Ecom pick locations with <b>nothing on hand</b>. ' + fmt(totalEmpty) + ' of ' + fmt(totalActive) + ' active locations are empty. ' +
-    'Tap an aisle to see the empty spots by bay — <span class="ut-chip waiting">amber</span> = stock is promised but not there yet, ' +
-    '<span class="ut-chip assigned">dashed</span> = an item is still assigned. Updated ' + (fmtPdt(d.generated) || '—') + ' (hourly).' +
+    'Ecom pick locations with <b>nothing on hand</b>: ' + fmt(totalEmpty) + ' of ' + fmt(totalActive) + ' active. ' +
+    (hasPartial ? 'F1A and F1D shelves hold up to 3 items, so <b>' + fmt(totalPartial) + ' more are partly full</b> with ' + fmt(totalSlots) + ' open item slots. ' : '') +
+    'Tap an aisle to see the spots by bay — <span class="ut-chip waiting">amber</span> = stock is promised but not there yet, ' +
+    '<span class="ut-chip assigned">dashed</span> = an item is still assigned' +
+    (hasPartial ? ', <span class="ut-chip partial">1/3</span> = items on it of the 3 allowed (size filter uses its free space; grey = no room left)' : '') +
+    '. Updated ' + (fmtPdt(d.generated) || '—') + ' (hourly).' +
     ((d.truncated || []).length ? ' <b>Some areas hit the row limit (' + d.truncated.join(', ') + ').</b>' : '');
 
-  // Filter → group by zone → aisle → bay
+  // Filter → group by zone → aisle → bay. Each spot: { loc, kind, cuft, ... }
   var byZone = {};
-  (d.locs || []).forEach(function(r) {
-    var loc = r[0], pez = r[1], active = r[2], cuft = r[3], kind = r[4];
-    if (!active && !showInactive) return;
-    if (utEmptyZone !== 'all' && pez !== utEmptyZone) return;
-    if (utEmptyMin && !(cuft >= utEmptyMin)) return;
-    if (q && loc.indexOf(q) < 0) return;
+  function add(pez, loc, spot) {
     var aisle = loc.slice(0, 5), bay = loc.slice(5, 7);
     var Z = byZone[pez] || (byZone[pez] = {});
-    var A = Z[aisle] || (Z[aisle] = { aisle: aisle, n: 0, waiting: 0, maxCuft: 0, bays: {} });
-    A.n++; if (kind === 'waiting') A.waiting++;
-    if (cuft > A.maxCuft) A.maxCuft = cuft;
-    (A.bays[bay] || (A.bays[bay] = [])).push(r);
+    var A = Z[aisle] || (Z[aisle] = { aisle: aisle, n: 0, partial: 0, waiting: 0, maxCuft: 0, bays: {} });
+    if (spot.kind === 'partial' || spot.kind === 'over') A.partial++; else A.n++;
+    if (spot.kind === 'waiting') A.waiting++;
+    if (spot.cuft > A.maxCuft) A.maxCuft = spot.cuft;
+    (A.bays[bay] || (A.bays[bay] = [])).push(spot);
+  }
+  function keep(pez, loc, active, cuft) {
+    if (!active && !showInactive) return false;
+    if (utEmptyZone !== 'all' && pez !== utEmptyZone) return false;
+    if (utEmptyMin && !(cuft >= utEmptyMin)) return false;
+    return !q || loc.indexOf(q) >= 0;
+  }
+  if (showEmpty) (d.locs || []).forEach(function(r) {
+    if (keep(r[1], r[0], r[2], r[3])) add(r[1], r[0], { loc: r[0], kind: r[4], cuft: r[3], active: r[2] });
+  });
+  // partial: [loc, pez, active, items_used, max_items, free_cuft, [items]]
+  if (showPartial) d.partial.forEach(function(p) {
+    if (keep(p[1], p[0], p[2], p[5])) add(p[1], p[0], { loc: p[0], kind: p[3] > p[4] ? 'over' : 'partial', cuft: p[5], active: p[2], used: p[3], max: p[4], items: p[6] || [] });
   });
 
-  var head = '<div class="ut-erow head"><span></span><span>Aisle</span><span class="r">Empty</span><span class="r ut-hide-m">Of</span><span class="ut-hide-m">Share empty</span><span class="r ut-hide-m">Largest spot</span><span class="r">Waiting</span></div>';
+  var head = '<div class="ut-erow head"><span></span><span>Aisle</span><span class="r">Empty</span><span class="r">Partly full</span>' +
+    '<span class="r ut-hide-m">Of</span><span class="ut-hide-m">Share empty</span><span class="r ut-hide-m">Largest spot</span><span class="r">Waiting</span></div>';
   var html = '';
   zones.forEach(function(z) {
     var Z = byZone[z.pez];
     if (!Z) return;
     var aisles = Object.keys(Z).sort().map(function(k) { return Z[k]; });
-    var all = [];
+    var copy = [], nEmpty = 0, nPartial = 0;
     var rows = aisles.map(function(A) {
       var stocked = (d.stocked_by_aisle || {})[A.aisle] || 0;
       var total = stocked + A.n, pct = total ? Math.round(100 * A.n / total) : 0;
       var key = 'e:' + A.aisle, open = utExpanded.has(key);
       var area = A.aisle.slice(0, 3), name = (area === 'F2C' ? 'Mezz' : area) + ' · Aisle ' + A.aisle.slice(3, 5);
-      Object.keys(A.bays).forEach(function(b) { A.bays[b].forEach(function(r) { all.push(r[0]); }); });
+      nEmpty += A.n; nPartial += A.partial;
+      Object.keys(A.bays).forEach(function(b) { A.bays[b].forEach(function(s) {
+        copy.push(s.loc + '\t' + (s.kind === 'partial' || s.kind === 'over' ? s.used + ' of ' + s.max + ' items' : 'empty') + '\t' + (s.cuft != null ? utCuft(s.cuft) : ''));
+      }); });
       var row = '<div class="ut-erow" role="button" tabindex="0" aria-expanded="' + open + '" data-utkey="' + key + '"' +
         ' onclick="utToggleAisle(this)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();utToggleAisle(this);}">' +
         '<span class="ut-chev' + (open ? ' open' : '') + '">&#x25B6;</span><span><b>' + name + '</b></span>' +
-        '<span class="r"><b>' + fmt(A.n) + '</b></span><span class="r ut-hide-m">' + fmt(total) + '</span>' +
+        '<span class="r"><b>' + (A.n ? fmt(A.n) : '—') + '</b></span><span class="r">' + (A.partial ? fmt(A.partial) : '—') + '</span>' +
+        '<span class="r ut-hide-m">' + fmt(total) + '</span>' +
         '<span class="ut-hide-m">' + utDeadBar(pct) + '</span>' +
         '<span class="r ut-hide-m">' + (A.maxCuft ? utCuft(A.maxCuft) + ' cuft' : '—') + '</span>' +
         '<span class="r">' + (A.waiting ? '<span style="color:var(--amber);font-weight:700;">' + A.waiting + '</span>' : '—') + '</span></div>';
       if (open) {
         row += '<div class="ut-bays">' + Object.keys(A.bays).sort().map(function(b) {
           var list = A.bays[b], shown = list.slice(0, 80);
-          return '<div class="ut-bay"><div class="ut-bay-name">Bay ' + b + '<span>' + list.length + ' empty</span></div><div class="ut-chips">' +
-            shown.map(function(r) {
-              var cls = (r[4] === 'waiting' ? ' waiting' : r[4] === 'assigned' ? ' assigned' : '') + (r[2] ? '' : ' inactive');
-              var tip = r[0] + (r[3] ? ' · ' + utCuft(r[3]) + ' cuft' : '') + (r[4] === 'waiting' ? ' · stock promised, not there' : r[4] === 'assigned' ? ' · item still assigned' : ' · free') + (r[2] ? '' : ' · inactive');
-              return '<span class="ut-chip' + cls + '" title="' + escHtml(tip) + '">' + escHtml(r[0].slice(5)) + '</span>';
+          var ne = list.filter(function(s) { return s.kind !== 'partial' && s.kind !== 'over'; }).length, np = list.length - ne;
+          return '<div class="ut-bay"><div class="ut-bay-name">Bay ' + b + '<span>' + (ne ? ne + ' empty' : '') + (ne && np ? ' · ' : '') + (np ? np + ' partly full' : '') + '</span></div><div class="ut-chips">' +
+            shown.map(function(s) {
+              var cls, tip, label = escHtml(s.loc.slice(5));
+              if (s.kind === 'partial' || s.kind === 'over') {
+                cls = s.kind === 'over' ? ' over' : (' partial' + (s.cuft === 0 ? ' nofit' : ''));
+                tip = s.loc + ' · ' + s.used + ' of ' + s.max + ' items' + (s.kind === 'over' ? ' (over the limit)' : '') +
+                  (s.cuft != null ? ' · ' + utCuft(s.cuft) + ' cuft free' : ' · free space unknown') + ' · on it: ' + s.items.join(', ');
+                label += '<b>' + s.used + '/' + s.max + '</b>';
+              } else {
+                cls = (s.kind === 'waiting' ? ' waiting' : s.kind === 'assigned' ? ' assigned' : '');
+                tip = s.loc + (s.cuft ? ' · ' + utCuft(s.cuft) + ' cuft' : '') + (s.kind === 'waiting' ? ' · stock promised, not there' : s.kind === 'assigned' ? ' · item still assigned' : ' · empty');
+              }
+              if (!s.active) { cls += ' inactive'; tip += ' · inactive'; }
+              return '<span class="ut-chip' + cls + '" title="' + escHtml(tip) + '">' + label + '</span>';
             }).join('') + (list.length > shown.length ? '<span class="ut-desc">+' + (list.length - shown.length) + ' more</span>' : '') + '</div></div>';
         }).join('') + '</div>';
       }
       return row;
     }).join('');
-    utEmptyCopyText[z.pez] = all.join('\n');
-    var n = all.length;
+    utEmptyCopyText[z.pez] = copy.join('\n');
+    var meta = (nEmpty ? utPlural(nEmpty, 'empty', 'empty') : '') + (nEmpty && nPartial ? ' · ' : '') + (nPartial ? fmt(nPartial) + ' partly full' : '');
     html += '<section class="ut-sec" style="--lane:' + color[z.pez] + '"><div class="ut-sec-head"><div>' +
-      '<h3 class="ut-sec-title">' + escHtml(utZoneName(z.pez)) + '<span class="ut-sec-meta">' + utPlural(n, 'empty location', 'empty locations') + ' shown</span></h3>' +
+      '<h3 class="ut-sec-title">' + escHtml(utZoneName(z.pez)) + '<span class="ut-sec-meta">' + meta + ' shown</span></h3>' +
       '<p class="ut-sec-do">Sorted by aisle. Chips show the rest of the location after the aisle (bay · level · position).</p></div>' +
       '<button class="ut-copy" onclick="utCopyTsv(this, \'e:' + z.pez + '\')">Copy locations</button></div>' + head + rows + '</section>';
   });
-  document.getElementById('ut-empty-sections').innerHTML = html || '<div class="ut-sec"><div class="ut-clear">No empty locations match these filters.</div></div>';
+  document.getElementById('ut-empty-sections').innerHTML = html || '<div class="ut-sec"><div class="ut-clear">No locations match these filters.</div></div>';
 }
 
 // Move list as tab-separated rows (pastes into Excel/Teams as a table)
 function utCopyTsv(btn, key) {
-  var text = key.indexOf('e:') === 0 ? 'Location\n' + (utEmptyCopyText[key.slice(2)] || '') : (utDeadCopyText[key] || '');
+  var text = key.indexOf('e:') === 0 ? 'Location\tStatus\tCuft (free)\n' + (utEmptyCopyText[key.slice(2)] || '') : (utDeadCopyText[key] || '');
   var label = btn.textContent;
   var done = function() { btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = label; }, 2000); };
   try { navigator.clipboard.writeText(text).then(done, function() { utCopyFallback(text); done(); }); }
