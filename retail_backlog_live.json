@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-03T00:43:41.081Z",
+  "generated": "2026-10-03T00:54:53.935Z",
   "facility": "499",
   "status_labels": {
     "1000": "Ready",
@@ -14,14 +14,15 @@
       "wave_number": "W09282026000000000020",
       "total_active_orders": 454,
       "status_counts": {
-        "2090": 18,
-        "7200": 348,
+        "2090": 15,
+        "7100": 2,
+        "7200": 349,
         "7800": 88
       },
       "unit_counts": {
         "ordered": 2922,
-        "allocated": 42,
-        "packed": 2510,
+        "allocated": 40,
+        "packed": 2512,
         "manifested": 0,
         "shipped": 0,
         "loaded": 370
@@ -160,25 +161,7 @@
           "units": 9
         },
         {
-          "order_id": "6101506299",
-          "store_id": "399",
-          "lines": 1,
-          "units": 5
-        },
-        {
-          "order_id": "6101507555",
-          "store_id": "450",
-          "lines": 1,
-          "units": 4
-        },
-        {
           "order_id": "6101506733",
-          "store_id": "399",
-          "lines": 1,
-          "units": 3
-        },
-        {
-          "order_id": "6101507504",
           "store_id": "399",
           "lines": 1,
           "units": 3
@@ -348,5 +331,145 @@
       "allocated_orders": []
     }
   ],
-  "zones": null
+  "zones": {
+    "shift": "2nd",
+    "shift_start_utc": "2026-10-02 21:10:00",
+    "lookback_hours": 48,
+    "picks": [
+      {
+        "zone_id": "PEZ_RTL_ZONE_P2H",
+        "name": "P2H Zone",
+        "where": "P2H 01–08",
+        "floor": 2,
+        "locations": 253,
+        "open_lines": 56,
+        "open_units": 66,
+        "done_lines": 112,
+        "done_units": 184
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_1",
+        "name": "Zone 1",
+        "where": "F1H 10–11 + P1H 09–10",
+        "floor": 1,
+        "locations": 132,
+        "open_lines": 0,
+        "open_units": 0,
+        "done_lines": 3,
+        "done_units": 4
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_F2H",
+        "name": "F2H Zone",
+        "where": "F2H 01–13",
+        "floor": 2,
+        "locations": 1254,
+        "open_lines": 71,
+        "open_units": 114,
+        "done_lines": 133,
+        "done_units": 330
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_2",
+        "name": "Zone 2",
+        "where": "F1H 04–08 + P1H 01–04",
+        "floor": 1,
+        "locations": 412,
+        "open_lines": 0,
+        "open_units": 0,
+        "done_lines": 17,
+        "done_units": 40
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_10_F1H",
+        "name": "F1H Zone 10",
+        "where": "F1H 05",
+        "floor": 1,
+        "locations": 3,
+        "open_lines": 0,
+        "open_units": 0,
+        "done_lines": 0,
+        "done_units": 0
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_3",
+        "name": "Zone 3",
+        "where": "P1H 11–13",
+        "floor": 1,
+        "locations": 87,
+        "open_lines": 0,
+        "open_units": 0,
+        "done_lines": 0,
+        "done_units": 0
+      }
+    ],
+    "replen": [
+      {
+        "zone_id": "PEZ_RTL_ZONE_5_R2H",
+        "name": "R2H Zone 5",
+        "where": "R2H aisles 00–09 · bays 01–10",
+        "floor": 2,
+        "locations": 85,
+        "open_lines": 1,
+        "open_units": 6,
+        "done_lines": 6,
+        "done_units": 60
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_3_R1H",
+        "name": "R1H Zone 3",
+        "where": "R1H aisles 06–08 · bays 01–30",
+        "floor": 1,
+        "locations": 81,
+        "open_lines": 1,
+        "open_units": 1,
+        "done_lines": 0,
+        "done_units": 0
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_1_R1H",
+        "name": "R1H Zone 1",
+        "where": "R1H aisles 02–05 · bays 01–30",
+        "floor": 1,
+        "locations": 102,
+        "open_lines": 0,
+        "open_units": 0,
+        "done_lines": 1,
+        "done_units": 10
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_6_R2H",
+        "name": "R2H Zone 6",
+        "where": "R2H aisles 00–09 · bays 11–55",
+        "floor": 2,
+        "locations": 304,
+        "open_lines": 0,
+        "open_units": 0,
+        "done_lines": 7,
+        "done_units": 166
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_4_R1H",
+        "name": "R1H Zone 4",
+        "where": "R1H aisles 06–08 · bays 31–42",
+        "floor": 1,
+        "locations": 36,
+        "open_lines": 0,
+        "open_units": 0,
+        "done_lines": 0,
+        "done_units": 0
+      },
+      {
+        "zone_id": "PEZ_RTL_ZONE_2_R1H",
+        "name": "R1H Zone 2",
+        "where": "R1H aisles 01–05 · bays 31–46",
+        "floor": 1,
+        "locations": 67,
+        "open_lines": 0,
+        "open_units": 0,
+        "done_lines": 3,
+        "done_units": 84
+      }
+    ]
+  }
 }
