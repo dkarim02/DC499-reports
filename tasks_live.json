@@ -1,13 +1,13 @@
 {
-    "generated": "2026-10-03T05:18:41.603Z",
+    "generated": "2026-10-03T05:20:44.084Z",
     "shift": "2nd",
     "shift_start": "2026-10-02 21:00:00",
     "facility": "499",
     "picking": {
-        "queued": 11,
+        "queued": 12,
         "assigned": 0,
-        "in_progress": 1,
-        "completed": 92,
+        "in_progress": 0,
+        "completed": 93,
         "total_open": 12,
         "tasks": [
             {
@@ -933,12 +933,12 @@
             {
                 "task_id": "WRPICK0000279059",
                 "subtype": "NON MEZZ",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "F1D1208D03",
                 "target": null,
                 "created_pdt": "2026-10-02T20:55:12.035000",
-                "detail_count": 24
+                "detail_count": null
             },
             {
                 "task_id": "WRPICK0000279066",
@@ -1049,13 +1049,23 @@
                 "target": null,
                 "created_pdt": "2026-10-02T22:15:11.046000",
                 "detail_count": 2
+            },
+            {
+                "task_id": "WRPICK0000279081",
+                "subtype": "NON MEZZ",
+                "status": "3000",
+                "status_label": "Ready to Assign",
+                "source": "F1D0514A03",
+                "target": null,
+                "created_pdt": "2026-10-02T22:20:11.274000",
+                "detail_count": 2
             }
         ]
     },
     "replen": {
-        "queued": 3,
+        "queued": 2,
         "assigned": 0,
-        "in_progress": 0,
+        "in_progress": 1,
         "completed": 41,
         "total_open": 3,
         "tasks": [
@@ -1471,9 +1481,9 @@
             },
             {
                 "task_id": "WRPICK0000279069",
-                "subtype": "Default Picking Activity",
-                "status": "3000",
-                "status_label": "Ready to Assign",
+                "subtype": "REPLEN PULL",
+                "status": "7000",
+                "status_label": "In Progress",
                 "source": "R1F0401B03",
                 "target": "F1D0610E07",
                 "created_pdt": "2026-10-02T21:50:11.586000",
@@ -1510,17 +1520,17 @@
                     "ilpn_id": "00000999410082409564",
                     "on_hand": 9,
                     "updated_pst": "2026-09-24T15:00:29.109000",
-                    "age_min": 11898
+                    "age_min": 11900
                 },
                 {
                     "ilpn_id": "00006499300003731270",
                     "on_hand": 60,
                     "updated_pst": "2026-09-24T16:37:00.095000",
-                    "age_min": 11802
+                    "age_min": 11804
                 }
             ],
             "total_units": 69,
-            "oldest_min": 11898
+            "oldest_min": 11900
         },
         {
             "location": "P1-FC-010011",
@@ -1529,11 +1539,11 @@
                     "ilpn_id": "00006499300003777568",
                     "on_hand": 17,
                     "updated_pst": "2026-10-01T06:14:32.058000",
-                    "age_min": 2344
+                    "age_min": 2346
                 }
             ],
             "total_units": 17,
-            "oldest_min": 2344
+            "oldest_min": 2346
         },
         {
             "location": "P1-FC-010014",
@@ -1542,17 +1552,17 @@
                     "ilpn_id": "00008153050270672992",
                     "on_hand": 12,
                     "updated_pst": "2026-09-30T18:49:38.281000",
-                    "age_min": 3029
+                    "age_min": 3031
                 },
                 {
                     "ilpn_id": "00006499300003777780",
                     "on_hand": 20,
                     "updated_pst": "2026-10-01T11:24:16.705000",
-                    "age_min": 2034
+                    "age_min": 2036
                 }
             ],
             "total_units": 32,
-            "oldest_min": 3029
+            "oldest_min": 3031
         }
     ]
 }
