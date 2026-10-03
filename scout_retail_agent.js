@@ -16,6 +16,7 @@
 const fs     = require('fs');
 const path   = require('path');
 require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
+const { SQL_TZ, currentShift: tzShift, pacificMidnightSql, addDays } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -59,14 +60,9 @@ function ts() {
   return new Date().toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour12: false });
 }
 
-// Convert a PDT date string (YYYY-MM-DD) to UTC window for querying.
-// PDT = UTC-7. Fix to UTC-8 (PST) ~Oct 25 2026 when DST ends.
+// Local date string (YYYY-MM-DD) → UTC window for querying, midnight to midnight local (DST-aware)
 function pdtDateToUtcWindow(pdtDate) {
-  const [y, m, d] = pdtDate.split('-').map(Number);
-  const start = new Date(Date.UTC(y, m - 1, d, 7, 0, 0)); // midnight PDT = 07:00 UTC
-  const end   = new Date(Date.UTC(y, m - 1, d + 1, 7, 0, 0));
-  const fmt   = dt => dt.toISOString().replace('T', ' ').slice(0, 19);
-  return { start: fmt(start), end: fmt(end) };
+  return { start: pacificMidnightSql(pdtDate), end: pacificMidnightSql(addDays(pdtDate, 1)) };
 }
 
 function lookbackUtc() {
@@ -75,14 +71,10 @@ function lookbackUtc() {
   return d.toISOString().replace('T', ' ').slice(0, 19);
 }
 
-// Shift boundaries match scout_reserve_agent.js: 1st = 10:00 UTC, 2nd = 21:10 UTC (prev day if before 10:00).
-function currentShift() {
-  const now = new Date();
-  const h   = now.getUTCHours();
-  const is1st = h >= 10 && h < 22;
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), is1st ? 10 : 21, is1st ? 0 : 10, 0));
-  if (!is1st && h < 10) start.setUTCDate(start.getUTCDate() - 1);
-  return { shift: is1st ? '1st' : '2nd', start: start.toISOString().replace('T', ' ').slice(0, 19) };
+// Shift start: 1st 3:00 AM, 2nd 2:10 PM local (same as Reserve); 2nd is detected from 3 PM. DST-aware.
+function currentShift(now = new Date()) {
+  const sh = tzShift({ firstFrom: 3, secondFrom: 15, firstStart: [3, 0], secondStart: [14, 10] }, now);
+  return { shift: sh.label, start: sh.startSql };
 }
 
 // ── zone work (Pick Execution Zones, zone H) ─────────────────────────────────
@@ -203,7 +195,7 @@ function sqlWaveRunIds(since) {
   return `
 SELECT
   ORDER_PLANNING_RUN_ID AS run_id,
-  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS run_date
+  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS run_date
 FROM default_dcorder.DCO_ORDER_PLAN_RUN_STRATEGY
 WHERE FACILITY_ID = '${FACILITY}'
   AND PLANNING_STRATEGY_ID = 'NRDR_CORE_RETAIL_ORDER_PLANNING_STRATEGY'
@@ -216,7 +208,7 @@ ORDER BY CREATED_TIMESTAMP DESC
 function sqlActiveWaveDates(since) {
   return `
 SELECT
-  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS wave_date,
+  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS wave_date,
   COUNT(DISTINCT ORDER_ID) AS active_orders
 FROM default_dcorder.DCO_ORDER
 WHERE FACILITY_ID = '${FACILITY}'

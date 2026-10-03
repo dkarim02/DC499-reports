@@ -14,6 +14,7 @@
 const fs     = require('fs');
 const path   = require('path');
 require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
+const { SQL_TZ, currentShift } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -88,26 +89,12 @@ function ts() {
   return new Date().toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour12: false });
 }
 
-// DC499 local offset used for hourly bucketing. DST fix (~Oct 25, 2026): change to '-08:00' (PST),
-// and move the UTC shift boundaries in shiftStartUtc() by one hour.
-const PDT_OFFSET = '-07:00';
+// Hourly buckets use DC499 local time via SQL_TZ (scout_tz.js) — DST-aware, nothing to flip.
 
-function shiftStartUtc() {
-  const nowUtc = new Date();
-  const h = nowUtc.getUTCHours();
-  const m = nowUtc.getUTCMinutes();
-  const is1st = (h >= 10) && (h < 21 || (h === 21 && m < 10)); // 1st ends at 21:10 UTC (2:10 PM PDT)
-  const start = new Date(nowUtc);
-  if (is1st) {
-    start.setUTCHours(10, 0, 0, 0);
-  } else {
-    start.setUTCHours(21, 10, 0, 0);
-    if (h < 10) start.setUTCDate(start.getUTCDate() - 1);
-  }
-  return {
-    utc: start.toISOString().replace('T', ' ').slice(0, 19),
-    label: is1st ? '1st' : '2nd',
-  };
+function shiftStartUtc(now = new Date()) {
+  // 1st 3:00 AM–2:10 PM local, 2nd from 2:10 PM local (DST-aware)
+  const sh = currentShift({ firstFrom: 3, secondFrom: [14, 10], firstStart: [3, 0], secondStart: [14, 10] }, now);
+  return { utc: sh.startSql, label: sh.label };
 }
 
 // ── SQL builder ────────────────────────────────────────────────────────────────
@@ -118,7 +105,7 @@ function buildGroupSql(shiftStart, group) {
   const zoneFilter = group.zoneH ? `  AND SUBSTR(TARGET_LOCATION_ID, 3, 1) = 'H'\n` : '';
   return [
     `SELECT CREATED_BY AS Employee,`,
-    `  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '${PDT_OFFSET}'), '%H') AS pdt_hr,`,
+    `  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%H') AS pdt_hr,`,
     `  SUM(${group.metric}) AS total_qty`,
     `FROM default_task.TSK_ACTIVITY_TRACKING`,
     `WHERE FACILITY_ID = '${FACILITY}'`,

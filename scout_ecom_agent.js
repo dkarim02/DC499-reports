@@ -15,6 +15,7 @@
 const fs     = require('fs');
 const path   = require('path');
 require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
+const { SQL_TZ, currentShift, pacificDateStr } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -78,23 +79,10 @@ function ts() {
   return new Date().toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour12: false });
 }
 
-function shiftStartUtc() {
-  const nowUtc = new Date();
-  const h = nowUtc.getUTCHours();
-  // 1st shift: 3:00 AM–2:00 PM PDT = 10:00–21:00 UTC
-  // 2nd shift: 2:10 PM–2:00 AM PDT = 21:10 UTC (next UTC day before 10:00)
-  const is1st = h >= 10 && h < 21;
-  const start = new Date(nowUtc);
-  if (is1st) {
-    start.setUTCHours(10, 0, 0, 0);
-  } else {
-    start.setUTCHours(21, 10, 0, 0);
-    if (h < 10) start.setUTCDate(start.getUTCDate() - 1);
-  }
-  return {
-    utc: start.toISOString().replace('T', ' ').slice(0, 19),
-    label: is1st ? '1st' : '2nd',
-  };
+function shiftStartUtc(now = new Date()) {
+  // 1st shift: 3:00 AM–2:00 PM local; 2nd shift: 2:10 PM–3:00 AM local (DST-aware)
+  const sh = currentShift({ firstFrom: 3, secondFrom: 14, firstStart: [3, 0], secondStart: [14, 10] }, now);
+  return { utc: sh.startSql, label: sh.label };
 }
 
 // ── SQL builder ────────────────────────────────────────────────────────────────
@@ -105,7 +93,7 @@ function buildSql(shiftStart, txGroup, criteriaFilter = null) {
 SELECT
   t.USER_ID                                              AS \`Employee\`,
   t.TRANSACTION_ID                                       AS \`Transaction ID\`,
-  CONVERT_TZ(t.ACTIVITY_DATE_TIME, '+00:00', '-07:00')   AS \`Activity Datetime\`,
+  CONVERT_TZ(t.ACTIVITY_DATE_TIME, '+00:00', ${SQL_TZ}) AS \`Activity Datetime\`,
   t.QUANTITY                                             AS \`Quantity\`,
   t.COMPLETED_QUANTITY                                   AS \`Completed Quantity\`,
   t.TRACE_ID                                             AS \`CP Trace Id\`,
@@ -177,9 +165,8 @@ function updateEcomHistory(rows, shift, shiftStartUtcStr) {
     .filter(a => a.total > 0)
     .sort((a, b) => b.total - a.total);
 
-  // Derive PDT date string from shift start UTC
-  const shiftStartDate = new Date(shiftStartUtcStr.replace(' ', 'T') + '-07:00');
-  const date = shiftStartDate.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  // Local date the shift started on
+  const date = pacificDateStr(new Date(shiftStartUtcStr.replace(' ', 'T') + 'Z'));
 
   const snapshot = { date, shift, generated: new Date().toISOString(), associates };
 

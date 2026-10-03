@@ -25,6 +25,7 @@
 const fs     = require('fs');
 const path   = require('path');
 require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
+const { pacificMinOfDay } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -45,7 +46,6 @@ const LOOP_MIN      = 2;     // … at least this many = replen loop
 const RESERVE_AREAS = ['R1B', 'R1C', 'R1D', 'R1E', 'R1F'];   // Ecom reserve (replen source)
 // Stock-but-no-task reasons. Multis only release with a putwall batch (WR_BATCH, every ~35–105 min);
 // singles release every 5 min. Observed 9/30–10/1: last batch of the night ~9:20 PM, first ~5:10 AM.
-const PDT_OFFSET_HRS   = -7;      // DST: change to -8 ~Oct 25 (see DST fix memory)
 const NIGHT_START_MIN  = 21 * 60 + 30;   // 9:30 PM PDT — after this, no more batches tonight
 const NIGHT_END_MIN    = 5 * 60;         // 5:00 AM PDT — first batch of the morning
 const SINGLE_GRACE_MIN = 15;      // singles should task within a few 5-min cycles
@@ -421,7 +421,7 @@ async function maybeRun(file, everyHrs, label, fn, token) {
 }
 
 // ── stock-but-no-task reasoning ────────────────────────────────────────────────
-const pdtMinOfDay = ms => ((Math.floor(ms / 6e4) + PDT_OFFSET_HRS * 60) % 1440 + 1440) % 1440;
+const pdtMinOfDay = ms => pacificMinOfDay(new Date(ms));   // local minutes since midnight, DST-aware
 const isNight     = ms => { const m = pdtMinOfDay(ms); return m >= NIGHT_START_MIN || m < NIGHT_END_MIN; };
 
 // Every shelf can cover the order, so the hold-up is the release, not the stock. Say which part.

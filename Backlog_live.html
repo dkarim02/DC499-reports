@@ -3241,9 +3241,25 @@ function renderTaskTable(type) {
   var STATUS_COLOR = { '7000':'var(--amber)', '5000':'var(--accent)', '3000':'var(--text-muted)', '8000':'var(--green)' };
   var tdm  = 'color:var(--text-muted);font-size:12px;';
 
+  // created_pdt is DC499 local wall time ('YYYY-MM-DDTHH:MM:SS'). Turn it into a real moment
+  // using the Pacific offset for that date (DST-aware) — no fixed -07:00.
+  function pacificWallMs(s) {
+    var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (!m) return NaN;
+    var wall = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+    var fmt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    function offMin(t) {
+      var p = {}; fmt.formatToParts(new Date(t)).forEach(function (x) { p[x.type] = x.value; });
+      return (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(t / 1000) * 1000) / 60000;
+    }
+    var t = wall - offMin(wall) * 60000;
+    return wall - offMin(t) * 60000;
+  }
+
   function taskAge(created_pdt) {
     if (!created_pdt) return '—';
-    var ms = Date.now() - new Date(String(created_pdt).replace('T',' ').slice(0,19) + '-07:00').getTime();
+    var ms = Date.now() - pacificWallMs(created_pdt);
     var mins = Math.floor(ms / 60000);
     if (mins < 1)  return '<1m';
     if (mins < 60) return mins + 'm';
@@ -3270,8 +3286,9 @@ function renderTaskTable(type) {
       var ageColor = t.status === '3000' && age.indexOf('h') !== -1 ? 'color:var(--red);font-weight:600;' : '';
       var released = '—';
       if (t.created_pdt) {
-        var rd = new Date(String(t.created_pdt).replace('T',' ').slice(0,19) + '-07:00');
-        var rh = rd.getHours(), rm = rd.getMinutes();
+        // Already local wall time — read the hour and minute straight from the string
+        var rs = String(t.created_pdt).replace(' ', 'T');
+        var rh = +rs.slice(11, 13), rm = +rs.slice(14, 16);
         released = (rh % 12 || 12) + ':' + (rm < 10 ? '0' : '') + rm + (rh < 12 ? ' AM' : ' PM');
       }
       var detailId = 'tkd-' + type + '-' + globalIdx;

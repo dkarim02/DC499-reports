@@ -12,6 +12,7 @@
 const fs     = require('fs');
 const path   = require('path');
 const { syncSharePages } = require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
+const { SQL_TZ, currentShift, pacificMidnightSql, pacificShifted, parsePacific } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -65,25 +66,17 @@ function nowPdt() {
 
 // ── receiving query ────────────────────────────────────────────────────────────
 async function fetchReceiving(accessToken) {
-  const nowUtc = new Date();
-  const nowUtcHour = nowUtc.getUTCHours();
-  const is1stRcv = nowUtcHour >= 13 && nowUtcHour < 21; // 06:00–13:59 PDT
-  let rcvShiftStart = new Date(nowUtc);
-  if (is1stRcv) {
-    rcvShiftStart.setUTCHours(13, 0, 0, 0); // 06:00 PDT
-  } else {
-    rcvShiftStart.setUTCHours(21, 0, 0, 0); // 14:00 PDT
-    if (nowUtcHour < 21) rcvShiftStart.setUTCDate(rcvShiftStart.getUTCDate() - 1);
-  }
-  const shiftStartUtc = rcvShiftStart.toISOString().replace('T',' ').slice(0,19);
+  // 1st 6:00 AM–1:59 PM, 2nd from 2:00 PM local (DST-aware); before 6 AM = yesterday's 2nd
+  const rcvShift = currentShift({ firstFrom: 6, secondFrom: 14, firstStart: [6, 0], secondStart: [14, 0] });
+  const shiftStartUtc = rcvShift.startSql;
 
   const sqlAssociates = `
 SELECT
     CREATED_BY,
     COUNT(DISTINCT LPN_ID) AS lpns,
     SUM(CASE WHEN PROCESS = '/lpn/receive' THEN QUANTITY ELSE 0 END) AS units,
-    MIN(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS first_scan,
-    MAX(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS last_scan
+    MIN(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS first_scan,
+    MAX(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS last_scan
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
@@ -93,7 +86,7 @@ ORDER BY lpns DESC`.trim();
 
   const sqlHourly = `
 SELECT
-    HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS hr,
+    HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS hr,
     COUNT(DISTINCT LPN_ID) AS lpns,
     SUM(CASE WHEN PROCESS = '/lpn/receive' THEN QUANTITY ELSE 0 END) AS units
 FROM default_receiving.RCV_RECEIPT
@@ -106,7 +99,7 @@ ORDER BY hr ASC`.trim();
   const sqlAssocHourly = `
 SELECT
     CREATED_BY,
-    HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS hr,
+    HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS hr,
     COUNT(DISTINCT LPN_ID) AS lpns
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
@@ -180,8 +173,8 @@ SELECT
   i.ILPN_ID,
   i.CURRENT_LOCATION_ID,
   i.CURRENT_LOCATION_TYPE_ID,
-  CONVERT_TZ(i.CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt,
-  CONVERT_TZ(i.UPDATED_TIMESTAMP, '+00:00', '-07:00') AS updated_pdt,
+  CONVERT_TZ(i.CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}) AS created_pdt,
+  CONVERT_TZ(i.UPDATED_TIMESTAMP, '+00:00', ${SQL_TZ}) AS updated_pdt,
   COALESCE(SUM(inv.ON_HAND), 0)                        AS on_hand_qty
 FROM default_dcinventory.DCI_ILPN i
 LEFT JOIN default_dcinventory.DCI_INVENTORY inv
@@ -202,7 +195,7 @@ SELECT
   MAX(td.PLANNED_TOTE_TYPE_ID)                                       AS tote_type,
   SUM(CASE WHEN td.STATUS != '9000' THEN 1 ELSE 0 END)              AS active_lines,
   SUM(CASE WHEN td.STATUS  = '9000' THEN 1 ELSE 0 END)              AS done_lines,
-  MAX(CONVERT_TZ(t.ACTUAL_END_TIME, '+00:00', '-07:00'))             AS task_ended_pdt
+  MAX(CONVERT_TZ(t.ACTUAL_END_TIME, '+00:00', ${SQL_TZ}))             AS task_ended_pdt
 FROM default_task.TSK_TASK_DETAIL td
 JOIN default_task.TSK_TASK t
   ON  t.TASK_ID             = td.TASK_ID
@@ -231,7 +224,7 @@ SELECT
   o.CURRENT_LOCATION_ID                                             AS cubby,
   o.STATUS                                                          AS status_code,
   CONVERT_TZ(o.CREATED_TIMESTAMP, '+00:00', '+00:00')               AS created_utc,
-  CONVERT_TZ(o.UPDATED_TIMESTAMP, '+00:00', '-07:00')               AS updated_pdt
+  CONVERT_TZ(o.UPDATED_TIMESTAMP, '+00:00', ${SQL_TZ})               AS updated_pdt
 FROM default_pickpack.PPK_OLPN o
 WHERE o.FACILITY_ID        = '${FACILITY}'
   AND o.CURRENT_LOCATION_ID LIKE 'H1-PW-01%'
@@ -450,11 +443,10 @@ async function fetchBacklog(accessToken) {
   const tomorrowStr     = tomorrowDate.toLocaleDateString('en-CA');
   const sevenDaysAgoStr = sevenDaysAgoDate.toLocaleDateString('en-CA');
 
-  // PDT midnight = UTC 07:00 — build bounds directly from date strings,
-  // no setHours() so local machine timezone never interferes.
-  const lookbackUtcStart = `${sevenDaysAgoStr} 07:00:00`;
-  const todayUtcStart    = `${todayStr} 07:00:00`;
-  const todayUtcEnd      = `${tomorrowStr} 07:00:00`;
+  // Local midnight of each date, in UTC for the WHERE clause (DST-aware: 07:00 in PDT, 08:00 in PST)
+  const lookbackUtcStart = pacificMidnightSql(sevenDaysAgoStr);
+  const todayUtcStart    = pacificMidnightSql(todayStr);
+  const todayUtcEnd      = pacificMidnightSql(tomorrowStr);
 
   // DATE_FORMAT used instead of DATE() — the MCP connector serializes DATE() as a JS Date
   // object, so .slice(0,10) produces garbage. DATE_FORMAT guarantees a plain YYYY-MM-DD string.
@@ -462,7 +454,7 @@ async function fetchBacklog(accessToken) {
   // Query 1: open order detail for drill-down (bucket totals derived from this in Node, not SQL)
   const sqlOrders = `
 SELECT
-  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
+  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS line_date,
   ORDER_ID,
   STATUS,
   COUNT(*) AS line_count,
@@ -483,8 +475,8 @@ ORDER BY line_date DESC, ORDER_ID`.trim();
   // Shipped / daily totals / hourly rows are rebuilt from it below in their old shapes.
   const sqlLineCounts = `
 SELECT
-  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00'), '%Y-%m-%d') AS line_date,
-  HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00')) AS hour_pdt,
+  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS line_date,
+  HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS hour_pdt,
   COUNT(*) AS line_count,
   SUM(CASE WHEN STATUS = 'SHIPPED' THEN 1 ELSE 0 END) AS shipped_count
 FROM default_dcorder.DCO_ORDER_LINE
@@ -496,21 +488,10 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY line_date, hour_pdt`.trim();
 
   // Query 5: wave runs this shift
-  // 2nd shift starts 1:40 PM PDT = 20:40 UTC, 1st shift starts 3:00 AM PDT = 10:00 UTC
-  const nowUtc       = new Date();
-  const nowUtcHour   = nowUtc.getUTCHours();
-  const nowUtcMin    = nowUtc.getUTCMinutes();
-  const is1st        = (nowUtcHour > 10 || (nowUtcHour === 10 && nowUtcMin >= 0)) && nowUtcHour < 20;
-  let   waveShiftStart = new Date(nowUtc);
-  if (is1st) {
-    waveShiftStart.setUTCHours(10, 0, 0, 0);
-  } else {
-    waveShiftStart.setUTCHours(20, 40, 0, 0);
-    if (nowUtcHour < 20 || (nowUtcHour === 20 && nowUtcMin < 40)) {
-      waveShiftStart.setUTCDate(waveShiftStart.getUTCDate() - 1);
-    }
-  }
-  const waveStartStr = waveShiftStart.toISOString().replace('T',' ').slice(0,19);
+  // 1st shift from 3:00 AM, 2nd from 1:40 PM local (DST-aware)
+  const waveShift    = currentShift({ firstFrom: 3, secondFrom: [13, 40], firstStart: [3, 0], secondStart: [13, 40] });
+  const is1st        = waveShift.is1st;
+  const waveStartStr = waveShift.startSql;
 
   const sqlWaves = `
 SELECT
@@ -794,8 +775,8 @@ async function fetchRetailReplen(accessToken) {
   const todayStr     = todayDate.toLocaleDateString('en-CA');
   const yestStr      = yestDate.toLocaleDateString('en-CA');
   const tomorrowStr  = tomorrowDate.toLocaleDateString('en-CA');
-  const yestUtcStart   = `${yestStr} 07:00:00`;
-  const todayUtcEnd    = `${tomorrowStr} 07:00:00`;
+  const yestUtcStart   = pacificMidnightSql(yestStr);      // local midnight, DST-aware
+  const todayUtcEnd    = pacificMidnightSql(tomorrowStr);
 
   // Q1: open ecom order lines (yesterday + today) grouped by item — matches backlog date window
   const sqlOrders = `
@@ -970,16 +951,11 @@ const BATCH_STATUS_LABELS = {
 
 async function fetchBatchStatus(accessToken) {
   const nowUtc = new Date();
-  const nowUtcHour = nowUtc.getUTCHours();
-  // 1st shift: 3 AM PDT (10:00 UTC) – 1:59 PM PDT (20:59 UTC)
-  // 2nd shift: 2 PM PDT (21:00 UTC) – 2:59 AM PDT next day (09:59 UTC next)
-  const is1stShift = nowUtcHour >= 10 && nowUtcHour < 21;
-  const shiftHourUtc = is1stShift ? 10 : 21; // 3 AM PDT or 2 PM PDT
+  // 1st shift: 3:00 AM – 1:59 PM local; 2nd shift: 2:00 PM – 2:59 AM local (DST-aware)
+  const batchShift   = currentShift({ firstFrom: 3, secondFrom: 14, firstStart: [3, 0], secondStart: [14, 0] }, nowUtc);
+  const is1stShift   = batchShift.is1st;
   const shiftLabel   = is1stShift ? '1st shift' : '2nd shift';
-  let shiftStart = new Date(nowUtc);
-  shiftStart.setUTCHours(shiftHourUtc, 0, 0, 0);
-  if (!is1stShift && nowUtcHour < shiftHourUtc) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
-  const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
+  const startStr     = batchShift.startSql;
 
   // Lookback: 72h covers Friday-afternoon batches still open on Sunday-morning 1st shift
   const lookbackStart = new Date(nowUtc.getTime() - 72 * 3600000)
@@ -1078,9 +1054,8 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
   const forceUtc = d => { const s = String(d).replace(' ','T'); return (s.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(s)) ? s : s + 'Z'; };
   const toPdt = d => {
     if (!d) return null;
-    // toLocaleString with named timezone is unreliable on Node builds without full ICU.
-    // DC499 shift runs in PDT (UTC-7 summer) — apply offset directly.
-    const pdt = new Date(new Date(forceUtc(d)).getTime() - 7 * 3600000);
+    // Shift to DC499 local wall time (DST-aware) and read the UTC fields
+    const pdt = pacificShifted(new Date(forceUtc(d)));
     const h = pdt.getUTCHours(), m = pdt.getUTCMinutes();
     return (h % 12 || 12) + ':' + String(m).padStart(2, '0') + ' ' + (h >= 12 ? 'PM' : 'AM');
   };
@@ -1202,7 +1177,7 @@ async function notifyNewCleared(batchStatusData) {
 
   const s          = batchStatusData.summary || {};
   const shiftLabel = batchStatusData.shift_label || '2nd shift';
-  const tsPdt = new Date(new Date().getTime() - 7 * 3600000);
+  const tsPdt = pacificShifted(new Date());   // local wall time, DST-aware
   const tsStr = (tsPdt.getUTCHours() % 12 || 12) + ':' +
                 String(tsPdt.getUTCMinutes()).padStart(2,'0') + ' ' +
                 (tsPdt.getUTCHours() >= 12 ? 'PM' : 'AM');
@@ -1264,7 +1239,7 @@ async function notifyNewCleared(batchStatusData) {
 }
 
 async function notifyAuthExpired() {
-  const tsPdt = new Date(new Date().getTime() - 7 * 3600000);
+  const tsPdt = pacificShifted(new Date());   // local wall time, DST-aware
   const tsStr = (tsPdt.getUTCHours() % 12 || 12) + ':' +
                 String(tsPdt.getUTCMinutes()).padStart(2,'0') + ' ' +
                 (tsPdt.getUTCHours() >= 12 ? 'PM' : 'AM');
@@ -1310,17 +1285,10 @@ function gitPush() {
 
 // ── shipped oLPNs query ────────────────────────────────────────────────────────
 async function fetchShipped(accessToken) {
-  const nowUtc     = new Date();
-  const nowUtcHour = nowUtc.getUTCHours();
-  const is1st      = nowUtcHour >= 10 && nowUtcHour < 21;
-  const shiftStart = new Date(nowUtc);
-  if (is1st) {
-    shiftStart.setUTCHours(13, 0, 0, 0); // 1st shift 6 AM PDT = 13:00 UTC
-  } else {
-    shiftStart.setUTCHours(21, 10, 0, 0); // 2nd shift 2:10 PM PDT = 21:10 UTC (matches Ecom Live)
-    if (nowUtcHour < 21) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
-  }
-  const shiftStartStr = shiftStart.toISOString().replace('T', ' ').slice(0, 19);
+  // 1st shift counts from 6:00 AM, 2nd from 2:10 PM local (matches Ecom Live); DST-aware
+  const shippedShift  = currentShift({ firstFrom: 3, secondFrom: 14, firstStart: [6, 0], secondStart: [14, 10] });
+  const is1st         = shippedShift.is1st;
+  const shiftStartStr = shippedShift.startSql;
 
   // TSK_ACTIVITY_TRACKING gives per-scan real-time counts — PPK_OLPN only updates in batches
   // 2nd shift: OB Putaway By Ship Via (ship-via scan). 1st shift adds NRDR Load Parcel Packages.
@@ -1351,14 +1319,11 @@ WHERE FACILITY_ID = '${FACILITY}'
 
 // ── ecom tasks query ───────────────────────────────────────────────────────────
 async function fetchTaskData(accessToken) {
-  const nowUtc = new Date();
-  const nowUtcHour = nowUtc.getUTCHours();
-  const is1st = nowUtcHour >= 10 && nowUtcHour < 21;
+  // 1st 3:00 AM, 2nd 2:00 PM local (DST-aware)
+  const taskShift  = currentShift({ firstFrom: 3, secondFrom: 14, firstStart: [3, 0], secondStart: [14, 0] });
+  const is1st      = taskShift.is1st;
   const shiftLabel = is1st ? '1st' : '2nd';
-  let shiftStart = new Date(nowUtc);
-  shiftStart.setUTCHours(is1st ? 10 : 21, 0, 0, 0);
-  if (!is1st && nowUtcHour < 21) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
-  const startStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
+  const startStr   = taskShift.startSql;
 
   // Two separate queries — ASSIGNED_USER_ID and PLANNED_START_TIME crash the connector (likely PII gate)
   // Safe columns only: TASK_ID, STATUS, TRANSACTION_ID, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID, CREATED_TIMESTAMP
@@ -1366,7 +1331,7 @@ async function fetchTaskData(accessToken) {
   // but always have the correct ecom pick transaction name in TRANSACTION_ID
   const sqlPick = `
 SELECT TASK_ID, STATUS, TRANSACTION_ID, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID,
-  CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt
+  CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}) AS created_pdt
 FROM default_task.TSK_TASK
 WHERE FACILITY_ID = '${FACILITY}'
   AND STATUS != '9000'
@@ -1379,7 +1344,7 @@ ORDER BY CREATED_TIMESTAMP ASC`.trim();
 
   const sqlReplen = `
 SELECT TASK_ID, STATUS, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID,
-  CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-07:00') AS created_pdt
+  CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}) AS created_pdt
 FROM default_task.TSK_TASK
 WHERE FACILITY_ID = '${FACILITY}'
   AND STATUS != '9000'
@@ -1397,7 +1362,7 @@ SELECT
   i.ILPN_ID,
   i.CURRENT_LOCATION_ID AS location,
   COALESCE(SUM(inv.ON_HAND), 0) AS on_hand,
-  CONVERT_TZ(i.UPDATED_TIMESTAMP, '+00:00', '-08:00') AS updated_pst
+  CONVERT_TZ(i.UPDATED_TIMESTAMP, '+00:00', ${SQL_TZ}) AS updated_pst
 FROM default_dcinventory.DCI_ILPN i
 LEFT JOIN default_dcinventory.DCI_INVENTORY inv
   ON  inv.ILPN_ID     = i.ILPN_ID
@@ -1414,7 +1379,7 @@ SELECT
   i.ILPN_ID,
   i.CURRENT_LOCATION_ID AS location,
   COALESCE(SUM(inv.ON_HAND), 0) AS on_hand,
-  CONVERT_TZ(i.UPDATED_TIMESTAMP, '+00:00', '-08:00') AS updated_pst
+  CONVERT_TZ(i.UPDATED_TIMESTAMP, '+00:00', ${SQL_TZ}) AS updated_pst
 FROM default_dcinventory.DCI_ILPN i
 LEFT JOIN default_dcinventory.DCI_INVENTORY inv
   ON  inv.ILPN_ID     = i.ILPN_ID
@@ -1491,7 +1456,7 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
     for (const r of (rows || [])) {
       const loc = r.location;
       if (!map[loc]) map[loc] = { location: loc, ilpns: [], total_units: 0 };
-      const ageMin = r.updated_pst ? Math.round((Date.now() - new Date(r.updated_pst.replace('T',' ').slice(0,19) + '-08:00').getTime()) / 60000) : null;
+      const ageMin = r.updated_pst ? Math.round((Date.now() - parsePacific(r.updated_pst).getTime()) / 60000) : null;
       map[loc].ilpns.push({ ilpn_id: r.ILPN_ID, on_hand: Number(r.on_hand) || 0, updated_pst: r.updated_pst, age_min: ageMin });
       map[loc].total_units += Number(r.on_hand) || 0;
     }

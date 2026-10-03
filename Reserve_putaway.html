@@ -370,7 +370,7 @@ body { animation: pageEnter 0.28s ease-out both; }
               <th>Category</th>
               <th class="right" onclick="setSort('units_desc')">Units</th>
               <th>PO #</th>
-              <th>Received (PDT)</th>
+              <th>Received (PT)</th>
             </tr>
           </thead>
           <tbody id="wip-body">
@@ -587,7 +587,7 @@ function fetchLiveData() {
       dot.style.background = '#22c55e';
       document.getElementById('top-sub').textContent =
         'Live data: ' + new Date(d.generated).toLocaleTimeString('en-US',
-          {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true}) + ' PDT';
+          {timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit', hour12:true}) + ' PT';
       if (csvCartonIds !== null || showAll) render();
     })
     .catch(function(e) {

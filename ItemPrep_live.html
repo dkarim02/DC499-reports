@@ -527,7 +527,7 @@ function renderScoreboard(data) {
 
   if (!hours.length) {
     document.getElementById('scoreboard-body').innerHTML =
-      '<div class="empty-state">Shift hasn\'t started yet.<br>Check back at 2:15 PM PST.</div>';
+      '<div class="empty-state">Shift hasn\'t started yet.<br>Check back at 2:15 PM.</div>';
     return;
   }
 
@@ -615,7 +615,7 @@ async function loadData() {
     const cap    = data.capacity || {};
 
     document.getElementById('run-info').textContent =
-      `${data.shift||'2nd'} shift · ${cap.active_headcount||0} associates · updated ${genStr} PST`;
+      `${data.shift||'2nd'} shift · ${cap.active_headcount||0} associates · updated ${genStr} PT`;
     document.getElementById('card-meta').textContent =
       `${cap.total_cartons||0} cartons${data.truncated?' ⚠ truncated':''}`;
     document.getElementById('stale-banner').style.display = ageMs > STALE_MS ? 'block' : 'none';

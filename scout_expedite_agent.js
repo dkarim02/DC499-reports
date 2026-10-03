@@ -15,6 +15,7 @@
 const fs     = require('fs');
 const path   = require('path');
 require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
+const { currentShift } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -49,18 +50,11 @@ function ts() {
 // ── main fetch ─────────────────────────────────────────────────────────────────
 async function fetchExpedite(accessToken) {
   const nowUtc     = new Date();
-  const nowUtcHour = nowUtc.getUTCHours();
-  const is1st      = nowUtcHour >= 10 && nowUtcHour < 21;
-
-  // Shift start in UTC — 2nd = 21:00 (prev day if h<21), 1st = 10:00 today
-  const shiftStart = new Date(nowUtc);
-  if (is1st) {
-    shiftStart.setUTCHours(10, 0, 0, 0);
-  } else {
-    shiftStart.setUTCHours(21, 0, 0, 0);
-    if (nowUtcHour < 21) shiftStart.setUTCDate(shiftStart.getUTCDate() - 1);
-  }
-  const shiftStartStr = shiftStart.toISOString().replace('T',' ').slice(0,19);
+  // Shift start — 1st 3:00 AM, 2nd 2:00 PM local (DST-aware); before 3 AM = yesterday's 2nd
+  const sh         = currentShift({ firstFrom: 3, secondFrom: 14, firstStart: [3, 0], secondStart: [14, 0] }, nowUtc);
+  const is1st      = sh.is1st;
+  const shiftStart = sh.start;
+  const shiftStartStr = sh.startSql;
 
   console.log(`[${ts()}] Expedite Live — ${is1st ? '1st' : '2nd'} shift, since ${shiftStartStr} UTC`);
 
