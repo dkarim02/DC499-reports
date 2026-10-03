@@ -442,8 +442,9 @@ async function fetchPartialLocations(token) {
 
 // ── mixed-item cartons in Ecom reserve ─────────────────────────────────────────
 // A reserve carton should hold one item. Replen moves the whole carton, so a mixed one drops
-// every item onto one pick shelf. Rare (1 on 10/2, none replenished in the prior 30 days) —
-// shown as a section of Stuck orders. Reserve LOCATIONS holding many items are normal (pallet
+// every item onto one pick shelf. Rare (1 on 10/2) — shown as a section of Stuck orders.
+// The list is every carton living in an R1B–R1F stock location; the replen lookup only adds a
+// note when a replen is already pointed at the carton. Reserve LOCATIONS holding many items are normal (pallet
 // positions with many single-item cartons) and are not flagged.
 const MIXED_CHUNKS = ['R1B', 'R1C', 'R1D', 'R1E', 'R1F'];
 function sqlMixedCartons(prefix) {
@@ -467,19 +468,6 @@ SELECT INVENTORY_CONTAINER_ID AS ilpn, TO_LOCATION_ID, STATUS, CREATED_TIMESTAMP
 WHERE FACILITY_ID='${FACILITY}' AND TYPE_ID='REPLENISHMENT' AND STATUS IN ('1000','1000.0','5000','5000.0')
   AND INVENTORY_CONTAINER_ID IN (${sqlList(ilpns)})`.trim();
 }
-// History: a replen of a mixed carton leaves one task line per item with the same carton number
-function sqlMixedReplenHistory(since) {
-  return `
-SELECT td.SOURCE_CONTAINER_ID AS ilpn, MIN(td.SOURCE_LOCATION_ID) AS src, MIN(td.TARGET_LOCATION_ID) AS target,
-  COUNT(DISTINCT td.ITEM_ID) AS skus, SUM(td.QUANTITY) AS units, MIN(td.CREATED_TIMESTAMP) AS first_at
-FROM default_task.TSK_TASK_DETAIL td
-WHERE td.FACILITY_ID='${FACILITY}' AND td.TYPE_ID='REPLENISHMENT' AND td.CREATED_TIMESTAMP >= '${since}'
-  AND td.SOURCE_CONTAINER_ID IS NOT NULL
-  AND (${MIXED_CHUNKS.map(p => `td.SOURCE_LOCATION_ID LIKE '${p}%'`).join(' OR ')})
-GROUP BY td.SOURCE_CONTAINER_ID HAVING COUNT(DISTINCT td.ITEM_ID) > 1
-ORDER BY first_at DESC LIMIT 100`.trim();
-}
-
 async function fetchMixedCartons(token) {
   const rows = [];
   for (const p of MIXED_CHUNKS) rows.push(...((await mcpQuery(token, sqlMixedCartons(p))).rows || []));
@@ -490,7 +478,6 @@ async function fetchMixedCartons(token) {
     await batched(token, ilpns, 200, sqlCartonReplens, 'mixed carton replen'),
     await batched(token, items, 400, sqlItemInfo, 'mixed carton items'),
   ] : [[], [], []];
-  const hist = (await mcpQuery(token, sqlMixedReplenHistory(utcAgo(30 * 24)))).rows || [];
 
   const info = {}; for (const r of infoRows) info[r.ILPN_ID] = r;
   const desc = {}; for (const r of itemRows) desc[r.ITEM_ID] = r.DESCRIPTION || '';
@@ -505,11 +492,7 @@ async function fetchMixedCartons(token) {
       replen: rp,
     };
   }).sort((a, b) => (a.received || '') < (b.received || '') ? -1 : 1);
-  return {
-    checked: MIXED_CHUNKS, cartons,
-    history_days: 30,
-    history: hist.map(r => ({ ilpn: r.ilpn, src: r.src, target: r.target, skus: num(r.skus), units: num(r.units), at: toIso(r.first_at) })),
-  };
+  return { checked: MIXED_CHUNKS, cartons };
 }
 
 async function fetchEmptyLocations(token) {
