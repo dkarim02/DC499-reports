@@ -382,6 +382,63 @@ WHERE FACILITY_ID='${FACILITY}' AND ON_HAND > 0 AND ILPN_ID IS NULL AND LEFT(LOC
 GROUP BY LEFT(LOCATION_ID,5)`.trim();
 }
 
+// ── partly-full locations (multi-item shelves) ─────────────────────────────────
+// F1A and F1D shelves allow MAX_ITEMS = 3 different items; F1B, P1C and the Mezz allow 1, so
+// for them "empty" is the whole story. A partly-full shelf has open item slots, and the cube
+// math says whether there's actually room on it.
+// Shelf settings and item cube barely change, so they're kept in memory for a day: after the
+// first pass each hourly run only re-reads what's on the shelves (3 queries).
+const PARTIAL_AREAS  = ['F1A', 'F1D'];
+const PARTIAL_STOCK_CHUNKS = ['F1A', 'F1D0', 'F1D1'];   // F1D ≈ 9k stocked pairs — split under the row cap
+const CACHE_HRS      = 24;
+const shelfCache = { at: 0, byLoc: {} };   // loc → { max_items, max_cuft, pez, active }
+const cubeCache  = { at: 0, byItem: {} };  // item → unit cuft (null = unknown)
+
+function sqlShelfSettings(prefix) {
+  return `
+SELECT LOCATION_ID, MAX_ITEMS, MAX_VOLUME, PICK_EXECUTION_ZONE_ID AS pez, IS_ACTIVE
+FROM default_dcinventory.DCI_LOCATION WHERE PROFILE_ID='${FACILITY}' AND LOCATION_ID LIKE '${prefix}%'`.trim();
+}
+
+async function fetchPartialLocations(token) {
+  if (Date.now() - shelfCache.at > CACHE_HRS * 36e5) {
+    const byLoc = {};
+    for (const a of PARTIAL_AREAS) for (const r of ((await mcpQuery(token, sqlShelfSettings(a))).rows || []))
+      byLoc[r.LOCATION_ID] = { max_items: num(r.MAX_ITEMS) || 1, max_cuft: num(r.MAX_VOLUME) || null, pez: r.pez || 'NONE', active: num(r.IS_ACTIVE) ? 1 : 0 };
+    shelfCache.byLoc = byLoc; shelfCache.at = Date.now();
+  }
+  const stock = [];
+  for (const p of PARTIAL_STOCK_CHUNKS) stock.push(...((await mcpQuery(token, sqlAreaStock(p))).rows || []));
+
+  // Item cube: refresh all once a day, otherwise only look up items we haven't seen
+  if (Date.now() - cubeCache.at > CACHE_HRS * 36e5) { cubeCache.byItem = {}; cubeCache.at = Date.now(); }
+  const need = [...new Set(stock.map(r => r.ITEM_ID))].filter(it => !(it in cubeCache.byItem));
+  if (need.length) {
+    for (const r of await batched(token, need, 400, sqlItemCube, 'partial item cube'))
+      cubeCache.byItem[r.ITEM_ID] = String(r.VOLUME_UOM_ID).toLowerCase() === 'cuft' && num(r.VOLUME) > 0 ? num(r.VOLUME) : null;
+    for (const it of need) if (!(it in cubeCache.byItem)) cubeCache.byItem[it] = null;
+  }
+
+  const onShelf = new Map();
+  for (const r of stock) {
+    if (!onShelf.has(r.LOCATION_ID)) onShelf.set(r.LOCATION_ID, []);
+    onShelf.get(r.LOCATION_ID).push(r);
+  }
+  // Compact rows: [location, pez, active 0/1, items_used, max_items, free_cuft|null, [item ids]]
+  const out = [];
+  for (const [loc, rows] of onShelf) {
+    const s = shelfCache.byLoc[loc];
+    if (!s || s.max_items < 2) continue;
+    const used = rows.length;
+    if (used === s.max_items) continue;                       // full on items — not interesting here
+    const allCubed = rows.every(r => cubeCache.byItem[r.ITEM_ID]);
+    const usedCuft = rows.reduce((t, r) => t + num(r.oh) * (cubeCache.byItem[r.ITEM_ID] || 0), 0);
+    const free = (s.max_cuft && allCubed) ? Math.round(Math.max(0, s.max_cuft - usedCuft) * 100) / 100 : null;
+    out.push([loc, s.pez, s.active, used, s.max_items, free, rows.map(r => r.ITEM_ID)]);
+  }
+  return out;
+}
+
 async function fetchEmptyLocations(token) {
   const t0 = Date.now();
   const empties = [], totals = [], truncated = [];
@@ -406,15 +463,28 @@ async function fetchEmptyLocations(token) {
   const stockedByAisle = {};
   for (const r of stocked) stockedByAisle[r.aisle] = num(r.n);
 
+  // Partly-full multi-item shelves — non-fatal, the empty list still ships without it
+  let partial = [];
+  try { partial = await fetchPartialLocations(token); }
+  catch (e) { console.warn(`[${ts()}]   partly-full pass failed (non-fatal): ${e.message}`); }
+  for (const p of partial) {
+    if (!p[2]) continue;
+    const z = zone(p[1]);
+    z.partial = z.partial || 0; z.open_slots = z.open_slots || 0; z.over = z.over || 0;
+    if (p[3] > p[4]) z.over++;
+    else { z.partial++; z.open_slots += p[4] - p[3]; }
+  }
+
   const output = {
     generated: new Date().toISOString(), facility: FACILITY, areas: EMPTY_AREAS, truncated,
     zones: Object.values(zones).sort((a, b) => a.pez < b.pez ? -1 : 1),
     stocked_by_aisle: stockedByAisle, locs,
+    partial_areas: PARTIAL_AREAS, partial,
   };
   fs.writeFileSync(EMPTY_FILE, JSON.stringify(output));
   const act = output.zones.reduce((t, z) => t + z.empty, 0);
   console.log(`[${ts()}] ✓ empty_locations_live.json written in ${Math.round((Date.now() - t0) / 1000)}s — ` +
-    `${act} empty active locations in ${output.zones.length} zones` + (truncated.length ? ` · ⚠ near row cap: ${truncated.join(', ')}` : ''));
+    `${act} empty active locations in ${output.zones.length} zones · ${partial.filter(p => p[2] && p[3] < p[4]).length} partly full` + (truncated.length ? ` · ⚠ near row cap: ${truncated.join(', ')}` : ''));
 }
 
 // Same age check as dead shelves; both side passes share one helper
