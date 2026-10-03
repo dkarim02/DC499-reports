@@ -926,7 +926,7 @@ body { animation: pageEnter 0.28s ease-out both; }
     <button class="tab-btn xpd-tab-btn" id="tb-expedite" onclick="setTab('expedite')">Expedite</button>
     <!-- Hospital PW hidden for now (2026-10-01) — delete "hidden" to bring it back -->
     <button class="tab-btn hpw-tab-btn" id="tb-hospital" onclick="setTab('hospital')" hidden>Hospital PW</button>
-    <button class="tab-btn ut-tab-btn"  id="tb-untasked" onclick="setTab('untasked')">No Task<span class="ut-count" id="ut-tab-count" style="display:none;"></span></button>
+    <button class="tab-btn ut-tab-btn"  id="tb-untasked" onclick="setTab('untasked')">Floor Check</button>
     <div class="tab-spacer" style="flex:1;"></div>
     <a href="https://nrdrp.sce.manh.com/udc/dm-config/screen/dcorder/OrderPlanningStrategy" target="_blank"
        style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid var(--border);color:var(--text-muted);text-decoration:none;white-space:nowrap;margin-right:4px;transition:background 0.12s,color 0.12s,border-color 0.12s;"
@@ -3663,12 +3663,9 @@ function utFlaggedCount(d) {
   var s = d.summary || {};
   return (s.short_shelf || 0) + (s.wont_fit || 0) + (s.replen_loop || 0) + (s.has_stock || 0) + (s.ghosts || 0) + (s.no_task_made || 0);
 }
+// The tab itself has no bubble (keeps the tab bar uniform); the count lives on the Stuck orders button
 function utUpdateTabCount(d) {
-  var el = document.getElementById('ut-tab-count');
-  if (!el) return;
   var n = utFlaggedCount(d);
-  el.textContent = n;
-  el.style.display = n ? 'inline-block' : 'none';
   var vn = document.getElementById('ut-vn-orders');
   if (vn) vn.textContent = fmt(n);
 }
@@ -3882,6 +3879,37 @@ function utRunTime() {
     (isStale(src.generated, staleMin) ? ' — older than expected, check option 27' : '');
 }
 
+// Mixed-item cartons living in Ecom reserve stock locations (R1B–R1F). Data comes with the hourly
+// empty-locations file; empty list → joins the "Nothing right now" line.
+function utMixedSection() {
+  var m = lastEmptyData && lastEmptyData.mixed;
+  var lane = { name: 'Mixed cartons in reserve', color: 'var(--text-muted)' };
+  if (!m) return '';
+  var list = m.cartons || [];
+  if (!list.length) { if (utLane === 'all') utClear.push(lane.name); return ''; }
+  var rows = list.map(function(c) {
+    var days = c.received ? Math.floor((Date.now() - new Date(c.received).getTime()) / 864e5) : null;
+    var items = c.items.map(function(it) {
+      return '<b>' + escHtml(it[0]) + '</b>' + (it[3] ? '<span class="ut-gwp">GWP</span>' : '') + ' ×' + fmt(it[1]);
+    }).join(' · ');
+    var replen = (c.replen || []).map(function(r) {
+      return 'replen ' + (r.status === 'deferred' ? 'waiting (won\'t fit) for ' : 'headed to ') + '<span class="ut-loc">' + escHtml(r.target || '—') + '</span>';
+    }).join(' · ');
+    var dots = '<div class="ut-dots" title="' + c.items.length + ' items in one carton">' + c.items.map(function() { return '<span class="ut-dot"></span>'; }).join('') + '</div>';
+    return '<div class="ut-row"><span></span><span class="ut-svc-std">' + c.items.length + ' items</span>' +
+      '<div><div class="ut-oid">' + escHtml(c.ilpn) + '</div><div class="ut-osub"><span class="ut-loc">' + escHtml(c.loc) + '</span> · ' + utPlural(c.units, 'unit', 'units') + '</div></div>' +
+      dots +
+      '<div class="ut-what"><div class="ut-item">' + items + '</div>' +
+      '<div class="ut-why">received ' + (c.received ? utDeadDate(c.received) : '—') +
+        (c.po ? ' · PO ' + escHtml(c.po) : '') + (c.asn ? ' · ASN ' + escHtml(c.asn) : '') +
+        (c.held ? ' · ' + fmt(c.held) + ' units already allocated' : '') + (replen ? ' · ' + replen : '') + '</div></div>' +
+      '<div class="ut-age' + (days >= 7 ? ' old' : days >= 2 ? ' mid' : '') + '">' + (days == null ? '—' : days + 'd') + '</div></div>';
+  }).join('');
+  return utSection(lane, utPlural(list.length, 'carton', 'cartons') + ' · ' + m.checked.join(', '),
+    'Cartons in an Ecom reserve location holding more than one item. A replen moves the whole carton, so every item would land on one pick shelf. Split it or fix it in MA before it gets replenished. Age = days since it was received.',
+    list.map(function(c) { return c.ilpn; }), rows);
+}
+
 function renderUntaskedData(d) {
   if (!d) return;
   var s = d.summary || {};
@@ -4002,6 +4030,7 @@ function renderUntaskedData(d) {
       }).join(''));
   }
 
+  if (show('mixed')) html += utMixedSection();
   if (utClear.length) html += '<div class="ut-allclear">Nothing right now in: <b>' + utClear.join('</b> · <b>') + '</b></div>';
   document.getElementById('ut-sections').innerHTML = html;
   if (utView === 'dead' && lastDeadData) renderDeadShelves();   // blocking links use the live order data
@@ -4307,6 +4336,7 @@ function fetchEmptyLocations() {
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(d) {
       lastEmptyData = d;
+      if (utView === 'orders' && lastUtData) renderUntaskedData(lastUtData);
       var el = document.getElementById('ut-vn-empty');
       if (el) el.textContent = d.pending ? '' : fmt((d.zones || []).reduce(function(t, z) { return t + z.empty; }, 0));
       if (utView === 'empty') renderEmptyLocations();
