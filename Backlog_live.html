@@ -4505,7 +4505,8 @@ function renderEmptyLocations() {
       return row;
     }).join('');
     utEmptyCopyText[z.pez] = copy.join('\n');
-    var meta = (nEmpty ? utPlural(nEmpty, 'empty', 'empty') : '') + (nEmpty && nPartial ? ' · ' : '') + (nPartial ? fmt(nPartial) + ' partly full' : '') + (nOver ? ' · ' + nOver + ' over the item limit' : '');
+    var meta = [nEmpty ? fmt(nEmpty) + ' empty' : '', nPartial ? fmt(nPartial) + ' partly full' : '', nOver ? nOver + ' over the item limit' : '']
+      .filter(Boolean).join(' · ');
     html += '<section class="ut-sec" style="--lane:' + color[z.pez] + '"><div class="ut-sec-head"><div>' +
       '<h3 class="ut-sec-title">' + escHtml(utZoneName(z.pez)) + '<span class="ut-sec-meta">' + meta + '</span></h3>' +
       '</div>' +
