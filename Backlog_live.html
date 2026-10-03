@@ -582,7 +582,11 @@
   .ut-allclear{font-size:12px;color:var(--text-muted);padding:10px 16px;margin-bottom:1rem;border:0.5px dashed var(--border);border-radius:10px;}
   .ut-allclear b{color:var(--text);font-weight:600;}
   .ut-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:11px;color:var(--text-muted);margin:-0.5rem 0 1rem;}
-  .ut-legend span.ut-leg{display:inline-flex;align-items:center;gap:5px;}
+  .ut-legend .ut-leg{display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:11px;color:var(--text-muted);background:none;border:0.5px solid transparent;border-radius:12px;padding:2px 8px 2px 3px;cursor:pointer;}
+  .ut-legend .ut-leg:hover{background:var(--surface2);}
+  .ut-legend .ut-leg.on{background:var(--accent-bg);border-color:var(--accent-muted);color:var(--text);}
+  .ut-legend .ut-leg:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  .ut-legend .ut-leg-note{font-size:11px;}
   .ut-zone-line{display:block;font-size:11px;color:var(--text-muted);margin-top:3px;}
   .ut-zone-line b{color:var(--text);font-weight:600;}
   .ut-zone-line.warn{color:var(--red);font-weight:600;}
@@ -1502,7 +1506,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <div class="ut-note" id="ut-empty-note">Loading...</div>
       <div class="ut-dead-tools">
         <div class="ut-pills" id="ut-empty-sizes"></div>
-        <label class="ut-check">Show <select class="ut-select" id="ut-empty-mode" onchange="utEmptySetMode(this.value)"><option value="both">Empty + partly full</option><option value="empty">Empty only</option><option value="partial">Partly full only</option></select></label>
+        <label class="ut-check">Show <select class="ut-select" id="ut-empty-mode" onchange="utEmptySetMode(this.value)"></select></label>
         <label class="ut-check"><input type="checkbox" id="ut-empty-inactive" onchange="renderEmptyLocations()"> Include inactive</label>
         <input type="search" class="ut-search" id="ut-empty-q" placeholder="Search location (e.g. F1D07)" oninput="renderEmptyLocations()">
       </div>
@@ -4331,8 +4335,25 @@ function utToggleAisle(el) {
   renderEmptyLocations();
 }
 
-var utEmptyMode = localStorage.getItem('ut_empty_mode_v1') || 'both';   // both | empty | partial
-function utEmptySetMode(v) { utEmptyMode = v; localStorage.setItem('ut_empty_mode_v1', v); renderEmptyLocations(); }
+// Show filter — one option per chip state. Spot kinds: free / waiting / assigned (empty), partial / nofit / over
+var UT_EMPTY_MODES = [
+  { key: 'both',     label: 'Everything',                 test: function(k) { return true; } },
+  { key: 'empty',    label: 'All empty',                  test: function(k) { return k === 'free' || k === 'waiting' || k === 'assigned'; } },
+  { key: 'free',     label: 'Empty and free',             test: function(k) { return k === 'free'; } },
+  { key: 'waiting',  label: 'Stock promised (amber)',     test: function(k) { return k === 'waiting'; } },
+  { key: 'assigned', label: 'Item still assigned (dashed)', test: function(k) { return k === 'assigned'; } },
+  { key: 'partial',  label: 'All partly full',            test: function(k) { return k === 'partial' || k === 'nofit' || k === 'over'; }, needsPartial: true },
+  { key: 'room',     label: 'Partly full, has room',      test: function(k) { return k === 'partial'; }, needsPartial: true },
+  { key: 'nofit',    label: 'Partly full, no room (grey)', test: function(k) { return k === 'nofit'; }, needsPartial: true },
+  { key: 'over',     label: 'Over the item limit (red)',  test: function(k) { return k === 'over'; }, needsPartial: true },
+];
+var utEmptyMode = localStorage.getItem('ut_empty_mode_v1') || 'both';
+function utEmptySetMode(v) {
+  // Clicking the active legend chip again goes back to Everything
+  utEmptyMode = (v === utEmptyMode && v !== 'both') ? 'both' : v;
+  localStorage.setItem('ut_empty_mode_v1', utEmptyMode);
+  renderEmptyLocations();
+}
 
 function renderEmptyLocations() {
   var d = lastEmptyData;
@@ -4342,10 +4363,9 @@ function renderEmptyLocations() {
     return;
   }
   var hasPartial = Array.isArray(d.partial);
-  if (!hasPartial) utEmptyMode = 'empty';
-  var modeSel = document.getElementById('ut-empty-mode');
-  modeSel.value = utEmptyMode; modeSel.disabled = !hasPartial;
-  var showEmpty = utEmptyMode !== 'partial', showPartial = utEmptyMode !== 'empty' && hasPartial;
+  var modes = UT_EMPTY_MODES.filter(function(m) { return hasPartial || !m.needsPartial; });
+  if (!modes.some(function(m) { return m.key === utEmptyMode; })) utEmptyMode = 'both';
+  var modeTest = modes.filter(function(m) { return m.key === utEmptyMode; })[0].test;
   var showInactive = document.getElementById('ut-empty-inactive').checked;
   var q = (document.getElementById('ut-empty-q').value || '').trim().toUpperCase();
   // Floor zones (F1A/F1B/F1D) first, then the Mezz, zones with nothing empty last
@@ -4389,14 +4409,17 @@ function renderEmptyLocations() {
       ((d.truncated || []).length ? ' · <b>some areas hit the row limit (' + d.truncated.join(', ') + ')</b>' : '') +
     '</span>';
   // Chip legend, once, with real chip samples
+  var leg = function(mode, chip, text) {
+    return '<button class="ut-leg' + (utEmptyMode === mode ? ' on' : '') + '" aria-pressed="' + (utEmptyMode === mode) + '" onclick="utEmptySetMode(\'' + mode + '\')" title="Show only these">' + chip + ' ' + text + '</button>';
+  };
   document.getElementById('ut-empty-legend').innerHTML =
-    '<span class="ut-leg"><span class="ut-chip">09A01</span> empty</span>' +
-    '<span class="ut-leg"><span class="ut-chip waiting">09A01</span> stock promised, not there yet</span>' +
-    '<span class="ut-leg"><span class="ut-chip assigned">09A01</span> item still assigned</span>' +
-    (hasPartial ? '<span class="ut-leg"><span class="ut-chip partial">09A01<b>2/3</b></span> items on it of the 3 allowed — size filter uses its free space</span>' +
-      '<span class="ut-leg"><span class="ut-chip partial nofit">09A01<b>2/3</b></span> open slot, no room</span>' +
-      '<span class="ut-leg"><span class="ut-chip over">09A01<b>4/3</b></span> over the item limit</span>' : '') +
-    '<span class="ut-leg ut-desc">Chips drop the aisle: bay · level · position. Hover for size and items.</span>';
+    leg('free', '<span class="ut-chip">09A01</span>', 'empty') +
+    leg('waiting', '<span class="ut-chip waiting">09A01</span>', 'stock promised, not there yet') +
+    leg('assigned', '<span class="ut-chip assigned">09A01</span>', 'item still assigned') +
+    (hasPartial ? leg('room', '<span class="ut-chip partial">09A01<b>2/3</b></span>', 'items on it of the 3 allowed — size filter uses its free space') +
+      leg('nofit', '<span class="ut-chip partial nofit">09A01<b>2/3</b></span>', 'open slot, no room') +
+      leg('over', '<span class="ut-chip over">09A01<b>4/3</b></span>', 'over the item limit') : '') +
+    '<span class="ut-leg-note ut-desc">Tap a chip to show only that kind. Chips drop the aisle: bay · level · position. Hover for size and items.</span>';
 
   // Filter → group by zone → aisle → bay. Each spot: { loc, kind, cuft, ... }
   var byZone = {};
@@ -4404,7 +4427,7 @@ function renderEmptyLocations() {
     var aisle = loc.slice(0, 5), bay = loc.slice(5, 7);
     var Z = byZone[pez] || (byZone[pez] = {});
     var A = Z[aisle] || (Z[aisle] = { aisle: aisle, n: 0, partial: 0, waiting: 0, maxCuft: 0, bays: {} });
-    if (spot.kind === 'partial' || spot.kind === 'over') A.partial++; else A.n++;
+    if (spot.kind === 'partial' || spot.kind === 'nofit' || spot.kind === 'over') A.partial++; else A.n++;
     if (spot.kind === 'waiting') A.waiting++;
     if (spot.cuft > A.maxCuft) A.maxCuft = spot.cuft;
     (A.bays[bay] || (A.bays[bay] = [])).push(spot);
@@ -4415,13 +4438,21 @@ function renderEmptyLocations() {
     if (utEmptyMin && !(cuft >= utEmptyMin)) return false;
     return !q || loc.indexOf(q) >= 0;
   }
-  if (showEmpty) (d.locs || []).forEach(function(r) {
-    if (keep(r[1], r[0], r[2], r[3])) add(r[1], r[0], { loc: r[0], kind: r[4], cuft: r[3], active: r[2] });
+  var spots = [];
+  (d.locs || []).forEach(function(r) {
+    if (keep(r[1], r[0], r[2], r[3])) spots.push({ pez: r[1], loc: r[0], kind: r[4], cuft: r[3], active: r[2] });
   });
   // partial: [loc, pez, active, items_used, max_items, free_cuft, [items]]
-  if (showPartial) d.partial.forEach(function(p) {
-    if (keep(p[1], p[0], p[2], p[5])) add(p[1], p[0], { loc: p[0], kind: p[3] > p[4] ? 'over' : 'partial', cuft: p[5], active: p[2], used: p[3], max: p[4], items: p[6] || [] });
+  if (hasPartial) d.partial.forEach(function(p) {
+    var kind = p[3] > p[4] ? 'over' : p[5] === 0 ? 'nofit' : 'partial';
+    if (keep(p[1], p[0], p[2], p[5])) spots.push({ pez: p[1], loc: p[0], kind: kind, cuft: p[5], active: p[2], used: p[3], max: p[4], items: p[6] || [] });
   });
+  // Dropdown with live counts (after zone / size / inactive / search filters)
+  document.getElementById('ut-empty-mode').innerHTML = modes.map(function(m) {
+    var n = spots.filter(function(sp) { return m.test(sp.kind); }).length;
+    return '<option value="' + m.key + '"' + (utEmptyMode === m.key ? ' selected' : '') + '>' + m.label + ' (' + fmt(n) + ')</option>';
+  }).join('');
+  spots.forEach(function(sp) { if (modeTest(sp.kind)) add(sp.pez, sp.loc, sp); });
 
   var head = '<div class="ut-erow head"><span></span><span>Aisle</span><span class="r">Empty</span><span class="r">Partly full</span>' +
     '<span class="r ut-hide-m">Of</span><span class="ut-hide-m">Share empty</span><span class="r ut-hide-m">Largest spot</span><span class="r">Waiting</span></div>';
@@ -4438,8 +4469,9 @@ function renderEmptyLocations() {
       var area = A.aisle.slice(0, 3), name = (area === 'F2C' ? 'Mezz' : area) + ' · Aisle ' + A.aisle.slice(3, 5);
       nEmpty += A.n;
       Object.keys(A.bays).forEach(function(b) { A.bays[b].forEach(function(s) {
-        if (s.kind === 'over') nOver++; else if (s.kind === 'partial') nPartial++;
-        copy.push(s.loc + '\t' + (s.kind === 'partial' || s.kind === 'over' ? s.used + ' of ' + s.max + ' items' : 'empty') + '\t' + (s.cuft != null ? utCuft(s.cuft) : ''));
+        if (s.kind === 'over') nOver++; else if (s.kind === 'partial' || s.kind === 'nofit') nPartial++;
+        var isPart = s.kind === 'partial' || s.kind === 'nofit' || s.kind === 'over';
+        copy.push(s.loc + '\t' + (isPart ? s.used + ' of ' + s.max + ' items' : s.kind === 'waiting' ? 'empty, stock promised' : s.kind === 'assigned' ? 'empty, item assigned' : 'empty') + '\t' + (s.cuft != null ? utCuft(s.cuft) : ''));
       }); });
       var row = '<div class="ut-erow" role="button" tabindex="0" aria-expanded="' + open + '" data-utkey="' + key + '"' +
         ' onclick="utToggleAisle(this)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();utToggleAisle(this);}">' +
@@ -4452,12 +4484,12 @@ function renderEmptyLocations() {
       if (open) {
         row += '<div class="ut-bays">' + Object.keys(A.bays).sort().map(function(b) {
           var list = A.bays[b], shown = list.slice(0, 80);
-          var ne = list.filter(function(s) { return s.kind !== 'partial' && s.kind !== 'over'; }).length, np = list.length - ne;
+          var ne = list.filter(function(s) { return s.kind !== 'partial' && s.kind !== 'nofit' && s.kind !== 'over'; }).length, np = list.length - ne;
           return '<div class="ut-bay"><div class="ut-bay-name">Bay ' + b + '<span>' + (ne ? ne + ' empty' : '') + (ne && np ? ' · ' : '') + (np ? np + ' partly full' : '') + '</span></div><div class="ut-chips">' +
             shown.map(function(s) {
               var cls, tip, label = escHtml(s.loc.slice(5));
-              if (s.kind === 'partial' || s.kind === 'over') {
-                cls = s.kind === 'over' ? ' over' : (' partial' + (s.cuft === 0 ? ' nofit' : ''));
+              if (s.kind === 'partial' || s.kind === 'nofit' || s.kind === 'over') {
+                cls = s.kind === 'over' ? ' over' : s.kind === 'nofit' ? ' partial nofit' : ' partial';
                 tip = s.loc + ' · ' + s.used + ' of ' + s.max + ' items' + (s.kind === 'over' ? ' (over the limit)' : '') +
                   (s.cuft != null ? ' · ' + utCuft(s.cuft) + ' cuft free' : ' · free space unknown') + ' · on it: ' + s.items.join(', ');
                 label += '<b>' + s.used + '/' + s.max + '</b>';
