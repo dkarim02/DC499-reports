@@ -14,6 +14,7 @@
 const fs     = require('fs');
 const path   = require('path');
 require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
+const { SQL_TZ, currentShift } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -55,24 +56,16 @@ function ts() {
   return new Date().toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour12: false });
 }
 
-function shiftStartUtc() {
-  const nowUtc = new Date();
-  const h = nowUtc.getUTCHours();
-  // 1st shift: 5 AM PST = 13:00 UTC (OT can start 3–4 AM PST = 11:00 UTC)
-  //            Use 11:00 UTC so OT hours are captured; 3 AM PDT = hour 3 PDT
-  // 2nd shift: 2:15 PM PST = 22:15 UTC
-  const is1st = h >= 11 && h < 22;
-  const start = new Date(nowUtc);
-  if (is1st) {
-    start.setUTCHours(11, 0, 0, 0);  // 3 AM PST — covers OT starts
-  } else {
-    start.setUTCHours(22, 15, 0, 0); // 2:15 PM PST
-    if (h < 11) start.setUTCDate(start.getUTCDate() - 1);
-  }
+function shiftStartUtc(now = new Date()) {
+  // 1st shift counts from 3:00 AM local (5 AM start, OT can begin 3–4 AM)
+  // 2nd shift counts from 2:15 PM local. Local wall-clock time, DST-aware.
+  // (Before 10/2 these were fixed UTC hours written for PST, so all summer the 2nd shift
+  //  started counting at 3:15 PM and scans landed one hour column late.)
+  const sh = currentShift({ firstFrom: 3, secondFrom: 14, firstStart: [3, 0], secondStart: [14, 15] }, now);
   return {
-    utc: start.toISOString().replace('T', ' ').slice(0, 19),
-    label: is1st ? '1st' : '2nd',
-    pdtHour: is1st ? 3 : 14,  // earliest display hour for each shift
+    utc: sh.startSql,
+    label: sh.label,
+    pdtHour: sh.is1st ? 3 : 14,  // earliest display hour for each shift
   };
 }
 
@@ -83,7 +76,7 @@ function buildSql(shiftStart) {
 SELECT
   t.USER_ID                                              AS \`Employee\`,
   t.TRANSACTION_ID                                       AS \`Transaction ID\`,
-  CONVERT_TZ(t.ACTIVITY_DATE_TIME, '+00:00', '-07:00')   AS \`Activity Datetime\`,
+  CONVERT_TZ(t.ACTIVITY_DATE_TIME, '+00:00', ${SQL_TZ}) AS \`Activity Datetime\`,
   t.CONTAINER_ID                                         AS \`Container ID\`
 FROM default_task.TSK_ACTIVITY_TRACKING t
 WHERE t.FACILITY_ID = '${FACILITY}'
@@ -102,10 +95,9 @@ function processRows(rows, shiftPdtHour, is1st) {
     if (!emp || !cid) continue;
     const dtStr = row['Activity Datetime'];
     if (!dtStr) continue;
-    // Parse local hour from the already-converted timestamp string (PST = -08:00)
-    const dt = new Date(String(dtStr).replace(' ', 'T') + '-08:00');
-    if (isNaN(dt.getTime())) continue;
-    const localHour = dt.getHours(); // 0–23 PST
+    // The SQL already converted it to DC499 local wall time — read the hour from the string
+    const localHour = parseInt(String(dtStr).replace(' ', 'T').slice(11, 13), 10); // 0–23 local
+    if (isNaN(localHour)) continue;
     const key = `${emp}|${cid}`;
     if (earliest[key] === undefined || localHour < earliest[key]) {
       earliest[key] = localHour;

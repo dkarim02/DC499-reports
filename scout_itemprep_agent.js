@@ -15,6 +15,7 @@
 const fs     = require('fs');
 const path   = require('path');
 require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
+const { SQL_TZ, currentShift, utcFromPacific, sqlUtc } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -46,32 +47,12 @@ function ts() {
   return new Date().toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour12: false });
 }
 
-function shiftBounds() {
-  const nowUtc  = new Date();
-  const h       = nowUtc.getUTCHours();
-  // 1st shift: 6 AM–2:15 PM PST = 14:00–22:15 UTC
-  // 2nd shift: 2:15 PM–10:45 PM PST = 22:15–06:45 UTC (next day)
-  const is1st   = h >= 14 && h < 22;
-  const start   = new Date(nowUtc);
-  const end     = new Date(nowUtc);
-
-  if (is1st) {
-    start.setUTCHours(14, 0, 0, 0);
-    end.setUTCHours(22, 15, 0, 0);
-  } else {
-    // 2nd shift start: 22:15 UTC
-    start.setUTCHours(22, 15, 0, 0);
-    if (h < 14) start.setUTCDate(start.getUTCDate() - 1); // past midnight UTC
-    // 2nd shift end: 06:45 UTC next day
-    end.setUTCHours(6, 45, 0, 0);
-    if (h >= 22) end.setUTCDate(end.getUTCDate() + 1);
-  }
-
-  return {
-    label:    is1st ? '1st' : '2nd',
-    startUtc: start.toISOString().replace('T', ' ').slice(0, 19),
-    endUtc:   end.toISOString().replace('T', ' ').slice(0, 19),
-  };
+function shiftBounds(now = new Date()) {
+  // 1st shift: 6:00 AM–2:15 PM local; 2nd shift: 2:15 PM–10:45 PM local (DST-aware).
+  // Before 6 AM it's still the 2nd shift that started the day before.
+  const sh  = currentShift({ firstFrom: 6, secondFrom: [14, 15], firstStart: [6, 0], secondStart: [14, 15] }, now);
+  const end = sh.is1st ? utcFromPacific(sh.day, 14, 15) : utcFromPacific(sh.day, 22, 45);
+  return { label: sh.label, startUtc: sh.startSql, endUtc: sqlUtc(end) };
 }
 
 // ── SQL builders ───────────────────────────────────────────────────────────────
@@ -100,7 +81,7 @@ function sqlAssocHourly(shiftStart) {
 SELECT
   CREATED_BY                      AS employee,
   DATE_FORMAT(
-    CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', '-08:00'),
+    CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}),
     '%H'
   )                               AS pst_hour,
   COUNT(DISTINCT CONTAINER_ID)    AS cartons
