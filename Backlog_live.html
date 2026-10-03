@@ -577,6 +577,15 @@
   .ut-lanes.filtered .ut-lane:not(.on){opacity:0.45;}
   .ut-lane.on{background:var(--surface2);border-color:var(--lane);}
   .ut-note{font-size:12px;color:var(--text-muted);margin:0 0 1.25rem;line-height:1.5;}
+  .ut-note .ut-note-head{display:block;font-size:13px;color:var(--text);margin-bottom:2px;}
+  .ut-note .ut-note-facts{display:block;}
+  .ut-allclear{font-size:12px;color:var(--text-muted);padding:10px 16px;margin-bottom:1rem;border:0.5px dashed var(--border);border-radius:10px;}
+  .ut-allclear b{color:var(--text);font-weight:600;}
+  .ut-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:11px;color:var(--text-muted);margin:-0.5rem 0 1rem;}
+  .ut-legend span.ut-leg{display:inline-flex;align-items:center;gap:5px;}
+  .ut-zone-line{display:block;font-size:11px;color:var(--text-muted);margin-top:3px;}
+  .ut-zone-line b{color:var(--text);font-weight:600;}
+  .ut-zone-line.warn{color:var(--red);font-weight:600;}
   .ut-note b{color:var(--text);font-weight:600;}
 
   .ut-sec{background:var(--surface);border:0.5px solid var(--border);border-top:3px solid var(--lane);border-radius:12px;margin-bottom:1rem;overflow:hidden;}
@@ -1497,6 +1506,7 @@ body { animation: pageEnter 0.28s ease-out both; }
         <label class="ut-check"><input type="checkbox" id="ut-empty-inactive" onchange="renderEmptyLocations()"> Include inactive</label>
         <input type="search" class="ut-search" id="ut-empty-q" placeholder="Search location (e.g. F1D07)" oninput="renderEmptyLocations()">
       </div>
+      <div class="ut-legend" id="ut-empty-legend"></div>
       <div id="ut-empty-sections"></div>
     </div>
 
@@ -3814,7 +3824,9 @@ function utDots(o) {
   return '<div class="ut-dots" title="' + nShort + ' of ' + o.lines.length + ' items short">' + shown + more + '</div>';
 }
 
+var utClear = [];   // groups with nothing in them this render — listed on one line instead of a card
 function utSection(lane, meta, does, ids, body) {
+  if (!body && utLane === 'all') { utClear.push(lane.name); return ''; }
   return '<section class="ut-sec" style="--lane:' + lane.color + '"><div class="ut-sec-head"><div>' +
     '<h3 class="ut-sec-title">' + lane.name + '<span class="ut-sec-meta">' + meta + '</span></h3>' +
     '<p class="ut-sec-do">' + does + '</p></div>' +
@@ -3854,13 +3866,23 @@ function utOrderRow(d, o, nested) {
   return html;
 }
 
+// "Updated …" line at the top follows whichever view is open
+function utRunTime() {
+  var el = document.getElementById('ut-run-time');
+  if (!el) return;
+  var src = utView === 'dead' ? lastDeadData : utView === 'empty' ? lastEmptyData : lastUtData;
+  var every = utView === 'dead' ? 'rebuilt every 6 hrs' : utView === 'empty' ? 'rebuilt hourly' : 'checks every 5 min';
+  if (!src || src.pending) { el.textContent = 'Waiting for the first list from option 27'; return; }
+  var staleMin = utView === 'dead' ? 7 * 60 : utView === 'empty' ? 90 : 20;
+  el.textContent = 'Updated ' + (src.generated ? fmtPdt(src.generated) : '—') + ' · ' + every +
+    (isStale(src.generated, staleMin) ? ' — older than expected, check option 27' : '');
+}
+
 function renderUntaskedData(d) {
   if (!d) return;
   var s = d.summary || {};
   document.getElementById('ut-empty-state').style.display = 'none';
-  var rtEl = document.getElementById('ut-run-time');
-  if (rtEl) rtEl.textContent = 'Updated ' + (d.generated ? fmtPdt(d.generated) : '—') +
-    (isStale(d.generated, 20) ? ' — data is over 20 min old, check option 27' : '');
+  utRunTime();
 
   var orders = d.orders || [];
   var byCat  = function(c) { return orders.filter(function(o) { return o.category === c; }); };
@@ -3886,14 +3908,17 @@ function renderUntaskedData(d) {
 
   var waiting = s.waiting || 0;
   document.getElementById('ut-note').innerHTML =
-    'Orders with no pick task for <b>' + (d.grace_min || 60) + '+ minutes</b>. ' +
-    utPlural(waiting, 'newer order is', 'newer orders are') + ' waiting for the next batch release, which is normal.' +
-    (s.expedite ? ' <b>' + utPlural(s.expedite, 'flagged order is', 'flagged orders are') + ' 1DD/2DD</b> — those sort to the top.' : '') +
-    (d.last_release ? ' Last putwall batch: <b>' + utTime(d.last_release.at) + '</b> (' + utAge(d.last_release.mins_ago) + ' ago' +
-      (d.night ? ', last of the night — next ~5 AM' : '') + ').' : '') +
-    (utLane !== 'all' ? ' Showing one group — tap it again to see all.' : '');
+    '<span class="ut-note-head">Orders with no pick task for ' + (d.grace_min || 60) + '+ minutes, grouped by why.' +
+      (utLane !== 'all' ? ' Showing one group — tap it again to see all.' : '') + '</span>' +
+    '<span class="ut-note-facts">' +
+      (s.expedite ? '<b>' + fmt(s.expedite) + ' 1DD/2DD</b> (sorted first) · ' : '') +
+      fmt(waiting) + ' newer waiting for the next batch (normal)' +
+      (d.last_release ? ' · last putwall batch <b>' + utTime(d.last_release.at) + '</b>, ' + utAge(d.last_release.mins_ago) + ' ago' +
+        (d.night ? ' — last of the night, next ~5 AM' : '') : '') +
+    '</span>';
 
   var show = function(k) { return utLane === 'all' || utLane === k; };
+  utClear = [];
   var lane = function(k) { return UT_LANES.filter(function(l) { return l.key === k; })[0]; };
   var html = '';
 
@@ -3973,6 +3998,7 @@ function renderUntaskedData(d) {
       }).join(''));
   }
 
+  if (utClear.length) html += '<div class="ut-allclear">Nothing right now in: <b>' + utClear.join('</b> · <b>') + '</b></div>';
   document.getElementById('ut-sections').innerHTML = html;
   if (utView === 'dead' && lastDeadData) renderDeadShelves();   // blocking links use the live order data
 }
@@ -4037,6 +4063,7 @@ function utSetView(v) {
     b.classList.toggle('on', v === k);
     b.setAttribute('aria-selected', v === k);
   });
+  utRunTime();
   if (v === 'dead')  { if (lastDeadData)  renderDeadShelves();    else fetchDeadShelves(); }
   if (v === 'empty') { if (lastEmptyData) renderEmptyLocations(); else fetchEmptyLocations(); }
 }
@@ -4130,7 +4157,9 @@ function utDeadNeighbours(d, r) {
   var others = sh.items.filter(function(x) { return x[0] !== r.item; });
   if (!others.length) return 'only item on the shelf';
   var act = others.filter(function(x) { return !x[3]; }).length, idle = others.length - act;
-  return 'shares the shelf with ' + (act ? act + ' active' : '') + (act && idle ? ' + ' : '') + (idle ? idle + ' idle' : '') + ' item' + (others.length === 1 ? '' : 's');
+  // "1 active + 1 idle item" — the noun follows the last number
+  var last = idle || act;
+  return 'shares the shelf with ' + (act ? act + ' active' : '') + (act && idle ? ' + ' : '') + (idle ? idle + ' idle' : '') + ' item' + (last === 1 ? '' : 's');
 }
 function utDeadWhy(d, r, cat) {
   if (cat === 'blocking') {
@@ -4194,20 +4223,23 @@ function renderDeadShelves() {
     document.getElementById('ut-dead-sections').innerHTML = '';
     return;
   }
+  utRunTime();
+  var histFrom = d.history_from ? new Date(d.history_from + 'T12:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
   document.getElementById('ut-dead-note').innerHTML =
-    'Items on Ecom pick shelves with <b>no picks in ' + d.idle_days + '+ days</b>, no open orders, and not stocked in the last ' + d.fresh_days + ' days. ' +
-    fmt(s.pairs) + ' items · ' + fmt(s.units) + ' units on ' + fmt(s.shelves) + ' shelves' + (s.gwp_pairs ? ' · ' + fmt(s.gwp_pairs) + ' are GWPs' : '') +
-    (s.never_picked != null ? ' · <b>' + fmt(s.never_picked) + ' never picked</b> from their shelf' + (d.history_from ? ' since ' + new Date(d.history_from + 'T12:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + ' (as far back as pick history goes)' : '') : '') + '. ' +
-    'Updated ' + (fmtPdt(d.generated) || '—') + ' (every 6 hrs).' +
-    ((d.truncated || []).length ? ' <b>Some areas hit the row limit (' + d.truncated.join(', ') + ') — list may be incomplete.</b>' : '');
+    '<span class="ut-note-head">Items on Ecom pick shelves with no pick in ' + d.idle_days + '+ days, no open orders, and not stocked in the last ' + d.fresh_days + ' days.</span>' +
+    '<span class="ut-note-facts"><b>' + fmt(s.pairs) + '</b> items · ' + fmt(s.units) + ' units · ' + fmt(s.shelves) + ' shelves' +
+      (s.gwp_pairs ? ' · ' + fmt(s.gwp_pairs) + ' GWPs' : '') +
+      (s.never_picked != null ? ' · <b>' + fmt(s.never_picked) + ' never picked</b> from their shelf' + (histFrom ? ' (history starts ' + histFrom + ')' : '') : '') +
+      ((d.truncated || []).length ? ' · <b>some areas hit the row limit (' + d.truncated.join(', ') + ') — list may be incomplete</b>' : '') +
+    '</span>';
 
   var head = '<div class="ut-drow head" role="row"><span></span>' + utDeadTh('shelf') + utDeadTh('item') + utDeadTh('units', 'r') +
     utDeadTh('space', 'ut-hide-m') + utDeadTh('stocked', 'ut-hide-m') + utDeadTh('last') + utDeadTh('reserve', 'r') + '</div>';
-  var html = '';
+  var html = '', deadClear = [];
   UT_DEAD_LANES.forEach(function(l) {
     if (utDeadLane !== 'all' && utDeadLane !== l.key) return;
     var list = groups[l.key];
-    if (!list.length && l.key !== 'blocking') return;
+    if (!list.length && utDeadLane === 'all') { deadClear.push(l.name); return; }
     var shown = utDeadShown[l.key] || UT_DEAD_PAGE;
     var rows = list.slice(0, shown).map(function(r) {
       var key = 'd:' + r.loc + '|' + r.item, open = utExpanded.has(key);
@@ -4251,6 +4283,7 @@ function renderDeadShelves() {
       (list.length ? '<button class="ut-copy" onclick="utCopyTsv(this, \'' + l.key + '\')">Copy move list</button>' : '') +
       '</div>' + (list.length ? head + rows + more : '<div class="ut-clear">Nothing here right now.</div>') + '</section>';
   });
+  if (deadClear.length) html += '<div class="ut-allclear">Nothing right now in: <b>' + deadClear.join('</b> · <b>') + '</b></div>';
   document.getElementById('ut-dead-sections').innerHTML = html;
 }
 function utToggleDead(el) {
@@ -4285,7 +4318,7 @@ fetchEmptyLocations();
 // "PEZ_UNIT_TRACKED_MEZZ_ECOM_ZONE1" → "Mezz Zone 1", "PEZ_UNIT_TRACKED_ZONE_F1D" → "F1D"
 function utZoneName(pez) {
   var m;
-  if ((m = /MEZZ.*ZONE(\d+)$/i.exec(pez))) return 'Mezz Zone ' + m[1];
+  if ((m = /MEZZ.*ZONE(\d+)$/i.exec(pez))) return 'Mezz ' + m[1];
   if ((m = /ZONE_([A-Z0-9]{3})$/i.exec(pez))) return m[1];
   if (/ReplenAreaLarge/i.test(pez)) return 'P1C · Large';
   return String(pez || '—').replace(/^PEZ_/, '').replace(/UNIT_TRACKED_/, '').replace(/_/g, ' ');
@@ -4328,10 +4361,11 @@ function renderEmptyLocations() {
   zEl.classList.toggle('filtered', utEmptyZone !== 'all');
   zEl.innerHTML = zones.map(function(z) {
     var pct = z.active ? Math.round(100 * z.empty / z.active) : 0;
-    var sub = 'of ' + fmt(z.active) + ' active · ' + pct + '% empty' +
-      (z.partial ? ' · <b>' + fmt(z.partial) + ' partly full</b> (' + fmt(z.open_slots) + ' open item slots)' : '') +
-      (z.over ? ' · <span style="color:var(--red);font-weight:700;">' + z.over + ' over the item limit</span>' : '') +
-      (z.waiting ? ' · ' + fmt(z.waiting) + ' waiting on stock' : '') + (z.inactive ? ' · ' + fmt(z.inactive) + ' inactive' : '');
+    // One fact per line so cards don't wrap into a paragraph
+    var sub = '<span class="ut-zone-line">empty of ' + fmt(z.active) + ' · ' + pct + '%' + (z.inactive ? ' · +' + fmt(z.inactive) + ' inactive' : '') + '</span>' +
+      (z.partial ? '<span class="ut-zone-line"><b>' + fmt(z.partial) + '</b> partly full · ' + fmt(z.open_slots) + ' open slots</span>' : '') +
+      (z.waiting ? '<span class="ut-zone-line">' + fmt(z.waiting) + ' waiting on stock</span>' : '') +
+      (z.over ? '<span class="ut-zone-line warn">' + z.over + ' over the item limit</span>' : '');
     return '<button class="ut-lane' + (z.empty || z.partial ? '' : ' zero') + (utEmptyZone === z.pez ? ' on' : '') + '" style="--lane:' + color[z.pez] + '"' +
       ' aria-pressed="' + (utEmptyZone === z.pez) + '" onclick="utEmptySetZone(\'' + z.pez + '\')">' +
       '<div class="ut-lane-top"><span class="ut-lane-n">' + fmt(z.empty) + '</span><span class="ut-lane-name">' + escHtml(utZoneName(z.pez)) + '</span></div>' +
@@ -4346,14 +4380,22 @@ function renderEmptyLocations() {
   var totalActive = zones.reduce(function(t, z) { return t + z.active; }, 0);
   var totalPartial = zones.reduce(function(t, z) { return t + (z.partial || 0); }, 0);
   var totalSlots = zones.reduce(function(t, z) { return t + (z.open_slots || 0); }, 0);
+  utRunTime();
   document.getElementById('ut-empty-note').innerHTML =
-    'Ecom pick locations with <b>nothing on hand</b>: ' + fmt(totalEmpty) + ' of ' + fmt(totalActive) + ' active. ' +
-    (hasPartial ? 'F1A and F1D shelves hold up to 3 items, so <b>' + fmt(totalPartial) + ' more are partly full</b> with ' + fmt(totalSlots) + ' open item slots. ' : '') +
-    'Tap an aisle to see the spots by bay — <span class="ut-chip waiting">amber</span> = stock is promised but not there yet, ' +
-    '<span class="ut-chip assigned">dashed</span> = an item is still assigned' +
-    (hasPartial ? ', <span class="ut-chip partial">1/3</span> = items on it of the 3 allowed (size filter uses its free space; grey = no room left)' : '') +
-    '. Updated ' + (fmtPdt(d.generated) || '—') + ' (hourly).' +
-    ((d.truncated || []).length ? ' <b>Some areas hit the row limit (' + d.truncated.join(', ') + ').</b>' : '');
+    '<span class="ut-note-head">Open pick locations in the Ecom areas. Tap an aisle to see them by bay.</span>' +
+    '<span class="ut-note-facts"><b>' + fmt(totalEmpty) + '</b> of ' + fmt(totalActive) + ' active locations are empty' +
+      (hasPartial ? ' · F1A and F1D shelves hold up to 3 items, so <b>' + fmt(totalPartial) + '</b> more are partly full (' + fmt(totalSlots) + ' open item slots)' : '') +
+      ((d.truncated || []).length ? ' · <b>some areas hit the row limit (' + d.truncated.join(', ') + ')</b>' : '') +
+    '</span>';
+  // Chip legend, once, with real chip samples
+  document.getElementById('ut-empty-legend').innerHTML =
+    '<span class="ut-leg"><span class="ut-chip">09A01</span> empty</span>' +
+    '<span class="ut-leg"><span class="ut-chip waiting">09A01</span> stock promised, not there yet</span>' +
+    '<span class="ut-leg"><span class="ut-chip assigned">09A01</span> item still assigned</span>' +
+    (hasPartial ? '<span class="ut-leg"><span class="ut-chip partial">09A01<b>2/3</b></span> items on it of the 3 allowed — size filter uses its free space</span>' +
+      '<span class="ut-leg"><span class="ut-chip partial nofit">09A01<b>2/3</b></span> open slot, no room</span>' +
+      '<span class="ut-leg"><span class="ut-chip over">09A01<b>4/3</b></span> over the item limit</span>' : '') +
+    '<span class="ut-leg ut-desc">Chips drop the aisle: bay · level · position. Hover for size and items.</span>';
 
   // Filter → group by zone → aisle → bay. Each spot: { loc, kind, cuft, ... }
   var byZone = {};
@@ -4433,7 +4475,7 @@ function renderEmptyLocations() {
     var meta = (nEmpty ? utPlural(nEmpty, 'empty', 'empty') : '') + (nEmpty && nPartial ? ' · ' : '') + (nPartial ? fmt(nPartial) + ' partly full' : '') + (nOver ? ' · ' + nOver + ' over the item limit' : '');
     html += '<section class="ut-sec" style="--lane:' + color[z.pez] + '"><div class="ut-sec-head"><div>' +
       '<h3 class="ut-sec-title">' + escHtml(utZoneName(z.pez)) + '<span class="ut-sec-meta">' + meta + ' shown</span></h3>' +
-      '<p class="ut-sec-do">Sorted by aisle. Chips show the rest of the location after the aisle (bay · level · position).</p></div>' +
+      '</div>' +
       '<button class="ut-copy" onclick="utCopyTsv(this, \'e:' + z.pez + '\')">Copy locations</button></div>' + head + rows + '</section>';
   });
   document.getElementById('ut-empty-sections').innerHTML = html || '<div class="ut-sec"><div class="ut-clear">No locations match these filters.</div></div>';
