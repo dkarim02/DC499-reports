@@ -71,7 +71,7 @@ const DEAD_FORMAT = 2;   // 2 = rows carry last_pick (10/2)
 // table fails ("Operation failed"), so group by PEZ and do aisles in Node.
 const EMPTY_FILE      = path.join(__dirname, 'empty_locations_live.json');
 const EMPTY_EVERY_HRS = 1;
-const EMPTY_FORMAT    = 2;   // 2 = adds partly-full multi-item shelves (10/2); older files rebuild at once
+const EMPTY_FORMAT    = 3;   // 2 = partly-full shelves, 3 = mixed cartons (10/2); older files rebuild at once
 const EMPTY_AREAS     = ['F1A', 'F1B', 'F1D', 'F2C', 'P1C'];
 const EMPTY_CHUNKS    = ['F1A', 'F1B', 'F1D', 'F2C01', 'F2C02', 'F2C03', 'F2C04', 'P1C'];   // F2C ≈ 8k empties
 
@@ -440,6 +440,78 @@ async function fetchPartialLocations(token) {
   return out;
 }
 
+// ── mixed-item cartons in Ecom reserve ─────────────────────────────────────────
+// A reserve carton should hold one item. Replen moves the whole carton, so a mixed one drops
+// every item onto one pick shelf. Rare (1 on 10/2, none replenished in the prior 30 days) —
+// shown as a section of Stuck orders. Reserve LOCATIONS holding many items are normal (pallet
+// positions with many single-item cartons) and are not flagged.
+const MIXED_CHUNKS = ['R1B', 'R1C', 'R1D', 'R1E', 'R1F'];
+function sqlMixedCartons(prefix) {
+  return `
+SELECT i.ILPN_ID, i.LOCATION_ID, i.ITEM_ID, SUM(i.ON_HAND) AS oh, SUM(COALESCE(i.ALLOCATED,0)) AS alloc
+FROM default_dcinventory.DCI_INVENTORY i
+WHERE i.FACILITY_ID='${FACILITY}' AND i.ON_HAND > 0 AND i.LOCATION_ID LIKE '${prefix}%' AND i.ILPN_ID IN (
+  SELECT ILPN_ID FROM default_dcinventory.DCI_INVENTORY
+  WHERE FACILITY_ID='${FACILITY}' AND ON_HAND > 0 AND ILPN_ID IS NOT NULL AND LOCATION_ID LIKE '${prefix}%'
+  GROUP BY ILPN_ID HAVING COUNT(DISTINCT ITEM_ID) > 1)
+GROUP BY i.ILPN_ID, i.LOCATION_ID, i.ITEM_ID`.trim();
+}
+function sqlCartonInfo(ilpns) {
+  return `
+SELECT ILPN_ID, STATUS, CREATED_TIMESTAMP, ASN_ID, PURCHASE_ORDER_ID FROM default_dcinventory.DCI_ILPN
+WHERE FACILITY_ID='${FACILITY}' AND ILPN_ID IN (${sqlList(ilpns)})`.trim();
+}
+function sqlCartonReplens(ilpns) {
+  return `
+SELECT INVENTORY_CONTAINER_ID AS ilpn, TO_LOCATION_ID, STATUS, CREATED_TIMESTAMP FROM default_dcinventory.DCI_ALLOCATION
+WHERE FACILITY_ID='${FACILITY}' AND TYPE_ID='REPLENISHMENT' AND STATUS IN ('1000','1000.0','5000','5000.0')
+  AND INVENTORY_CONTAINER_ID IN (${sqlList(ilpns)})`.trim();
+}
+// History: a replen of a mixed carton leaves one task line per item with the same carton number
+function sqlMixedReplenHistory(since) {
+  return `
+SELECT td.SOURCE_CONTAINER_ID AS ilpn, MIN(td.SOURCE_LOCATION_ID) AS src, MIN(td.TARGET_LOCATION_ID) AS target,
+  COUNT(DISTINCT td.ITEM_ID) AS skus, SUM(td.QUANTITY) AS units, MIN(td.CREATED_TIMESTAMP) AS first_at
+FROM default_task.TSK_TASK_DETAIL td
+WHERE td.FACILITY_ID='${FACILITY}' AND td.TYPE_ID='REPLENISHMENT' AND td.CREATED_TIMESTAMP >= '${since}'
+  AND td.SOURCE_CONTAINER_ID IS NOT NULL
+  AND (${MIXED_CHUNKS.map(p => `td.SOURCE_LOCATION_ID LIKE '${p}%'`).join(' OR ')})
+GROUP BY td.SOURCE_CONTAINER_ID HAVING COUNT(DISTINCT td.ITEM_ID) > 1
+ORDER BY first_at DESC LIMIT 100`.trim();
+}
+
+async function fetchMixedCartons(token) {
+  const rows = [];
+  for (const p of MIXED_CHUNKS) rows.push(...((await mcpQuery(token, sqlMixedCartons(p))).rows || []));
+  const ilpns = [...new Set(rows.map(r => r.ILPN_ID))];
+  const items = [...new Set(rows.map(r => r.ITEM_ID))];
+  const [infoRows, replenRows, itemRows] = ilpns.length ? [
+    await batched(token, ilpns, 200, sqlCartonInfo, 'mixed carton info'),
+    await batched(token, ilpns, 200, sqlCartonReplens, 'mixed carton replen'),
+    await batched(token, items, 400, sqlItemInfo, 'mixed carton items'),
+  ] : [[], [], []];
+  const hist = (await mcpQuery(token, sqlMixedReplenHistory(utcAgo(30 * 24)))).rows || [];
+
+  const info = {}; for (const r of infoRows) info[r.ILPN_ID] = r;
+  const desc = {}; for (const r of itemRows) desc[r.ITEM_ID] = r.DESCRIPTION || '';
+  const cartons = ilpns.map(id => {
+    const mine = rows.filter(r => r.ILPN_ID === id), i = info[id] || {};
+    const rp = replenRows.filter(r => r.ilpn === id).map(r => ({
+      target: r.TO_LOCATION_ID, status: String(r.STATUS).split('.')[0] === '1000' ? 'deferred' : 'released', since: toIso(r.CREATED_TIMESTAMP) }));
+    return {
+      ilpn: id, loc: mine[0].LOCATION_ID, received: toIso(i.CREATED_TIMESTAMP), asn: i.ASN_ID || null, po: i.PURCHASE_ORDER_ID || null,
+      units: mine.reduce((t, r) => t + num(r.oh), 0), held: mine.reduce((t, r) => t + num(r.alloc), 0),
+      items: mine.map(r => [r.ITEM_ID, num(r.oh), desc[r.ITEM_ID] || '', isGwp(desc[r.ITEM_ID]) ? 1 : 0]).sort((a, b) => b[1] - a[1]),
+      replen: rp,
+    };
+  }).sort((a, b) => (a.received || '') < (b.received || '') ? -1 : 1);
+  return {
+    checked: MIXED_CHUNKS, cartons,
+    history_days: 30,
+    history: hist.map(r => ({ ilpn: r.ilpn, src: r.src, target: r.target, skus: num(r.skus), units: num(r.units), at: toIso(r.first_at) })),
+  };
+}
+
 async function fetchEmptyLocations(token) {
   const t0 = Date.now();
   const empties = [], totals = [], truncated = [];
@@ -464,6 +536,11 @@ async function fetchEmptyLocations(token) {
   const stockedByAisle = {};
   for (const r of stocked) stockedByAisle[r.aisle] = num(r.n);
 
+  // Mixed-item cartons in reserve — non-fatal too
+  let mixed = null;
+  try { mixed = await fetchMixedCartons(token); }
+  catch (e) { console.warn(`[${ts()}]   mixed-carton pass failed (non-fatal): ${e.message}`); }
+
   // Partly-full multi-item shelves — non-fatal, the empty list still ships without it
   let partial = [];
   try { partial = await fetchPartialLocations(token); }
@@ -480,12 +557,12 @@ async function fetchEmptyLocations(token) {
     generated: new Date().toISOString(), facility: FACILITY, areas: EMPTY_AREAS, truncated,
     zones: Object.values(zones).sort((a, b) => a.pez < b.pez ? -1 : 1),
     stocked_by_aisle: stockedByAisle, locs,
-    format: EMPTY_FORMAT, partial_areas: PARTIAL_AREAS, partial,
+    format: EMPTY_FORMAT, partial_areas: PARTIAL_AREAS, partial, mixed,
   };
   fs.writeFileSync(EMPTY_FILE, JSON.stringify(output));
   const act = output.zones.reduce((t, z) => t + z.empty, 0);
   console.log(`[${ts()}] ✓ empty_locations_live.json written in ${Math.round((Date.now() - t0) / 1000)}s — ` +
-    `${act} empty active locations in ${output.zones.length} zones · ${partial.filter(p => p[2] && p[3] < p[4]).length} partly full` + (truncated.length ? ` · ⚠ near row cap: ${truncated.join(', ')}` : ''));
+    `${act} empty active locations in ${output.zones.length} zones · ${partial.filter(p => p[2] && p[3] < p[4]).length} partly full · ${mixed ? mixed.cartons.length : '?'} mixed cartons in reserve` + (truncated.length ? ` · ⚠ near row cap: ${truncated.join(', ')}` : ''));
 }
 
 // Same age check as dead shelves; both side passes share one helper
