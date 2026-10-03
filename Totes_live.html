@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Open Totes v1.5 -- DC499</title>
+<title>Open Totes v1.6 -- DC499</title>
 <style>
   :root {
     --bg:#111;--surface:#1a1a1a;--surface2:#222;--border:#2e2e2e;--border-mid:#333;
@@ -400,6 +400,83 @@
 @keyframes pageEnter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 body { animation: pageEnter 0.28s ease-out both; }
   [data-theme="carrie"] body, body[data-theme="carrie"]{background:linear-gradient(180deg,#b3d9f5 0%,#cfe7f9 45%,#e8f3fd 100%) fixed;}
+
+  /* ── TV mode (v1.6) — glanceable view for the TV along the pick zone. Always dark. ── */
+  .tv-btn{font-family:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted);cursor:pointer;margin-right:8px;white-space:nowrap;}
+  .tv-btn:hover{color:var(--text);}
+  .top-right{display:flex;align-items:flex-start;}
+  #tv-view{display:none;}
+  body.tv-on{padding:0;overflow:hidden;background:#0e1116 !important;animation:none;}
+  body.tv-on .container{display:none;}
+  body.tv-on.tv-idle{cursor:none;}
+  body.tv-on #tv-view{display:grid;}
+  #tv-view{position:fixed;inset:0;background:#0e1116;color:#e8edf3;font-family:'Segoe UI',system-ui,sans-serif;grid-template-rows:auto 1fr auto;gap:1.2vh;padding:1.6vh 1.6vw 2.4vh;}
+  #tv-view .tv-mono{font-family:'Consolas','SF Mono',monospace;}
+  .tv-top{display:flex;align-items:center;justify-content:space-between;}
+  .tv-top h1{font-size:3.2vh;font-weight:800;letter-spacing:.02em;}
+  .tv-top h1 span.tv-acc{color:#5eead4;}
+  .tv-livedot{display:inline-block;width:1.4vh;height:1.4vh;border-radius:50%;background:#22c55e;margin-right:.5vw;box-shadow:0 0 1vh #22c55e;}
+  .tv-clock{display:flex;align-items:center;gap:1.2vw;}
+  .tv-clock-t{font-size:4.4vh;font-weight:800;}
+  .tv-clock-u{font-size:2vh;color:#8b96a5;}
+  .tv-exit{font-family:inherit;font-size:1.8vh;font-weight:700;padding:.6vh 1vw;border-radius:.8vh;border:1px solid #334155;background:#1d232c;color:#cbd5e1;cursor:pointer;opacity:1;transition:opacity .3s;}
+  body.tv-idle .tv-exit{opacity:0;pointer-events:none;}
+  .tv-main{display:grid;grid-template-columns:1fr 1fr;gap:1.4vw;min-height:0;}
+  .tv-panel{background:#161b22;border-radius:1.6vh;padding:2vh 1.4vw;display:flex;flex-direction:column;min-height:0;border:.4vh solid #232a33;}
+  .tv-panel.red{border-color:#ef4444;background:linear-gradient(#2a1215,#161b22 40%);}
+  .tv-panel.yellow{border-color:#eab308;}
+  .tv-panel.green{border-color:#166534;}
+  .tv-ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.6vh;}
+  .tv-who{font-size:2vh;font-weight:800;letter-spacing:.14em;color:#8b96a5;}
+  .tv-ask{font-size:4.6vh;font-weight:900;line-height:1.05;margin-top:.4vh;}
+  .tv-big{font-size:10vh;font-weight:900;line-height:.85;}
+  .tv-panel.red .tv-big,.tv-panel.red .tv-ask{color:#f87171;}
+  .tv-panel.yellow .tv-big{color:#facc15;}
+  .tv-panel.green .tv-big{color:#4ade80;}
+  .tv-list{display:flex;flex-direction:column;gap:1.2vh;min-height:0;overflow:hidden;}
+  .tv-tote{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:1.4vw;background:#1d232c;border-radius:1.2vh;padding:1.4vh 1.4vw;border-left:1vh solid #475569;}
+  .tv-tote.red{border-left-color:#ef4444;background:#2a1517;}
+  .tv-tote.yellow{border-left-color:#eab308;background:#2a2512;}
+  .tv-tote.green{border-left-color:#22c55e;}
+  .tv-tid{font-size:6vh;font-weight:900;letter-spacing:-.02em;}
+  .tv-tmeta{font-size:2.3vh;color:#aab4c0;font-weight:600;}
+  .tv-tag{display:inline-block;padding:.2vh .7vw;border-radius:.8vh;font-weight:800;margin-right:.6vw;}
+  .tv-tag.nd{background:#facc15;color:#1a1500;}
+  .tv-tag.ip{background:#334155;color:#e2e8f0;}
+  .tv-tmr{font-size:6vh;font-weight:900;text-align:right;}
+  .tv-tote.red .tv-tmr{color:#f87171;}
+  .tv-tote.yellow .tv-tmr{color:#facc15;}
+  .tv-tote.green .tv-tmr{color:#4ade80;}
+  .tv-more{font-size:2.6vh;color:#8b96a5;font-weight:700;text-align:center;padding-top:.6vh;}
+  .tv-clear{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1vh;color:#4ade80;}
+  .tv-clear-ck{font-size:16vh;line-height:1;}
+  .tv-clear-msg{font-size:4vh;font-weight:800;}
+  .tv-pws{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr;gap:1.2vh 1vw;flex:1;min-height:0;}
+  .tv-pw{background:#1d232c;border-radius:1.2vh;padding:1.4vh .9vw;display:flex;flex-direction:column;justify-content:space-between;border:.35vh solid transparent;}
+  .tv-pw.idle{opacity:.35;}
+  .tv-pw.live{border-color:#0ea5e9;background:#0f2533;}
+  .tv-pw.mixed{border-color:#f97316;background:#2d1a0c;animation:tvPulse 1.6s ease-in-out infinite;}
+  @keyframes tvPulse{50%{box-shadow:0 0 3vh #f97316;}}
+  .tv-pwn{font-size:3.4vh;font-weight:900;}
+  .tv-pwc{font-size:8vh;font-weight:900;line-height:.9;}
+  .tv-pwc small{font-size:2vh;color:#8b96a5;font-weight:700;margin-left:.3vw;}
+  .tv-feed{font-size:2.6vh;font-weight:800;color:#38bdf8;}
+  .tv-pw.mixed .tv-feed{color:#fb923c;}
+  .tv-pw.idle .tv-feed{color:#64748b;}
+  .tv-strip{display:flex;gap:1vw;align-items:stretch;}
+  .tv-chip{background:#161b22;border-radius:1.2vh;padding:1.2vh 1.4vw;display:flex;align-items:baseline;gap:.8vw;border:.3vh solid #232a33;white-space:nowrap;overflow:hidden;}
+  .tv-chip-l{font-size:2vh;color:#8b96a5;font-weight:800;letter-spacing:.08em;}
+  .tv-chip-v{font-size:4vh;font-weight:900;}
+  .tv-chip-s{font-size:2vh;color:#aab4c0;font-weight:600;overflow:hidden;text-overflow:ellipsis;}
+  .tv-chip.red{border-color:#7f1d1d;}
+  .tv-chip.red .tv-chip-v{color:#f87171;}
+  .tv-chip.ok .tv-chip-v{color:#4ade80;}
+  .tv-chip.grow{flex:1;min-width:0;}
+  .tv-disc{position:absolute;bottom:.5vh;left:0;right:0;text-align:center;font-size:1.2vh;color:#3b4552;}
+  .tv-stale{display:none;position:absolute;inset:0;background:rgba(10,12,16,.82);z-index:5;flex-direction:column;align-items:center;justify-content:center;gap:2vh;text-align:center;}
+  .tv-stale.show{display:flex;}
+  .tv-stale-h{font-size:9vh;font-weight:900;color:#facc15;}
+  .tv-stale-s{font-size:3.4vh;font-weight:700;color:#cbd5e1;}
 </style>
 </head>
 <body>
@@ -419,11 +496,12 @@ body { animation: pageEnter 0.28s ease-out both; }
 
   <div class="top-bar">
     <div class="top-left">
-      <p class="dept-label"><span class="live-dot"></span>Open Totes v1.5 &mdash; Live</p>
+      <p class="dept-label"><span class="live-dot"></span>Open Totes v1.6 &mdash; Live</p>
       <h1>Open Totes &mdash; Ecom</h1>
       <p class="subtitle">Auto-refreshes every 1 min &middot; Only totes with issues shown</p>
     </div>
     <div class="top-right">
+      <button class="tv-btn" onclick="setTvMode(true)" title="Big-screen view for the floor TV (Esc to exit)">&#x1F4FA; TV Mode</button>
       <div class="theme-picker" id="theme-picker">
         <div class="theme-btn" onclick="toggleThemeMenu()">
           <span id="toggle-label">Mixed</span>
@@ -528,6 +606,28 @@ body { animation: pageEnter 0.28s ease-out both; }
 
   <p class="nordstrom-tag">Nordstrom &middot; Open Totes &middot; DC499 &middot; <span id="footer-date"></span></p>
   <p class="nordstrom-tag" style="margin-top:4px;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
+</div>
+
+<!-- TV mode view — filled by renderTV() -->
+<div id="tv-view">
+  <div class="tv-top">
+    <h1><span class="tv-livedot"></span>OPEN TOTES &middot; <span class="tv-acc">ECOM</span></h1>
+    <div class="tv-clock">
+      <button class="tv-exit" onclick="setTvMode(false)">Exit TV</button>
+      <span class="tv-clock-u" id="tv-upd"></span>
+      <span class="tv-clock-t" id="tv-clk"></span>
+    </div>
+  </div>
+  <div class="tv-main">
+    <div class="tv-panel" id="tv-pick"></div>
+    <div class="tv-panel" id="tv-sort"></div>
+  </div>
+  <div class="tv-strip" id="tv-strip"></div>
+  <div class="tv-disc">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>
+  <div class="tv-stale" id="tv-stale">
+    <div class="tv-stale-h">DATA NOT UPDATING</div>
+    <div class="tv-stale-s" id="tv-stale-s"></div>
+  </div>
 </div>
 
 <script>
@@ -641,7 +741,7 @@ function fetchData() {
         : '');
   fetch(base + '/totes_live.json?t=' + Date.now())
     .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(data) { render(data); scheduleAutoRefresh(); })
+    .then(function(data) { render(data); scheduleAutoRefresh(); fetchBacklogStrip(); })
     .catch(function(err) {
       document.getElementById('run-time').textContent = 'Failed to load: ' + err.message;
       scheduleAutoRefresh();
@@ -742,6 +842,7 @@ function render(data) {
   renderCol3(orphans, normal3);
   startCol3Scroll();
   startClientTicker();
+  renderTV();
 }
 
 // ── Column 1: In Pick sub-box + Not Dropped sub-box ──────────────────────────
@@ -1170,14 +1271,181 @@ function fetchBacklogStrip() {
       document.getElementById('bs-ready').textContent = ready.toLocaleString();
       document.getElementById('bs-alloc').textContent = alloc.toLocaleString();
       document.getElementById('backlog-pill').style.display = 'flex';
+      lastBacklog = { total: total, ready: ready, alloc: alloc };
+      renderTV();
     })
     .catch(function() {}); // fail silently — backlog strip is supplemental
 }
 
+// ── TV mode (v1.6) ───────────────────────────────────────────────────────────
+// Big-screen view for the TV along the pick zone: pickers (left), sorters (right),
+// pack/other in one strip. Toggle with the TV button or open with ?tv=1. Esc exits.
+var TV_KEY       = 'dc499_totes_tv_v1';
+var TV_MAX_TOTES = 5;
+var lastBacklog  = null;
+var tvOn         = false;
+var tvClock      = null;
+var tvIdleTimer  = null;
+var tvWakeLock   = null;
+
+function setTvMode(on) {
+  tvOn = !!on;
+  document.body.classList.toggle('tv-on', tvOn);
+  try { localStorage.setItem(TV_KEY, tvOn ? '1' : '0'); } catch(e) {}
+  if (tvOn) {
+    try { if (document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(function(){}); } catch(e) {}
+    tvKeepAwake();
+    tvPoke();
+    renderTV();
+    if (!tvClock) tvClock = setInterval(renderTV, 15000);
+  } else {
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {}
+    if (tvWakeLock) { try { tvWakeLock.release(); } catch(e) {} tvWakeLock = null; }
+    if (tvClock) { clearInterval(tvClock); tvClock = null; }
+    document.body.classList.remove('tv-idle');
+  }
+}
+
+// Keep the TV from sleeping (works on github.io; ignored where not supported)
+function tvKeepAwake() {
+  if (!tvOn || !navigator.wakeLock) return;
+  navigator.wakeLock.request('screen').then(function(l) { tvWakeLock = l; }).catch(function(){});
+}
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') tvKeepAwake();
+});
+
+// Hide the mouse + Exit button 3 s after the mouse stops moving
+function tvPoke() {
+  document.body.classList.remove('tv-idle');
+  if (tvIdleTimer) clearTimeout(tvIdleTimer);
+  tvIdleTimer = setTimeout(function() { if (tvOn) document.body.classList.add('tv-idle'); }, 3000);
+}
+document.addEventListener('mousemove', function() { if (tvOn) tvPoke(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && tvOn) setTvMode(false); });
+
+function tvDw(z) {
+  return z ? 'DW' + String(parseInt(z.replace(/^D1-PW-0*/, ''), 10)).padStart(2, '0') : '';
+}
+
+function renderTV() {
+  if (!tvOn) return;
+  document.getElementById('tv-clk').textContent =
+    new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
+
+  var d = lastTotesData;
+  var staleEl = document.getElementById('tv-stale');
+  if (!d) {
+    document.getElementById('tv-upd').textContent = 'loading...';
+    return;
+  }
+
+  // Timers drift forward between refreshes, same as the desk view
+  var drift   = generatedMs ? Math.max(0, Math.floor((Date.now() - generatedMs) / 60000)) : 0;
+  var ageMin  = drift;
+  document.getElementById('tv-upd').textContent = 'updated ' + (ageMin < 1 ? 'just now' : ageMin + ' min ago');
+  if (generatedMs && ageMin > 4) {
+    staleEl.classList.add('show');
+    document.getElementById('tv-stale-s').textContent = 'Last update ' +
+      new Date(generatedMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' }) +
+      ' (' + ageMin + ' min ago) — numbers on this screen are out of date';
+  } else {
+    staleEl.classList.remove('show');
+  }
+
+  function withDrift(t) { var c = {}; for (var k in t) c[k] = t[k]; c.timer_min = (t.timer_min || 0) + drift; return c; }
+
+  // ── Pickers: in pick + not dropped. 24h+ totes are lost/stuck, not a picker task → Orphaned chip
+  var pickAll = (d.case2 || []).concat(d.case1 || []).map(withDrift);
+  var pick    = pickAll.filter(function(t) { return t.timer_min <  ORPHAN_MIN; });
+  var pickOld = pickAll.filter(function(t) { return t.timer_min >= ORPHAN_MIN; });
+  pick.sort(function(a, b) { return b.timer_min - a.timer_min; });
+
+  var worst = 'green';
+  pick.forEach(function(t) {
+    var s = sevForCase(t.case, t.timer_min);
+    if (s === 'red' || (s === 'yellow' && worst === 'green')) worst = s;
+  });
+  var anyNd = pick.some(function(t) { return t.case === 2; });
+
+  var pk = document.getElementById('tv-pick');
+  pk.className = 'tv-panel ' + (pick.length ? worst : 'green');
+  var h = '<div class="tv-ph"><div><div class="tv-who">PICKERS</div><div class="tv-ask">' +
+          (!pick.length ? 'All totes dropped' : anyNd ? 'Drop your totes' : 'Totes in pick') +
+          '</div></div><div class="tv-big">' + pick.length + '</div></div>';
+  if (!pick.length) {
+    h += '<div class="tv-clear"><div class="tv-clear-ck">&#10003;</div><div class="tv-clear-msg">Nothing waiting</div></div>';
+  } else {
+    h += '<div class="tv-list">';
+    pick.slice(0, TV_MAX_TOTES).forEach(function(t) {
+      var s  = sevForCase(t.case, t.timer_min);
+      var nd = t.case === 2;
+      h += '<div class="tv-tote ' + s + '">' +
+             '<div class="tv-tid tv-mono">' + escHtml(String(t.olpn || '').replace(/^T0*/, '')) + '</div>' +
+             '<div class="tv-tmeta"><span class="tv-tag ' + (nd ? 'nd' : 'ip') + '">' + (nd ? 'NOT DROPPED' : 'IN PICK') + '</span>' +
+               (t.type === 'M' ? 'Multi' : 'Single') + ' &middot; ' + (t.units || 0) + ' unit' + (t.units === 1 ? '' : 's') + '</div>' +
+             '<div class="tv-tmr">' + fmtTimer(t.timer_min) + '</div>' +
+           '</div>';
+    });
+    h += '</div>';
+    if (pick.length > TV_MAX_TOTES) h += '<div class="tv-more">+ ' + (pick.length - TV_MAX_TOTES) + ' more</div>';
+  }
+  pk.innerHTML = h;
+
+  // ── Sorters: 8 putwalls, which drop zone to feed, mixed drop zones called out
+  var pws   = (d.putwalls || []).filter(function(p) { return p.pw !== 'H1'; });
+  var live  = pws.filter(function(p) { return p.olpn_count > 0; }).length;
+  var mixed = pws.filter(function(p) { return p.dz2 && p.dz1_totes > 0 && p.dz2_totes > 0 && p.olpn_count > 0; });
+  var so = document.getElementById('tv-sort');
+  so.className = 'tv-panel' + (mixed.length ? ' red' : '');
+  h = '<div class="tv-ph"><div><div class="tv-who">SORTERS</div><div class="tv-ask">' +
+      (mixed.length ? 'Mixed drop zone &mdash; ' + mixed.map(function(p) { return escHtml(p.pw); }).join(', ')
+                    : live ? live + ' putwall' + (live === 1 ? '' : 's') + ' running' : 'Putwalls empty') +
+      '</div></div></div><div class="tv-pws">';
+  pws.forEach(function(p) {
+    var isMix = mixed.indexOf(p) !== -1;
+    var cls   = p.olpn_count > 0 ? (isMix ? 'mixed' : 'live') : 'idle';
+    var feed  = isMix ? '&#9888; Both ' + tvDw(p.dz1) + ' + ' + tvDw(p.dz2)
+              : p.active_dz ? '&#9654; Feed ' + tvDw(p.active_dz)
+              : p.olpn_count ? 'No active feed' : '&mdash;';
+    h += '<div class="tv-pw ' + cls + '"><div class="tv-pwn">' + escHtml(p.pw) + '</div>' +
+         '<div class="tv-pwc">' + (p.olpn_count || 0) + '<small>oLPN</small></div>' +
+         '<div class="tv-feed">' + feed + '</div></div>';
+  });
+  so.innerHTML = h + '</div>';
+
+  // ── Bottom strip: aging at pack (by location), orphaned, hospital, backlog
+  var c3     = (d.case3 || []).map(withDrift);
+  var aging  = c3.filter(function(t) { return t.timer_min <  ORPHAN_MIN; });
+  var orphan = c3.length - aging.length + pickOld.length;
+  var byLoc  = {};
+  aging.forEach(function(t) { var l = t.location || 'No location'; (byLoc[l] = byLoc[l] || []).push(t); });
+  var oldest = aging.length ? Math.max.apply(null, aging.map(function(t) { return t.timer_min; })) : 0;
+  var locs   = Object.keys(byLoc).sort(function(a, b) { return byLoc[b].length - byLoc[a].length; })
+                 .map(function(l) { return escHtml(l) + ' ' + byLoc[l].length; }).join(' &middot; ');
+  var hp     = (d.hospital_olpns || []).length;
+
+  var s = '<div class="tv-chip grow ' + (oldest >= 60 ? 'red' : aging.length ? '' : 'ok') + '">' +
+            '<span class="tv-chip-l">AGING AT PACK</span><span class="tv-chip-v">' + aging.length + '</span>' +
+            '<span class="tv-chip-s">' + (aging.length ? 'oldest ' + fmtTimer(oldest) + ' &nbsp;&middot;&nbsp; ' + locs : 'clear') + '</span></div>' +
+          '<div class="tv-chip ' + (orphan ? 'red' : 'ok') + '"><span class="tv-chip-l">ORPHANED 24H+</span><span class="tv-chip-v">' + orphan + '</span></div>' +
+          '<div class="tv-chip ' + (hp ? 'red' : 'ok') + '"><span class="tv-chip-l">HOSPITAL</span><span class="tv-chip-v">' + hp + '</span></div>';
+  if (lastBacklog) {
+    s += '<div class="tv-chip"><span class="tv-chip-l">BACKLOG</span><span class="tv-chip-v">' + lastBacklog.total.toLocaleString() + '</span>' +
+         '<span class="tv-chip-s">' + lastBacklog.ready.toLocaleString() + ' ready &middot; ' + lastBacklog.alloc.toLocaleString() + ' alloc</span></div>';
+  }
+  document.getElementById('tv-strip').innerHTML = s;
+}
+
+(function() {
+  var want = /[?&]tv=1\b/.test(location.search);
+  if (!want) { try { want = localStorage.getItem(TV_KEY) === '1'; } catch(e) {} }
+  if (want) setTvMode(true);
+})();
+
 document.getElementById('footer-date').textContent = new Date().toLocaleDateString();
 fetchData();
 scheduleAutoRefresh();
-fetchBacklogStrip();
 </script>
 </body>
 </html>
