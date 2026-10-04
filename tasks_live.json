@@ -1,11 +1,11 @@
 {
-    "generated": "2026-10-04T20:32:46.193Z",
+    "generated": "2026-10-04T20:34:42.506Z",
     "shift": "1st",
     "shift_start": "2026-10-04 10:00:00",
     "facility": "499",
     "picking": {
-        "queued": 18,
-        "assigned": 1,
+        "queued": 19,
+        "assigned": 0,
         "in_progress": 0,
         "completed": 121,
         "total_open": 19,
@@ -1213,8 +1213,8 @@
             {
                 "task_id": "WRPICK0000279266",
                 "subtype": "NON MEZZ",
-                "status": "5000",
-                "status_label": "Assigned",
+                "status": "3000",
+                "status_label": "Ready to Assign",
                 "source": "F1B0211B03",
                 "target": null,
                 "created_pdt": "2026-10-04T13:01:32.240000",
@@ -1415,9 +1415,9 @@
     "replen": {
         "queued": 1,
         "assigned": 0,
-        "in_progress": 1,
-        "completed": 53,
-        "total_open": 2,
+        "in_progress": 0,
+        "completed": 54,
+        "total_open": 1,
         "tasks": [
             {
                 "task_id": "WRPICK0000279084",
@@ -1952,12 +1952,12 @@
             {
                 "task_id": "WRPICK0000279275",
                 "subtype": "REPLEN PULL",
-                "status": "7000",
-                "status_label": "In Progress",
+                "status": "8000",
+                "status_label": "Completed",
                 "source": "R1D0219A02",
                 "target": "F1B0205C02",
                 "created_pdt": "2026-10-04T13:01:33.296000",
-                "detail_count": 3
+                "detail_count": null
             },
             {
                 "task_id": "WRPICK0000279274",
@@ -1973,17 +1973,29 @@
     },
     "pick_drop_carts": [
         {
-            "location": "P1-PK-01",
+            "location": "P1-PK-10",
             "ilpns": [
                 {
-                    "ilpn_id": "00006499300003822213",
-                    "on_hand": 1,
-                    "updated_pst": "2026-10-04T12:26:27.224000",
-                    "age_min": 6
+                    "ilpn_id": "00000017601109623468",
+                    "on_hand": 3,
+                    "updated_pst": "2026-10-04T12:33:03.751000",
+                    "age_min": 2
+                },
+                {
+                    "ilpn_id": "00060332321564276251",
+                    "on_hand": 4,
+                    "updated_pst": "2026-10-04T12:33:03.844000",
+                    "age_min": 2
+                },
+                {
+                    "ilpn_id": "00008839911422205105",
+                    "on_hand": 6,
+                    "updated_pst": "2026-10-04T12:33:04.257000",
+                    "age_min": 2
                 }
             ],
-            "total_units": 1,
-            "oldest_min": 6
+            "total_units": 13,
+            "oldest_min": 2
         }
     ],
     "flow_carts": [
@@ -1994,11 +2006,11 @@
                     "ilpn_id": "00006499300003777568",
                     "on_hand": 17,
                     "updated_pst": "2026-10-01T06:14:32.058000",
-                    "age_min": 4698
+                    "age_min": 4700
                 }
             ],
             "total_units": 17,
-            "oldest_min": 4698
+            "oldest_min": 4700
         },
         {
             "location": "P1-FC-010014",
@@ -2007,11 +2019,11 @@
                     "ilpn_id": "00006499300003777780",
                     "on_hand": 20,
                     "updated_pst": "2026-10-01T11:24:16.705000",
-                    "age_min": 4389
+                    "age_min": 4390
                 }
             ],
             "total_units": 20,
-            "oldest_min": 4389
+            "oldest_min": 4390
         }
     ]
 }
