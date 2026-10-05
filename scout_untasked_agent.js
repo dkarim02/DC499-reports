@@ -64,7 +64,7 @@ const ROW_CAP_WARN    = 9500;
 // Pick history in TSK_TASK_DETAIL starts here (checked 10/2) — "never picked" = none since this date
 const DEAD_HISTORY_FROM = '2025-10-07';
 // Bump when the file's shape changes — an older file is rebuilt at once instead of waiting out DEAD_EVERY_HRS
-const DEAD_FORMAT = 2;   // 2 = rows carry last_pick (10/2)
+const DEAD_FORMAT = 3;   // 2 = rows carry last_pick (10/2), 3 = + UPC and a reserve spot per item (10/5)
 
 // Empty locations — Ecom pick locations with nothing on hand, per pick execution zone + aisle. Hourly.
 // DCI_LOCATION only filters well on `LOCATION_ID LIKE 'X%'` — LEFT() in WHERE/GROUP BY on that
@@ -223,7 +223,8 @@ GROUP BY WORK_RELEASE_BATCH_ID`.trim();
 
 function sqlReserve(items) {
   return `
-SELECT i.ITEM_ID, SUM(i.ON_HAND) AS oh, SUM(COALESCE(i.ALLOCATED,0)) AS alloc
+SELECT i.ITEM_ID, SUM(i.ON_HAND) AS oh, SUM(COALESCE(i.ALLOCATED,0)) AS alloc,
+  SUBSTRING_INDEX(GROUP_CONCAT(i.LOCATION_ID ORDER BY i.ON_HAND DESC), ',', 1) AS top_loc
 FROM default_dcinventory.DCI_INVENTORY i
 WHERE i.FACILITY_ID='${FACILITY}' AND i.ITEM_ID IN (${sqlList(items)})
   AND LEFT(i.LOCATION_ID,3) IN (${sqlList(RESERVE_AREAS)})
@@ -236,7 +237,7 @@ GROUP BY i.ITEM_ID`.trim();
 // sharing a shelf with a live one is exactly the space hog we want.
 function sqlDeadPairs(prefix, idleSince, freshBefore) {
   return `
-SELECT i.LOCATION_ID, i.ITEM_ID, SUM(i.ON_HAND) AS oh, MAX(i.LAST_LOCATED_DATE_TIME) AS last_located,
+SELECT i.LOCATION_ID, i.ITEM_ID, SUM(i.ON_HAND) AS oh, MAX(i.LAST_LOCATED_DATE_TIME) AS last_located, MAX(i.PRIMARY_BAR_CODE) AS upc,
   (SELECT MAX(td.CREATED_TIMESTAMP) FROM default_task.TSK_TASK_DETAIL td
     WHERE td.SOURCE_LOCATION_ID = i.LOCATION_ID AND td.ITEM_ID = i.ITEM_ID AND td.FACILITY_ID='${FACILITY}'
       AND td.STATUS='8000' AND td.TYPE_ID='PICK/PACK') AS last_pick
@@ -299,14 +300,15 @@ async function fetchDeadShelves(token) {
   const info = {}; for (const r of infoRows) info[r.ITEM_ID] = {
     cube: String(r.VOLUME_UOM_ID).toLowerCase() === 'cuft' && num(r.VOLUME) > 0 ? num(r.VOLUME) : null,
     desc: r.DESCRIPTION || '', dept: r.STORE_DEPARTMENT || '' };
-  const res = {};  for (const r of resRows) res[r.ITEM_ID] = Math.max(0, num(r.oh) - num(r.alloc));
+  const res = {}, resLoc = {};
+  for (const r of resRows) { res[r.ITEM_ID] = Math.max(0, num(r.oh) - num(r.alloc)); resLoc[r.ITEM_ID] = r.top_loc || null; }
   const r3 = v => v == null ? null : Math.round(v * 1000) / 1000;
 
   // Compact output: shelves hold contents once; items hold description/cube/reserve once.
   //   shelves[loc] = { max, items: [[item, on_hand, cuft, dead 0/1]] }
-  //   rows         = [[loc, item, on_hand, cuft, pct_of_shelf, stocked_iso, last_pick_iso or null = never]]
+  //   rows         = [[loc, item, on_hand, cuft, pct_of_shelf, stocked_iso, last_pick_iso or null = never, upc]]
   //   history_from = oldest pick on record — "never" means none since then
-  //   items[item]  = [description, unit_cuft, reserve_free (dead items only), gwp 0/1, store_dept]
+  //   items[item]  = [description, unit_cuft, reserve_free, gwp 0/1, store_dept, reserve_loc_with_most (dead items only)]
   const shelvesOut = {};
   for (const loc of shelfLocs) {
     const max = cap[loc];
@@ -318,12 +320,12 @@ async function fetchDeadShelves(token) {
   const rows = dead.map(r => {
     const i = info[r.ITEM_ID] || {}, max = cap[r.LOCATION_ID];
     const cf = i.cube ? num(r.oh) * i.cube : null;
-    return [r.LOCATION_ID, r.ITEM_ID, num(r.oh), r3(cf), (cf != null && max) ? Math.round(100 * cf / max) : null, toIso(r.last_located), toIso(r.last_pick)];
+    return [r.LOCATION_ID, r.ITEM_ID, num(r.oh), r3(cf), (cf != null && max) ? Math.round(100 * cf / max) : null, toIso(r.last_located), toIso(r.last_pick), r.upc || null];
   });
   const itemsOut = {};
   for (const it of items) {
     const i = info[it] || {};
-    itemsOut[it] = [i.desc || '', i.cube == null ? null : Math.round(i.cube * 1e6) / 1e6, deadItemSet.has(it) ? (res[it] ?? 0) : null, isGwp(i.desc) ? 1 : 0, i.dept || ''];
+    itemsOut[it] = [i.desc || '', i.cube == null ? null : Math.round(i.cube * 1e6) / 1e6, deadItemSet.has(it) ? (res[it] ?? 0) : null, isGwp(i.desc) ? 1 : 0, i.dept || '', deadItemSet.has(it) ? (resLoc[it] || null) : null];
   }
 
   const output = {
