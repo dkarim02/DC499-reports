@@ -4677,8 +4677,16 @@ function utPrintSheet(o) {
     '<table><thead><tr>' + o.head + '</tr></thead><tbody>' + o.body + '</tbody></table>' +
     '<div class="up-sign"><span>Assigned to ____________________</span><span>Date ____________</span><span>Completed by ____________________</span></div>' +
     '<div class="up-foot">DC499 · Floor Check · ' + escHtml(o.view) + '. Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>';
+  // White page under every theme: inline !important outranks any theme stylesheet; restored after
+  var roots = [document.documentElement, document.body];
+  var saved = roots.map(function(n) { return n.style.getPropertyValue('background'); });
+  roots.forEach(function(n) { n.style.setProperty('background', '#fff', 'important'); });
   document.body.classList.add('ut-printing');
-  var done = function() { document.body.classList.remove('ut-printing'); window.removeEventListener('afterprint', done); };
+  var done = function() {
+    document.body.classList.remove('ut-printing');
+    roots.forEach(function(n, i) { if (saved[i]) n.style.setProperty('background', saved[i]); else n.style.removeProperty('background'); });
+    window.removeEventListener('afterprint', done);
+  };
   window.addEventListener('afterprint', done);
   setTimeout(function() { window.print(); setTimeout(done, 500); }, 50);
 }
