@@ -664,6 +664,10 @@
   .ut-pill .ut-pill-n{font-weight:500;color:var(--text-hint);margin-left:4px;}
   .ut-check{font-size:12px;color:var(--text-muted);display:inline-flex;align-items:center;gap:5px;cursor:pointer;}
   .ut-search{font-family:inherit;font-size:12px;padding:5px 10px;border-radius:6px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);min-width:200px;margin-left:auto;}
+  .ut-print-ctl{display:inline-flex;align-items:center;gap:8px;}
+  .ut-num{font-family:inherit;font-size:12px;width:64px;padding:4px 7px;border-radius:6px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);margin-left:4px;}
+  .ut-num:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  .ut-print-hint{font-size:11px;color:var(--text-muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
   .ut-drow{display:grid;grid-template-columns:14px 112px minmax(0,1fr) 56px 128px 64px 104px 64px;align-items:center;gap:12px;padding:9px 18px;border-bottom:0.5px solid var(--border-light);font-size:13px;cursor:pointer;}
   .ut-drow:hover{background:var(--surface2);}
   .ut-drow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
@@ -1524,7 +1528,12 @@ body { animation: pageEnter 0.28s ease-out both; }
         <label class="ut-check">Last picked <select class="ut-select" id="ut-dead-age" onchange="utDeadSetAge(this.value)"></select></label>
         <label class="ut-check"><input type="checkbox" id="ut-dead-gwp" onchange="utDeadFilter()"> GWP only</label>
         <input type="search" class="ut-search" id="ut-dead-q" placeholder="Search shelf or item" oninput="utDeadFilter()">
-        <button class="ut-copy" id="ut-dead-print" onclick="utDeadPrint()" title="Print the list as filtered, in walking order">Print list</button>
+        <span class="ut-print-ctl">
+          <label class="ut-check" title="Leave empty to print everything shown. A number prints the first that many in your current on-screen order, laid out in walking order.">Lines
+            <input type="number" min="1" step="1" inputmode="numeric" class="ut-num" id="ut-dead-lines" placeholder="All" oninput="utDeadPrintHint()"></label>
+          <span class="ut-print-hint" id="ut-dead-pages"></span>
+          <button class="ut-copy" id="ut-dead-print" onclick="utDeadPrint()" title="Print the list as filtered, in walking order">Print list</button>
+        </span>
       </div>
       <div id="ut-dead-sections"></div>
     </div>
@@ -4261,6 +4270,7 @@ function renderDeadShelves() {
   });
   Object.keys(groups).forEach(function(k) { groups[k].sort(utDeadCompare); });
   utDeadOnScreen = { groups: groups, q: q, gwpOnly: gwpOnly };
+  utDeadPrintHint();
 
   // Lanes
   var lanesEl = document.getElementById('ut-dead-lanes');
@@ -4578,16 +4588,40 @@ function renderEmptyLocations() {
 
 // ── Print: the Dead Shelves list as filtered, as a worksheet for a team member ──
 // Sorted by shelf location (walking order), one line per item, checkbox + where to put it back.
+// Rows exactly as on screen: groups in order, each in the current column sort
+function utDeadScreenRows() {
+  var o = utDeadOnScreen;
+  if (!o) return [];
+  var rows = [];
+  UT_DEAD_LANES.forEach(function(l) { if (utDeadLane === 'all' || utDeadLane === l.key) rows = rows.concat(o.groups[l.key] || []); });
+  return rows;
+}
+// Lines box: empty = all; otherwise a whole number capped at what's shown
+function utDeadLineLimit(total) {
+  var v = parseInt((document.getElementById('ut-dead-lines') || {}).value, 10);
+  return v > 0 ? Math.min(v, total) : total;
+}
+// Landscape letter: ~20 lines fit under the header on page 1, ~26 on the rest (long names wrap, so it's approximate)
+function utDeadPageCount(n) { return n <= 0 ? 0 : n <= 20 ? 1 : 1 + Math.ceil((n - 20) / 26); }
+function utDeadPrintHint() {
+  var el = document.getElementById('ut-dead-pages');
+  if (!el) return;
+  var total = utDeadScreenRows().length, n = utDeadLineLimit(total), p = utDeadPageCount(n);
+  el.textContent = total ? (n < total ? fmt(n) + ' of ' + fmt(total) + ' · ' : fmt(n) + ' lines · ') + '≈ ' + p + (p === 1 ? ' page' : ' pages') : '';
+}
+
 function utDeadPrint() {
   var d = lastDeadData, o = utDeadOnScreen;
   if (!d || !o) return;
-  var keys = UT_DEAD_LANES.map(function(l) { return l.key; }).filter(function(k) { return utDeadLane === 'all' || utDeadLane === k; });
-  var rows = [];
-  keys.forEach(function(k) { rows = rows.concat(o.groups[k] || []); });
-  if (!rows.length) { alert('Nothing to print with these filters.'); return; }
-  rows = rows.slice().sort(function(a, b) { return a.loc < b.loc ? -1 : a.loc > b.loc ? 1 : (a.item < b.item ? -1 : 1); });
-  var pages = Math.ceil(rows.length / 28);
-  if (rows.length > 300 && !confirm('This prints ' + fmt(rows.length) + ' lines (about ' + pages + ' pages). Narrow it with the filters, or print anyway?')) return;
+  var all = utDeadScreenRows();
+  if (!all.length) { alert('Nothing to print with these filters.'); return; }
+  // Take the first N in on-screen order (the priority you sorted by), then lay them out in walking order
+  var limit = utDeadLineLimit(all.length);
+  var rows = all.slice(0, limit).sort(function(a, b) { return a.loc < b.loc ? -1 : a.loc > b.loc ? 1 : (a.item < b.item ? -1 : 1); });
+  var sortCol = UT_DEAD_COLS[utDeadSort.key] || {};
+  var picked = limit < all.length
+    ? 'First ' + fmt(limit) + ' of ' + fmt(all.length) + ' by ' + (sortCol.label || 'screen order') + (utDeadSort.dir === 1 ? ' (low → high)' : ' (high → low)') + ', '
+    : '';
 
   // What the sheet covers, in plain words
   var laneName = utDeadLane === 'all' ? 'All groups' : (UT_DEAD_LANES.filter(function(l) { return l.key === utDeadLane; })[0] || {}).name;
@@ -4611,7 +4645,7 @@ function utDeadPrint() {
     '<div class="up-head"><div><div class="up-title">Move idle items back to reserve</div>' +
       '<div class="up-sub">' + escHtml(scope) + '</div></div>' +
       '<div class="up-meta">Printed ' + escHtml(now) + '<br>List built ' + escHtml(fmtPdt(d.generated) || '—') + '</div></div>' +
-    '<div class="up-sum"><b>' + fmt(rows.length) + '</b> items · <b>' + fmt(units) + '</b> units · sorted by location. ' +
+    '<div class="up-sum">' + picked + '<b>' + fmt(rows.length) + '</b> items · <b>' + fmt(units) + '</b> units · ' + utDeadPageCount(rows.length) + ' page' + (utDeadPageCount(rows.length) === 1 ? '' : 's') + ' · sorted by location. ' +
       'Pull each item, scan it, and put it with its stock at the reserve spot shown (blank = find an open reserve spot). ' +
       'Write the actual quantity moved if it differs.</div>' +
     '<table><thead><tr><th class="box">Done</th><th>Location</th><th>SKU</th><th>UPC</th><th>Description</th>' +
