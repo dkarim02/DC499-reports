@@ -10,7 +10,7 @@ This file is read automatically at the start of every Claude Code session. Do no
 **Entry point: always `dc499.bat` — never `node` directly.**
 
 - Main server: option 2 (`:3001`, auto-refresh every 2 min)
-- Sub-agents: options 5–28 (each dept has one-shot / auto-refresh / auth)
+- Sub-agents: options 5–31 (each dept has one-shot / auto-refresh / auth)
 - Git: dc499_refresh.js pushes for everyone — sub-agents only write JSON files locally
 
 **GitHub:** dkarim02/DC499-reports | **Live:** dkarim02.github.io/DC499-reports | **Local:** C:\Users\JLEO\OneDrive - Nordstrom\DC499 Reporter
@@ -25,7 +25,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 
 | Agent | Output JSON | HTML report |
 |---|---|---|
-| dc499_refresh.js | receiving_live.json, totes_live.json, backlog_live.json, batch_status.json, retail_replen.json, tasks_live.json, shipped_live.json | Receiving_live.html, Totes_live.html, Backlog_live.html, Batches_live.html |
+| dc499_refresh.js | totes_live.json, backlog_live.json, batch_status.json, retail_replen.json, tasks_live.json, shipped_live.json | Totes_live.html, Backlog_live.html, Batches_live.html |
 | scout_ecom_agent.js | ecom_live.json | Ecom_v3.html |
 | scout_shipping_agent.js | shipping_live.json | Shipping_live.html |
 | scout_reserve_agent.js | reserve_live.json, putaway_live.json | Reserve_v1_7.html, Reserve_putaway.html |
@@ -34,6 +34,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | scout_retail_agent.js | retail_backlog_live.json | Retail_backlog.html |
 | scout_watch_agent.js | container_watch_live.json | Container_watch.html |
 | scout_untasked_agent.js | untasked_live.json | Backlog_live.html (No Task tab) |
+| scout_receiving_agent.js | receiving_live.json | Receiving_live.html |
 
 ---
 
@@ -53,6 +54,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | 20–22 | Retail Backlog (one-shot / auto every 5 min / auth) | scout_retail_agent.js |
 | 23–25 | Container Watch (one-shot / auto every 15 min / auth) | scout_watch_agent.js |
 | 26–28 | Untasked Orders (one-shot / auto every 5 min / auth) | scout_untasked_agent.js |
+| 29–31 | Receiving Live (one-shot / auto every 3 min / auth) | scout_receiving_agent.js |
 
 **EOS:** archived 2026-10-01 (archived/eos/) — see EOS section.
 
@@ -110,7 +112,7 @@ git push origin main
 
 **index.lock cleanup:** `gitPush()` calls `fs.unlinkSync('.git/index.lock')` before every `git add` — silently clears stale locks left by killed/crashed cycles.
 
-**Commit message `[+label]` tags:** LABELS map in gitPush() — `ecom_live.json`→`ecom`, `shipping_live.json`→`shipping`, `reserve_live.json`→`reserve`, `putaway_live.json`→`putaway`, `expedite_live.json`→`expedite`, `retail_backlog_live.json`→`retail`, `container_watch_live.json`→`watch`, `untasked_live.json`→`untasked`. Any sub-agent file that changed gets its tag appended.
+**Commit message `[+label]` tags:** LABELS map in gitPush() — `ecom_live.json`→`ecom`, `shipping_live.json`→`shipping`, `reserve_live.json`→`reserve`, `putaway_live.json`→`putaway`, `expedite_live.json`→`expedite`, `retail_backlog_live.json`→`retail`, `container_watch_live.json`→`watch`, `untasked_live.json`→`untasked`, `receiving_live.json`→`receiving`. Any sub-agent file that changed gets its tag appended.
 
 ---
 
@@ -210,7 +212,7 @@ Writes `rfp_units` to backlog_live.json.
 
 ## Shared sign-in + query slots — scout_mcp.js (all agents, 2026-10-01)
 
-All 9 agents share `.mcp_token.json`. The login/query code lives in ONE file, `scout_mcp.js`; each agent does `const mcp = require('./scout_mcp')({ redirectPort: REDIRECT_PORT })` and destructures `getAccessToken, getAccessTokenSilent, doAuthFlow, AuthError, mcpQuery` (+ `jsonPost` in dc499_refresh). **New agent → use that require, never copy the OAuth block.** Fix login/query behavior in scout_mcp.js only. Untasked keeps a local `mcpQuery` wrapper that also throws on `{success:false}`.
+All 10 agents share `.mcp_token.json`. The login/query code lives in ONE file, `scout_mcp.js`; each agent does `const mcp = require('./scout_mcp')({ redirectPort: REDIRECT_PORT })` and destructures `getAccessToken, getAccessTokenSilent, doAuthFlow, AuthError, mcpQuery` (+ `jsonPost` in dc499_refresh). **New agent → use that require, never copy the OAuth block.** Fix login/query behavior in scout_mcp.js only. Untasked keeps a local `mcpQuery` wrapper that also throws on `{success:false}`.
 
 **Query slots:** at most `POOL_SLOTS = 3` MCP queries in flight across ALL agents together (`.mcp_slot_0..2.lock` files; in-process queue in front so queued queries don't all poll disk). Before 10/1 it was 2 in-memory slots for dc499_refresh + one `.query_lock` file shared single-file by every sub-agent, uncoordinated (peaks of 3+). More than 3 has caused empty responses — don't raise it. `SCOUT_MCP_SLOTS` env var overrides for testing.
 
@@ -226,7 +228,7 @@ All 9 agents share `.mcp_token.json`. The login/query code lives in ONE file, `s
 
 **Rollback:** git tag `pre-shared-mcp` = the commit before this change (`git checkout pre-shared-mcp -- scout_*_agent.js dc499_refresh.js` and delete scout_mcp.js, then restart agents). Offline tests: `.tmp_audit/test_mcp.js` (local, gitignored).
 
-**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122, scout_retail=3123, scout_watch=3124, scout_untasked=3125, scout_shipping=3126 (was 3120, clashed with Reserve)
+**REDIRECT_PORTs:** dc499_refresh=3118, scout_ecom=3119, scout_reserve=3120, scout_itemprep=3121, scout_expedite=3122, scout_retail=3123, scout_watch=3124, scout_untasked=3125, scout_shipping=3126 (was 3120, clashed with Reserve), scout_receiving=3127
 
 ---
 
@@ -314,6 +316,8 @@ Output: expedite_live.json. REDIRECT_PORT 3122.
 ---
 
 ## Receiving Live (Receiving_live.html v2.0)
+
+**Agent:** scout_receiving_agent.js (option 30, every 3 min, `--once` = safe one-shot). Split out of dc499_refresh.js 2026-10-05: its 3 RCV_RECEIPT queries took ~50 s and were the slowest part of the 2-min live cycle. dc499_refresh still serves `/receiving_live.json` (reads the file) and pushes it. **If the Receiving agent is not running, Receiving Live goes stale.**
 
 Rebuilt 2026-08-15. Color-coded hourly scoreboard (same 80/60/40/0 thresholds as Shipping). No manual shift selector — auto-detects from `data.shift` in JSON.
 

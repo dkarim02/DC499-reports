@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * DC499 Reporter — Direct MCP Refresher
- * Writes receiving_live.json, totes_live.json, backlog_live.json, and more without using Claude tokens.
+ * Writes totes_live.json, backlog_live.json, and more without using Claude tokens.
  *
  * node dc499_refresh.js --auth       first-time auth
  * node dc499_refresh.js              one-shot refresh
@@ -45,112 +45,11 @@ function ts() {
   return new Date().toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour12: false });
 }
 
-function fmtHHmm(ts) {
-  if (!ts) return null;
-  try {
-    const d = new Date(ts);
-    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-  } catch { return ts; }
-}
-
-function shiftLabel() {
-  const h = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getHours();
-  if (h >= 6  && h < 14) return '1st';
-  if (h >= 14 && h < 22) return '2nd';
-  return '3rd';
-}
-
 function nowPdt() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
 }
 
-// ── receiving query ────────────────────────────────────────────────────────────
-async function fetchReceiving(accessToken) {
-  // 1st 6:00 AM–1:59 PM, 2nd from 2:00 PM local (DST-aware); before 6 AM = yesterday's 2nd
-  const rcvShift = currentShift({ firstFrom: 6, secondFrom: 14, firstStart: [6, 0], secondStart: [14, 0] });
-  const shiftStartUtc = rcvShift.startSql;
-
-  const sqlAssociates = `
-SELECT
-    CREATED_BY,
-    COUNT(DISTINCT LPN_ID) AS lpns,
-    SUM(CASE WHEN PROCESS = '/lpn/receive' THEN QUANTITY ELSE 0 END) AS units,
-    MIN(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS first_scan,
-    MAX(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS last_scan
-FROM default_receiving.RCV_RECEIPT
-WHERE FACILITY_ID = '${FACILITY}'
-  AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
-  AND CREATED_BY != 'system-msg-user@${FACILITY}'
-GROUP BY CREATED_BY
-ORDER BY lpns DESC`.trim();
-
-  const sqlHourly = `
-SELECT
-    HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS hr,
-    COUNT(DISTINCT LPN_ID) AS lpns,
-    SUM(CASE WHEN PROCESS = '/lpn/receive' THEN QUANTITY ELSE 0 END) AS units
-FROM default_receiving.RCV_RECEIPT
-WHERE FACILITY_ID = '${FACILITY}'
-  AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
-  AND CREATED_BY != 'system-msg-user@${FACILITY}'
-GROUP BY hr
-ORDER BY hr ASC`.trim();
-
-  const sqlAssocHourly = `
-SELECT
-    CREATED_BY,
-    HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS hr,
-    COUNT(DISTINCT LPN_ID) AS lpns
-FROM default_receiving.RCV_RECEIPT
-WHERE FACILITY_ID = '${FACILITY}'
-  AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
-  AND CREATED_BY != 'system-msg-user@${FACILITY}'
-GROUP BY CREATED_BY, hr
-ORDER BY CREATED_BY, hr ASC`.trim();
-
-  const [resp, respHourly, respAssocHourly] = await Promise.all([
-    mcpQuery(accessToken, sqlAssociates),
-    mcpQuery(accessToken, sqlHourly),
-    mcpQuery(accessToken, sqlAssocHourly),
-  ]);
-
-  // Per-associate hourly map: name -> { hr: lpns }
-  const assocHourMap = {};
-  for (const r of (respAssocHourly.rows || [])) {
-    const name = r.CREATED_BY.toLowerCase().split('@')[0];
-    if (!assocHourMap[name]) assocHourMap[name] = {};
-    assocHourMap[name][Number(r.hr)] = Number(r.lpns);
-  }
-
-  const associates = (resp.rows || []).map(r => {
-    const name = r.CREATED_BY.toLowerCase().split('@')[0];
-    return {
-      name,
-      lpns:       Number(r.lpns),
-      units:      Math.round(Number(r.units)),
-      first_scan: fmtHHmm(r.first_scan),
-      last_scan:  fmtHHmm(r.last_scan),
-      hours:      assocHourMap[name] || {},
-    };
-  });
-
-  const hourly = (respHourly.rows || []).map(r => ({
-    hour:  Number(r.hr),
-    lpns:  Number(r.lpns),
-    units: Math.round(Number(r.units)),
-  }));
-
-  const hours = hourly.map(h => h.hour);
-
-  return {
-    generated:  new Date().toISOString().slice(0, 19),
-    shift:      shiftLabel(),
-    facility:   FACILITY,
-    associates,
-    hourly,
-    hours,
-  };
-}
+// Receiving moved to scout_receiving_agent.js (2026-10-05) — this file still serves + pushes receiving_live.json.
 
 
 // ── open totes query ──────────────────────────────────────────────────────────
@@ -1276,7 +1175,7 @@ function gitPush() {
     try { fs.unlinkSync(path.join(gitDir(), 'index.lock')); } catch {}
     execSync('git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json ecom_history.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json retail_backlog_live.json container_watch_live.json untasked_live.json dead_shelves_live.json empty_locations_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     const staged = execSync('git diff --cached --name-only', { cwd: REPORT_DIR, stdio: 'pipe' }).toString().trim().split('\n').filter(Boolean);
-    const LABELS = { 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve', 'putaway_live.json': 'putaway', 'expedite_live.json': 'expedite', 'retail_backlog_live.json': 'retail', 'container_watch_live.json': 'watch', 'untasked_live.json': 'untasked', 'dead_shelves_live.json': 'dead', 'empty_locations_live.json': 'empty' };
+    const LABELS = { 'receiving_live.json': 'receiving', 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve', 'putaway_live.json': 'putaway', 'expedite_live.json': 'expedite', 'retail_backlog_live.json': 'retail', 'container_watch_live.json': 'watch', 'untasked_live.json': 'untasked', 'dead_shelves_live.json': 'dead', 'empty_locations_live.json': 'empty' };
     const extras = staged.map(f => LABELS[f]).filter(Boolean);
     const suffix = extras.length ? ` [+${extras.join(', ')}]` : '';
     execSync(`git commit -m "Live update -- ${stamp}${suffix}"`,    { cwd: REPORT_DIR, stdio: 'pipe' });
@@ -1496,7 +1395,7 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
 // ── core: query + write ────────────────────────────────────────────────────────
 async function queryAndWrite(accessToken) {
   console.log(`[${ts()}] Querying...`);
-  // All 7 fetch functions start together. scout_mcp.js caps MAWM queries in flight across
+  // All 6 fetch functions start together. (Receiving moved to scout_receiving_agent.js 2026-10-05.) scout_mcp.js caps MAWM queries in flight across
   // every agent (and gives this cycle first claim), so starting them all at once is safe.
   const cycleStart = Date.now();
   takeStats();   // reset per-query timing for this cycle
@@ -1504,23 +1403,16 @@ async function queryAndWrite(accessToken) {
   const timed = (name, p) => p.then(
     v => { sectionMs[name] = Date.now() - cycleStart; return v; },
     e => { sectionMs[name] = Date.now() - cycleStart; console.warn(`  ${name} query failed: ${e.message}`); return null; });
-  const [backlogData, batchStatusData, retailReplenData, recvData, totesData, shippedData, tasksData] = await Promise.all([
+  const [backlogData, batchStatusData, retailReplenData, totesData, shippedData, tasksData] = await Promise.all([
     timed('Backlog',       fetchBacklog(accessToken)),
     timed('Batch status',  fetchBatchStatus(accessToken)),
     timed('Retail replen', fetchRetailReplen(accessToken)),
-    timed('Receiving',     fetchReceiving(accessToken)),
     timed('Totes',         fetchTotes(accessToken)),
     timed('Shipped',       fetchShipped(accessToken)),
     timed('Tasks',         fetchTaskData(accessToken)),
   ]);
   const queryMs = Date.now() - cycleStart;
   const qs = takeStats();
-
-  if (recvData) {
-    fs.writeFileSync(RECV_FILE, JSON.stringify(recvData, null, 4));
-    console.log(`[${ts()}] ✓ receiving_live.json — ${recvData.associates.length} associates`);
-  }
-
 
   if (totesData) {
     fs.writeFileSync(TOTES_FILE, JSON.stringify(totesData, null, 4));
@@ -1567,7 +1459,7 @@ async function queryAndWrite(accessToken) {
   const sec = ms => (ms / 1000).toFixed(1) + 's';
   const last = Object.entries(sectionMs).sort((a, b) => b[1] - a[1])[0];
   console.log(`[${ts()}] ⏱ cycle ${sec(Date.now() - cycleStart)} — queries ${sec(queryMs)} (last to finish: ${last ? last[0] : '-'}), git ${sec(gitMs)} · ${qs.n} queries${qs.failed ? ` (${qs.failed} failed)` : ''}, longest slot wait ${sec(qs.waitMax)}, slowest: ${qs.slow.map(q => q.label + ' ' + sec(q.runMs)).join(', ') || '-'}`);
-  return { recvData, totesData, backlogData, batchStatusData, retailReplenData, tasksData, shippedData };
+  return { totesData, backlogData, batchStatusData, retailReplenData, tasksData, shippedData };
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
@@ -1635,8 +1527,7 @@ async function serveMode(port, intervalMin, accessToken, openPage) {
     if (url.pathname === '/api/status') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({
-        generated:   cache?.recvData?.generated || null,
-        associates:  cache?.recvData?.associates?.length || 0,
+        generated:   cache?.backlogData?.generated || null,
         nextRefresh: new Date(Date.now() + intervalMs).toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles' }),
         auth_needed: authNeeded,
       }));
@@ -1682,7 +1573,7 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
     // serve JSON files
     if (url.pathname === '/receiving_live.json') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify(cache?.recvData || {}));
+      res.end(fs.existsSync(RECV_FILE) ? fs.readFileSync(RECV_FILE) : '{}');  // written by scout_receiving_agent.js
       return;
     }
     if (url.pathname === '/totes_live.json') {

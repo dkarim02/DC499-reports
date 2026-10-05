@@ -52,6 +52,10 @@ echo  26 Untasked Orders - one-shot refresh
 echo  27 Untasked Orders - start auto-refresh (every 5 min)
 echo  28 Untasked Orders - auth
 echo ──────────────────────────────
+echo  29 Receiving Live - one-shot refresh
+echo  30 Receiving Live - start auto-refresh (every 3 min)
+echo  31 Receiving Live - auth
+echo ──────────────────────────────
 set /p choice="Select: "
 
 if "%choice%"=="1" (
@@ -248,6 +252,27 @@ if "%choice%"=="28" (
     echo.
     echo Starting Untasked Orders auth flow...
     "%NODE_EXE%" "%~dp0scout_untasked_agent.js" --auth
+    pause
+    exit /b
+)
+if "%choice%"=="29" (
+    echo.
+    echo Running Receiving Live one-shot refresh...
+    "%NODE_EXE%" "%~dp0scout_receiving_agent.js"
+    pause
+    exit /b
+)
+if "%choice%"=="30" (
+    echo.
+    echo Starting Receiving Live auto-refresh every 3 min...
+    "%NODE_EXE%" "%~dp0scout_receiving_agent.js" --serve --interval=3
+    pause
+    exit /b
+)
+if "%choice%"=="31" (
+    echo.
+    echo Starting Receiving Live auth flow...
+    "%NODE_EXE%" "%~dp0scout_receiving_agent.js" --auth
     pause
     exit /b
 )
