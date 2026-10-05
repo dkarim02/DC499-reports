@@ -740,7 +740,8 @@
     #ut-print .mono{font-family:Consolas,'Courier New',monospace;font-size:9pt;white-space:nowrap;}
     #ut-print .b{font-weight:700;}
     #ut-print .num{text-align:right;}
-    #ut-print .box{width:28pt;text-align:center;font-size:13pt;}
+    #ut-print td.box{width:28pt;text-align:center;font-size:13pt;}
+    #ut-print th.box{width:28pt;text-align:center;}
     #ut-print .write{width:50pt;}
     #ut-print .up-sign{display:flex;justify-content:space-between;margin-top:14pt;font-size:10pt;}
     #ut-print .up-foot{margin-top:10pt;font-size:7.5pt;color:#555;}
@@ -4599,7 +4600,7 @@ function utDeadPrint() {
   var body = rows.map(function(r) {
     var last = r.lastPick === undefined ? '' : r.lastPick ? utDeadDate(r.lastPick) : 'Never';
     return '<tr><td class="box">&#9744;</td><td class="mono">' + escHtml(r.loc) + '</td><td class="mono b">' + escHtml(r.item) + '</td>' +
-      '<td class="mono">' + escHtml(r.upc || '') + '</td><td>' + escHtml(r.desc || '') + (r.gwp ? ' <b>(GWP)</b>' : '') + '</td>' +
+      '<td class="mono">' + escHtml(r.upc || '') + '</td><td>' + escHtml(r.desc || '') + (r.gwp && !/gwp|gift with purchase/i.test(r.desc || '') ? ' <b>(GWP)</b>' : '') + '</td>' +
       '<td class="num b">' + fmt(r.oh) + '</td><td>' + last + '</td><td class="mono">' + escHtml(r.resLoc || '') + '</td>' +
       '<td class="write"></td></tr>';
   }).join('');
