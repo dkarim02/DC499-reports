@@ -1113,7 +1113,7 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
   // Only average batches released this shift (CREATED >= shiftStart) so lingering
   // cross-midnight batches don't skew the number.
   const clearedThisShift = cleared.filter(b =>
-    b.released_utc && new Date(forceUtc(b.released_utc)) >= shiftStart
+    b.released_utc && new Date(forceUtc(b.released_utc)) >= batchShift.start
   );
   const avgClear    = clearedThisShift.length
     ? Math.round(clearedThisShift.reduce((s,b) => s + b.mins_to_clear, 0) / clearedThisShift.length)
