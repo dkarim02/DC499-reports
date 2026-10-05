@@ -729,7 +729,7 @@
   #ut-print{display:none;}
   @media print{
     /* Themes color table cells and draw overlays (dark themes = near-white text) — override all of it */
-    html, body.ut-printing{background:#fff !important;}
+    html:has(body.ut-printing), :root:has(body.ut-printing), body.ut-printing{background:#fff !important;}
     body.ut-printing{color:#000 !important;padding:0 !important;margin:0 !important;animation:none !important;opacity:1 !important;filter:none !important;}
     body.ut-printing::before, body.ut-printing::after{display:none !important;content:none !important;}
     body.ut-printing #ut-print, body.ut-printing #ut-print *{color:#000 !important;background:transparent !important;opacity:1 !important;
@@ -754,6 +754,9 @@
     #ut-print .write{width:50pt;}
     #ut-print .up-sign{display:flex;justify-content:space-between;margin-top:14pt;font-size:10pt;}
     #ut-print .up-foot{margin-top:10pt;font-size:8pt;}
+    #ut-print td.stat{font-weight:700;white-space:nowrap;}
+    #ut-print tr.loc-more td{border-top:none;}
+    #ut-print tr.loc-start td{border-top:2px solid #000;}
     @page{size:letter landscape;margin:0.4in;}
   }
 
@@ -1551,6 +1554,12 @@ body { animation: pageEnter 0.28s ease-out both; }
         <label class="ut-check">Show <select class="ut-select" id="ut-empty-mode" onchange="utEmptySetMode(this.value)"></select></label>
         <label class="ut-check"><input type="checkbox" id="ut-empty-inactive" onchange="renderEmptyLocations()"> Include inactive</label>
         <input type="search" class="ut-search" id="ut-empty-q" placeholder="Search location (e.g. F1D07)" oninput="renderEmptyLocations()">
+        <span class="ut-print-ctl">
+          <label class="ut-check" title="Leave empty to print every location shown. A number prints the first that many locations in walking order.">Lines
+            <input type="number" min="1" step="1" inputmode="numeric" class="ut-num" id="ut-empty-lines" placeholder="All" oninput="utEmptyPrintHint()"></label>
+          <span class="ut-print-hint" id="ut-empty-pages"></span>
+          <button class="ut-copy" onclick="utEmptyPrint()" title="Print the locations as filtered, in walking order">Print list</button>
+        </span>
       </div>
       <div class="ut-legend" id="ut-empty-legend"></div>
       <div id="ut-empty-sections"></div>
@@ -4529,6 +4538,8 @@ function renderEmptyLocations() {
     return '<option value="' + m.key + '"' + (utEmptyMode === m.key ? ' selected' : '') + '>' + m.label + ' (' + fmt(n) + ')</option>';
   }).join('');
   spots.forEach(function(sp) { if (modeTest(sp.kind)) add(sp.pez, sp.loc, sp); });
+  utEmptyOnScreen = spots.filter(function(sp) { return modeTest(sp.kind); }).sort(function(a, b) { return a.loc < b.loc ? -1 : 1; });
+  utEmptyPrintHint();
 
   var head = '<div class="ut-erow head"><span></span><span>Aisle</span><span class="r">Empty</span><span class="r">Partly full</span>' +
     '<span class="r ut-hide-m">Of</span><span class="ut-hide-m">Share empty</span><span class="r ut-hide-m">Largest spot</span><span class="r">Waiting</span></div>';
@@ -4567,7 +4578,7 @@ function renderEmptyLocations() {
               if (s.kind === 'partial' || s.kind === 'nofit' || s.kind === 'over') {
                 cls = s.kind === 'over' ? ' over' : s.kind === 'nofit' ? ' partial nofit' : ' partial';
                 tip = s.loc + ' · ' + s.used + ' of ' + s.max + ' items' + (s.kind === 'over' ? ' (over the limit)' : '') +
-                  (s.cuft != null ? ' · ' + utCuft(s.cuft) + ' cuft free' : ' · free space unknown') + ' · on it: ' + s.items.join(', ');
+                  (s.cuft != null ? ' · ' + utCuft(s.cuft) + ' cuft free' : ' · free space unknown') + ' · on it: ' + utSpotItems(s).map(function(x) { return x[0] + (x[1] != null ? ' ×' + x[1] : ''); }).join(', ');
                 label += '<b>' + s.used + '/' + s.max + '</b>';
               } else {
                 cls = (s.kind === 'waiting' ? ' waiting' : s.kind === 'assigned' ? ' assigned' : '');
@@ -4644,24 +4655,99 @@ function utDeadPrint() {
       '<td class="write"></td></tr>';
   }).join('');
 
+  utPrintSheet({
+    title: 'Move idle items back to reserve', scope: scope, built: d.generated, view: 'Dead shelves',
+    sum: picked + '<b>' + fmt(rows.length) + '</b> items · <b>' + fmt(units) + '</b> units · ' + utPagesText(rows.length) + ' · sorted by location. ' +
+      'Pull each item, scan it, and put it with its stock at the reserve spot shown (blank = find an open reserve spot). Write the actual quantity moved if it differs.',
+    head: '<th class="box">Done</th><th>Location</th><th>SKU</th><th>UPC</th><th>Description</th><th class="num">Units</th><th>Last picked</th><th>Reserve spot</th><th>Qty moved</th>',
+    body: body,
+  });
+}
+
+// ── Shared print sheet (Dead shelves + Empty locations) ─────────────────────────
+function utPagesText(n) { var p = utDeadPageCount(n); return p + (p === 1 ? ' page' : ' pages'); }
+function utPrintSheet(o) {
+  var now = new Date().toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' });
   var el = document.getElementById('ut-print');
   if (!el) { el = document.createElement('div'); el.id = 'ut-print'; document.body.appendChild(el); }
   el.innerHTML =
-    '<div class="up-head"><div><div class="up-title">Move idle items back to reserve</div>' +
-      '<div class="up-sub">' + escHtml(scope) + '</div></div>' +
-      '<div class="up-meta">Printed ' + escHtml(now) + '<br>List built ' + escHtml(fmtPdt(d.generated) || '—') + '</div></div>' +
-    '<div class="up-sum">' + picked + '<b>' + fmt(rows.length) + '</b> items · <b>' + fmt(units) + '</b> units · ' + utDeadPageCount(rows.length) + ' page' + (utDeadPageCount(rows.length) === 1 ? '' : 's') + ' · sorted by location. ' +
-      'Pull each item, scan it, and put it with its stock at the reserve spot shown (blank = find an open reserve spot). ' +
-      'Write the actual quantity moved if it differs.</div>' +
-    '<table><thead><tr><th class="box">Done</th><th>Location</th><th>SKU</th><th>UPC</th><th>Description</th>' +
-      '<th class="num">Units</th><th>Last picked</th><th>Reserve spot</th><th>Qty moved</th></tr></thead><tbody>' + body + '</tbody></table>' +
+    '<div class="up-head"><div><div class="up-title">' + escHtml(o.title) + '</div><div class="up-sub">' + escHtml(o.scope) + '</div></div>' +
+      '<div class="up-meta">Printed ' + escHtml(now) + '<br>List built ' + escHtml(fmtPdt(o.built) || '—') + '</div></div>' +
+    '<div class="up-sum">' + o.sum + '</div>' +
+    '<table><thead><tr>' + o.head + '</tr></thead><tbody>' + o.body + '</tbody></table>' +
     '<div class="up-sign"><span>Assigned to ____________________</span><span>Date ____________</span><span>Completed by ____________________</span></div>' +
-    '<div class="up-foot">DC499 · Floor Check · Dead shelves. Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>';
-
+    '<div class="up-foot">DC499 · Floor Check · ' + escHtml(o.view) + '. Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</div>';
   document.body.classList.add('ut-printing');
   var done = function() { document.body.classList.remove('ut-printing'); window.removeEventListener('afterprint', done); };
   window.addEventListener('afterprint', done);
   setTimeout(function() { window.print(); setTimeout(done, 500); }, 50);
+}
+
+// ── Empty locations print — what the Show / zone / size / search filters show, in walking order ──
+var utEmptyOnScreen = [];
+// Items on a partly-full shelf: [item, units, upc] (older files: plain item ids)
+function utSpotItems(sp) {
+  return (sp.items || []).map(function(x) { return Array.isArray(x) ? x : [x, null, null]; });
+}
+function utEmptyPrintLines(spots) {
+  return spots.reduce(function(t, sp) { return t + Math.max(1, utSpotItems(sp).length); }, 0);
+}
+function utEmptyLimit(total) {
+  var v = parseInt((document.getElementById('ut-empty-lines') || {}).value, 10);
+  return v > 0 ? Math.min(v, total) : total;
+}
+function utEmptyPrintHint() {
+  var el = document.getElementById('ut-empty-pages');
+  if (!el) return;
+  var total = utEmptyOnScreen.length, n = utEmptyLimit(total);
+  var lines = utEmptyPrintLines(utEmptyOnScreen.slice(0, n));
+  el.textContent = total ? (n < total ? fmt(n) + ' of ' + fmt(total) + ' locations' : fmt(n) + (n === 1 ? ' location' : ' locations')) + ' · ≈ ' + utPagesText(lines) : '';
+}
+var UT_EMPTY_PRINT = {
+  over:     { title: 'Clear over-limit shelves', how: 'These shelves hold more different items than they are set to allow. Move the extra item(s) back to reserve or to another shelf, and write what you moved.' },
+  partial:  { title: 'Partly full shelves', how: 'These shelves have open item slots. Check the counts, and use the open space for re-slots.' },
+  empty:    { title: 'Empty locations', how: 'Confirm each location is empty. "Stock promised" means a replen or allocation is still pointed at it.' },
+  both:     { title: 'Open locations', how: 'Empty and partly full locations. Check each one and write what you found.' },
+};
+function utEmptyPrint() {
+  var d = lastEmptyData;
+  if (!d || !utEmptyOnScreen.length) { alert('Nothing to print with these filters.'); return; }
+  var limit = utEmptyLimit(utEmptyOnScreen.length);
+  var spots = utEmptyOnScreen.slice(0, limit);
+  var mode = UT_EMPTY_MODES.filter(function(m) { return m.key === utEmptyMode; })[0] || {};
+  var kind = utEmptyMode === 'over' ? 'over' : /^(partial|room|nofit)$/.test(utEmptyMode) ? 'partial' : /^(empty|free|waiting|assigned)$/.test(utEmptyMode) ? 'empty' : 'both';
+  var info = UT_EMPTY_PRINT[kind];
+  var desc = d.item_desc || {};
+  var size = utEmptyMin ? utEmptyMin + '+ cuft' : '';
+  var q = (document.getElementById('ut-empty-q').value || '').trim().toUpperCase();
+  var scope = [mode.label || 'Everything', utEmptyZone === 'all' ? 'All zones' : utZoneName(utEmptyZone), size,
+    document.getElementById('ut-empty-inactive').checked ? 'incl. inactive' : '', q ? 'Search: ' + q : ''].filter(Boolean).join(' · ');
+  var status = function(sp) {
+    if (sp.kind === 'over') return sp.used + ' of ' + sp.max + ' items — over the limit';
+    if (sp.kind === 'partial' || sp.kind === 'nofit') return sp.used + ' of ' + sp.max + ' items · ' + (sp.cuft != null ? utCuft(sp.cuft) + ' cuft free' : 'free space unknown');
+    return (sp.kind === 'waiting' ? 'Empty — stock promised' : sp.kind === 'assigned' ? 'Empty — item still assigned' : 'Empty') + (sp.cuft ? ' · ' + utCuft(sp.cuft) + ' cuft' : '');
+  };
+  var units = 0;
+  var body = spots.map(function(sp) {
+    var items = utSpotItems(sp), first = '<td class="box">&#9744;</td><td class="mono">' + escHtml(sp.loc) + '</td><td class="stat">' + escHtml(status(sp)) + '</td>';
+    if (!items.length) return '<tr class="loc-start">' + first + '<td></td><td></td><td></td><td></td><td class="write"></td></tr>';
+    return items.map(function(x, i) {
+      var dsc = (desc[x[0]] || [])[0] || '', gwp = (desc[x[0]] || [])[1];
+      units += x[1] || 0;
+      return '<tr' + (i === 0 ? ' class="loc-start"' : ' class="loc-more"') + '>' + (i === 0 ? first : '<td></td><td></td><td></td>') +
+        '<td class="mono b">' + escHtml(x[0]) + '</td><td class="mono">' + escHtml(x[2] || '') + '</td>' +
+        '<td>' + escHtml(dsc) + (gwp && !/gwp|gift with purchase/i.test(dsc) ? ' <b>(GWP)</b>' : '') + '</td>' +
+        '<td class="num b">' + (x[1] == null ? '' : fmt(x[1])) + '</td><td class="write"></td></tr>';
+    }).join('');
+  }).join('');
+  var lines = utEmptyPrintLines(spots);
+  utPrintSheet({
+    title: info.title, scope: scope, built: d.generated, view: 'Empty locations',
+    sum: (limit < utEmptyOnScreen.length ? 'First ' + fmt(limit) + ' of ' + fmt(utEmptyOnScreen.length) + ' locations, ' : '') +
+      '<b>' + fmt(spots.length) + '</b> locations' + (units ? ' · <b>' + fmt(units) + '</b> units on them' : '') + ' · ' + utPagesText(lines) + ' · sorted by location. ' + info.how,
+    head: '<th class="box">Done</th><th>Location</th><th>Status</th><th>SKU</th><th>UPC</th><th>Description</th><th class="num">Units</th><th>Qty moved</th>',
+    body: body,
+  });
 }
 
 // Move list as tab-separated rows (pastes into Excel/Teams as a table)
