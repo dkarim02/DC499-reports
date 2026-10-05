@@ -71,7 +71,7 @@ const DEAD_FORMAT = 3;   // 2 = rows carry last_pick (10/2), 3 = + UPC and a res
 // table fails ("Operation failed"), so group by PEZ and do aisles in Node.
 const EMPTY_FILE      = path.join(__dirname, 'empty_locations_live.json');
 const EMPTY_EVERY_HRS = 1;
-const EMPTY_FORMAT    = 3;   // 2 = partly-full shelves, 3 = mixed cartons (10/2); older files rebuild at once
+const EMPTY_FORMAT    = 4;   // 2 = partly-full shelves, 3 = mixed cartons (10/2), 4 = items on partly-full shelves carry units/UPC (10/5)
 const EMPTY_AREAS     = ['F1A', 'F1B', 'F1D', 'F2C', 'P1C'];
 const EMPTY_CHUNKS    = ['F1A', 'F1B', 'F1D', 'F2C01', 'F2C02', 'F2C03', 'F2C04', 'P1C'];   // F2C ≈ 8k empties
 
@@ -253,7 +253,7 @@ HAVING MAX(i.LAST_LOCATED_DATE_TIME) IS NULL OR MAX(i.LAST_LOCATED_DATE_TIME) < 
 // Everything stocked in the area — tells us what else shares each dead item's shelf
 function sqlAreaStock(prefix) {
   return `
-SELECT LOCATION_ID, ITEM_ID, SUM(ON_HAND) AS oh
+SELECT LOCATION_ID, ITEM_ID, SUM(ON_HAND) AS oh, MAX(PRIMARY_BAR_CODE) AS upc
 FROM default_dcinventory.DCI_INVENTORY
 WHERE FACILITY_ID='${FACILITY}' AND ON_HAND > 0 AND ILPN_ID IS NULL AND LOCATION_ID LIKE '${prefix}%'
 GROUP BY LOCATION_ID, ITEM_ID`.trim();
@@ -395,7 +395,7 @@ const PARTIAL_AREAS  = ['F1A', 'F1D'];
 const PARTIAL_STOCK_CHUNKS = ['F1A', 'F1D0', 'F1D1'];   // F1D ≈ 9k stocked pairs — split under the row cap
 const CACHE_HRS      = 24;
 const shelfCache = { at: 0, byLoc: {} };   // loc → { max_items, max_cuft, pez, active }
-const cubeCache  = { at: 0, byItem: {} };  // item → unit cuft (null = unknown)
+const cubeCache  = { at: 0, byItem: {}, desc: {} };  // item → unit cuft (null = unknown), item → description
 
 function sqlShelfSettings(prefix) {
   return `
@@ -414,11 +414,13 @@ async function fetchPartialLocations(token) {
   for (const p of PARTIAL_STOCK_CHUNKS) stock.push(...((await mcpQuery(token, sqlAreaStock(p))).rows || []));
 
   // Item cube: refresh all once a day, otherwise only look up items we haven't seen
-  if (Date.now() - cubeCache.at > CACHE_HRS * 36e5) { cubeCache.byItem = {}; cubeCache.at = Date.now(); }
+  if (Date.now() - cubeCache.at > CACHE_HRS * 36e5) { cubeCache.byItem = {}; cubeCache.desc = {}; cubeCache.at = Date.now(); }
   const need = [...new Set(stock.map(r => r.ITEM_ID))].filter(it => !(it in cubeCache.byItem));
   if (need.length) {
-    for (const r of await batched(token, need, 400, sqlItemCube, 'partial item cube'))
+    for (const r of await batched(token, need, 400, sqlItemInfo, 'partial item cube')) {
       cubeCache.byItem[r.ITEM_ID] = String(r.VOLUME_UOM_ID).toLowerCase() === 'cuft' && num(r.VOLUME) > 0 ? num(r.VOLUME) : null;
+      cubeCache.desc[r.ITEM_ID] = r.DESCRIPTION || '';
+    }
     for (const it of need) if (!(it in cubeCache.byItem)) cubeCache.byItem[it] = null;
   }
 
@@ -437,7 +439,7 @@ async function fetchPartialLocations(token) {
     const allCubed = rows.every(r => cubeCache.byItem[r.ITEM_ID]);
     const usedCuft = rows.reduce((t, r) => t + num(r.oh) * (cubeCache.byItem[r.ITEM_ID] || 0), 0);
     const free = (s.max_cuft && allCubed) ? Math.round(Math.max(0, s.max_cuft - usedCuft) * 100) / 100 : null;
-    out.push([loc, s.pez, s.active, used, s.max_items, free, rows.map(r => r.ITEM_ID)]);
+    out.push([loc, s.pez, s.active, used, s.max_items, free, rows.map(r => [r.ITEM_ID, num(r.oh), r.upc || null])]);
   }
   return out;
 }
@@ -543,6 +545,8 @@ async function fetchEmptyLocations(token) {
     zones: Object.values(zones).sort((a, b) => a.pez < b.pez ? -1 : 1),
     stocked_by_aisle: stockedByAisle, locs,
     format: EMPTY_FORMAT, partial_areas: PARTIAL_AREAS, partial, mixed,
+    // item → [description, gwp 0/1] for every item on a partly-full shelf (print sheets)
+    item_desc: Object.fromEntries([...new Set(partial.flatMap(p => p[6].map(x => x[0])))].map(it => [it, [cubeCache.desc[it] || '', isGwp(cubeCache.desc[it]) ? 1 : 0]])),
   };
   fs.writeFileSync(EMPTY_FILE, JSON.stringify(output));
   const act = output.zones.reduce((t, z) => t + z.empty, 0);
