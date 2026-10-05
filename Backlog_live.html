@@ -728,27 +728,32 @@
   /* Printable move list — only visible while printing (body.ut-printing) */
   #ut-print{display:none;}
   @media print{
-    body.ut-printing{background:#fff !important;color:#000 !important;padding:0 !important;animation:none !important;}
+    /* Themes color table cells and draw overlays (dark themes = near-white text) — override all of it */
+    html, body.ut-printing{background:#fff !important;}
+    body.ut-printing{color:#000 !important;padding:0 !important;margin:0 !important;animation:none !important;opacity:1 !important;filter:none !important;}
+    body.ut-printing::before, body.ut-printing::after{display:none !important;content:none !important;}
+    body.ut-printing #ut-print, body.ut-printing #ut-print *{color:#000 !important;background:transparent !important;opacity:1 !important;
+      filter:none !important;text-shadow:none !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
     body.ut-printing > *:not(#ut-print){display:none !important;}
-    body.ut-printing #ut-print{display:block;font-family:-apple-system,'Segoe UI',sans-serif;font-size:10pt;color:#000;}
+    body.ut-printing #ut-print{display:block;font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;font-weight:500;}
     #ut-print .up-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:4pt;margin-bottom:6pt;}
     #ut-print .up-title{font-size:15pt;font-weight:700;}
     #ut-print .up-sub{font-size:10pt;margin-top:2pt;}
-    #ut-print .up-meta{font-size:8.5pt;text-align:right;color:#333;}
+    #ut-print .up-meta{font-size:9pt;text-align:right;}
     #ut-print .up-sum{font-size:9pt;margin-bottom:6pt;}
     #ut-print table{width:100%;border-collapse:collapse;}
     #ut-print thead{display:table-header-group;}
-    #ut-print th{font-size:8pt;text-transform:uppercase;letter-spacing:0.04em;text-align:left;border-bottom:1.5px solid #000;padding:3pt 4pt;}
-    #ut-print td{border-bottom:0.5px solid #999;padding:4pt;vertical-align:top;}
+    #ut-print th{font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;text-align:left;border-bottom:2px solid #000;padding:3pt 4pt;}
+    #ut-print td{border-bottom:1px solid #000;padding:5pt 4pt;vertical-align:top;}
     #ut-print tr{page-break-inside:avoid;break-inside:avoid;}
-    #ut-print .mono{font-family:Consolas,'Courier New',monospace;font-size:9pt;white-space:nowrap;}
+    #ut-print .mono{font-family:Consolas,'Courier New',monospace;font-size:10.5pt;font-weight:700;white-space:nowrap;}
     #ut-print .b{font-weight:700;}
     #ut-print .num{text-align:right;}
     #ut-print td.box{width:28pt;text-align:center;font-size:13pt;}
     #ut-print th.box{width:28pt;text-align:center;}
     #ut-print .write{width:50pt;}
     #ut-print .up-sign{display:flex;justify-content:space-between;margin-top:14pt;font-size:10pt;}
-    #ut-print .up-foot{margin-top:10pt;font-size:7.5pt;color:#555;}
+    #ut-print .up-foot{margin-top:10pt;font-size:8pt;}
     @page{size:letter landscape;margin:0.4in;}
   }
 
