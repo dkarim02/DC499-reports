@@ -460,6 +460,7 @@ body { animation: pageEnter 0.28s ease-out both; }
   .tv-pwn{font-size:3.4vh;font-weight:900;}
   .tv-pwc{font-size:8vh;font-weight:900;line-height:.9;}
   .tv-pwc small{font-size:2vh;font-weight:800;margin-left:.3vw;}
+  .tv-pwt{font-size:2.4vh;font-weight:800;}
   .tv-feed{font-size:2.6vh;font-weight:900;}
   .tv-strip{display:flex;gap:1vw;align-items:stretch;min-width:0;}
   .tv-chip{background:#262b33;color:#fff;border-radius:1.2vh;padding:1.2vh 1.4vw;display:flex;align-items:baseline;gap:.8vw;white-space:nowrap;overflow:hidden;}
@@ -1456,12 +1457,14 @@ function renderTV() {
       '</div></div></div><div class="tv-body"><div class="tv-pws">';
   pws.forEach(function(p) {
     var isMix = mixed.indexOf(p) !== -1;
+    var tvTotes = (p.dz1_totes || 0) + (p.dz2_totes || 0);
     var cls   = p.olpn_count > 0 ? (isMix ? 'mixed' : 'live') : 'idle';
     var feed  = isMix ? '&#9888; Both ' + tvDw(p.dz1) + ' + ' + tvDw(p.dz2)
               : p.active_dz ? '&#9654; Feed ' + tvDw(p.active_dz)
               : p.olpn_count ? 'No active feed' : '&mdash;';
     h += '<div class="tv-pw ' + cls + '"><div class="tv-pwn">' + escHtml(p.pw) + '</div>' +
          '<div class="tv-pwc">' + (p.olpn_count || 0) + '<small>oLPN</small></div>' +
+         '<div class="tv-pwt">' + tvTotes + ' tote' + (tvTotes === 1 ? '' : 's') + '</div>' +
          '<div class="tv-feed">' + feed + '</div></div>';
   });
   so.innerHTML = h + '</div></div>';
