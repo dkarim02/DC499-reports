@@ -393,6 +393,56 @@ CUP-report prevention tool (built 2026-09-30). Menu: Item Prep card → "Contain
 
 ---
 
+## CUP container research (manual, one at a time — started 2026-09-30)
+
+Dean sends CUP container numbers. We trace each one, name the failure pattern, give a timeline (PT), and say how sure we are. More background and past cases: memory `project_cup_research.md`.
+
+**Before starting:** check whether it was already done. Grep `Downloads\*.md`, `Downloads\CUP_Wk34_ItemPrep_PP_research.csv`, and the session transcripts. A hit inside a long ID list doesn't count as researched. CUP row lookup: `%TEMP%\cup\s3.tsv` (deduped; area, type, status, reason, code, aging, location, ID, SKU, date, days, units, cost, unit cost). s5.tsv is the full sheet. The newest CUP file is `Week 34 CUP Report_ reclassified.xlsx` (9/30).
+
+**Query chain:**
+1. DCI_ILPN + DCI_INVENTORY by ILPN_ID: status, location, ASN/PO, SOURCE_LPN_ID, CREATED_BY.
+2. TSK_ACTIVITY_TRACKING by CONTAINER_ID (fast). Columns: `CREATED_TIMESTAMP, TRANSACTION_ID, CREATED_BY, ITEM_ID, QUANTITY, COMPLETED_QUANTITY, ADJUSTED_QUANTITY, SOURCE_LOCATION_ID, TARGET_LOCATION_ID, NEW_CONTAINER_ID, CONDITION_CODE_ID, PALLET_ID, NEW_STATUS, UI_ACTION, TASK_ID`. CURRENT/PREVIOUS_LOCATION_ID and ORDER_ID are not valid there; using them fails the whole query.
+3. Follow the leads: the user's scans in a tight window around the last good scan; sibling containers on the same task or pallet; the parent carton (SOURCE_LPN_ID); DCI_INVENTORY for the same SKU everywhere (`ITEM_ID=` works fast). A same-SKU row on a shelf with `CREATED_TIMESTAMP` after the loss = a pop-up. Then pull that shelf's history.
+
+**Timeout rules (TSK_ACTIVITY_TRACKING):**
+- User or item queries: a window of ≤ 1–2 days.
+- Location queries: one column at a time (SOURCE or TARGET, never OR), ~3–7 days, no ORDER BY.
+- Don't run 4 heavy queries at once; they all time out.
+- `X OR SOURCE_LPN_ID=X` on DCI_ILPN times out too. Query the split IDs (from NEW_CONTAINER_ID) directly.
+- For long histories, run a Node script that requires `scout_mcp.js` (`getAccessTokenSilent` + `mcpQuery`, lock-safe), loops 3-day windows with retries, and writes JSON (example: `%TEMP%\cup\shelf_hist.js`). Dedupe rows afterwards, because a count row matches both SOURCE and TARGET.
+
+**Patterns found so far:**
+
+| Pattern | What happened | How to prove it |
+|---|---|---|
+| Item Prep ghost split | split → re-audit adds the units back → split again; the first LPN never gets a scan | per parent+SKU, split qty > received qty; ghost 0 scans, twin moves normally |
+| Ghost, audit-fix variant | first audit miscounts, a few SKUs split, the re-audit resets to packing-list qty, everything re-split | seen 3 cartons / 7 ghosts: 31945, 034015–017, 043994–996 |
+| Found-freight relabel | case lost at staging, later a person creates a no-ASN/PO "Create iLPN" with the same SKU and qty | one found container can cover 2 lost (6 = 3 + 3); Container Watch only matches 1:1 |
+| Wrong-shelf replen fill | pulled (scanned = in hand), never filled, marked LW; units show up as a count overage on a shelf the same associate filled that day | 00006499000125379395: +24 at F1D0314B03 on the 8/6 count; prove zero prior SKU scans on that shelf |
+| Rode out on a pallet / bad putaway / walked off between counts | see memory | — |
+
+- Quarterly count row with ADJUSTED null and no TARGET = not found.
+- A later count row with SOURCE null and TARGET set = recovered.
+
+**Before calling a pop-up a match:** prove the location had none of the SKU before the overage. That means the full shelf history from the container's receive date: zero fills, putaways or picks of that SKU, and the count showing expected 0. State any window not checked.
+
+**Confidence:** always say very high / high / medium and why. Note what the system can't rule out, e.g. a physical duplicate carton. List the physical checks to do on the floor.
+
+**PDF / MD ("data format," when Dean asks):**
+- Content: header (container IDs, carton, ASN/PO, CUP total) → relation table → timeline tables → footer with the source line + disclaimer.
+- No reasoning, no recommendation, no verdict, no associate names.
+- Template: `%TEMP%\cup\ghost034.js` (data block + md/html generator). Ghost IDs are red, real ones green, the "Today" row is pink.
+- Print: `msedge.exe --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf="C:/Users/JLEO/Downloads/X.pdf" file:///…html`.
+- Save to `Downloads\`, then look at the PDF before saying it's done.
+
+**Rules:**
+- Plain supervisor language.
+- Names only in timeline detail, never as blame. In chat, prefer "the associate."
+- CUP cost data never goes on public GitHub Pages.
+- Every doc carries the disclaimer.
+
+---
+
 ## Untasked Orders (scout_untasked_agent.js → Backlog_live.html No Task tab)
 
 Ecom orders allocated with no pick task, grouped by why (built 2026-10-01). Output untasked_live.json, refresh 5 min, ~4–6 queries. `--once` = safe one-shot. Backlog v1.3 fetches it every 2 min for the tab + red count badge.
