@@ -1539,6 +1539,9 @@ body { animation: pageEnter 0.28s ease-out both; }
         <span class="ut-print-ctl">
           <label class="ut-check" title="Leave empty to print everything shown. A number prints the first that many in your current on-screen order, laid out in walking order.">Lines
             <input type="number" min="1" step="1" inputmode="numeric" class="ut-num" id="ut-dead-lines" placeholder="All" oninput="utDeadPrintHint()"></label>
+          <label class="ut-check" title="Same as screen = the order you sorted the table by. Walking route = sorted by location.">Order
+            <select class="ut-select" id="ut-dead-order" onchange="localStorage.setItem('ut_dead_print_order_v1', this.value)">
+              <option value="screen">Same as screen</option><option value="walk">Walking route</option></select></label>
           <span class="ut-print-hint" id="ut-dead-pages"></span>
           <button class="ut-copy" id="ut-dead-print" onclick="utDeadPrint()" title="Print the list as filtered, in walking order">Print list</button>
         </span>
@@ -4620,6 +4623,8 @@ function utDeadLineLimit(total) {
 // Landscape letter: ~20 lines fit under the header on page 1, ~26 on the rest (long names wrap, so it's approximate)
 function utDeadPageCount(n) { return n <= 0 ? 0 : n <= 20 ? 1 : 1 + Math.ceil((n - 20) / 26); }
 function utDeadPrintHint() {
+  var sel = document.getElementById('ut-dead-order');
+  if (sel && !sel.dataset.init) { sel.value = localStorage.getItem('ut_dead_print_order_v1') || 'screen'; sel.dataset.init = '1'; }
   var el = document.getElementById('ut-dead-pages');
   if (!el) return;
   var total = utDeadScreenRows().length, n = utDeadLineLimit(total), p = utDeadPageCount(n);
@@ -4631,10 +4636,15 @@ function utDeadPrint() {
   if (!d || !o) return;
   var all = utDeadScreenRows();
   if (!all.length) { alert('Nothing to print with these filters.'); return; }
-  // Take the first N in on-screen order (the priority you sorted by), then lay them out in walking order
+  // Take the first N in on-screen order (the priority you sorted by); print them in that order, or by location
   var limit = utDeadLineLimit(all.length);
-  var rows = all.slice(0, limit).sort(function(a, b) { return a.loc < b.loc ? -1 : a.loc > b.loc ? 1 : (a.item < b.item ? -1 : 1); });
+  var walk = (document.getElementById('ut-dead-order') || {}).value === 'walk';
+  var rows = all.slice(0, limit);
+  if (walk) rows.sort(function(a, b) { return a.loc < b.loc ? -1 : a.loc > b.loc ? 1 : (a.item < b.item ? -1 : 1); });
   var sortCol = UT_DEAD_COLS[utDeadSort.key] || {};
+  var orderText = walk ? 'sorted by location (walking route)'
+    : 'sorted by ' + (sortCol.label || 'screen order').toLowerCase() + (utDeadSort.dir === 1 ? ' (low → high)' : ' (high → low)') +
+      (utDeadLane === 'all' ? ', group by group' : '') + ', same as on screen';
   var picked = limit < all.length
     ? 'First ' + fmt(limit) + ' of ' + fmt(all.length) + ' by ' + (sortCol.label || 'screen order') + (utDeadSort.dir === 1 ? ' (low → high)' : ' (high → low)') + ', '
     : '';
@@ -4656,7 +4666,7 @@ function utDeadPrint() {
 
   utPrintSheet({
     title: 'Move idle items back to reserve', scope: scope, built: d.generated, view: 'Dead shelves',
-    sum: picked + '<b>' + fmt(rows.length) + '</b> items · <b>' + fmt(units) + '</b> units · ' + utPagesText(rows.length) + ' · sorted by location. ' +
+    sum: picked + '<b>' + fmt(rows.length) + '</b> items · <b>' + fmt(units) + '</b> units · ' + utPagesText(rows.length) + ' · ' + orderText + '. ' +
       'Pull each item, scan it, and move it back to reserve.',
     head: '<th class="box">Done</th><th>Location</th><th>SKU</th><th>UPC</th><th>Description</th><th class="num">Units</th><th>Stocked</th><th>Last picked</th>',
     body: body,
