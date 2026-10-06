@@ -1287,6 +1287,7 @@ var tvClock      = null;
 var tvIdleTimer  = null;
 var tvWakeLock   = null;
 var TV_CYCLE_MS  = 10000; // how long each "other work" view shows when pickers are clear
+var TV_STRIP_ONLY_LOCS = ['D1-SN-01']; // pack line staging — shown in the bottom pill only, not the rotating view
 var tvCycleIdx   = 0;
 var tvCycleTimer = null;
 
@@ -1341,7 +1342,7 @@ function tvOtherWork(d, drift, pickOld) {
   function shortId(id) { return String(id || '').replace(/^T0*/, ''); }
   var views = [];
   var c3    = (d.case3 || []).map(function(t) { return { olpn: t.olpn, location: t.location, timer_min: (t.timer_min || 0) + drift }; });
-  var aging = c3.filter(function(t) { return t.timer_min <  ORPHAN_MIN; });
+  var aging = c3.filter(function(t) { return t.timer_min <  ORPHAN_MIN && TV_STRIP_ONLY_LOCS.indexOf(t.location) === -1; });
   var orph  = c3.filter(function(t) { return t.timer_min >= ORPHAN_MIN; }).concat(pickOld)
                 .sort(function(a, b) { return b.timer_min - a.timer_min; });
 
