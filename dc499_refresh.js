@@ -638,13 +638,23 @@ LIMIT 10`.trim();
     }
   }
 
+  // GWP = MA's item flag (EXT_ISGWP) first, name check as fallback — some GWPs have plain
+  // names (B0427905 "OCT HAIRCARE", 10/5) and were missing the badge.
   const GWP_PATTERNS = [/gift with purchase/i, /\bgwp\b/i];
+  const topIds = (respTopItems.rows || []).map(r => r.ITEM_ID).filter(Boolean);
+  const gwpFlag = {};
+  if (topIds.length) {
+    const respGwp = await mcpQuery(accessToken,
+      `SELECT ITEM_ID, EXT_ISGWP FROM default_item_master.ITE_ITEM WHERE ITEM_ID IN (${topIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',')})`
+    ).catch(() => ({ rows: [] }));
+    for (const r of (respGwp.rows || [])) if (Number(r.EXT_ISGWP) === 1) gwpFlag[r.ITEM_ID] = true;
+  }
   const topItems = (respTopItems.rows || []).map(r => ({
     item_id:      r.ITEM_ID || '',
     description:  r.DESCRIPTION || '',
     units:        Number(r.units_ordered),
     orders:       Number(r.order_count),
-    gwp:          GWP_PATTERNS.some(re => re.test(r.DESCRIPTION || '')),
+    gwp:          !!gwpFlag[r.ITEM_ID] || GWP_PATTERNS.some(re => re.test(r.DESCRIPTION || '')),
   }));
 
   return {

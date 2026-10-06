@@ -104,7 +104,11 @@ const toIso    = s => s ? new Date(String(s).replace(' ', 'T') + (/(Z|[+-]\d{2}:
 const minsSince = s => s ? Math.round((Date.now() - new Date(toIso(s)).getTime()) / 6e4) : null;
 const num      = v => Number(v || 0);
 const sqlList  = ids => ids.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
-const isGwp    = d => /gift with purchase/i.test(d || '') || /\bgwp\b/i.test(d || '');
+// GWP = MA's item flag (ITE_ITEM.EXT_ISGWP) first; the name check catches items not looked up yet.
+// Some GWPs have plain names (B0427905 "OCT HAIRCARE", 10/5), so the name alone misses them.
+const gwpFlag  = {};   // item → 1/0 from EXT_ISGWP
+const noteGwp  = rows => { for (const r of rows) if (r.ITEM_ID && r.EXT_ISGWP != null) gwpFlag[r.ITEM_ID] = num(r.EXT_ISGWP) ? 1 : 0; return rows; };
+const isGwp    = (d, item) => gwpFlag[item] === 1 || /gift with purchase/i.test(d || '') || /\bgwp\b/i.test(d || '');
 const svcLabel = s => s === '11' ? '1DD' : s === '42' ? '2DD' : 'STD';
 const SVC_RANK = { '1DD': 0, '2DD': 1, STD: 2 };
 const bySvcThenAge = (a, b) => SVC_RANK[a.svc] - SVC_RANK[b.svc] || b.mins - a.mins;   // expedite first, oldest first
@@ -260,8 +264,18 @@ GROUP BY LOCATION_ID, ITEM_ID`.trim();
 }
 function sqlItemInfo(items) {
   return `
-SELECT ITEM_ID, VOLUME, VOLUME_UOM_ID, DESCRIPTION, STORE_DEPARTMENT FROM default_item_master.ITE_ITEM
+SELECT ITEM_ID, VOLUME, VOLUME_UOM_ID, DESCRIPTION, STORE_DEPARTMENT, EXT_ISGWP FROM default_item_master.ITE_ITEM
 WHERE ITEM_ID IN (${sqlList(items)})`.trim();
+}
+function sqlItemGwp(items) {
+  return `
+SELECT ITEM_ID, EXT_ISGWP FROM default_item_master.ITE_ITEM
+WHERE ITEM_ID IN (${sqlList(items)})`.trim();
+}
+// Look up the GWP flag for items we haven't seen yet (flags rarely change; kept for the agent's life)
+async function loadGwpFlags(token, items) {
+  const need = [...new Set(items)].filter(it => it && !(it in gwpFlag));
+  if (need.length) noteGwp(await batched(token, need, 400, sqlItemGwp, 'item gwp flag'));
 }
 
 async function fetchDeadShelves(token) {
@@ -293,7 +307,7 @@ async function fetchDeadShelves(token) {
 
   const [capRows, infoRows, resRows] = [
     await batched(token, shelfLocs, 400, sqlShelfCap, 'dead shelf size'),
-    await batched(token, items, 400, sqlItemInfo, 'dead item info'),
+    noteGwp(await batched(token, items, 400, sqlItemInfo, 'dead item info')),
     await batched(token, deadItems, 400, sqlReserve, 'dead reserve'),
   ];
   const cap = {};  for (const r of capRows) cap[r.LOCATION_ID] = num(r.MAX_VOLUME) || null;
@@ -325,7 +339,7 @@ async function fetchDeadShelves(token) {
   const itemsOut = {};
   for (const it of items) {
     const i = info[it] || {};
-    itemsOut[it] = [i.desc || '', i.cube == null ? null : Math.round(i.cube * 1e6) / 1e6, deadItemSet.has(it) ? (res[it] ?? 0) : null, isGwp(i.desc) ? 1 : 0, i.dept || '', deadItemSet.has(it) ? (resLoc[it] || null) : null];
+    itemsOut[it] = [i.desc || '', i.cube == null ? null : Math.round(i.cube * 1e6) / 1e6, deadItemSet.has(it) ? (res[it] ?? 0) : null, isGwp(i.desc, it) ? 1 : 0, i.dept || '', deadItemSet.has(it) ? (resLoc[it] || null) : null];
   }
 
   const output = {
@@ -333,7 +347,7 @@ async function fetchDeadShelves(token) {
     idle_days: DEAD_IDLE_DAYS, fresh_days: DEAD_FRESH_DAYS, areas: DEAD_CHUNKS, truncated,
     format: DEAD_FORMAT, history_from: DEAD_HISTORY_FROM,
     summary: { pairs: rows.length, shelves: shelfLocs.length, units: rows.reduce((t, r) => t + r[2], 0),
-               gwp_pairs: rows.filter(r => isGwp((info[r[1]] || {}).desc)).length,
+               gwp_pairs: rows.filter(r => isGwp((info[r[1]] || {}).desc, r[1])).length,
                never_picked: rows.filter(r => !r[6]).length,
                cuft: r3(rows.reduce((t, r) => t + (r[3] || 0), 0)) },
     rows, shelves: shelvesOut, items: itemsOut,
@@ -417,7 +431,7 @@ async function fetchPartialLocations(token) {
   if (Date.now() - cubeCache.at > CACHE_HRS * 36e5) { cubeCache.byItem = {}; cubeCache.desc = {}; cubeCache.at = Date.now(); }
   const need = [...new Set(stock.map(r => r.ITEM_ID))].filter(it => !(it in cubeCache.byItem));
   if (need.length) {
-    for (const r of await batched(token, need, 400, sqlItemInfo, 'partial item cube')) {
+    for (const r of noteGwp(await batched(token, need, 400, sqlItemInfo, 'partial item cube'))) {
       cubeCache.byItem[r.ITEM_ID] = String(r.VOLUME_UOM_ID).toLowerCase() === 'cuft' && num(r.VOLUME) > 0 ? num(r.VOLUME) : null;
       cubeCache.desc[r.ITEM_ID] = r.DESCRIPTION || '';
     }
@@ -480,7 +494,7 @@ async function fetchMixedCartons(token) {
   const [infoRows, replenRows, itemRows] = ilpns.length ? [
     await batched(token, ilpns, 200, sqlCartonInfo, 'mixed carton info'),
     await batched(token, ilpns, 200, sqlCartonReplens, 'mixed carton replen'),
-    await batched(token, items, 400, sqlItemInfo, 'mixed carton items'),
+    noteGwp(await batched(token, items, 400, sqlItemInfo, 'mixed carton items')),
   ] : [[], [], []];
 
   const info = {}; for (const r of infoRows) info[r.ILPN_ID] = r;
@@ -492,7 +506,7 @@ async function fetchMixedCartons(token) {
     return {
       ilpn: id, loc: mine[0].LOCATION_ID, received: toIso(i.CREATED_TIMESTAMP), asn: i.ASN_ID || null, po: i.PURCHASE_ORDER_ID || null,
       units: mine.reduce((t, r) => t + num(r.oh), 0), held: mine.reduce((t, r) => t + num(r.alloc), 0),
-      items: mine.map(r => [r.ITEM_ID, num(r.oh), desc[r.ITEM_ID] || '', isGwp(desc[r.ITEM_ID]) ? 1 : 0]).sort((a, b) => b[1] - a[1]),
+      items: mine.map(r => [r.ITEM_ID, num(r.oh), desc[r.ITEM_ID] || '', isGwp(desc[r.ITEM_ID], r.ITEM_ID) ? 1 : 0]).sort((a, b) => b[1] - a[1]),
       replen: rp,
     };
   }).sort((a, b) => (a.received || '') < (b.received || '') ? -1 : 1);
@@ -546,7 +560,7 @@ async function fetchEmptyLocations(token) {
     stocked_by_aisle: stockedByAisle, locs,
     format: EMPTY_FORMAT, partial_areas: PARTIAL_AREAS, partial, mixed,
     // item → [description, gwp 0/1] for every item on a partly-full shelf (print sheets)
-    item_desc: Object.fromEntries([...new Set(partial.flatMap(p => p[6].map(x => x[0])))].map(it => [it, [cubeCache.desc[it] || '', isGwp(cubeCache.desc[it]) ? 1 : 0]])),
+    item_desc: Object.fromEntries([...new Set(partial.flatMap(p => p[6].map(x => x[0])))].map(it => [it, [cubeCache.desc[it] || '', isGwp(cubeCache.desc[it], it) ? 1 : 0]])),
   };
   fs.writeFileSync(EMPTY_FILE, JSON.stringify(output));
   const act = output.zones.reduce((t, z) => t + z.empty, 0);
@@ -602,6 +616,7 @@ async function fetchUntasked(token) {
   const releases = (respB.rows || []).map(r => ({ at: toIso(r.released), orders: num(r.orders) })).sort((a, b) => a.at < b.at ? -1 : 1);
   const lastRelease = releases.length ? releases[releases.length - 1] : null;
   const rows = respU.rows || [];
+  await loadGwpFlags(token, [...rows, ...(respN.rows || [])].map(r => r.ITEM_ID));
 
   // Split: ghosts (order done) vs open orders
   const isDone = r => num(r.order_cancelled) === 1 || ['8000', '9000'].includes(String(r.MAXIMUM_STATUS));
@@ -615,7 +630,7 @@ async function fetchUntasked(token) {
     const k = shelfKey(r.LOCATION_ID, r.ITEM_ID);
     let s = shelves.get(k);
     if (!s) {
-      s = { loc: r.LOCATION_ID, item: r.ITEM_ID, desc: r.DESCRIPTION || '', gwp: isGwp(r.DESCRIPTION),
+      s = { loc: r.LOCATION_ID, item: r.ITEM_ID, desc: r.DESCRIPTION || '', gwp: isGwp(r.DESCRIPTION, r.ITEM_ID),
             on_hand: num(r.loc_oh), allocated: num(r.loc_alloc), need: 0, orders: new Set() };
       shelves.set(k, s);
     }
@@ -644,7 +659,7 @@ async function fetchUntasked(token) {
     let l = o.lines.get(k);
     if (!l) {
       const s = shelves.get(k);
-      l = { item: r.ITEM_ID, desc: r.DESCRIPTION || '', gwp: isGwp(r.DESCRIPTION), loc: r.LOCATION_ID || null,
+      l = { item: r.ITEM_ID, desc: r.DESCRIPTION || '', gwp: isGwp(r.DESCRIPTION, r.ITEM_ID), loc: r.LOCATION_ID || null,
             units: 0, on_hand: s ? s.on_hand : 0, short: s ? s.short : true };
       o.lines.set(k, l);
     }
@@ -780,7 +795,7 @@ async function fetchUntasked(token) {
     }
     const c = toIso(r.CREATED_TIMESTAMP);
     if (c < g.since) g.since = c;
-    g.lines.push({ item: r.ITEM_ID, desc: r.DESCRIPTION || '', gwp: isGwp(r.DESCRIPTION), loc: r.LOCATION_ID || null,
+    g.lines.push({ item: r.ITEM_ID, desc: r.DESCRIPTION || '', gwp: isGwp(r.DESCRIPTION, r.ITEM_ID), loc: r.LOCATION_ID || null,
                    units: num(r.QUANTITY), on_hand: num(r.loc_oh), allocated: num(r.loc_alloc) });
   }
   const ghosts = [...ghostMap.values()].map(g => ({ ...g, mins: ageMin(g.since) })).sort((a, b) => b.mins - a.mins);
@@ -796,7 +811,7 @@ async function fetchUntasked(token) {
     }
     const u = toIso(r.UPDATED_TIMESTAMP);
     if (u < n.released) n.released = u;
-    n.lines.push({ item: r.ITEM_ID, desc: r.DESCRIPTION || '', gwp: isGwp(r.DESCRIPTION), loc: r.LOCATION_ID || null,
+    n.lines.push({ item: r.ITEM_ID, desc: r.DESCRIPTION || '', gwp: isGwp(r.DESCRIPTION, r.ITEM_ID), loc: r.LOCATION_ID || null,
                    units: num(r.QUANTITY), type: r.TYPE_ID });
   }
   const noTaskMade = [...ntmMap.values()].map(n => ({ ...n, mins: ageMin(n.released) })).sort(bySvcThenAge);
