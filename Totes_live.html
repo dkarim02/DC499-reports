@@ -438,13 +438,15 @@ body { animation: pageEnter 0.28s ease-out both; }
   .tv-big{font-size:9vh;font-weight:900;line-height:.9;}
   .tv-body{flex:1;display:flex;flex-direction:column;min-height:0;padding:1.6vh 1.4vw;}
   .tv-list{display:flex;flex-direction:column;gap:1.2vh;min-height:0;overflow:hidden;}
-  .tv-tote{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:1.4vw;border-radius:1.2vh;padding:1.3vh 1.4vw;background:#374151;color:#fff;}
+  .tv-tote{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:1.4vw;border-radius:1.2vh;padding:1.3vh 1.4vw;background:#374151;color:#fff;}
   .tv-tote.red   {background:#dc2626;color:#fff;}
   .tv-tote.yellow{background:#facc15;color:#000;}
   .tv-tote.green {background:#22c55e;color:#000;}
   .tv-tid{font-size:6vh;font-weight:900;letter-spacing:-.02em;}
-  .tv-tmeta{font-size:2.4vh;font-weight:700;}
+  .tv-tmeta{font-size:2.4vh;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .tv-tag{display:inline-block;padding:.2vh .7vw;border-radius:.8vh;font-weight:900;margin-right:.6vw;background:#000;color:#fff;}
+  .tv-tid.sm{font-size:4.4vh;}
+  .tv-allclear{background:#000;color:#22c55e;padding:.1vh .6vw;border-radius:.6vh;letter-spacing:.06em;}
   .tv-tmr{font-size:6vh;font-weight:900;text-align:right;}
   .tv-more{font-size:2.8vh;color:#fff;font-weight:800;text-align:center;padding-top:.8vh;}
   .tv-clear{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1vh;color:#22c55e;}
@@ -1283,6 +1285,9 @@ var tvOn         = false;
 var tvClock      = null;
 var tvIdleTimer  = null;
 var tvWakeLock   = null;
+var TV_CYCLE_MS  = 10000; // how long each "other work" view shows when pickers are clear
+var tvCycleIdx   = 0;
+var tvCycleTimer = null;
 
 function setTvMode(on) {
   tvOn = !!on;
@@ -1294,10 +1299,12 @@ function setTvMode(on) {
     tvPoke();
     renderTV();
     if (!tvClock) tvClock = setInterval(renderTV, 15000);
+    if (!tvCycleTimer) tvCycleTimer = setInterval(function() { tvCycleIdx++; renderTV(); }, TV_CYCLE_MS);
   } else {
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch(e) {}
     if (tvWakeLock) { try { tvWakeLock.release(); } catch(e) {} tvWakeLock = null; }
     if (tvClock) { clearInterval(tvClock); tvClock = null; }
+    if (tvCycleTimer) { clearInterval(tvCycleTimer); tvCycleTimer = null; }
     document.body.classList.remove('tv-idle');
   }
 }
@@ -1322,6 +1329,43 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && tvO
 
 function tvDw(z) {
   return z ? 'DW' + String(parseInt(z.replace(/^D1-PW-0*/, ''), 10)).padStart(2, '0') : '';
+}
+
+// Views shown in the pickers panel while pickers are clear — only ones with work. Rows reuse the tote-row look.
+function tvOtherWork(d, drift, pickOld) {
+  function row(sev, id, meta, min, small) {
+    return '<div class="tv-tote ' + sev + '"><div class="tv-tid tv-mono' + (small ? ' sm' : '') + '">' + escHtml(id) + '</div>' +
+           '<div class="tv-tmeta">' + meta + '</div><div class="tv-tmr">' + fmtTimer(min) + '</div></div>';
+  }
+  function shortId(id) { return String(id || '').replace(/^T0*/, ''); }
+  var views = [];
+  var c3    = (d.case3 || []).map(function(t) { return { olpn: t.olpn, location: t.location, timer_min: (t.timer_min || 0) + drift }; });
+  var aging = c3.filter(function(t) { return t.timer_min <  ORPHAN_MIN; });
+  var orph  = c3.filter(function(t) { return t.timer_min >= ORPHAN_MIN; }).concat(pickOld)
+                .sort(function(a, b) { return b.timer_min - a.timer_min; });
+
+  // Aging at pack — one row per location, oldest first
+  if (aging.length) {
+    var byLoc = {};
+    aging.forEach(function(t) { var l = t.location || 'No location'; (byLoc[l] = byLoc[l] || []).push(t.timer_min); });
+    var locs = Object.keys(byLoc).map(function(l) { return { loc: l, n: byLoc[l].length, oldest: Math.max.apply(null, byLoc[l]) }; })
+                 .sort(function(a, b) { return b.oldest - a.oldest; });
+    views.push({ who: 'PACK', title: 'Aging at pack', count: aging.length, sev: sevForCase(3, locs[0].oldest),
+      rows: locs.map(function(x) { return row(sevForCase(3, x.oldest), x.loc, x.n + ' tote' + (x.n === 1 ? '' : 's') + ' &middot; oldest', x.oldest, true); }) });
+  }
+  // Orphaned 24h+ — lost/stuck totes
+  if (orph.length) {
+    views.push({ who: 'RESEARCH', title: 'Orphaned 24h+', count: orph.length, sev: 'red',
+      rows: orph.map(function(t) { return row('red', shortId(t.olpn), t.location ? escHtml(t.location) : '<span class="tv-tag">NOT DROPPED</span>', t.timer_min); }) });
+  }
+  // Hospital oLPNs
+  var hp = (d.hospital_olpns || []).map(function(o) { return { o: o, min: o.age_min == null ? 0 : o.age_min + drift }; })
+             .sort(function(a, b) { return b.min - a.min; });
+  if (hp.length) {
+    views.push({ who: 'HOSPITAL', title: 'Hospital oLPNs', count: hp.length, sev: sevForCase(3, hp[0].min),
+      rows: hp.map(function(x) { return row(sevForCase(3, x.min), String(x.o.olpn || '').replace(/^0+/, ''), escHtml([x.o.cubby, x.o.status].filter(Boolean).join(' · ')), x.min, true); }) });
+  }
+  return views;
 }
 
 function renderTV() {
@@ -1370,7 +1414,19 @@ function renderTV() {
           (!pick.length ? 'All totes dropped' : anyNd ? 'Drop your totes' : 'Totes in pick') +
           '</div></div><div class="tv-big">' + pick.length + '</div></div><div class="tv-body">';
   if (!pick.length) {
-    h += '<div class="tv-clear"><div class="tv-clear-ck">&#10003;</div><div class="tv-clear-msg">Nothing waiting</div></div>';
+    // Pickers clear → rotate this panel through other work that has items (pickers' all-clear stays in the band)
+    var views = tvOtherWork(d, drift, pickOld);
+    if (!views.length) {
+      h += '<div class="tv-clear"><div class="tv-clear-ck">&#10003;</div><div class="tv-clear-msg">Nothing waiting</div></div>';
+    } else {
+      var vi = tvCycleIdx % views.length, v = views[vi];
+      pk.className = 'tv-panel ' + v.sev;
+      h = '<div class="tv-ph"><div><div class="tv-who">' + v.who + ' &nbsp;<span class="tv-allclear">PICKERS ALL CLEAR &#10003;</span>' +
+            (views.length > 1 ? ' &nbsp;' + (vi + 1) + ' / ' + views.length : '') +
+          '</div><div class="tv-ask">' + v.title + '</div></div><div class="tv-big">' + v.count + '</div></div><div class="tv-body">' +
+          '<div class="tv-list">' + v.rows.slice(0, TV_MAX_TOTES).join('') + '</div>' +
+          (v.rows.length > TV_MAX_TOTES ? '<div class="tv-more">+ ' + (v.rows.length - TV_MAX_TOTES) + ' more</div>' : '');
+    }
   } else {
     h += '<div class="tv-list">';
     pick.slice(0, TV_MAX_TOTES).forEach(function(t) {
