@@ -434,7 +434,7 @@ body { animation: pageEnter 0.28s ease-out both; }
   .tv-panel.blue   {border-color:#2563eb;} .tv-panel.blue .tv-ph  {background:#2563eb;color:#fff;}
   .tv-ph > div:first-child{min-width:0;}
   .tv-who{font-size:2vh;font-weight:900;letter-spacing:.14em;}
-  .tv-ask{font-size:4.6vh;font-weight:900;line-height:1.05;margin-top:.2vh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tv-ask{font-size:4.6vh;font-weight:900;line-height:1.25;padding-bottom:.15em;margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .tv-big{font-size:9vh;font-weight:900;line-height:.9;}
   .tv-body{flex:1;display:flex;flex-direction:column;min-height:0;padding:1.6vh 1.4vw;}
   .tv-list{display:flex;flex-direction:column;gap:1.2vh;min-height:0;overflow:hidden;}
@@ -1344,13 +1344,13 @@ function tvOtherWork(d, drift, pickOld) {
   var orph  = c3.filter(function(t) { return t.timer_min >= ORPHAN_MIN; }).concat(pickOld)
                 .sort(function(a, b) { return b.timer_min - a.timer_min; });
 
-  // Aging at pack — one row per location, oldest first
+  // Aging at location — one row per location, oldest first
   if (aging.length) {
     var byLoc = {};
     aging.forEach(function(t) { var l = t.location || 'No location'; (byLoc[l] = byLoc[l] || []).push(t.timer_min); });
     var locs = Object.keys(byLoc).map(function(l) { return { loc: l, n: byLoc[l].length, oldest: Math.max.apply(null, byLoc[l]) }; })
                  .sort(function(a, b) { return b.oldest - a.oldest; });
-    views.push({ who: 'PACK', title: 'Aging at pack', count: aging.length, sev: sevForCase(3, locs[0].oldest),
+    views.push({ who: 'LOCATIONS', title: 'Aging at location', count: aging.length, sev: sevForCase(3, locs[0].oldest),
       rows: locs.map(function(x) { return row(sevForCase(3, x.oldest), x.loc, x.n + ' tote' + (x.n === 1 ? '' : 's') + ' &middot; oldest', x.oldest, true); }) });
   }
   // Orphaned 24h+ — lost/stuck totes
@@ -1480,7 +1480,7 @@ function renderTV() {
   var hp     = (d.hospital_olpns || []).length;
 
   var s = '<div class="tv-chip grow ' + (oldest >= 60 ? 'red' : aging.length ? '' : 'ok') + '">' +
-            '<span class="tv-chip-l">AGING AT PACK</span><span class="tv-chip-v">' + aging.length + '</span>' +
+            '<span class="tv-chip-l">AGING AT LOCATION</span><span class="tv-chip-v">' + aging.length + '</span>' +
             '<span class="tv-chip-s">' + (aging.length ? 'oldest ' + fmtTimer(oldest) + ' &nbsp;&middot;&nbsp; ' + locs : 'clear') + '</span></div>' +
           '<div class="tv-chip ' + (orphan ? 'red' : 'ok') + '"><span class="tv-chip-l">ORPHANED 24H+</span><span class="tv-chip-v">' + orphan + '</span></div>' +
           '<div class="tv-chip ' + (hp ? 'red' : 'ok') + '"><span class="tv-chip-l">HOSPITAL</span><span class="tv-chip-v">' + hp + '</span></div>';
