@@ -1387,7 +1387,7 @@ function renderTV() {
   var drift   = generatedMs ? Math.max(0, Math.floor((Date.now() - generatedMs) / 60000)) : 0;
   var ageMin  = drift;
   document.getElementById('tv-upd').textContent = 'updated ' + (ageMin < 1 ? 'just now' : ageMin + ' min ago');
-  if (generatedMs && ageMin > 4) {
+  if (generatedMs && ageMin >= 10) {   // TV only: give a slow push or two time to land before covering the screen
     staleEl.classList.add('show');
     document.getElementById('tv-stale-s').textContent = 'Last update ' +
       new Date(generatedMs).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' }) +
