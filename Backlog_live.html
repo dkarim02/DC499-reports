@@ -4642,11 +4642,14 @@ function utDeadPrint() {
   var rows = all.slice(0, limit);
   if (walk) rows.sort(function(a, b) { return a.loc < b.loc ? -1 : a.loc > b.loc ? 1 : (a.item < b.item ? -1 : 1); });
   var sortCol = UT_DEAD_COLS[utDeadSort.key] || {};
+  // Dates read as oldest/newest first; everything else as low/high
+  var isDate = utDeadSort.key === 'stocked' || utDeadSort.key === 'last';
+  var dirText = isDate ? (utDeadSort.dir === 1 ? ' (oldest first)' : ' (newest first)') : (utDeadSort.dir === 1 ? ' (low → high)' : ' (high → low)');
   var orderText = walk ? 'sorted by location (walking route)'
-    : 'sorted by ' + (sortCol.label || 'screen order').toLowerCase() + (utDeadSort.dir === 1 ? ' (low → high)' : ' (high → low)') +
+    : 'sorted by ' + (sortCol.label || 'screen order').toLowerCase() + dirText +
       (utDeadLane === 'all' ? ', group by group' : '') + ', same as on screen';
   var picked = limit < all.length
-    ? 'First ' + fmt(limit) + ' of ' + fmt(all.length) + ' by ' + (sortCol.label || 'screen order') + (utDeadSort.dir === 1 ? ' (low → high)' : ' (high → low)') + ', '
+    ? 'First ' + fmt(limit) + ' of ' + fmt(all.length) + ' by ' + (sortCol.label || 'screen order') + dirText + ', '
     : '';
 
   // What the sheet covers, in plain words
