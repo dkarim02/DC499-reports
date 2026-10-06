@@ -1287,6 +1287,7 @@ var tvClock      = null;
 var tvIdleTimer  = null;
 var tvWakeLock   = null;
 var TV_CYCLE_MS  = 10000; // how long each "other work" view shows when pickers are clear
+var TV_ND_GRACE_MIN = 5; // not-dropped totes stay off the TV until the pick has been done this many minutes
 var TV_STRIP_ONLY_LOCS = ['D1-SN-01']; // pack line staging — shown in the bottom pill only, not the rotating view
 var tvCycleIdx   = 0;
 var tvCycleTimer = null;
@@ -1399,7 +1400,8 @@ function renderTV() {
 
   // ── Pickers: in pick + not dropped. 24h+ totes are lost/stuck, not a picker task → Orphaned chip
   var pickAll = (d.case2 || []).concat(d.case1 || []).map(withDrift);
-  var pick    = pickAll.filter(function(t) { return t.timer_min <  ORPHAN_MIN; });
+  // Not-dropped totes get a 5-min grace (in-pick totes already have one from the agent: hidden until 5 min with no scan)
+  var pick    = pickAll.filter(function(t) { return t.timer_min <  ORPHAN_MIN && !(t.case === 2 && t.timer_min < TV_ND_GRACE_MIN); });
   var pickOld = pickAll.filter(function(t) { return t.timer_min >= ORPHAN_MIN; });
   pick.sort(function(a, b) { return b.timer_min - a.timer_min; });
 
