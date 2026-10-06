@@ -902,9 +902,19 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
   // WR_ALLOCATION (the direct staging table) is ephemeral and always empty by query time.
   // Direct count: waved multi-line orders (status 2090) that have no task
   // detail row tied to any batch this shift = truly queued, not yet released.
+  // blocked = 1 if any untasked allocation sits on a short shelf (on hand < allocated) —
+  // MA can't batch the order until that shelf is replenished, so it doesn't count toward the next batch.
   const sqlQueued = `
-SELECT COUNT(DISTINCT o.ORDER_ID) AS queued_orders
+SELECT o.ORDER_ID,
+  MAX(CASE WHEN a.ALLOCATION_ID IS NOT NULL
+        AND COALESCE((SELECT SUM(i.ON_HAND) FROM default_dcinventory.DCI_INVENTORY i
+                      WHERE i.FACILITY_ID='${FACILITY}' AND i.LOCATION_ID=a.LOCATION_ID AND i.ITEM_ID=a.ITEM_ID),0)
+          < COALESCE((SELECT SUM(i.ALLOCATED) FROM default_dcinventory.DCI_INVENTORY i
+                      WHERE i.FACILITY_ID='${FACILITY}' AND i.LOCATION_ID=a.LOCATION_ID AND i.ITEM_ID=a.ITEM_ID),0)
+      THEN 1 ELSE 0 END) AS blocked
 FROM default_dcorder.DCO_ORDER o
+LEFT JOIN default_dcinventory.DCI_ALLOCATION a
+  ON a.ORDER_ID = o.ORDER_ID AND a.FACILITY_ID = '${FACILITY}' AND a.STATUS IN ('3000','3000.0')
 WHERE o.FACILITY_ID     = '${FACILITY}'
   AND o.ORDER_TYPE      = 'ECOM'
   AND o.CANCELLED       = 0
@@ -917,10 +927,11 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
       AND td.ORDER_ID            = o.ORDER_ID
       AND td.RESOURCE_BATCH_ID   IS NOT NULL
       AND td.CREATED_TIMESTAMP   >= '${lookbackStart}'
-  )`.trim();
+  )
+GROUP BY o.ORDER_ID`.trim();
 
   const sqlQueuedUnits = `
-SELECT SUM(ol.ORDERED_QUANTITY) AS queued_units
+SELECT o.ORDER_ID, SUM(ol.ORDERED_QUANTITY) AS units
 FROM default_dcorder.DCO_ORDER o
 JOIN default_dcorder.DCO_ORDER_LINE ol
   ON ol.ORDER_ID    = o.ORDER_ID
@@ -938,23 +949,32 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
       AND td.ORDER_ID            = o.ORDER_ID
       AND td.RESOURCE_BATCH_ID   IS NOT NULL
       AND td.CREATED_TIMESTAMP   >= '${lookbackStart}'
-  )`.trim();
+  )
+GROUP BY o.ORDER_ID`.trim();
 
   const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
 
   // Run queued orders + units queries after batch query to avoid parallel timeout
-  let queuedOrders = null;
-  let queuedUnits  = null;
+  // queuedOrders/queuedUnits = ready to batch; blockedOrders = waiting on a short shelf
+  let queuedOrders  = null;
+  let queuedUnits   = null;
+  let blockedOrders = null;
+  let blockedIds    = null;
   try {
     const respQueued = await mcpQuery(accessToken, sqlQueued);
-    queuedOrders = Math.round(Number(respQueued.rows?.[0]?.queued_orders || 0));
+    const qRows = respQueued.rows || [];
+    blockedIds    = new Set(qRows.filter(r => Number(r.blocked) === 1).map(r => r.ORDER_ID));
+    blockedOrders = blockedIds.size;
+    queuedOrders  = qRows.length - blockedOrders;
   } catch(e) {
     console.warn(`  Queued orders query failed: ${e.message}`);
   }
   try {
     const respUnits = await mcpQuery(accessToken, sqlQueuedUnits);
-    queuedUnits = Math.round(Number(respUnits.rows?.[0]?.queued_units || 0));
+    queuedUnits = Math.round((respUnits.rows || [])
+      .filter(r => !blockedIds || !blockedIds.has(r.ORDER_ID))
+      .reduce((s, r) => s + Number(r.units || 0), 0));
   } catch(e) {
     console.warn(`  Queued units query failed: ${e.message}`);
   }
@@ -1045,6 +1065,7 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
       avg_release_interval_mins: avgInterval,
       queued_orders:             queuedOrders,
       queued_units:              queuedUnits,
+      blocked_orders:            blockedOrders,
       batch_threshold:           36,
     },
     batches,

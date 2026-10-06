@@ -164,6 +164,18 @@ WHERE a.FACILITY_ID='${FACILITY}' AND a.STATUS IN (${ALLOC_5000})
                   WHERE td.ALLOCATION_ID=a.ALLOCATION_ID AND td.FACILITY_ID='${FACILITY}')`.trim();
 }
 
+// First time the order got stock, counting allocations MA has since cancelled. MA drops and
+// re-makes allocations on stuck orders every replan (10/5: 6 rounds on the same GWP orders),
+// and each round would restart the grace clock — so the order never got flagged.
+function sqlFirstAlloc(since) {
+  return ids => `
+SELECT ORDER_ID, MIN(CREATED_TIMESTAMP) AS first_at
+FROM default_dcinventory.DCI_ALLOCATION
+WHERE FACILITY_ID='${FACILITY}' AND STATUS IN (${ALLOC_3000},'9000','9000.0')
+  AND CREATED_TIMESTAMP >= '${since}' AND ORDER_ID IN (${sqlList(ids)})
+GROUP BY ORDER_ID`.trim();
+}
+
 function sqlReplens(locs, since) {
   return `
 SELECT d.TARGET_LOCATION_ID, d.ITEM_ID, d.STATUS, d.QUANTITY, d.CREATED_TIMESTAMP, d.UPDATED_TIMESTAMP
@@ -647,7 +659,8 @@ async function fetchUntasked(token) {
     let o = orders.get(r.ORDER_ID);
     if (!o) {
       o = { order_id: r.ORDER_ID, svc: svcLabel(r.svc), single: num(r.SINGLE_LINE_ORDER) === 1,
-            min_status: String(r.MINIMUM_STATUS), since: null, ready: null, lines: new Map() };
+            min_status: String(r.MINIMUM_STATUS), max_status: String(r.MAXIMUM_STATUS),
+            since: null, ready: null, lines: new Map() };
       orders.set(r.ORDER_ID, o);
     }
     const created = toIso(r.CREATED_TIMESTAMP);
@@ -668,6 +681,20 @@ async function fetchUntasked(token) {
 
   const now = Date.now();
   const ageMin = iso => Math.round((now - new Date(iso).getTime()) / 6e4);
+
+  // Inside grace on paper? Check whether MA re-made the allocations — use the first one.
+  // Only orders with nothing picked yet (max 2090), so a short-pick leftover isn't backdated.
+  const young = [...orders.values()].filter(o => ageMin(o.since) < GRACE_MIN && o.max_status === '2090').map(o => o.order_id);
+  if (young.length) {
+    const firstRows = await batched(token, young, 50, sqlFirstAlloc(utcAgo(72)), 'first allocation');
+    let backdated = 0;
+    for (const r of firstRows) {
+      const o = orders.get(r.ORDER_ID), first = toIso(r.first_at);
+      if (o && first && first < o.since) { o.since = first; backdated++; }
+    }
+    if (backdated) console.log(`[${ts()}]   ${backdated} order(s) re-allocated by MA — aged from first allocation`);
+  }
+
   const flagged = [...orders.values()].filter(o => ageMin(o.since) >= GRACE_MIN);
   const waiting = orders.size - flagged.length;
 

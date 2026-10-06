@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Backlog Live v1.3 -- DC499</title>
+<title>Ecom Backlog Live v1.4 -- DC499</title>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -351,6 +351,7 @@
   .nb-meta{font-size:11px;color:var(--text-hint);white-space:nowrap;}
   .nb-eta{font-size:11px;color:var(--text-muted);}
   .nb-ready{font-size:11px;font-weight:700;color:var(--green);}
+  .nb-blocked{font-size:11px;font-weight:700;color:var(--red,#ef4444);background:var(--red-bg,rgba(239,68,68,0.12));border:0.5px solid var(--red,#ef4444);border-radius:10px;padding:1px 8px;white-space:nowrap;cursor:help;}
 
   /* Batch summary tiles */
   .summary-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
@@ -927,7 +928,7 @@ body { animation: pageEnter 0.28s ease-out both; }
   <div class="top-bar">
     <div>
       <button class="back-btn" id="back-btn" onclick="window.close()" style="margin-bottom:10px;">&#x2190; Back to Ecom</button>
-      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.3</p>
+      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.4</p>
       <h1>Ecom Backlog &mdash; DC499</h1>
       <p class="subtitle">Live data &middot; Auto-refreshes every 2 min</p>
     </div>
@@ -1207,7 +1208,8 @@ body { animation: pageEnter 0.28s ease-out both; }
           </div>
         </div>
         <div class="nb-footer">
-          <span class="nb-count"><span id="nb-queued">—</span><span> queued / 36</span></span>
+          <span class="nb-count"><span id="nb-queued">—</span><span> ready / 36</span></span>
+          <span class="nb-blocked" id="nb-blocked" style="display:none;"></span>
           <span id="nb-eta-wrap" class="nb-eta"></span>
           <span class="nb-meta" id="nb-since-wrap"></span>
         </div>
@@ -2608,10 +2610,18 @@ function renderBatchData(data) {
     fill.className   = 'nb-bar-fill ' + (pct >= 100 ? 'high' : pct >= 60 ? 'mid' : 'low');
     document.getElementById('nb-queued').textContent = queued;
 
+    // Orders stuck behind a short shelf — can't go into a batch, so they don't fill the bar
+    var nbBlocked = document.getElementById('nb-blocked');
+    var blocked   = s.blocked_orders || 0;
+    nbBlocked.style.display = blocked > 0 ? '' : 'none';
+    nbBlocked.textContent   = '⚠ ' + blocked + ' blocked';
+    nbBlocked.title = blocked + (blocked === 1 ? ' order is' : ' orders are') +
+      ' waiting on a short shelf and can\'t go into a batch until it\'s replenished — see Floor Check tab';
+
     // Units overlay — update text every render
     var nbOverlay = document.getElementById('nb-units-overlay');
     var units = s.queued_units;
-    nbOverlay.textContent = (units != null) ? fmtN(units) + ' units queued' : 'units unavailable';
+    nbOverlay.textContent = (units != null) ? fmtN(units) + ' units ready' : 'units unavailable';
 
     // Bind hover + click once
     var nbTrack = document.getElementById('nb-bar-track');
