@@ -4651,15 +4651,14 @@ function utDeadPrint() {
     var last = r.lastPick === undefined ? '' : r.lastPick ? utDeadDate(r.lastPick) : 'Never';
     return '<tr><td class="box">&#9744;</td><td class="mono">' + escHtml(r.loc) + '</td><td class="mono b">' + escHtml(r.item) + '</td>' +
       '<td class="mono">' + escHtml(r.upc || '') + '</td><td>' + escHtml(r.desc || '') + (r.gwp && !/gwp|gift with purchase/i.test(r.desc || '') ? ' <b>(GWP)</b>' : '') + '</td>' +
-      '<td class="num b">' + fmt(r.oh) + '</td><td>' + last + '</td><td class="mono">' + escHtml(r.resLoc || '') + '</td>' +
-      '<td class="write"></td></tr>';
+      '<td class="num b">' + fmt(r.oh) + '</td><td>' + utDeadDate(r.stocked) + '</td><td>' + last + '</td></tr>';
   }).join('');
 
   utPrintSheet({
     title: 'Move idle items back to reserve', scope: scope, built: d.generated, view: 'Dead shelves',
     sum: picked + '<b>' + fmt(rows.length) + '</b> items · <b>' + fmt(units) + '</b> units · ' + utPagesText(rows.length) + ' · sorted by location. ' +
-      'Pull each item, scan it, and put it with its stock at the reserve spot shown (blank = find an open reserve spot). Write the actual quantity moved if it differs.',
-    head: '<th class="box">Done</th><th>Location</th><th>SKU</th><th>UPC</th><th>Description</th><th class="num">Units</th><th>Last picked</th><th>Reserve spot</th><th>Qty moved</th>',
+      'Pull each item, scan it, and move it back to reserve.',
+    head: '<th class="box">Done</th><th>Location</th><th>SKU</th><th>UPC</th><th>Description</th><th class="num">Units</th><th>Stocked</th><th>Last picked</th>',
     body: body,
   });
 }
