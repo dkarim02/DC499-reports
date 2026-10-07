@@ -419,6 +419,9 @@ Dean sends CUP container numbers. We trace each one, name the failure pattern, g
 | Ghost, audit-fix variant | first audit miscounts, a few SKUs split, the re-audit resets to packing-list qty, everything re-split | seen 3 cartons / 7 ghosts: 31945, 034015–017, 043994–996 |
 | Found-freight relabel | case lost at staging, later a person creates a no-ASN/PO "Create iLPN" with the same SKU and qty | one found container can cover 2 lost (6 = 3 + 3); Container Watch only matches 1:1 |
 | Wrong-shelf replen fill | pulled (scanned = in hand), never filled, marked LW; units show up as a count overage on a shelf the same associate filled that day | 00006499000125379395: +24 at F1D0314B03 on the 8/6 count; prove zero prior SKU scans on that shelf |
+| RTV combine backwards (copy bug) | RTV carton scanned as the *source* and store totes as targets; MA copies the carton's full contents into every target, and the carton goes negative | Wk35 #35–43: 00006499000139790971 (70 u) → 6 totes in 1 min = 420 paper units; carton later counted with all its SKUs, then split/consumed |
+| RTV tote-into-tote | a store tote barcode scanned as the Combine target instead of an RTV carton; the target tote is never emptied | target tote has SOURCE_LPN_ID = another 7053… tote. Fix = combine it into an RTV carton (7053611151 fixed that way 3/5) |
+| RTV received, never touched | a pallet-level receive takes in every tote on the store ASN; one tote never gets a Combine | all siblings on the ASN at 9000; ours 3000, no scans after receive. Can't tell "never arrived" from lost |
 | Rode out on a pallet / bad putaway / walked off between counts | see memory | — |
 
 - Quarterly count row with ADJUSTED null and no TARGET = not found.
