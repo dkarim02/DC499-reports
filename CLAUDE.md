@@ -395,7 +395,7 @@ CUP-report prevention tool (built 2026-09-30). Menu: Item Prep card → "Contain
 
 ## CUP container research (manual, one at a time — started 2026-09-30)
 
-Dean sends CUP container numbers. We trace each one, name the failure pattern, give a timeline (PT), and say how sure we are. More background and past cases: memory `project_cup_research.md`.
+Dean sends CUP container numbers, or a weekly CUP file. For a file, work the **DC499- Ecom** rows in the file's order unless told otherwise (sibling groups first). We trace each one, name the failure pattern, give a timeline (PT), and say how sure we are. More background and past cases: memory `project_cup_research.md`.
 
 **Before starting:** check whether it was already done. Grep `Downloads\*.md`, `Downloads\CUP_Wk34_ItemPrep_PP_research.csv`, and the session transcripts. A hit inside a long ID list doesn't count as researched. CUP row lookup: `%TEMP%\cup\s3.tsv` (deduped; area, type, status, reason, code, aging, location, ID, SKU, date, days, units, cost, unit cost). s5.tsv is the full sheet. The newest CUP file is `Week 34 CUP Report_ reclassified.xlsx` (9/30).
 
@@ -422,6 +422,8 @@ Dean sends CUP container numbers. We trace each one, name the failure pattern, g
 | RTV combine backwards (copy bug) | RTV carton scanned as the *source* and store totes as targets; MA copies the carton's full contents into every target, and the carton goes negative | Wk35 #35–43: 00006499000139790971 (70 u) → 6 totes in 1 min = 420 paper units; carton later counted with all its SKUs, then split/consumed |
 | RTV tote-into-tote | a store tote barcode scanned as the Combine target instead of an RTV carton; the target tote is never emptied | target tote has SOURCE_LPN_ID = another 7053… tote. Fix = combine it into an RTV carton (7053611151 fixed that way 3/5) |
 | RTV received, never touched | a pallet-level receive takes in every tote on the store ASN; one tote never gets a Combine | all siblings on the ASN at 9000; ours 3000, no scans after receive. Can't tell "never arrived" from lost |
+| Re-slot pack, never dropped | a "Pack iLPN From Active" makes the case, but the drop scan to P1-PK and the putaway never happen; the rest of the run is fine | case has 1 pack row and nothing after; the next pack from the same slot goes through. Mixed cases (2 SKUs packed into one) get stuck at P1-PK the same way |
+| P1-FC lane sweep | Item Prep cases sit on P1-FC lanes; one associate condition-codes every case on the lanes in the same second and moves them to Z1 | same-second IlpnConditionCodeApplication across many containers. Check the putaway's suggested slots (completed 0) for an unscanned drop |
 | Rode out on a pallet / bad putaway / walked off between counts | see memory | — |
 
 - Quarterly count row with ADJUSTED null and no TARGET = not found.
