@@ -397,7 +397,13 @@ CUP-report prevention tool (built 2026-09-30). Menu: Item Prep card → "Contain
 
 Dean sends CUP container numbers, or a weekly CUP file. For a file, work the **DC499- Ecom** rows in the file's order unless told otherwise (sibling groups first). We trace each one, name the failure pattern, give a timeline (PT), and say how sure we are. More background and past cases: memory `project_cup_research.md`.
 
-**Before starting:** check whether it was already done. Grep `Downloads\*.md`, `Downloads\CUP_Wk34_ItemPrep_PP_research.csv`, and the session transcripts. A hit inside a long ID list doesn't count as researched. CUP row lookup: `%TEMP%\cup\s3.tsv` (deduped; area, type, status, reason, code, aging, location, ID, SKU, date, days, units, cost, unit cost). s5.tsv is the full sheet. The newest CUP file is `Week 34 CUP Report_ reclassified.xlsx` (9/30).
+**Before starting:** check whether it was already done. Grep `Downloads\*.md`, `Downloads\CUP_Wk3*_*.csv`, and the session transcripts. A hit inside a long ID list doesn't count as researched. The same container can stay on the CUP week after week, sometimes under a different sub site (Wk34 "Beauty" → Wk35 "Ecom"). If it was done before, re-check its current state (1 query) and say so; don't redo it.
+
+**CUP files:** newest = `Downloads\Week_35_CUP_Report_Reclassified(Aged Bucket 61-364 Days).csv` (10/6, 2,540 rows, all in the 61–364 day range). Parsed copy: `%TEMP%\cup\w35.json`; the row index (`#N`) = its position in the file. Each row shows only ONE SKU line per container, and the container can hold much more. Older: `Week 34 CUP Report_ reclassified.xlsx` (9/30) → `%TEMP%\cup\s3.tsv` / `s5.tsv`.
+
+**Cached data for Wk35 Ecom (fast, no queries):** `%TEMP%\cup\sweep1.json` (lines + all scans for the 165 Ecom containers), `ghost1.json` (93 parent cartons + 195 split children), `ghost2.json` (ghost test results). `node tl.js <LPN> …` prints a PT timeline (own scans + parent carton for that SKU + real twin) in under a second. Use it for rapid-fire requests. If a container isn't cached, run the query chain below.
+
+**Scripts in `%TEMP%\cup\`:** `q.js <name> "<sql>" …` (lock-safe runner → `<name>.json`), `summ.js` (collapse scans), `slotsrc.js` (where a slot's stock first came from, ±hours), `slotrange.js <loc> <item> <fromISO> <toISO>` (full slot history in 3-day windows), `newc.js <id> <fromISO> <toISO> [days]` (what was packed or combined INTO a container), `ghost1.js` + `ghost2.js` (ghost test for a whole file), `md2pdf.js <md> <html>` (any .md → printable html).
 
 **Query chain:**
 1. DCI_ILPN + DCI_INVENTORY by ILPN_ID: status, location, ASN/PO, SOURCE_LPN_ID, CREATED_BY.
@@ -409,6 +415,8 @@ Dean sends CUP container numbers, or a weekly CUP file. For a file, work the **D
 - Location queries: one column at a time (SOURCE or TARGET, never OR), ~3–7 days, no ORDER BY.
 - Don't run 4 heavy queries at once; they all time out.
 - `X OR SOURCE_LPN_ID=X` on DCI_ILPN times out too. Query the split IDs (from NEW_CONTAINER_ID) directly.
+- `NEW_CONTAINER_ID='X'` (what went INTO a container) is not indexed: ≤ 4-day windows (`newc.js`). A 4-week window timed out; 7 hours is fine.
+- `TRANSACTION_ID='Create iLPN'` with a 3-day window returns in ~5 s (≈90 rows). Use it for the found-freight sweep (every relabel, even ones used up since).
 - For long histories, run a Node script that requires `scout_mcp.js` (`getAccessTokenSilent` + `mcpQuery`, lock-safe), loops 3-day windows with retries, and writes JSON (example: `%TEMP%\cup\shelf_hist.js`). Dedupe rows afterwards, because a count row matches both SOURCE and TARGET.
 
 **Patterns found so far:**
@@ -417,13 +425,17 @@ Dean sends CUP container numbers, or a weekly CUP file. For a file, work the **D
 |---|---|---|
 | Item Prep ghost split | split → re-audit adds the units back → split again; the first LPN never gets a scan | per parent+SKU, split qty > received qty; ghost 0 scans, twin moves normally |
 | Ghost, audit-fix variant | first audit miscounts, a few SKUs split, the re-audit resets to packing-list qty, everything re-split | seen 3 cartons / 7 ghosts: 31945, 034015–017, 043994–996 |
+| Ghost, whole-carton batch | every SKU in a carton is split, one audit adds all of them back, every SKU is split again (minutes apart) | one carton = several ghosts on the CUP. Always list the siblings: 044585–588 ($925), 047370–372 ($2,818) |
+| Ghost, carton kept the extra | split → audit adds back → split again, but one unit stays in the carton and the carton itself is put away | paper = split + what the carton moved later. #2187 LPN000000041463: received 2, paper 3. Plain "split > received" misses it |
+| Item Prep never located | split 1-for-1 off a real receipt (split = received), label made, zero scans after | real units, not a ghost. Medium. If a twin was split the same second, the unit may have ridden with it |
+| Re-slot pack into a lane case | a case on a P1-FC lane gets more units packed into it from Ecom slots (Pack iLPN From Active, `newc.js` shows it), then nobody puts it away | #2184 (6→9), #2185 (3→12), both caught in the 7/19 sweep. Possible cause: adding units cancels the putaway. Not proven |
 | Found-freight relabel | case lost at staging, later a person creates a no-ASN/PO "Create iLPN" with the same SKU and qty | one found container can cover 2 lost (6 = 3 + 3); Container Watch only matches 1:1 |
 | Wrong-shelf replen fill | pulled (scanned = in hand), never filled, marked LW; units show up as a count overage on a shelf the same associate filled that day | 00006499000125379395: +24 at F1D0314B03 on the 8/6 count; prove zero prior SKU scans on that shelf |
 | RTV combine backwards (copy bug) | RTV carton scanned as the *source* and store totes as targets; MA copies the carton's full contents into every target, and the carton goes negative | Wk35 #35–43: 00006499000139790971 (70 u) → 6 totes in 1 min = 420 paper units; carton later counted with all its SKUs, then split/consumed |
 | RTV tote-into-tote | a store tote barcode scanned as the Combine target instead of an RTV carton; the target tote is never emptied | target tote has SOURCE_LPN_ID = another 7053… tote. Fix = combine it into an RTV carton (7053611151 fixed that way 3/5) |
 | RTV received, never touched | a pallet-level receive takes in every tote on the store ASN; one tote never gets a Combine | all siblings on the ASN at 9000; ours 3000, no scans after receive. Can't tell "never arrived" from lost |
 | Re-slot pack, never dropped | a "Pack iLPN From Active" makes the case, but the drop scan to P1-PK and the putaway never happen; the rest of the run is fine | case has 1 pack row and nothing after; the next pack from the same slot goes through. Mixed cases (2 SKUs packed into one) get stuck at P1-PK the same way |
-| P1-FC lane sweep | Item Prep cases sit on P1-FC lanes; one associate condition-codes every case on the lanes in the same second and moves them to Z1 | same-second IlpnConditionCodeApplication across many containers. Check the putaway's suggested slots (completed 0) for an unscanned drop |
+| P1-FC lane sweep | Item Prep cases sit on P1-FC lanes; one associate condition-codes every case on the lanes in the same second and moves them to Z1 | same-second IlpnConditionCodeApplication across many containers. Check the putaway's suggested slots (completed 0) for an unscanned drop. 7/19 12:41 PM sweep hit ≥ 9 Ecom CUP cases on lanes 010008–010015 (#341, 343, 1905–1907, 2183–2186); 5/24 12:08 PM sweep hit #2225–2227 on 010009 |
 | Rode out on a pallet / bad putaway / walked off between counts | see memory | — |
 
 - Quarterly count row with ADJUSTED null and no TARGET = not found.
@@ -431,12 +443,17 @@ Dean sends CUP container numbers, or a weekly CUP file. For a file, work the **D
 
 **Before calling a pop-up a match:** prove the location had none of the SKU before the overage. That means the full shelf history from the container's receive date: zero fills, putaways or picks of that SKU, and the count showing expected 0. State any window not checked.
 
+**Ghost test (whole file, high confidence):** per parent carton + SKU: received (Receive rows) vs paper (Split rows + units the carton itself moved after its last split). Ghost = paper > received, our case has 0 scans, a twin moved. Very high when a count on the twin found the full qty. Wk35 Ecom result: 46 ghosts ($7,894), all but #2187 already on the Wk34 list and **still not cleared** → `Downloads\CUP_Wk35_Ecom_ghosts_still_open.csv`. 77 other split rows = real units.
+
+**Dean's preference:** look for high-confidence finds first (ghosts, found-freight relabels with an exact SKU + qty match). Mediums (real units lost on a lane / at a station) are lower value.
+
 **Confidence:** always say very high / high / medium and why. Note what the system can't rule out, e.g. a physical duplicate carton. List the physical checks to do on the floor.
 
 **PDF / MD ("data format," when Dean asks):**
 - Content: header (container IDs, carton, ASN/PO, CUP total) → relation table → timeline tables → footer with the source line + disclaimer.
 - No reasoning, no recommendation, no verdict, no associate names.
-- Template: `%TEMP%\cup\ghost034.js` (data block + md/html generator). Ghost IDs are red, real ones green, the "Today" row is pink.
+- Template: `%TEMP%\cup\ghost034.js` or `ghost044.js` (newest: 4 ghosts + whole-carton timeline). Copy it, replace the data block (OUT, CARTON, header, relation, cartonTl, pairs, footer) and the two ID regexes in `cls`. Write the data block with the Edit/Write tool, not a bash `-e` string (backticks get eaten). Ghost IDs are red, real ones green, the "Today" row is pink.
+- Research write-ups (with findings + confidence, not "data format"): write the .md, then `md2pdf.js` → Edge print. Done so far: `CUP_Wk35_Ecom_research`, `CUP_Wk35_RTV_research`, `Ghost_LPN000000044585-044588`.
 - Print: `msedge.exe --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf="C:/Users/JLEO/Downloads/X.pdf" file:///…html`.
 - Save to `Downloads\`, then look at the PDF before saying it's done.
 
