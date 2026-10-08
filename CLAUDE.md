@@ -403,7 +403,7 @@ Dean sends CUP container numbers, or a weekly CUP file. For a file, work the **D
 
 **Cached data for Wk35 Ecom (fast, no queries):** `%TEMP%\cup\sweep1.json` (lines + all scans for the 165 Ecom containers), `ghost1.json` (93 parent cartons + 195 split children), `ghost2.json` (ghost test results). `node tl.js <LPN> …` prints a PT timeline (own scans + parent carton for that SKU + real twin) in under a second. Use it for rapid-fire requests. If a container isn't cached, run the query chain below.
 
-**Scripts in `%TEMP%\cup\`:** `q.js <name> "<sql>" …` (lock-safe runner → `<name>.json`), `summ.js` (collapse scans), `slotsrc.js` (where a slot's stock first came from, ±hours), `slotrange.js <loc> <item> <fromISO> <toISO>` (full slot history in 3-day windows), `newc.js <id> <fromISO> <toISO> [days]` (what was packed or combined INTO a container), `ghost1.js` + `ghost2.js` (ghost test for a whole file), `md2pdf.js <md> <html>` (any .md → printable html).
+**Scripts in `%TEMP%\cup\`:** `q.js <name> "<sql>" …` (lock-safe runner → `<name>.json`), `summ.js` (collapse scans), `slotsrc.js` (where a slot's stock first came from, ±hours), `slotrange.js <loc> <item> <fromISO> <toISO>` (full slot history in 3-day windows), `newc.js <id> <fromISO> <toISO> [days]` (what was packed or combined INTO a container), `ghost1.js` + `ghost2.js` (ghost test for a whole file), `md2pdf.js <md> <html>` (any .md → printable html). **Backup copy (local only, gitignored):** `.tmp_audit\cup_tools\`. If `%TEMP%\cup` is gone, run its `restore.bat`, then rebuild the data per its README (parse_csv → sweep1 → ghost1 → ghost2).
 
 **Query chain:**
 1. DCI_ILPN + DCI_INVENTORY by ILPN_ID: status, location, ASN/PO, SOURCE_LPN_ID, CREATED_BY.
