@@ -459,6 +459,7 @@ Dean sends CUP container numbers, or a weekly CUP file. For a file, work the **D
 
 **Rules:**
 - Plain supervisor language.
+- **Always write full container numbers** (LPN000000047375, 00000207148312059284): in timelines, tables, sibling lists, chat and PDFs. Never short tails like "047375" or "…044591", and never ranges like "044586–588". Dean pastes them into MA and the CUP sheet.
 - Names only in timeline detail, never as blame. In chat, prefer "the associate."
 - CUP cost data never goes on public GitHub Pages.
 - Every doc carries the disclaimer.
