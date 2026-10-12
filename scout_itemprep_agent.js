@@ -76,6 +76,8 @@ ORDER BY cartons DESC
 }
 
 // Group B: per-associate hourly breakdown (GROUP BY — immune to row cap)
+// Split by TRANSACTION_ID like Group A, so a carton that is received AND cond-code-removed
+// counts 2 times in the hours too — the hours add up to the total.
 function sqlAssocHourly(shiftStart) {
   return `
 SELECT
@@ -84,13 +86,14 @@ SELECT
     CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}),
     '%H'
   )                               AS pst_hour,
+  TRANSACTION_ID,
   COUNT(DISTINCT CONTAINER_ID)    AS cartons
 FROM default_task.TSK_ACTIVITY_TRACKING
 WHERE FACILITY_ID     = '${FACILITY}'
   AND TRANSACTION_ID  IN ('Item Level Receive', 'IlpnConditionCodeRemoval')
   AND CREATED_TIMESTAMP >= '${shiftStart}'
   AND CONTAINER_ID IS NOT NULL
-GROUP BY CREATED_BY, pst_hour
+GROUP BY CREATED_BY, pst_hour, TRANSACTION_ID
 ORDER BY employee, pst_hour
 `.trim();
 }

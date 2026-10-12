@@ -107,7 +107,11 @@ function processRows(rows, shiftPdtHour, is1st) {
   // Build per-employee buckets
   // 1st shift: 3 AM–2 PM PST = hours 3..13
   // 2nd shift: 2 PM–10 PM PST = hours 14..21
-  const HOURS = is1st ? [3,4,5,6,7,8,9,10,11,12,13] : [14,15,16,17,18,19,20,21];
+  const BASE_HOURS = is1st ? [3,4,5,6,7,8,9,10,11,12,13] : [14,15,16,17,18,19,20,21];
+  // Add any hour outside the base range that has scans (2nd shift often scans into 10 PM),
+  // so the hour columns always add up to the total. Shift order: hours after midnight go last.
+  const order = h => (h - BASE_HOURS[0] + 24) % 24;
+  const HOURS = [...new Set([...BASE_HOURS, ...Object.values(earliest)])].sort((x, y) => order(x) - order(y));
   const empMap = {}; // employee -> { hourBuckets: {14:n, 15:n,...}, total: n }
 
   for (const [key, pdtHour] of Object.entries(earliest)) {
