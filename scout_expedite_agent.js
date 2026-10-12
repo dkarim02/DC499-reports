@@ -29,6 +29,8 @@ const CLIENT_ID     = 'https://claude.ai/oauth/claude-code-client-metadata';
 const REDIRECT_PORT = 3122;
 const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
 const FACILITY      = '499';
+const LOOKBACK_DAYS = 5;    // open 1DD/2DD orders placed in the last 5 days (Dean, 10/12)
+const OLPN_BATCH    = 200;  // order IDs per oLPN lookup
 
 const args       = process.argv.slice(2);
 const MODE_AUTH  = args.includes('--auth');
@@ -55,10 +57,13 @@ async function fetchExpedite(accessToken) {
   const is1st      = sh.is1st;
   const shiftStart = sh.start;
   const shiftStartStr = sh.startSql;
+  // Open orders: look back LOOKBACK_DAYS, not just this shift — before 10/12 the tab started empty
+  // every shift while hundreds of 1DD/2DD orders from earlier shifts were still open.
+  const lookbackStr = new Date(nowUtc.getTime() - LOOKBACK_DAYS * 86400000).toISOString().slice(0, 19).replace('T', ' ');
 
   console.log(`[${ts()}] Expedite Live — ${is1st ? '1st' : '2nd'} shift, since ${shiftStartStr} UTC`);
 
-  // Q1: not-yet-shipped 1DD + 2DD orders this shift
+  // Q1: not-yet-shipped 1DD + 2DD orders from the last LOOKBACK_DAYS
   const sqlOpen = `
 SELECT
   o.ORDER_ID,
@@ -73,11 +78,12 @@ WHERE o.FACILITY_ID = '${FACILITY}'
   AND o.CANCELLED = 0
   AND o.DESIGNATED_SERVICE_LEVEL_ID IN ('11','42')
   AND o.MAXIMUM_STATUS NOT IN ('8000','9000')
-  AND o.CREATED_TIMESTAMP >= '${shiftStartStr}'
+  AND o.CREATED_TIMESTAMP >= '${lookbackStr}'
 ORDER BY o.EXT_ESTIMATEDSHIPBYDATETIME ASC
-LIMIT 500`.trim();
+LIMIT 3000`.trim();
 
-  // Q2: shipped counts per service level this shift
+  // Q2: shipped counts per service level this shift — orders that reached 8000 since shift start
+  // (UPDATED_TIMESTAMP), placed in the lookback window. Before 10/12 = orders *created* this shift that shipped.
   const sqlShipped = `
 SELECT DESIGNATED_SERVICE_LEVEL_ID AS svc, COUNT(*) AS shipped_count
 FROM default_dcorder.DCO_ORDER
@@ -86,7 +92,8 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND CANCELLED = 0
   AND DESIGNATED_SERVICE_LEVEL_ID IN ('11','42')
   AND MAXIMUM_STATUS = '8000'
-  AND CREATED_TIMESTAMP >= '${shiftStartStr}'
+  AND CREATED_TIMESTAMP >= '${lookbackStr}'
+  AND UPDATED_TIMESTAMP >= '${shiftStartStr}'
 GROUP BY DESIGNATED_SERVICE_LEVEL_ID`.trim();
 
   // Q3: order line counts (Ecom = 1 unit/line, so line count = unit count)
@@ -99,7 +106,7 @@ WHERE ol.FACILITY_ID = '${FACILITY}'
   AND o.ORDER_TYPE = 'ECOM'
   AND o.DESIGNATED_SERVICE_LEVEL_ID IN ('11','42')
   AND o.MAXIMUM_STATUS NOT IN ('8000','9000')
-  AND o.CREATED_TIMESTAMP >= '${shiftStartStr}'
+  AND o.CREATED_TIMESTAMP >= '${lookbackStr}'
 GROUP BY ol.ORDER_ID`.trim();
 
   // Q4: pick task status per order — used to show sub-stage for allocated orders (2090)
@@ -110,11 +117,11 @@ FROM default_task.TSK_TASK t
 JOIN default_task.TSK_TASK_DETAIL td
   ON  td.TASK_ID     = t.TASK_ID
   AND td.FACILITY_ID = '${FACILITY}'
-  AND td.CREATED_TIMESTAMP >= '${shiftStartStr}'
+  AND td.CREATED_TIMESTAMP >= '${lookbackStr}'
 WHERE t.FACILITY_ID = '${FACILITY}'
   AND t.TRANSACTION_ID IN ('Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart')
   AND t.STATUS NOT IN ('8000','9000')
-  AND t.CREATED_TIMESTAMP >= '${shiftStartStr}'
+  AND t.CREATED_TIMESTAMP >= '${lookbackStr}'
 GROUP BY td.ORDER_ID`.trim();
 
   const [respOpen, respShipped, respLines, respPickStage] = await Promise.all([
@@ -142,8 +149,8 @@ GROUP BY td.ORDER_ID`.trim();
   // oLPN enrichment — direct PPK_OLPN query by ORDER_ID
   // Must list columns explicitly — SELECT * is blocked by PII filter
   let olpnMap = {}; // ORDER_ID -> array of olpn objects
-  if (openOrders.length > 0) {
-    const orderIds = openOrders.map(r => `'${r.ORDER_ID}'`).join(',');
+  for (let i = 0; i < openOrders.length; i += OLPN_BATCH) {
+    const orderIds = openOrders.slice(i, i + OLPN_BATCH).map(r => `'${r.ORDER_ID}'`).join(',');
     try {
       const respOlpn = await mcpQuery(accessToken, `
 SELECT OLPN_ID, ORDER_ID, STATUS AS olpn_status, CURRENT_LOCATION_ID, CARRIER_ID, SERVICE_LEVEL_ID, TRACKING_NUMBER, PALLET_ID
@@ -156,7 +163,7 @@ WHERE FACILITY_ID = '${FACILITY}'
         olpnMap[r.ORDER_ID].push(r);
       }
     } catch(e) {
-      console.warn(`[${ts()}] oLPN enrichment failed: ${e.message}`);
+      console.warn(`[${ts()}] oLPN enrichment failed (orders ${i + 1}–${i + OLPN_BATCH}): ${e.message}`);
     }
   }
 
