@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Retail Backlog Live v1.1 -- DC499</title>
+  <title>Retail Backlog Live v1.2 -- DC499</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
@@ -387,6 +387,7 @@
     <table id="waveTable">
       <thead id="waveTableHead"><tr>
         <th>Wave — tap a row for details</th>
+        <th class="sc">Ready</th>
         <th class="sc">Allocated</th>
         <th class="sc">Packed</th>
         <th class="sc">Loaded</th>
@@ -395,7 +396,7 @@
         <th class="tc">Total Units</th>
       </tr></thead>
       <tbody id="waveTableBody">
-        <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-hint)">Loading wave data...</td></tr>
+        <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-hint)">Loading wave data...</td></tr>
       </tbody>
       <tfoot id="waveTableFoot" style="display:none">
         <tr>
@@ -405,6 +406,7 @@
           <td class="sc" id="ft-packing"></td>
           <td class="sc" id="ft-packed"></td>
           <td class="sc" id="ft-loaded"></td>
+          <td class="sc" id="ft-extra"></td>
           <td class="tc" id="ft-total"></td>
         </tr>
       </tfoot>
@@ -576,6 +578,7 @@ function setView(v) {
   if (v === 'units') {
     head.innerHTML = `<tr>
       <th>Wave — tap a row for details</th>
+      <th class="sc">Ready</th>
       <th class="sc">Allocated</th>
       <th class="sc">Packed</th>
       <th class="sc">Loaded</th>
@@ -691,7 +694,7 @@ const BUBBLE_CLASS = { '1000':'b-ready','2090':'b-alloc','7100':'b-packing','720
 function renderWaveTiles(waves) {
   const tbody = document.getElementById('waveTableBody');
   if (!waves.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-hint)">No active waves found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-hint)">No active waves found.</td></tr>';
     return;
   }
   tbody.innerHTML = '';
@@ -707,6 +710,7 @@ function renderWaveTiles(waves) {
     if (currentView === 'units') {
       const uc = wave.unit_counts || {};
       const unitCols = [
+        { val: uc.ready,      cls: 'b-ready'   },
         { val: uc.allocated,  cls: 'b-alloc'   },
         { val: uc.packed,     cls: 'b-packed'  },
         { val: uc.loaded,     cls: 'b-loaded'  },
@@ -759,10 +763,11 @@ function renderWaveTiles(waves) {
 
   // totals footer
   if (currentView === 'units') {
-    const unitKeys  = ['allocated','packed','loaded','manifested','shipped'];
-    const unitFtIds = ['ft-ready','ft-alloc','ft-packed','ft-loaded','ft-packing'];
-    const unitCls   = ['b-alloc','b-packed','b-loaded','b-packing','b-ready'];
-    const unitTotals = { ordered:0, allocated:0, packed:0, loaded:0, manifested:0, shipped:0 };
+    // Footer cells are positional — ids come from the Orders view, ft-extra is the 6th (Units only)
+    const unitKeys  = ['ready','allocated','packed','loaded','manifested','shipped'];
+    const unitFtIds = ['ft-ready','ft-alloc','ft-packing','ft-packed','ft-loaded','ft-extra'];
+    const unitCls   = ['b-ready','b-alloc','b-packed','b-loaded','b-packing','b-ready'];
+    const unitTotals = { ordered:0, ready:0, allocated:0, packed:0, loaded:0, manifested:0, shipped:0 };
     waves.forEach(w => {
       const uc = w.unit_counts || {};
       Object.keys(unitTotals).forEach(k => { unitTotals[k] += uc[k] || 0; });
@@ -1050,7 +1055,7 @@ async function loadData() {
     }
   } catch (e) {
     document.getElementById('waveTableBody').innerHTML =
-      `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-hint)">Could not load data — ${e.message}</td></tr>`;
+      `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-hint)">Could not load data — ${e.message}</td></tr>`;
     if (!lastZones) document.getElementById('znGrid').innerHTML =
       `<div class="card"><div class="op-empty">Could not load data — ${esc(e.message)}</div></div>`;
     document.getElementById('runTime').textContent = 'Data unavailable';

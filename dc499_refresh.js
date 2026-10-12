@@ -60,8 +60,8 @@ async function fetchTotes(accessToken) {
   //
   // Case classification:
   //   Case 3 — tote has a CURRENT_LOCATION_ID (at drop zone, aging)
-  //   Case 2 — no location, all pick detail rows STATUS='9000' (pick done, never dropped)
-  //   Case 1 — no location, any pick detail rows STATUS!='9000' (pick still active/idle)
+  //   Case 2 — no location, all pick detail rows STATUS='8000' (pick done, never dropped)
+  //   Case 1 — no location, any pick detail rows STATUS!='8000' (pick still active/idle)
   //
   // S/M source: PLANNED_TOTE_TYPE_ID on TSK_TASK_DETAIL — more reliable than SINGLE_ITEM_LPN
   //   singles = "Pick tote single" | "Pick tote chase single"
@@ -92,8 +92,8 @@ GROUP BY i.ILPN_ID, i.CURRENT_LOCATION_ID, i.CURRENT_LOCATION_TYPE_ID,
 SELECT
   td.TARGET_CONTAINER_ID                                              AS tote_id,
   MAX(td.PLANNED_TOTE_TYPE_ID)                                       AS tote_type,
-  SUM(CASE WHEN td.STATUS != '9000' THEN 1 ELSE 0 END)              AS active_lines,
-  SUM(CASE WHEN td.STATUS  = '9000' THEN 1 ELSE 0 END)              AS done_lines,
+  SUM(CASE WHEN td.STATUS != '8000' THEN 1 ELSE 0 END)              AS active_lines,
+  SUM(CASE WHEN td.STATUS  = '8000' THEN 1 ELSE 0 END)              AS done_lines,
   MAX(CONVERT_TZ(t.ACTUAL_END_TIME, '+00:00', ${SQL_TZ}))             AS task_ended_pdt
 FROM default_task.TSK_TASK_DETAIL td
 JOIN default_task.TSK_TASK t
@@ -118,7 +118,7 @@ GROUP BY td.TARGET_CONTAINER_ID`.trim();
   // Query HP: individual oLPNs sitting at H1-PW-01 cubbies — powers Hospital PW tab in Backlog_live.
   const sqlHpOlpns = `
 SELECT
-  o.LPN_ID                                                          AS olpn_id,
+  o.OLPN_ID                                                         AS olpn_id,
   o.ORDER_ID                                                        AS order_id,
   o.CURRENT_LOCATION_ID                                             AS cubby,
   o.STATUS                                                          AS status_code,

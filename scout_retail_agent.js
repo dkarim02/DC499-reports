@@ -245,7 +245,8 @@ ORDER BY MINIMUM_STATUS
 // Step 3: Unit counts by line STATUS for one wave date window.
 // MAWM retail: ALLOCATED/PACKED/MANIFESTED_QUANTITY columns mirror ORDERED_QUANTITY (set once, never decremented).
 // Correct approach: sum ORDERED_QUANTITY grouped by line STATUS, then bucket by status string.
-// STATUS strings: ALLOCATED, PACKING, PACKED, LOADED, SHIPPED
+// STATUS strings: READY, ALLOCATED, PACKING, PACKED, LOADED, MANIFESTED, SHIPPED
+// READY = line not given stock yet. Before 10/12 it was left out of every bucket and of ordered.
 function sqlUnitCounts(utcStart, utcEnd) {
   return `
 SELECT
@@ -406,13 +407,14 @@ async function fetchRetailBacklog(accessToken) {
       for (const row of (unitResp.rows || [])) {
         unitByStatus[row.line_status] = Math.round(Number(row.units) || 0);
       }
+      const ready      = unitByStatus['READY']      || 0;
       const allocated  = (unitByStatus['ALLOCATED']  || 0) + (unitByStatus['PACKING'] || 0);
       const packed     = unitByStatus['PACKED']     || 0;
       const manifested = unitByStatus['MANIFESTED'] || 0;
       const shipped    = unitByStatus['SHIPPED']    || 0;
       const loaded     = unitByStatus['LOADED']     || 0;
-      const ordered    = allocated + packed + manifested + shipped + loaded;
-      const unitCounts = { ordered, allocated, packed, manifested, shipped, loaded };
+      const ordered    = ready + allocated + packed + manifested + shipped + loaded;
+      const unitCounts = { ordered, ready, allocated, packed, manifested, shipped, loaded };
 
       const stores = (storeResp.rows || []).map(r => ({
         store_id: r.store_id,
