@@ -48,18 +48,13 @@ function fmtHHmm(ts) {
   } catch { return ts; }
 }
 
-function shiftLabel() {
-  const h = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })).getHours();
-  if (h >= 6  && h < 14) return '1st';
-  if (h >= 14 && h < 22) return '2nd';
-  return '3rd';
-}
-
 // ── receiving query ────────────────────────────────────────────────────────────
 async function fetchReceiving(accessToken) {
   // 1st 6:00 AM–1:59 PM, 2nd from 2:00 PM local (DST-aware); before 6 AM = yesterday's 2nd
   const rcvShift = currentShift({ firstFrom: 6, secondFrom: 14, firstStart: [6, 0], secondStart: [14, 0] });
   const shiftStartUtc = rcvShift.startSql;
+  // System accounts, not people. manhedgeuser = ASN purge / LPN service rows (0 units).
+  const SYSTEM_USERS = [`system-msg-user@${FACILITY}`, 'manhedgeuser'].map(u => `'${u}'`).join(', ');
 
   const sqlAssociates = `
 SELECT
@@ -71,7 +66,7 @@ SELECT
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
-  AND CREATED_BY != 'system-msg-user@${FACILITY}'
+  AND CREATED_BY NOT IN (${SYSTEM_USERS})
 GROUP BY CREATED_BY
 ORDER BY lpns DESC`.trim();
 
@@ -83,7 +78,7 @@ SELECT
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
-  AND CREATED_BY != 'system-msg-user@${FACILITY}'
+  AND CREATED_BY NOT IN (${SYSTEM_USERS})
 GROUP BY hr
 ORDER BY hr ASC`.trim();
 
@@ -95,7 +90,7 @@ SELECT
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
-  AND CREATED_BY != 'system-msg-user@${FACILITY}'
+  AND CREATED_BY NOT IN (${SYSTEM_USERS})
 GROUP BY CREATED_BY, hr
 ORDER BY CREATED_BY, hr ASC`.trim();
 
@@ -135,7 +130,7 @@ ORDER BY CREATED_BY, hr ASC`.trim();
 
   return {
     generated:  new Date().toISOString().slice(0, 19),
-    shift:      shiftLabel(),
+    shift:      rcvShift.label,  // same shift the queries use (after 10 PM = still 2nd)
     facility:   FACILITY,
     associates,
     hourly,
