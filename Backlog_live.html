@@ -841,6 +841,15 @@
   [data-theme="solid"] .rr-metric-label { color: #6a7a9e; }
   .rr-order-chips{display:flex;flex-wrap:wrap;gap:5px;}
   .rr-order-chip{font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border);font-family:monospace;}
+  .rr-pill.d1sn{background:var(--yellow-bg,#2e2510);color:var(--amber,#f59e0b);border-color:var(--yellow-border,#6b4f10);}
+  .rr-d1sn-head{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface2);border-top:0.5px solid var(--border);border-bottom:0.5px solid var(--border-light);font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .rr-d1sn-head .rr-d1sn-count{color:var(--amber,#f59e0b);text-transform:none;letter-spacing:0;font-weight:600;}
+  .rr-d1sn-row{display:flex;align-items:flex-start;gap:10px;padding:7px 14px;border-bottom:0.5px solid var(--border-light);font-size:12px;}
+  .rr-d1sn-row:last-child{border-bottom:none;}
+  .rr-d1sn-lpn{font-family:monospace;font-weight:700;color:var(--text);min-width:96px;}
+  .rr-d1sn-status{font-size:11px;font-weight:600;color:var(--text-muted);min-width:92px;}
+  .rr-d1sn-items{flex:1;display:flex;flex-wrap:wrap;gap:4px;}
+  .rr-d1sn-units{font-weight:700;color:var(--text);min-width:48px;text-align:right;}
   .rr-no-task{font-size:12px;font-weight:600;color:var(--red);padding:5px 8px;background:var(--red-bg,#2e1a1a);border:0.5px solid var(--red-border,#6b2020);border-radius:5px;display:inline-block;margin-top:4px;}
   .tk-zone-header td{background:var(--surface2,#1a1e2a);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-hint);padding:4px 6px;border-top:1px solid var(--border);}
   .tk-zone-pct{float:right;font-size:11px;font-weight:600;color:var(--text-hint);}
@@ -1124,6 +1133,7 @@ body { animation: pageEnter 0.28s ease-out both; }
               <div class="rr-pills">
                 <span class="rr-pill items" id="rr-pill-items">— items</span>
                 <span class="rr-pill orders" id="rr-pill-orders">— orders</span>
+                <span class="rr-pill d1sn" id="rr-pill-d1sn" style="display:none;"></span>
               </div>
             </div>
             <span class="rr-chevron" id="rr-chevron">&#9660;</span>
@@ -2985,6 +2995,36 @@ function fetchRrData() {
     .catch(function() {});
 }
 
+// iLPNs at D1-SN-01 with units not allocated. Section + header pill only show when there are any.
+function rrD1snHtml(lpns) {
+  var pill = document.getElementById('rr-pill-d1sn');
+  if (!lpns || !lpns.length) { pill.style.display = 'none'; return ''; }
+  var units = lpns.reduce(function(s, l) { return s + (l.units || 0); }, 0);
+  pill.textContent = lpns.length + ' not allocated at D1-SN-01';
+  pill.style.display = '';
+  var stLabel = { '3000': 'Not allocated', '4000': 'Part allocated', '5000': 'Part allocated' };
+  var rows = lpns.map(function(l) {
+    var idle = '';
+    if (l.updated_utc) {
+      var hrs = (Date.now() - new Date(String(l.updated_utc).replace(' ', 'T') + 'Z').getTime()) / 3600000;
+      idle = hrs >= 24 ? Math.floor(hrs / 24) + 'd idle' : hrs >= 1 ? Math.floor(hrs) + 'h idle' : Math.max(0, Math.round(hrs * 60)) + 'm idle';
+    }
+    var chips = (l.items || []).map(function(it) {
+      return '<span class="rr-order-chip">' + it.item_id + ' &times; ' + it.units + '</span>';
+    }).join('');
+    var ageCls = idle.indexOf('d idle') > 0 ? 'red' : 'yellow';
+    return '<div class="rr-d1sn-row">' +
+      '<span class="rr-d1sn-lpn">' + l.ilpn_id + '</span>' +
+      '<span class="rr-d1sn-status">' + (stLabel[l.status] || l.status) + '</span>' +
+      '<span class="rr-d1sn-items">' + chips + '</span>' +
+      '<span class="rr-d1sn-units">' + l.units + ' u</span>' +
+      (idle ? '<span class="rr-age ' + ageCls + '">' + idle + '</span>' : '') +
+      '</div>';
+  }).join('');
+  return '<div class="rr-d1sn-head">Not allocated at D1-SN-01 <span class="rr-d1sn-count">' +
+    lpns.length + ' LPN' + (lpns.length !== 1 ? 's' : '') + ' &middot; ' + units + ' unit' + (units !== 1 ? 's' : '') + '</span></div>' + rows;
+}
+
 function renderRrWidget(data) {
   lastRrData = data;
   var widget = document.getElementById('rr-widget');
@@ -2998,7 +3038,10 @@ function renderRrWidget(data) {
     document.getElementById('rr-pill-items').className   = 'rr-pill clear';
     document.getElementById('rr-pill-orders').style.display = 'none';
     document.getElementById('rr-rows').innerHTML =
-      '<div style="padding:12px 14px;font-size:12px;color:var(--green);">All ecom demand covered by active face stock.</div>';
+      '<div style="padding:12px 14px;font-size:12px;color:var(--green);">All ecom demand covered by active face stock.</div>' +
+      rrD1snHtml(data.d1sn_unallocated);
+    var d1n = (data.d1sn_unallocated || []).length;
+    if (d1n && d1n < 8 && !rrOpen) toggleRrWidget();
     return;
   }
 
@@ -3073,7 +3116,7 @@ function renderRrWidget(data) {
       '</div>';
   }).join('');
 
-  document.getElementById('rr-rows').innerHTML = html;
+  document.getElementById('rr-rows').innerHTML = html + rrD1snHtml(data.d1sn_unallocated);
 
   // Auto-expand the widget body if row count is small enough to show without scrolling
   if (items.length < 5 && !rrOpen) {

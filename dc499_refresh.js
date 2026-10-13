@@ -772,12 +772,40 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
   AND t.STATUS NOT IN ('8000','9000')
   AND t.CREATED_TIMESTAMP >= NOW() - INTERVAL 3 DAY`.trim();
 
-  const [respOrders, respFace, respSource, respTasks] = await Promise.all([
+  // Q5: iLPNs at D1-SN-01 (ready for pack) holding units that are not allocated.
+  // ON_HAND > 0 skips totes mid-pack (on hand 0, allocated negative). Best-effort.
+  const sqlD1sn = `
+SELECT ilpn.ILPN_ID, ilpn.STATUS, ilpn.UPDATED_TIMESTAMP, inv.ITEM_ID, inv.ON_HAND, inv.ALLOCATED
+FROM default_dcinventory.DCI_ILPN ilpn
+JOIN default_dcinventory.DCI_INVENTORY inv ON inv.ILPN_ID = ilpn.ILPN_ID AND inv.FACILITY_ID = ilpn.FACILITY_ID
+WHERE ilpn.FACILITY_ID = '${FACILITY}'
+  AND ilpn.CURRENT_LOCATION_ID = 'D1-SN-01'
+  AND inv.ON_HAND > 0
+  AND inv.ON_HAND > COALESCE(inv.ALLOCATED, 0)`.trim();
+
+  const [respOrders, respFace, respSource, respTasks, respD1sn] = await Promise.all([
     mcpQuery(accessToken, sqlOrders),
     mcpQuery(accessToken, sqlFaceInv),
     mcpQuery(accessToken, sqlSourceInv),
     mcpQuery(accessToken, sqlTasks),
+    mcpQuery(accessToken, sqlD1sn).catch(e => { console.warn(`[${ts()}]   D1-SN-01 unallocated query failed: ${e.message}`); return null; }),
   ]);
+
+  // Group D1-SN-01 rows by iLPN. null = query failed (page hides the section).
+  let d1snUnalloc = null;
+  if (respD1sn) {
+    const byLpn = {};
+    for (const r of (respD1sn.rows || [])) {
+      const onHand = Math.round(Number(r.ON_HAND || 0));
+      const free   = Math.round(onHand - Math.max(0, Number(r.ALLOCATED || 0)));
+      if (!byLpn[r.ILPN_ID]) byLpn[r.ILPN_ID] = {
+        ilpn_id: r.ILPN_ID, status: String(r.STATUS), updated_utc: r.UPDATED_TIMESTAMP || null, units: 0, items: [],
+      };
+      byLpn[r.ILPN_ID].units += free;
+      byLpn[r.ILPN_ID].items.push({ item_id: r.ITEM_ID, units: free, on_hand: onHand });
+    }
+    d1snUnalloc = Object.values(byLpn).sort((x, y) => String(x.updated_utc).localeCompare(String(y.updated_utc)));
+  }
 
   // Build lookup maps
   const faceMap   = {};
@@ -868,6 +896,7 @@ WHERE t.FACILITY_ID     = '${FACILITY}'
       oldest_age_hrs:    oldestItem ? oldestItem.age_hrs : null,
     },
     items,
+    d1sn_unallocated: d1snUnalloc,
   };
 }
 
