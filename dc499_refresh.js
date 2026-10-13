@@ -331,6 +331,11 @@ ORDER BY pw_prefix, dz_count DESC`.trim();
 }
 
 // ── backlog query ──────────────────────────────────────────────────────────────
+// Per-day Ecom line counts for days before yesterday: 'YYYY-MM-DD' → { line_count, shipped_count, at }
+const lineDayCache = {};
+const LINE_DAY_CACHE_MS = 30 * 60 * 1000;
+const nextDayStr = (ymd) => { const [y, m, d] = ymd.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10); };
+
 async function fetchBacklog(accessToken) {
   const pdt = nowPdt();
 
@@ -368,23 +373,40 @@ WHERE FACILITY_ID = '${FACILITY}'
 GROUP BY line_date, ORDER_ID, STATUS
 ORDER BY line_date DESC, ORDER_ID`.trim();
 
-  // Query 2: line counts by PDT date + hour over the 7 days, with shipped counted alongside.
-  // Replaces three separate scans of the same lines (shipped per date, total per date, today
-  // by hour) — on 10/2 those took 135s + 66s at a slow moment; this one scan runs ~8s.
-  // Shipped / daily totals / hourly rows are rebuilt from it below in their old shapes.
-  const sqlLineCounts = `
+  // Query 2: line counts (all + shipped) per local day, split into one query per day.
+  // The 8-day version had no STATUS filter, so MySQL walked ~1.6M index rows to keep 8.7% —
+  // median 258s, failing the 240s timeout (measured 10/12). One day runs ~4s.
+  // 2a = today by hour (feeds the hourly chart + today's totals), every cycle.
+  // 2b = each prior day: yesterday every cycle; older days cached in lineDayCache for
+  // LINE_DAY_CACHE_MS (only late shipping of old backlog moves them).
+  const sqlLineDay = (dayStr, byHour) => `
 SELECT
-  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS line_date,
-  HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS hour_pdt,
+  ${byHour ? `HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ})) AS hour_pdt,` : ''}
   COUNT(*) AS line_count,
   SUM(CASE WHEN STATUS = 'SHIPPED' THEN 1 ELSE 0 END) AS shipped_count
 FROM default_dcorder.DCO_ORDER_LINE
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE  = 'ECOM'
   AND CANCELLED   = 0
-  AND CREATED_TIMESTAMP >= '${lookbackUtcStart}'
-  AND CREATED_TIMESTAMP <  '${todayUtcEnd}'
-GROUP BY line_date, hour_pdt`.trim();
+  AND CREATED_TIMESTAMP >= '${pacificMidnightSql(dayStr)}'
+  AND CREATED_TIMESTAMP <  '${pacificMidnightSql(nextDayStr(dayStr))}'
+${byHour ? 'GROUP BY hour_pdt' : ''}`.trim();
+
+  const priorDays = [];
+  for (let d = new Date(sevenDaysAgoDate); d < todayDate; d.setDate(d.getDate() + 1)) priorDays.push(d.toLocaleDateString('en-CA'));
+  const yesterdayStr = priorDays[priorDays.length - 1];
+  for (const k of Object.keys(lineDayCache)) if (k < sevenDaysAgoStr) delete lineDayCache[k];
+  const fetchPriorDay = async (dayStr) => {
+    const c = lineDayCache[dayStr];
+    if (c && dayStr !== yesterdayStr && Date.now() - c.at < LINE_DAY_CACHE_MS) return c;
+    try {
+      const r = (await mcpQuery(accessToken, sqlLineDay(dayStr, false))).rows?.[0] || {};
+      return (lineDayCache[dayStr] = { line_count: Number(r.line_count || 0), shipped_count: Number(r.shipped_count || 0), at: Date.now() });
+    } catch (e) {
+      if (c) { console.warn(`[${ts()}]   line counts ${dayStr} failed, using cached (${e.message})`); return c; }
+      throw e;
+    }
+  };
 
   // Query 5: wave runs this shift
   // 1st shift from 3:00 AM, 2nd from 1:40 PM local (DST-aware)
@@ -457,23 +479,27 @@ GROUP BY ITEM_ID, DESCRIPTION
 ORDER BY units_ordered DESC
 LIMIT 10`.trim();
 
-  const [respOrders, respLineCounts, respWaves, respHazmat, respRfp, respTopItems] = await Promise.all([
+  const [respOrders, respToday, priorCounts, respWaves, respHazmat, respRfp, respTopItems] = await Promise.all([
     mcpQuery(accessToken, sqlOrders),
-    mcpQuery(accessToken, sqlLineCounts),
+    mcpQuery(accessToken, sqlLineDay(todayStr, true)),
+    Promise.all(priorDays.map(fetchPriorDay)),
     mcpQuery(accessToken, sqlWaves),
     mcpQuery(accessToken, sqlHazmat).catch(() => ({ rows: [] })),
     mcpQuery(accessToken, sqlRfp),
     mcpQuery(accessToken, sqlTopItems).catch(() => ({ rows: [] })),
   ]);
 
-  // Rebuild the old per-date shipped / per-date total / today-by-hour rows from the one scan
+  // Rebuild the old per-date shipped / per-date total / today-by-hour rows from the per-day counts
   const shippedByDate = {}, totalByDate = {}, todayByHour = {};
-  for (const r of (respLineCounts.rows || [])) {
-    const d = String(r.line_date || '').slice(0, 10);
-    if (d.length < 10) continue;
-    totalByDate[d]   = (totalByDate[d]   || 0) + Number(r.line_count || 0);
-    shippedByDate[d] = (shippedByDate[d] || 0) + Number(r.shipped_count || 0);
-    if (d === todayStr) todayByHour[Number(r.hour_pdt)] = (todayByHour[Number(r.hour_pdt)] || 0) + Number(r.line_count || 0);
+  priorDays.forEach((d, i) => {
+    if (!priorCounts[i].line_count) return;
+    totalByDate[d]   = priorCounts[i].line_count;
+    shippedByDate[d] = priorCounts[i].shipped_count;
+  });
+  for (const r of (respToday.rows || [])) {
+    totalByDate[todayStr]   = (totalByDate[todayStr]   || 0) + Number(r.line_count || 0);
+    shippedByDate[todayStr] = (shippedByDate[todayStr] || 0) + Number(r.shipped_count || 0);
+    todayByHour[Number(r.hour_pdt)] = (todayByHour[Number(r.hour_pdt)] || 0) + Number(r.line_count || 0);
   }
   const byDateDesc = m => Object.keys(m).sort().reverse().map(d => ({ line_date: d, line_count: m[d] }));
   const respShipped     = { rows: byDateDesc(shippedByDate).filter(r => r.line_count > 0) };
