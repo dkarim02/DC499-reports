@@ -1183,11 +1183,13 @@ var FULL_METRIC = {
 var FULL_COUNT_SKIP_ZERO = new Set();
 // Dedup by Container ID within each employee for these types (prevents double-count when two TX IDs cover same box)
 var FULL_DEDUP_CONTAINER = new Set(['shipping']);
-function sumRows(rows, typ, empFilter) {
+// Calls cb(row, emp, value) for every row that counts toward typ — P1-PK drops,
+// T-container packs and repeat shipping containers are skipped. sumRows, the
+// Full Report tiles and the hourly chart all use this so their numbers agree.
+function forEachCountedRow(rows, typ, empFilter, cb) {
   var metricKey = FULL_METRIC[typ];
   var dedupByContainer = FULL_DEDUP_CONTAINER.has(typ);
   var seenContainers = {}; // emp -> Set of container IDs
-  var totals = {};
   rows.forEach(function(r) {
     var e = (r['Employee']||'').trim();
     if (!e) return;
@@ -1203,8 +1205,12 @@ function sumRows(rows, typ, empFilter) {
       }
     }
     var val = metricKey ? (parseFloat(r[metricKey])||0) : (FULL_COUNT_SKIP_ZERO.has(typ) && !(parseFloat(r['Quantity'])||0) ? 0 : 1);
-    totals[e] = (totals[e]||0) + val;
+    cb(r, e, val);
   });
+}
+function sumRows(rows, typ, empFilter) {
+  var totals = {};
+  forEachCountedRow(rows, typ, empFilter, function(r, e, val) { totals[e] = (totals[e]||0) + val; });
   return totals;
 }
 
@@ -1865,19 +1871,18 @@ function drawFullChart(filterTyp) {
   types.forEach(function(typ) {
     var TEAM = getTeamSet(typ);
     var txList = getTX()[typ];
-    var metricKey = FULL_METRIC[typ];
     var map = {};
-    fullReportRows.forEach(function(r) {
-      if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return;
-      if (typ === 'sorting' && (r['Criteria']||'').trim() !== SORT_CRITERIA) return;
-      var e = (r['Employee']||'').trim();
-      if (!TEAM.has(e)) return;
+    var typRows = fullReportRows.filter(function(r) {
+      if (!txList || txList.indexOf((r['Transaction ID']||'').trim()) === -1) return false;
+      return typ !== 'sorting' || (r['Criteria']||'').trim() === SORT_CRITERIA;
+    });
+    forEachCountedRow(typRows, typ, function(e){ return TEAM.has(e); }, function(r, e, val) {
       var d = parseDT(r['Activity Datetime']);
       if (!d) return;
       var h = d.getHours();
       if (shift === '2nd' && h < 5) h += 24;
       if (h < bounds.start || h > bounds.end) return;
-      map[h] = (map[h]||0) + (metricKey ? (parseFloat(r[metricKey])||0) : (FULL_COUNT_SKIP_ZERO.has(typ) && !(parseFloat(r['Quantity'])||0) ? 0 : 1));
+      map[h] = (map[h]||0) + val;
       allHours.add(h);
     });
     hourlyData[typ] = map;
@@ -1956,11 +1961,7 @@ function renderFullReport() {
       if (typ === 'sorting') return (r['Criteria']||'').trim() === SORT_CRITERIA;
       return true;
     });
-    var grand = filtered.reduce(function(s,r){
-      var e = (r['Employee']||'').trim();
-      if (!TEAM.has(e)) return s;
-      return s + (metricKey ? (parseFloat(r[metricKey])||0) : (FULL_COUNT_SKIP_ZERO.has(typ) && !(parseFloat(r['Quantity'])||0) ? 0 : 1));
-    },0);
+    var grand = Object.values(sumRows(filtered, typ, function(e){ return TEAM.has(e); })).reduce(function(s,v){return s+v;},0);
     var pace = getTilePace(typ, grand, filtered, TEAM);
     var pickSubFull = 0, bulkSubFull = 0;
     if (typ === 'picking') {
