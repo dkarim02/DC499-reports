@@ -146,7 +146,7 @@ async function fetchReserveLive(accessToken) {
       return resp.rows || [];
     } catch (e) {
       console.error(`[${ts()}] ${label} query failed:`, e.message);
-      return [];
+      return null;   // null = failed (kept from the last file below), [] = really no scans
     }
   };
   const containerGroup = RS_GROUPS.find(g => g.containerCount);
@@ -157,8 +157,42 @@ async function fetchReserveLive(accessToken) {
     runQuery(`${containerGroup.label} containers`, buildContainerSql(shiftStart, containerGroup)),
   ]);
 
+  // A failed query used to write 0 for that group, so the page's numbers dropped out and came
+  // back on the next good cycle. Now a failed group keeps its numbers from the last file
+  // (same shift only). If every query failed, the old file is left alone.
+  const failed = results.filter(r => r.rows === null).map(r => r.group.key);
+  if (failed.length === RS_GROUPS.length) {
+    console.warn(`[${ts()}] All Reserve queries failed — keeping the last reserve_live.json`);
+    return;
+  }
+  let prev = null;
+  if (failed.length || containerRows === null) {
+    try { prev = JSON.parse(fs.readFileSync(OUTPUT_FILE, 'utf8')); } catch (e) { prev = null; }
+    if (prev && prev.shift_start !== shiftStart) prev = null;
+  }
+
   const newAssoc = () => ({ pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, bulk_lpn: 0, hourly: {} });
+  const held = [];
   for (const { group, rows } of results) {
+    if (rows === null) {
+      if (!prev) continue;
+      for (const [emp, p] of Object.entries(prev.associates || {})) {
+        if (!p[group.key] && !Object.values(p.hourly || {}).some(h => h[group.key])) continue;
+        if (!associates[emp]) associates[emp] = newAssoc();
+        const a = associates[emp];
+        for (const [hr, h] of Object.entries(p.hourly || {})) {
+          if (!h[group.key]) continue;
+          if (!a.hourly[hr]) a.hourly[hr] = { pick_f1: 0, pick_f2: 0, replen: 0, putaway: 0, bulk_lpn: 0 };
+          a.hourly[hr][group.key] += h[group.key];
+        }
+        a[group.key] += p[group.key] || 0;
+        totals[group.key] += p[group.key] || 0;
+      }
+      rowCounts[group.key] = (prev.row_counts || {})[group.key] || 0;
+      held.push(group.key);
+      console.warn(`[${ts()}] ${group.label}: query failed — kept numbers from ${prev.generated}`);
+      continue;
+    }
     const emps = new Set();
     for (const row of rows) {
       const emp = row.Employee;
@@ -176,7 +210,11 @@ async function fetchReserveLive(accessToken) {
     rowCounts[group.key] = emps.size;
   }
 
-  for (const row of containerRows) {
+  const cRows = containerRows !== null ? containerRows
+    : Object.entries((prev && prev.associates) || {})
+        .filter(([, p]) => p.replen_containers)
+        .map(([emp, p]) => ({ Employee: emp, container_count: p.replen_containers }));
+  for (const row of cRows) {
     const emp = row.Employee;
     const cCount = Math.round(Number(row.container_count) || 0);
     if (!associates[emp]) associates[emp] = newAssoc();
@@ -192,6 +230,7 @@ async function fetchReserveLive(accessToken) {
     associates,
     totals,
     row_counts:  rowCounts,
+    held_groups: held,    // groups whose query failed this cycle — numbers are from the last good cycle
   };
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
