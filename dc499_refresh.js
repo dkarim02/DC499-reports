@@ -1544,8 +1544,26 @@ async function queryAndWrite(accessToken) {
   // One line per cycle so slow spots are easy to see in the window
   const sec = ms => (ms / 1000).toFixed(1) + 's';
   const last = Object.entries(sectionMs).sort((a, b) => b[1] - a[1])[0];
-  console.log(`[${ts()}] ⏱ cycle ${sec(Date.now() - cycleStart)} — queries ${sec(queryMs)} (last to finish: ${last ? last[0] : '-'}), git ${sec(gitMs)} · ${qs.n} queries${qs.failed ? ` (${qs.failed} failed)` : ''}, longest slot wait ${sec(qs.waitMax)}, slowest: ${qs.slow.map(q => q.label + ' ' + sec(q.runMs)).join(', ') || '-'}`);
+  const cycleLine = `⏱ cycle ${sec(Date.now() - cycleStart)} — queries ${sec(queryMs)} (last to finish: ${last ? last[0] : '-'}), git ${sec(gitMs)} · ${qs.n} queries${qs.failed ? ` (${qs.failed} failed)` : ''}, longest slot wait ${sec(qs.waitMax)}, slowest: ${qs.slow.map(q => q.label + ' ' + sec(q.runMs)).join(', ') || '-'}`;
+  console.log(`[${ts()}] ${cycleLine}`);
+  logCycle(cycleLine);
   return { totesData, backlogData, batchStatusData, retailReplenData, tasksData, shippedData };
+}
+
+// Cycle history for tuning (added 2026-10-13): the ⏱ line, with a Pacific date stamp, appended to
+// cycle_times.txt. ~720 lines a day; once it passes CYCLE_LOG_MAX lines it is cut back to the
+// newest CYCLE_LOG_KEEP (about a week). A logging error never touches the cycle.
+const CYCLE_LOG = path.join(__dirname, 'cycle_times.txt');
+const CYCLE_LOG_MAX = 6000, CYCLE_LOG_KEEP = 5000;
+function logCycle(line) {
+  try {
+    const stamp = new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' });
+    fs.appendFileSync(CYCLE_LOG, `${stamp}  ${line}\n`);
+    if (fs.statSync(CYCLE_LOG).size > CYCLE_LOG_MAX * 150) {   // cheap size check before reading it
+      const lines = fs.readFileSync(CYCLE_LOG, 'utf8').split('\n').filter(Boolean);
+      if (lines.length > CYCLE_LOG_MAX) fs.writeFileSync(CYCLE_LOG, lines.slice(-CYCLE_LOG_KEEP).join('\n') + '\n');
+    }
+  } catch (e) { /* logging is best-effort */ }
 }
 
 // ── serve mode ─────────────────────────────────────────────────────────────────
