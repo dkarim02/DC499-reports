@@ -86,6 +86,8 @@ function shiftStartUtc(now = new Date()) {
 }
 
 // ── SQL builder ────────────────────────────────────────────────────────────────
+// Location columns follow the MAWM CSV export: Current = where the scan went (target),
+// Previous = where it came from (source). Ecom_v3.html's P1-PK replen rule reads Current.
 function buildSql(shiftStart, txGroup, criteriaFilter = null) {
   const txList = txGroup.map(t => `'${t.replace(/'/g, "''")}'`).join(',');
   const criteriaClause = criteriaFilter ? `\n  AND t.CRITERIA_ID = '${criteriaFilter}'` : '';
@@ -98,8 +100,8 @@ SELECT
   t.COMPLETED_QUANTITY                                   AS \`Completed Quantity\`,
   t.TRACE_ID                                             AS \`CP Trace Id\`,
   t.CONTAINER_ID                                         AS \`Container ID\`,
-  t.SOURCE_LOCATION_ID                                   AS \`Current Location\`,
-  ''                                                     AS \`Previous Location\`,
+  t.TARGET_LOCATION_ID                                   AS \`Current Location\`,
+  t.SOURCE_LOCATION_ID                                   AS \`Previous Location\`,
   t.TARGET_LOCATION_ID                                   AS \`Target Location\`,
   t.CRITERIA_ID                                          AS \`Criteria\`
 FROM default_task.TSK_ACTIVITY_TRACKING t
