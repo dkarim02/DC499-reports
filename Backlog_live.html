@@ -3350,13 +3350,16 @@ function renderFlowCarts(carts) {
 }
 
 // Sum of task details for a list of tasks. Shows done/total when the done counts are known.
+// '—' when no task has a count; a trailing '+' when some tasks have no count (done before it was captured).
 function tkDetailTotal(tasks) {
-  var tot = 0, done = 0, hasDone = false;
+  var tot = 0, done = 0, hasDone = false, known = 0;
   for (var i = 0; i < tasks.length; i++) {
+    if (tasks[i].detail_count !== null && tasks[i].detail_count !== undefined) known++;
     tot += Number(tasks[i].detail_count) || 0;
     if (tasks[i].detail_done !== null && tasks[i].detail_done !== undefined) { hasDone = true; done += Number(tasks[i].detail_done) || 0; }
   }
-  return (hasDone ? done.toLocaleString() + '/' : '') + tot.toLocaleString();
+  if (!known) return '—';
+  return (hasDone ? done.toLocaleString() + '/' : '') + tot.toLocaleString() + (known < tasks.length ? '+' : '');
 }
 
 function renderTaskTable(type) {

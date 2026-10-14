@@ -1314,6 +1314,20 @@ WHERE FACILITY_ID = '${FACILITY}'
 }
 
 // ── ecom tasks query ───────────────────────────────────────────────────────────
+// Detail counts are only queried while a task is open. Keep the last count per task so a task
+// that completes still shows its details (no extra query). Seeded from tasks_live.json on start
+// so a restart doesn't lose the counts for tasks already done.
+let taskDetailCache = null;
+function loadTaskDetailCache() {
+  taskDetailCache = new Map();
+  try {
+    const prev = JSON.parse(fs.readFileSync(TASKS_FILE, 'utf8'));
+    for (const k of ['picking', 'replen'])
+      for (const t of ((prev[k] && prev[k].tasks) || []))
+        if (t.task_id && t.detail_count != null) taskDetailCache.set(t.task_id, t.detail_count);
+  } catch (_) {}
+}
+
 async function fetchTaskData(accessToken) {
   // 1st 3:00 AM, 2nd 2:00 PM local (DST-aware)
   const taskShift  = currentShift({ firstFrom: 3, secondFrom: 14, firstStart: [3, 0], secondStart: [14, 0] });
@@ -1432,9 +1446,14 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
       console.warn(`  Task detail batch ${Math.floor(i/BATCH_SZ)+1} failed: ${e.message}`);
     }
   }));
+  if (!taskDetailCache) loadTaskDetailCache();
   for (const t of allTasks) {
-    t.detail_count = detailMap[t.task_id] ?? null;
+    if (detailMap[t.task_id] != null) taskDetailCache.set(t.task_id, detailMap[t.task_id]);
+    t.detail_count = taskDetailCache.get(t.task_id) ?? null;
   }
+  // Drop tasks that have left the list so the cache doesn't grow all week
+  const liveIds = new Set(allTasks.map(t => t.task_id));
+  for (const id of taskDetailCache.keys()) if (!liveIds.has(id)) taskDetailCache.delete(id);
 
   function summarize(tasks) {
     const counts = { queued:0, assigned:0, in_progress:0, completed:0, total_open:0 };
