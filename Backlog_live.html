@@ -841,7 +841,15 @@
   [data-theme="solid"] .rr-metric-label { color: #6a7a9e; }
   .rr-order-chips{display:flex;flex-wrap:wrap;gap:5px;}
   .rr-order-chip{font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:var(--surface);color:var(--text-muted);border:0.5px solid var(--border);font-family:monospace;}
-  .rr-pill.d1sn{background:var(--yellow-bg,#2e2510);color:var(--amber,#f59e0b);border-color:var(--yellow-border,#6b4f10);}
+  .metric.rfp{position:relative;}
+  .d1sn-dot{position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:#ef4444;cursor:pointer;box-shadow:0 0 0 0 rgba(239,68,68,0.7);animation:d1snFlash 1.2s ease-in-out infinite;}
+  .d1sn-dot::after{content:'';position:absolute;inset:-8px;}
+  @keyframes d1snFlash{0%{opacity:1;box-shadow:0 0 0 0 rgba(239,68,68,0.7);}50%{opacity:0.35;}70%{box-shadow:0 0 0 8px rgba(239,68,68,0);}100%{opacity:1;box-shadow:0 0 0 0 rgba(239,68,68,0);}}
+  .d1sn-card{display:none;padding:0;overflow:hidden;margin-bottom:1rem;}
+  .d1sn-card.open{display:block;}
+  .d1sn-card-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:0.5px solid var(--border-light);font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .d1sn-card-head .rr-d1sn-count{color:var(--red);text-transform:none;letter-spacing:0;font-weight:600;margin-left:8px;}
+  .d1sn-close{background:none;border:none;color:var(--text-muted);font-size:20px;line-height:1;cursor:pointer;padding:0 4px;}
   .rr-d1sn-head{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--surface2);border-top:0.5px solid var(--border);border-bottom:0.5px solid var(--border-light);font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
   .rr-d1sn-head .rr-d1sn-count{color:var(--amber,#f59e0b);text-transform:none;letter-spacing:0;font-weight:600;}
   .rr-d1sn-row{display:flex;align-items:flex-start;gap:10px;padding:7px 14px;border-bottom:0.5px solid var(--border-light);font-size:12px;}
@@ -1037,6 +1045,7 @@ body { animation: pageEnter 0.28s ease-out both; }
             <div class="metric-sub">Not in Packing</div>
           </div>
           <div class="metric rfp">
+            <span class="d1sn-dot" id="d1sn-dot" style="display:none;" onclick="toggleD1snCard()"></span>
             <div class="metric-label">Ready for Pack</div>
             <div class="metric-value" id="m-rfp">--</div>
             <div class="metric-sub"><div class="rfp-split" id="m-rfp-split"><span style="color:var(--text-muted)">Units at D1-SN-01</span></div></div>
@@ -1056,6 +1065,15 @@ body { animation: pageEnter 0.28s ease-out both; }
             <div class="metric-value" id="m-haz-orders">--</div>
             <div class="metric-sub" id="m-haz-sub">-- lines</div>
           </div>
+        </div>
+
+        <!-- Not allocated at D1-SN-01 — opened from the red dot on the Ready for Pack tile -->
+        <div class="card d1sn-card" id="d1sn-card">
+          <div class="d1sn-card-head">
+            <div id="d1sn-card-title"></div>
+            <button class="d1sn-close" onclick="toggleD1snCard()" title="Close">&times;</button>
+          </div>
+          <div id="d1sn-card-rows"></div>
         </div>
 
         <div class="card" id="table-card" style="display:none;">
@@ -1134,7 +1152,6 @@ body { animation: pageEnter 0.28s ease-out both; }
               <div class="rr-pills">
                 <span class="rr-pill items" id="rr-pill-items">— items</span>
                 <span class="rr-pill orders" id="rr-pill-orders">— orders</span>
-                <span class="rr-pill d1sn" id="rr-pill-d1sn" style="display:none;"></span>
               </div>
             </div>
             <span class="rr-chevron" id="rr-chevron">&#9660;</span>
@@ -2998,13 +3015,17 @@ function fetchRrData() {
     .catch(function() {});
 }
 
-// iLPNs at D1-SN-01 with units not allocated. Section + header pill only show when there are any.
-function rrD1snHtml(lpns) {
-  var pill = document.getElementById('rr-pill-d1sn');
-  if (!lpns || !lpns.length) { pill.style.display = 'none'; return ''; }
+// iLPNs at D1-SN-01 with units not allocated. A red dot flashes on the Ready for Pack tile
+// when there are any; clicking it opens the list card under the tiles.
+var d1snOpen = false;
+function renderD1sn(lpns) {
+  lpns = lpns || [];
+  var dot  = document.getElementById('d1sn-dot');
+  var card = document.getElementById('d1sn-card');
+  if (!lpns.length) { dot.style.display = 'none'; card.classList.remove('open'); d1snOpen = false; return; }
   var units = lpns.reduce(function(s, l) { return s + (l.units || 0); }, 0);
-  pill.textContent = lpns.length + ' not allocated at D1-SN-01';
-  pill.style.display = '';
+  dot.style.display = '';
+  dot.title = lpns.length + ' LPN' + (lpns.length !== 1 ? 's' : '') + ' not allocated at D1-SN-01 — click to view';
   var stLabel = { '3000': 'Not allocated', '4000': 'Part allocated', '5000': 'Part allocated' };
   var rows = lpns.map(function(l) {
     var idle = '';
@@ -3024,8 +3045,17 @@ function rrD1snHtml(lpns) {
       (idle ? '<span class="rr-age ' + ageCls + '">' + idle + '</span>' : '') +
       '</div>';
   }).join('');
-  return '<div class="rr-d1sn-head">Not allocated at D1-SN-01 <span class="rr-d1sn-count">' +
-    lpns.length + ' LPN' + (lpns.length !== 1 ? 's' : '') + ' &middot; ' + units + ' unit' + (units !== 1 ? 's' : '') + '</span></div>' + rows;
+  document.getElementById('d1sn-card-title').innerHTML = 'Not allocated at D1-SN-01 <span class="rr-d1sn-count">' +
+    lpns.length + ' LPN' + (lpns.length !== 1 ? 's' : '') + ' &middot; ' + units + ' unit' + (units !== 1 ? 's' : '') + '</span>';
+  document.getElementById('d1sn-card-rows').innerHTML = rows;
+  card.classList.toggle('open', d1snOpen);
+}
+
+function toggleD1snCard() {
+  d1snOpen = !d1snOpen;
+  var card = document.getElementById('d1sn-card');
+  card.classList.toggle('open', d1snOpen);
+  if (d1snOpen) card.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
 function renderRrWidget(data) {
@@ -3041,10 +3071,8 @@ function renderRrWidget(data) {
     document.getElementById('rr-pill-items').className   = 'rr-pill clear';
     document.getElementById('rr-pill-orders').style.display = 'none';
     document.getElementById('rr-rows').innerHTML =
-      '<div style="padding:12px 14px;font-size:12px;color:var(--green);">All ecom demand covered by active face stock.</div>' +
-      rrD1snHtml(data.d1sn_unallocated);
-    var d1n = (data.d1sn_unallocated || []).length;
-    if (d1n && d1n < 8 && !rrOpen) toggleRrWidget();
+      '<div style="padding:12px 14px;font-size:12px;color:var(--green);">All ecom demand covered by active face stock.</div>';
+    renderD1sn(data.d1sn_unallocated);
     return;
   }
 
@@ -3119,7 +3147,8 @@ function renderRrWidget(data) {
       '</div>';
   }).join('');
 
-  document.getElementById('rr-rows').innerHTML = html + rrD1snHtml(data.d1sn_unallocated);
+  document.getElementById('rr-rows').innerHTML = html;
+  renderD1sn(data.d1sn_unallocated);
 
   // Auto-expand the widget body if row count is small enough to show without scrolling
   if (items.length < 5 && !rrOpen) {
