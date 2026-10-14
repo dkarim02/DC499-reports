@@ -297,7 +297,13 @@ Output: expedite_live.json. REDIRECT_PORT 3122.
 
 **Expedite flag:** `DESIGNATED_SERVICE_LEVEL_ID = '11'` on DCO_ORDER — confirmed via 1.2-day avg delivery. `EXT_ESTIMATEDSHIPBYDATETIME` is a fixed daily noon PDT cutoff, NOT a per-order deadline — do not use it as the primary ship-by metric.
 
-**True Ship By (UI):** `placed_utc + 24h` (1DD) / `+48h` (2DD). SLA offsets in `XPD_SLA_HRS` — tweak there. DC Cutoff column removed.
+**True Ship By (UI):** 1DD = `due_utc` (12 PM PT cutoff, below) since 10/14; 2DD = `placed_utc + 48h` (`XPD_SLA_HRS`). DC Cutoff column removed.
+
+**1DD cutoff rule (verified 10/14 vs EXT_ESTIMATEDSHIPBYDATETIME):** placed 12:00 PM → 11:59 AM next day = due 12:00 PM PT that next day (always earlier than placed + 24h, so the 12 PM cutoff is the deadline). ~1 in 20 orders carry an odd MAWM ship-by (placed + ~6 h) — ignored. Agent puts `due_utc` on every 1DD order (`dueCutoff()`).
+
+**oLPN path + times:** `PPK_OLPN.PACKED_DATE_TIME` is always null. Pack = first `NRDR CORE PACK FOR ECOM PACK STATION` / `CUSTOM PACK STATION` row in TSK_ACTIVITY_TRACKING (CONTAINER_ID = OLPN_ID); palletize = first `OB Putaway By Ship Via` (pallet ID set, to P1OB…) → `NRDR Load Parcel Packages` → ship. Ship confirms come in trailer batches (one SHIPPED_DATE_TIME for a whole pallet). 10/14 1st shift: pack→pallet avg 113 / middle 83 min, early-morning packs sat ~5 h.
+
+**`one_dd` block (fetchOneDD):** Q5 = every 1DD order since (last cutoff − 26 h) LEFT JOIN its oLPNs; Q6 = pack/palletize MIN(ts) per oLPN in 200-ID batches. `last_cutoff` {due, on_time, shipped_late, not_shipped} = orders placed in the 24 h before the last 12 PM, on time = every oLPN shipped by it. `pallet_avg_min` / `pallet_median_min` / `pallet_count` = oLPNs palletized this shift. `held[]` = open oLPN packed ≥ `HOLD_MIN` (60) min ago, no palletize scan and no PALLET_ID. Failure → `one_dd: null`, rest of the JSON still writes.
 
 **oLPN enrichment:** Direct query on `PPK_OLPN` by `ORDER_ID`. Fetches `OLPN_ID, ORDER_ID, STATUS, CURRENT_LOCATION_ID, CARRIER_ID, SERVICE_LEVEL_ID, TRACKING_NUMBER, PALLET_ID`. Keeps highest-status oLPN per order as `topOlpn`.
 
@@ -317,7 +323,7 @@ Output: expedite_live.json. REDIRECT_PORT 3122.
 
 **Status labels (UI):** 1000=Ready, 2090=Allocated, 7100=Packing, 7200=Packed, 7600=Manifested.
 
-**Backlog_live.html Expedite tab:** 4 summary tiles + inline filter bar (1DD/2DD toggles | stage pills | Show Ready checkbox). Sortable table: SVC | Order # | Status | Carrier | oLPN/Location | Qty | Age | Ship By | Ordered. Stage pills clickable to filter rows. Themed via `--xpd` CSS vars.
+**Backlog_live.html Expedite tab:** 4 summary tiles + inline filter bar (1DD/2DD toggles | stage pills | Show Ready checkbox). Sortable table: SVC | Order # | Status | Carrier | oLPN/Location | Qty | Age | Ship By | Ordered. Stage pills clickable to filter rows. Themed via `--xpd` CSS vars. **v1.5 (10/14):** sub-tabs All Orders / 1DD Focus (`setXpdView`, saved in `xpd_view_v1`; red badge = late + held). 1DD Focus: 5 tiles (due next cutoff, late, at risk < 2 h, avg pack→pallet, held > 1 h), last-cutoff line, Late & At Risk table, Held table (`render1dd`). Scope is 1DD only (Dean).
 
 ---
 

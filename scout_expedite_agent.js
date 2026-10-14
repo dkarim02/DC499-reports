@@ -15,7 +15,7 @@
 const fs     = require('fs');
 const path   = require('path');
 require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
-const { currentShift } = require('./scout_tz');  // DST-aware local time
+const { currentShift, pacificParts, pacificDateStr, utcFromPacific, addDays, sqlUtc } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -31,6 +31,14 @@ const REDIRECT_URI  = `http://localhost:${REDIRECT_PORT}/callback`;
 const FACILITY      = '499';
 const LOOKBACK_DAYS = 5;    // open 1DD/2DD orders placed in the last 5 days (Dean, 10/12)
 const OLPN_BATCH    = 200;  // order IDs per oLPN lookup
+const SCAN_BATCH    = 200;  // oLPN IDs per pack/palletize scan lookup
+const HOLD_MIN      = 60;   // 1DD oLPN packed this long with no pallet = held
+
+// 1DD cutoff (verified vs EXT_ESTIMATEDSHIPBYDATETIME 10/14): placed 12:00 PM → 11:59 AM next day
+// = due 12:00 PM PT that next day. Always earlier than placed + 24 hrs.
+const CUTOFF_HR     = 12;
+const PACK_TX       = ['NRDR CORE PACK FOR ECOM PACK STATION', 'CUSTOM PACK STATION'];
+const PALLET_TX     = ['OB Putaway By Ship Via', 'NRDR CORE PALLETIZE OLPN', 'FLOOR LOAD PALLETIZE OLPN'];
 
 const args       = process.argv.slice(2);
 const MODE_AUTH  = args.includes('--auth');
@@ -48,6 +56,20 @@ const { doAuthFlow, AuthError, getAccessTokenSilent, getAccessToken, mcpQuery } 
 function ts() {
   return new Date().toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour12: false });
 }
+// MAWM UTC string ('2026-10-14T18:34:18.181' / '2026-10-14 18:34:18') → ms
+function utcMs(str) {
+  if (!str) return NaN;
+  let s = String(str).replace(' ', 'T');
+  if (!/Z$|[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  return new Date(s).getTime();
+}
+// 1DD due time: the next 12:00 PM PT at or after the order was placed (12:00:00 sharp → next day)
+function dueCutoff(placedMs) {
+  const d = new Date(placedMs);
+  const ymd = pacificDateStr(d);
+  return utcFromPacific(pacificParts(d).hour >= CUTOFF_HR ? addDays(ymd, 1) : ymd, CUTOFF_HR, 0).getTime();
+}
+const isoUtc = ms => isNaN(ms) ? null : new Date(ms).toISOString().slice(0, 19);
 
 // ── main fetch ─────────────────────────────────────────────────────────────────
 async function fetchExpedite(accessToken) {
@@ -188,7 +210,13 @@ WHERE FACILITY_ID = '${FACILITY}'
       olpn_svc:      topOlpn?.SERVICE_LEVEL_ID    || null,
       carrier:       topOlpn?.CARRIER_ID          || null,
       pick_stage:    pickStageMap[r.ORDER_ID]     || null,
+      due_utc:       r.service_level_id === '11' && r.placed_utc ? isoUtc(dueCutoff(utcMs(r.placed_utc))) : null,
     };
+  });
+
+  const oneDD = await fetchOneDD(accessToken, openOrders, olpnMap, shiftStart, nowUtc).catch(e => {
+    console.warn(`[${ts()}] 1DD focus failed: ${e.message}`);
+    return null;
   });
 
   const output = {
@@ -202,12 +230,115 @@ WHERE FACILITY_ID = '${FACILITY}'
     shipped_count: shippedCount,
     shipped_1dd:   shippedMap['11'] || 0,
     shipped_2dd:   shippedMap['42'] || 0,
+    one_dd:        oneDD,
     orders,
   };
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
   console.log(`[${ts()}] ✓ expedite_live.json — ${output.open_count} open, ${output.shipped_count} shipped`);
   console.log(`[${ts()}] expedite_live.json ready — dc499_refresh will push on next cycle`);
+}
+
+// ── 1DD focus: last cutoff on-time, pack → pallet time, held oLPNs ─────────────
+async function fetchOneDD(accessToken, openOrders, olpnMap, shiftStart, nowUtc) {
+  const now = nowUtc.getTime();
+  const nextCutoff = dueCutoff(now);
+  const lastCutoff = utcFromPacific(addDays(pacificDateStr(new Date(nextCutoff)), -1), CUTOFF_HR, 0).getTime();
+  // Orders due at the last cutoff were placed from (last cutoff − 1 day); +2 hrs slack for CREATED vs PLACED
+  const sinceStr = sqlUtc(lastCutoff - 26 * 3600000);
+
+  // Q5: every 1DD order (shipped too) since then, with its oLPNs. LEFT JOIN so orders with no oLPN yet count.
+  const resp = await mcpQuery(accessToken, `
+SELECT o.ORDER_ID, o.ORDER_PLACED_DATE_TIME AS placed_utc, o.MAXIMUM_STATUS,
+  p.OLPN_ID, p.STATUS AS olpn_status, p.SHIPPED_DATE_TIME, p.PALLET_ID, p.CURRENT_LOCATION_ID
+FROM default_dcorder.DCO_ORDER o
+LEFT JOIN default_pickpack.PPK_OLPN p
+  ON p.ORDER_ID = o.ORDER_ID AND p.FACILITY_ID = '${FACILITY}' AND p.STATUS <> '9000'
+WHERE o.FACILITY_ID = '${FACILITY}'
+  AND o.ORDER_TYPE = 'ECOM'
+  AND o.CANCELLED = 0
+  AND o.DESIGNATED_SERVICE_LEVEL_ID = '11'
+  AND o.CREATED_TIMESTAMP >= '${sinceStr}'
+LIMIT 5000`.trim());
+  const rows = resp.rows || [];
+
+  // oLPN list: Q5 + the oLPNs of older still-open 1DD orders from Q1
+  const olpns = {};   // OLPN_ID -> { order_id, status, shipped, pallet, location }
+  const addOlpn = (orderId, r) => {
+    if (!r.OLPN_ID || olpns[r.OLPN_ID]) return;
+    olpns[r.OLPN_ID] = { order_id: orderId, status: String(r.olpn_status || ''), shipped: r.SHIPPED_DATE_TIME || null,
+                         pallet: r.PALLET_ID || null, location: r.CURRENT_LOCATION_ID || null };
+  };
+  for (const r of rows) addOlpn(r.ORDER_ID, r);
+  for (const o of openOrders) if (o.service_level_id === '11') for (const r of (olpnMap[o.ORDER_ID] || [])) addOlpn(o.ORDER_ID, r);
+
+  // Q6: first pack + first palletize scan per oLPN
+  const ids = Object.keys(olpns);
+  const txList = [...PACK_TX, ...PALLET_TX].map(t => `'${t}'`).join(',');
+  for (let i = 0; i < ids.length; i += SCAN_BATCH) {
+    const inList = ids.slice(i, i + SCAN_BATCH).map(id => `'${id}'`).join(',');
+    try {
+      const r = await mcpQuery(accessToken, `
+SELECT CONTAINER_ID, TRANSACTION_ID, MIN(CREATED_TIMESTAMP) AS first_ts
+FROM default_task.TSK_ACTIVITY_TRACKING
+WHERE CONTAINER_ID IN (${inList})
+  AND TRANSACTION_ID IN (${txList})
+GROUP BY CONTAINER_ID, TRANSACTION_ID`.trim());
+      for (const s of (r.rows || [])) {
+        const o = olpns[s.CONTAINER_ID]; if (!o) continue;
+        const t = utcMs(s.first_ts);
+        const key = PACK_TX.includes(s.TRANSACTION_ID) ? 'packMs' : 'palletMs';
+        if (!o[key] || t < o[key]) o[key] = t;
+      }
+    } catch (e) {
+      console.warn(`[${ts()}] 1DD scan lookup failed (oLPNs ${i + 1}–${i + SCAN_BATCH}): ${e.message}`);
+    }
+  }
+
+  // Last cutoff: orders placed in [last − 1 day, last). Out = every oLPN shipped; on time = last ship ≤ cutoff.
+  const byOrder = {};
+  for (const r of rows) {
+    const placed = utcMs(r.placed_utc);
+    if (!(placed >= lastCutoff - 86400000 && placed < lastCutoff)) continue;
+    const b = byOrder[r.ORDER_ID] || (byOrder[r.ORDER_ID] = { done: String(r.MAXIMUM_STATUS) === '8000', any: false, open: false, lastShip: 0 });
+    if (!r.OLPN_ID) continue;
+    b.any = true;
+    const sh = utcMs(r.SHIPPED_DATE_TIME);
+    if (isNaN(sh)) b.open = true; else b.lastShip = Math.max(b.lastShip, sh);
+  }
+  const last = { due: 0, on_time: 0, shipped_late: 0, not_shipped: 0 };
+  for (const b of Object.values(byOrder)) {
+    last.due++;
+    if (!b.any || b.open) { if (b.done) last.on_time++; else last.not_shipped++; }  // shipped with no oLPN time = trust the order status
+    else if (b.lastShip <= lastCutoff) last.on_time++;
+    else last.shipped_late++;
+  }
+
+  // Pack → pallet: oLPNs palletized this shift
+  const waits = [];
+  const held = [];
+  for (const [id, o] of Object.entries(olpns)) {
+    if (o.palletMs >= shiftStart.getTime() && o.packMs && o.palletMs >= o.packMs) waits.push((o.palletMs - o.packMs) / 60000);
+    const open = !o.shipped && !['8000', '9000'].includes(o.status);
+    if (open && o.packMs && !o.palletMs && !o.pallet && now - o.packMs >= HOLD_MIN * 60000) {
+      held.push({ olpn_id: id, order_id: o.order_id, packed_utc: isoUtc(o.packMs), location: o.location, olpn_status: o.status });
+    }
+  }
+  held.sort((a, b) => a.packed_utc.localeCompare(b.packed_utc));
+  const avg = waits.length ? Math.round(waits.reduce((s, v) => s + v, 0) / waits.length) : null;
+  const med = waits.length ? Math.round(waits.slice().sort((x, y) => x - y)[waits.length >> 1]) : null;
+
+  console.log(`[${ts()}] 1DD — last cutoff ${last.on_time}/${last.due} on time · pack→pallet avg ${avg ?? '—'} / median ${med ?? '—'} min (${waits.length}) · held ${held.length}`);
+  return {
+    next_cutoff_utc: isoUtc(nextCutoff),
+    last_cutoff_utc: isoUtc(lastCutoff),
+    last_cutoff:     last,
+    pallet_avg_min:  avg,
+    pallet_median_min: med,
+    pallet_count:    waits.length,
+    hold_min:        HOLD_MIN,
+    held,
+  };
 }
 
 // ── entry point ────────────────────────────────────────────────────────────────

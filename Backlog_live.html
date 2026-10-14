@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Backlog Live v1.4 -- DC499</title>
+<title>Ecom Backlog Live v1.5 -- DC499</title>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -559,6 +559,14 @@
   .xpd-loc-sub{display:block;font-size:10px;font-family:monospace;color:var(--text-hint);margin-top:2px;}
   .xpd-pick-stage{display:block;font-size:10px;color:var(--text-hint);margin-top:2px;font-style:italic;}
   .xpd-empty{text-align:center;padding:2.5rem 1rem;color:var(--text-hint);font-size:13px;}
+  .xpd-summary.xpd-summary-5{grid-template-columns:repeat(5,1fr);margin-bottom:0.5rem;}
+  @media(max-width:700px){.xpd-summary.xpd-summary-5{grid-template-columns:repeat(2,1fr);}}
+  .xpd-tile.t-red{border-top-color:var(--red);}
+  .xpd-tile.t-red .xpd-tile-value{color:var(--red);}
+  .xpd-tile.t-quiet .xpd-tile-value{color:var(--text-hint);}
+  .odd-cutoff-line{font-size:12px;color:var(--text-muted);margin:0 0 1.25rem 2px;}
+  .odd-cutoff-line b{color:var(--text);}
+  .xpd-1dd-dot{display:inline-block;min-width:16px;padding:0 4px;margin-left:4px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;}
   .tab-btn.xpd-tab-btn.active{color:var(--xpd);border-bottom-color:var(--xpd);}
   .tab-btn.xpd-tab-btn:not(.active):hover{color:var(--xpd);}
 
@@ -946,7 +954,7 @@ body { animation: pageEnter 0.28s ease-out both; }
   <div class="top-bar">
     <div>
       <button class="back-btn" id="back-btn" onclick="window.close()" style="margin-bottom:10px;">&#x2190; Back to Ecom</button>
-      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.4</p>
+      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.5</p>
       <h1>Ecom Backlog &mdash; DC499</h1>
       <p class="subtitle">Live data &middot; Auto-refreshes every 2 min</p>
     </div>
@@ -1469,6 +1477,86 @@ body { animation: pageEnter 0.28s ease-out both; }
       </div>
     </div>
 
+    <!-- Sub-tabs: All Orders / 1DD Focus -->
+    <div class="tk-view-bar">
+      <div class="tk-view-seg">
+        <button class="tk-view-btn active" id="xpd-btn-all" onclick="setXpdView('all')">All Orders</button>
+        <button class="tk-view-btn" id="xpd-btn-1dd" onclick="setXpdView('1dd')">1DD Focus <span class="xpd-1dd-dot" id="xpd-1dd-dot" style="display:none;"></span></button>
+      </div>
+    </div>
+
+    <!-- ── 1DD Focus view ── -->
+    <div id="xpd-view-1dd" style="display:none;">
+      <div class="xpd-summary xpd-summary-5">
+        <div class="xpd-tile t-xpd">
+          <div class="xpd-tile-label" id="odd-t-next-label">Due Next 12 PM</div>
+          <div class="xpd-tile-value" id="odd-t-next">--</div>
+          <div class="xpd-tile-sub" id="odd-t-next-sub"></div>
+        </div>
+        <div class="xpd-tile t-red">
+          <div class="xpd-tile-label">Late</div>
+          <div class="xpd-tile-value" id="odd-t-late">--</div>
+          <div class="xpd-tile-sub">past 12 PM cutoff, not shipped</div>
+        </div>
+        <div class="xpd-tile t-amber">
+          <div class="xpd-tile-label">At Risk</div>
+          <div class="xpd-tile-value" id="odd-t-risk">--</div>
+          <div class="xpd-tile-sub">&lt; 2 hrs to cutoff</div>
+        </div>
+        <div class="xpd-tile t-accent">
+          <div class="xpd-tile-label">Avg Pack &rarr; Pallet</div>
+          <div class="xpd-tile-value" id="odd-t-pallet">--</div>
+          <div class="xpd-tile-sub" id="odd-t-pallet-sub">this shift</div>
+        </div>
+        <div class="xpd-tile t-amber" id="odd-t-held-tile">
+          <div class="xpd-tile-label">Held &gt; 1 Hr</div>
+          <div class="xpd-tile-value" id="odd-t-held">--</div>
+          <div class="xpd-tile-sub">packed, no pallet</div>
+        </div>
+      </div>
+      <div class="odd-cutoff-line" id="odd-cutoff-line"></div>
+
+      <div class="card">
+        <div class="card-title">Late &amp; At Risk &mdash; 1DD</div>
+        <div class="xpd-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Status</th>
+                <th>oLPN / Location</th>
+                <th class="r">Due</th>
+                <th class="r">Left</th>
+                <th>Placed</th>
+              </tr>
+            </thead>
+            <tbody id="odd-risk-tbody"></tbody>
+          </table>
+        </div>
+        <div id="odd-risk-empty" class="xpd-empty" style="display:none;">No 1DD orders late or within 2 hours of cutoff.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Held &mdash; Packed, No Pallet &gt; 1 Hr</div>
+        <div class="xpd-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>oLPN</th>
+                <th>Order #</th>
+                <th>Location</th>
+                <th>Packed</th>
+                <th class="r">Held</th>
+              </tr>
+            </thead>
+            <tbody id="odd-held-tbody"></tbody>
+          </table>
+        </div>
+        <div id="odd-held-empty" class="xpd-empty" style="display:none;">Every packed 1DD oLPN was palletized within an hour.</div>
+      </div>
+    </div>
+
+    <div id="xpd-view-all">
     <!-- Summary tiles -->
     <div class="xpd-summary" id="xpd-summary-tiles" style="display:none;">
       <div class="xpd-tile t-xpd">
@@ -1530,6 +1618,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       </div>
       <div id="xpd-table-empty" class="xpd-empty" style="display:none;">No open 1DD or 2DD orders found for this shift.</div>
     </div>
+    </div><!-- /#xpd-view-all -->
 
     <div class="empty-state" id="xpd-empty-state" style="display:none;">
       <div style="font-size:32px;margin-bottom:10px;">&#x26A1;</div>
@@ -5113,9 +5202,11 @@ function xpdCountdown(shipByUtc) {
   return { text: text, cls: cls };
 }
 
-// True ship-by: placed_utc + 24h (1DD) or +48h (2DD)
+// True ship-by: 1DD = 12 PM PT cutoff from the agent (due_utc, always before placed + 24h);
+// 2DD (or older JSON without due_utc) = placed_utc + XPD_SLA_HRS
 var XPD_SLA_HRS = { '1DD': 24, '2DD': 48 };
 function xpdTrueShipByMs(o) {
+  if (o.due_utc) return xpdUtcMs(o.due_utc);
   if (!o.placed_utc) return Infinity;
   var s = String(o.placed_utc).replace(' ', 'T');
   if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
@@ -5294,6 +5385,8 @@ function renderExpediteData(data) {
   document.getElementById('xpd-table-card').style.display = open.length ? 'block' : 'none';
 
   renderExpediteTable();
+  setXpdView(xpdView);   // applies the saved sub-tab + renders 1DD Focus when it's showing
+  if (xpdView !== '1dd') render1dd(data);  // keeps the sub-tab badge current
 }
 
 function renderExpediteTable() {
@@ -5409,6 +5502,124 @@ function renderExpediteTable() {
       + '</tr>';
   });
   tbody.innerHTML = html;
+}
+
+// ── Expedite: 1DD Focus sub-tab ──────────────────────────────────────────────
+// Cutoff rule (agent, verified vs MAWM ship-by 10/14): placed 12 PM → 11:59 AM next day = due 12 PM PT that day.
+var xpdView = (function(){ try { return localStorage.getItem('xpd_view_v1') === '1dd' ? '1dd' : 'all'; } catch(e) { return 'all'; } })();
+function setXpdView(v) {
+  xpdView = v === '1dd' ? '1dd' : 'all';
+  try { localStorage.setItem('xpd_view_v1', xpdView); } catch(e) {}
+  document.getElementById('xpd-view-all').style.display = xpdView === 'all' ? '' : 'none';
+  document.getElementById('xpd-view-1dd').style.display = xpdView === '1dd' ? '' : 'none';
+  document.getElementById('xpd-btn-all').classList.toggle('active', xpdView === 'all');
+  document.getElementById('xpd-btn-1dd').classList.toggle('active', xpdView === '1dd');
+  if (xpdView === '1dd' && lastXpdData) render1dd(lastXpdData);
+}
+
+function xpdUtcMs(str) {
+  if (!str) return NaN;
+  var s = String(str).replace(' ', 'T');
+  if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  return new Date(s).getTime();
+}
+function xpdDur(mins) {
+  mins = Math.max(0, Math.round(mins));
+  var h = Math.floor(mins / 60), m = mins % 60;
+  return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+}
+function xpdCutoffLabel(ms) {
+  return new Date(ms).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', timeZone: 'America/Los_Angeles' }) + ' 12 PM';
+}
+
+function render1dd(data) {
+  var odd = data.one_dd || {};
+  var now = Date.now();
+  var open = (data.orders || []).filter(function(o) { return o.service_level === '1DD' && o.due_utc; });
+  var nextMs = xpdUtcMs(odd.next_cutoff_utc);
+  var late = [], risk = [], dueNext = 0;
+  open.forEach(function(o) {
+    var due = xpdUtcMs(o.due_utc);
+    if (due === nextMs) dueNext++;
+    if (due <= now) late.push(o);
+    else if (due - now < 2 * 3600000) risk.push(o);
+  });
+
+  // Tiles
+  document.getElementById('odd-t-next-label').textContent = isNaN(nextMs) ? 'Due Next 12 PM' : 'Due ' + xpdCutoffLabel(nextMs);
+  document.getElementById('odd-t-next').textContent = dueNext;
+  document.getElementById('odd-t-next-sub').textContent = isNaN(nextMs) ? '' : xpdDur((nextMs - now) / 60000) + ' left';
+  document.getElementById('odd-t-late').textContent = late.length;
+  document.getElementById('odd-t-risk').textContent = risk.length;
+  document.getElementById('odd-t-pallet').textContent = odd.pallet_avg_min != null ? xpdDur(odd.pallet_avg_min) : '—';
+  document.getElementById('odd-t-pallet-sub').textContent = odd.pallet_count
+    ? 'middle ' + xpdDur(odd.pallet_median_min) + ' · ' + odd.pallet_count + ' oLPNs this shift'
+    : 'none palletized this shift';
+  var held = odd.held || [];
+  document.getElementById('odd-t-held').textContent = held.length;
+  document.getElementById('odd-t-held-tile').className = 'xpd-tile ' + (held.length ? 't-red' : 't-quiet');
+
+  // Badge on the sub-tab button: late + held
+  var dot = document.getElementById('xpd-1dd-dot');
+  var flagged = late.length + held.length;
+  dot.textContent = flagged; dot.style.display = flagged ? '' : 'none';
+
+  // Last cutoff result
+  var lc = odd.last_cutoff, lcEl = document.getElementById('odd-cutoff-line');
+  if (lc && lc.due) {
+    var parts = ['<b>' + lc.on_time + ' of ' + lc.due + '</b> out on time'];
+    if (lc.shipped_late) parts.push(lc.shipped_late + ' shipped late');
+    if (lc.not_shipped)  parts.push(lc.not_shipped + ' not shipped yet');
+    lcEl.innerHTML = 'Last cutoff (' + escHtml(xpdCutoffLabel(xpdUtcMs(odd.last_cutoff_utc))) + '): ' + parts.join(' &middot; ');
+  } else {
+    lcEl.textContent = odd.last_cutoff ? 'Last cutoff: no 1DD orders were due.' : '';
+  }
+
+  // Late & At Risk table — late first, then by due, then oldest placed
+  var rows = late.concat(risk).sort(function(a, b) {
+    return (xpdUtcMs(a.due_utc) - xpdUtcMs(b.due_utc)) || (xpdUtcMs(a.placed_utc) - xpdUtcMs(b.placed_utc));
+  });
+  var html = '';
+  rows.forEach(function(o) {
+    var stg = xpdStage(o.order_status);
+    var left = xpdUtcMs(o.due_utc) - now;
+    var leftHtml = left <= 0
+      ? '<span class="xpd-deadline-late">LATE ' + xpdDur(-left / 60000) + '</span>'
+      : '<span class="xpd-deadline-warn">' + xpdDur(left / 60000) + '</span>';
+    var where = '';
+    if (o.olpns && o.olpns.length) {
+      where = o.olpns.map(function(id){ return '<span class="xpd-olpn-loc">' + escHtml(id) + '</span>'; }).join('<br>');
+      if (o.olpn_pallet)        where += '<span class="xpd-loc-sub" title="Pallet">&#x1F4E6; ' + escHtml(o.olpn_pallet) + '</span>';
+      else if (o.olpn_location) where += '<span class="xpd-loc-sub">' + escHtml(o.olpn_location) + '</span>';
+    } else {
+      where = '<span style="color:var(--text-hint);">—</span>';
+    }
+    html += '<tr>'
+      + '<td><span style="font-family:monospace;font-size:11px;">' + escHtml(o.order_id || '—') + '</span></td>'
+      + '<td><span class="xpd-stage-badge ' + stg.cls + '">' + escHtml(stg.label) + '</span></td>'
+      + '<td>' + where + '</td>'
+      + '<td class="r" style="font-size:12px;white-space:nowrap;">' + escHtml(xpdCutoffLabel(xpdUtcMs(o.due_utc))) + '</td>'
+      + '<td class="r">' + leftHtml + '</td>'
+      + '<td style="font-size:11px;color:var(--text-muted);white-space:nowrap;" title="24-hr mark: ' + escHtml(fmtPdt(new Date(xpdUtcMs(o.placed_utc) + 86400000).toISOString()) || '') + '">' + escHtml(fmtPdt(o.placed_utc) || '—') + '</td>'
+      + '</tr>';
+  });
+  document.getElementById('odd-risk-tbody').innerHTML = html;
+  document.getElementById('odd-risk-empty').style.display = rows.length ? 'none' : 'block';
+
+  // Held table
+  var hh = '';
+  held.forEach(function(h) {
+    var mins = (now - xpdUtcMs(h.packed_utc)) / 60000;
+    hh += '<tr>'
+      + '<td><span class="xpd-olpn-loc">' + escHtml(h.olpn_id) + '</span></td>'
+      + '<td><span style="font-family:monospace;font-size:11px;">' + escHtml(h.order_id || '—') + '</span></td>'
+      + '<td style="font-size:11px;font-family:monospace;">' + escHtml(h.location || '—') + '</td>'
+      + '<td style="font-size:11px;color:var(--text-muted);white-space:nowrap;">' + escHtml(fmtPdt(h.packed_utc) || '—') + '</td>'
+      + '<td class="r"><span class="' + (mins >= 120 ? 'xpd-deadline-late' : 'xpd-deadline-warn') + '">' + xpdDur(mins) + '</span></td>'
+      + '</tr>';
+  });
+  document.getElementById('odd-held-tbody').innerHTML = hh;
+  document.getElementById('odd-held-empty').style.display = held.length ? 'none' : 'block';
 }
 
 // ── Hospital Putwall tab ──────────────────────────────────────────────────────
