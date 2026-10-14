@@ -15,7 +15,7 @@
 const fs     = require('fs');
 const path   = require('path');
 require('./scout_file_mirror');  // also writes filedata/*.js so pages work from OneDrive (file://)
-const { currentShift, pacificParts, pacificDateStr, utcFromPacific, addDays, sqlUtc } = require('./scout_tz');  // DST-aware local time
+const { SQL_TZ, currentShift, pacificParts, pacificDateStr, utcFromPacific, addDays, sqlUtc, pacificMidnightSql } = require('./scout_tz');  // DST-aware local time
 const http   = require('http');
 const https  = require('https');
 const crypto = require('crypto');
@@ -39,6 +39,19 @@ const HOLD_MIN      = 60;   // 1DD oLPN packed this long with no pallet = held
 const CUTOFF_HR     = 12;
 const PACK_TX       = ['NRDR CORE PACK FOR ECOM PACK STATION', 'CUSTOM PACK STATION'];
 const PALLET_TX     = ['OB Putaway By Ship Via', 'NRDR CORE PALLETIZE OLPN', 'FLOOR LOAD PALLETIZE OLPN'];
+
+// Splits tab (10/14): Ecom orders packed into 2+ oLPNs. The packer makes the extra boxes at the
+// pack station (same CREATED_BY, ms apart) — the system doesn't plan them.
+const SPLIT_DAYS    = 14;   // trend window
+const SPLIT_LIST_DAYS = 7;  // orders listed in the table
+const SPLIT_FILL    = 0.85; // a box counts as able to hold the order at 85% of its volume
+const SPLIT_MAX_BOX = 'MD3';// "fits a bigger box" only up to this size
+// Box volume (cu ft) by CONTAINER_SIZE_ID. PPK_OLPN.VOLUME doesn't always match the size, so use this.
+const BOX_VOL = { XS1: 0.1004, PM2: 0.1875, SM1: 0.2513, PM5: 0.3125, SM5: 0.3242, SM3: 0.3653, PM6: 0.4388,
+                  MD1: 0.5492, MD3: 0.9903, MD5: 1.2421, MD7: 1.3987, LG1: 1.5480, BT1: 1.6272, LG3: 1.8556,
+                  LG5: 2.7778, LG7: 3.3367, XL1: 3.9976, XL3: 6.0447 };
+const BOX_SIZES = ['XS1', 'SM1', 'SM5', 'SM3', 'MD1', 'MD3'];  // boxes (not mailers) we suggest, smallest first
+const splitCache = {};      // ORDER_ID -> { svc, units, item_vol, items } for orders whose boxes are settled
 
 const args       = process.argv.slice(2);
 const MODE_AUTH  = args.includes('--auth');
@@ -214,10 +227,16 @@ WHERE FACILITY_ID = '${FACILITY}'
     };
   });
 
-  const oneDD = await fetchOneDD(accessToken, openOrders, olpnMap, shiftStart, nowUtc).catch(e => {
-    console.warn(`[${ts()}] 1DD focus failed: ${e.message}`);
-    return null;
-  });
+  const [oneDD, splits] = await Promise.all([
+    fetchOneDD(accessToken, openOrders, olpnMap, shiftStart, nowUtc).catch(e => {
+      console.warn(`[${ts()}] 1DD focus failed: ${e.message}`);
+      return null;
+    }),
+    fetchSplits(accessToken, shiftStart, nowUtc).catch(e => {
+      console.warn(`[${ts()}] Splits failed: ${e.message}`);
+      return null;
+    }),
+  ]);
 
   const output = {
     generated:     new Date().toISOString().slice(0,19),
@@ -231,6 +250,7 @@ WHERE FACILITY_ID = '${FACILITY}'
     shipped_1dd:   shippedMap['11'] || 0,
     shipped_2dd:   shippedMap['42'] || 0,
     one_dd:        oneDD,
+    splits,
     orders,
   };
 
@@ -338,6 +358,145 @@ GROUP BY CONTAINER_ID, TRANSACTION_ID`.trim());
     pallet_count:    waits.length,
     hold_min:        HOLD_MIN,
     held,
+  };
+}
+
+// ── Splits: Ecom orders packed into 2+ boxes, and whether one box would have held them ──
+async function fetchSplits(accessToken, shiftStart, nowUtc) {
+  const now = nowUtc.getTime();
+  const sinceStr = pacificMidnightSql(addDays(pacificDateStr(nowUtc), -(SPLIT_DAYS - 1)));
+  const shiftStr = sqlUtc(shiftStart);
+  // Pack date = Pacific date of the order's first oLPN
+  const inner = `
+SELECT ORDER_ID, MIN(CREATED_TIMESTAMP) AS first_ts, MAX(CREATED_TIMESTAMP) AS last_ts, COUNT(*) AS n
+FROM default_pickpack.PPK_OLPN
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_TYPE = 'ECOM'
+  AND STATUS <> '9000'
+  AND CREATED_TIMESTAMP >= '${sinceStr}'
+GROUP BY ORDER_ID`;
+
+  // QS1: packed orders + split orders per day (and this shift)
+  const sqlDays = `
+SELECT DATE_FORMAT(CONVERT_TZ(t.first_ts, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS d,
+  COUNT(*) AS orders, SUM(t.n > 1) AS split_orders, SUM(CASE WHEN t.n > 1 THEN t.n - 1 ELSE 0 END) AS extra_boxes,
+  SUM(t.first_ts >= '${shiftStr}') AS shift_orders
+FROM (${inner}) t
+GROUP BY d`.trim();
+
+  // QS2: the split orders, with each box (oLPN | size) in pack order
+  const sqlList = `
+SELECT ORDER_ID, MIN(CREATED_TIMESTAMP) AS first_ts, MAX(CREATED_TIMESTAMP) AS last_ts, COUNT(*) AS n,
+  GROUP_CONCAT(CONCAT(OLPN_ID, '|', IFNULL(CONTAINER_SIZE_ID, '')) ORDER BY CREATED_TIMESTAMP SEPARATOR ',') AS boxes
+FROM default_pickpack.PPK_OLPN
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_TYPE = 'ECOM'
+  AND STATUS <> '9000'
+  AND CREATED_TIMESTAMP >= '${sinceStr}'
+GROUP BY ORDER_ID
+HAVING COUNT(*) > 1`.trim();
+
+  const [respDays, respList] = await Promise.all([mcpQuery(accessToken, sqlDays), mcpQuery(accessToken, sqlList)]);
+  const splitRows = respList.rows || [];
+
+  // QS3 + QS4: items per box + service level, only for orders not cached yet
+  const need = splitRows.map(r => r.ORDER_ID).filter(id => !splitCache[id]);
+  const fresh = {};   // ORDER_ID -> { svc, boxes: { OLPN_ID: [[descr, qty, unitVol]] } }
+  for (let i = 0; i < need.length; i += OLPN_BATCH) {
+    const inList = need.slice(i, i + OLPN_BATCH).map(id => `'${id}'`).join(',');
+    try {
+      const [det, svc] = await Promise.all([
+        mcpQuery(accessToken, `
+SELECT ORDER_ID, OLPN_ID, ITEM_ID, MAX(ITEM_DESCRIPTION) AS descr, SUM(PACKED_QUANTITY) AS qty, MAX(UNIT_VOLUME) AS unit_vol
+FROM default_pickpack.PPK_OLPN_DETAIL
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_ID IN (${inList})
+GROUP BY ORDER_ID, OLPN_ID, ITEM_ID`.trim()),
+        mcpQuery(accessToken, `
+SELECT ORDER_ID, DESIGNATED_SERVICE_LEVEL_ID AS svc
+FROM default_dcorder.DCO_ORDER
+WHERE FACILITY_ID = '${FACILITY}'
+  AND ORDER_ID IN (${inList})`.trim()),
+      ]);
+      for (const r of (det.rows || [])) {
+        const f = fresh[r.ORDER_ID] || (fresh[r.ORDER_ID] = { svc: null, boxes: {} });
+        (f.boxes[r.OLPN_ID] || (f.boxes[r.OLPN_ID] = [])).push([String(r.descr || r.ITEM_ID || '').slice(0, 40), Number(r.qty || 0), Number(r.unit_vol || 0)]);
+      }
+      for (const r of (svc.rows || [])) {
+        const f = fresh[r.ORDER_ID] || (fresh[r.ORDER_ID] = { svc: null, boxes: {} });
+        f.svc = r.svc === '11' ? '1DD' : r.svc === '42' ? '2DD' : null;
+      }
+    } catch (e) {
+      console.warn(`[${ts()}] Splits item lookup failed (orders ${i + 1}–${i + OLPN_BATCH}): ${e.message}`);
+    }
+  }
+
+  const listFrom = utcFromPacific(addDays(pacificDateStr(nowUtc), -(SPLIT_LIST_DAYS - 1)), 0, 0).getTime();
+  const fitByDay = {}, list = [];
+  const shiftTot = { split_orders: 0, extra_boxes: 0, fit_orders: 0, svc_split: 0 };
+  for (const r of splitRows) {
+    const boxes = String(r.boxes || '').split(',').map(s => { const [id, size] = s.split('|'); return { olpn_id: id, size: size || null }; });
+    let c = splitCache[r.ORDER_ID];
+    if (!c) {
+      const f = fresh[r.ORDER_ID];
+      if (!f) continue;   // item lookup failed this cycle — try again next cycle
+      let units = 0, vol = 0, skus = new Set();
+      const items = {};
+      for (const b of boxes) {
+        items[b.olpn_id] = (f.boxes[b.olpn_id] || []).map(([d, q, v]) => { units += q; vol += q * v; if (q) skus.add(d); return [d, q]; });
+      }
+      c = { svc: f.svc, units, skus: skus.size, item_vol: Math.round(vol * 1000) / 1000, items };
+      // Boxes are settled once every box has packed units and the last one is 2+ hrs old
+      const settled = now - utcMs(r.last_ts) > 2 * 3600000 && boxes.every(b => (items[b.olpn_id] || []).some(x => x[1] > 0));
+      if (settled) splitCache[r.ORDER_ID] = c;
+    }
+
+    // Would one box have held it? Compare item volume (at SPLIT_FILL) with the boxes.
+    let fit = null, suggest = null;
+    if (c.units > 0) {
+      const needVol = c.item_vol / SPLIT_FILL;
+      const bigUsed = Math.max(0, ...boxes.map(b => BOX_VOL[b.size] || 0));
+      suggest = BOX_SIZES.find(s => BOX_VOL[s] >= needVol) || null;
+      fit = needVol <= bigUsed ? 'used' : needVol <= BOX_VOL[SPLIT_MAX_BOX] ? 'bigger' : 'needed';
+    }
+
+    const firstMs = utcMs(r.first_ts);
+    const day = pacificDateStr(new Date(firstMs));
+    if (fit === 'used' || fit === 'bigger') fitByDay[day] = (fitByDay[day] || 0) + 1;
+    if (firstMs >= shiftStart.getTime()) {
+      shiftTot.split_orders++;
+      shiftTot.extra_boxes += boxes.length - 1;
+      if (fit === 'used' || fit === 'bigger') shiftTot.fit_orders++;
+      if (c.svc) shiftTot.svc_split++;
+    }
+    if (firstMs >= listFrom) {
+      list.push({
+        order_id: r.ORDER_ID, svc: c.svc, packed_utc: isoUtc(firstMs), units: c.units, skus: c.skus, item_vol: c.item_vol,
+        fit, suggest,
+        boxes: boxes.map(b => ({ olpn_id: b.olpn_id, size: b.size, items: c.items[b.olpn_id] || [] })),
+      });
+    }
+  }
+  list.sort((a, b) => b.packed_utc.localeCompare(a.packed_utc));
+
+  const days = (respDays.rows || []).map(r => ({
+    date: r.d, orders: Number(r.orders || 0), split_orders: Number(r.split_orders || 0),
+    extra_boxes: Number(r.extra_boxes || 0), fit_orders: fitByDay[r.d] || 0,
+  })).sort((a, b) => a.date.localeCompare(b.date));
+  const shiftOrders = (respDays.rows || []).reduce((s, r) => s + Number(r.shift_orders || 0), 0);
+
+  // Drop cache entries that fell out of the window
+  const keep = new Set(splitRows.map(r => r.ORDER_ID));
+  for (const id of Object.keys(splitCache)) if (!keep.has(id)) delete splitCache[id];
+
+  console.log(`[${ts()}] Splits — this shift ${shiftTot.split_orders} of ${shiftOrders} orders split, ${shiftTot.fit_orders} would have fit 1 box · ${splitRows.length} split in ${SPLIT_DAYS} days`);
+  return {
+    fill: SPLIT_FILL,
+    max_box: SPLIT_MAX_BOX,
+    list_days: SPLIT_LIST_DAYS,
+    shift: { orders: shiftOrders, ...shiftTot },
+    days,
+    list,
   };
 }
 

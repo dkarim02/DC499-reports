@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Backlog Live v1.5 -- DC499</title>
+<title>Ecom Backlog Live v1.6 -- DC499</title>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -568,6 +568,30 @@
   .odd-cutoff-line b{color:var(--text);}
   .xpd-1dd-dot{display:inline-block;min-width:16px;padding:0 4px;margin-left:4px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;}
   .tab-btn.xpd-tab-btn.active{color:var(--xpd);border-bottom-color:var(--xpd);}
+  .spl-legend{display:flex;gap:16px;font-size:11px;color:var(--text-muted);margin:-6px 0 10px;}
+  .spl-key{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;}
+  .spl-key-fit,.spl-seg-fit{background:var(--xpd);}
+  .spl-key-need,.spl-seg-need{background:var(--text-hint);opacity:.55;}
+  .spl-chart{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:16px;border-bottom:0.5px solid var(--border);}
+  .spl-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:default;}
+  .spl-col:hover .spl-bar{filter:brightness(1.15);}
+  .spl-num{font-size:10px;color:var(--text-muted);margin-bottom:3px;}
+  .spl-bar{width:100%;max-width:34px;display:flex;flex-direction:column;gap:2px;}
+  .spl-bar > div{width:100%;}
+  .spl-bar > div:first-child{border-radius:4px 4px 0 0;}
+  .spl-days{display:flex;gap:6px;margin-top:4px;}
+  .spl-days span{flex:1;text-align:center;font-size:10px;color:var(--text-hint);white-space:nowrap;}
+  .spl-fit{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+  .spl-fit-used  {background:var(--red-bg,rgba(220,38,38,.1));color:var(--red);border:0.5px solid var(--red);}
+  .spl-fit-bigger{background:var(--amber-bg);color:var(--amber);border:0.5px solid var(--amber);}
+  .spl-fit-needed{background:var(--surface2);color:var(--text-muted);border:0.5px solid var(--border);}
+  .spl-row{cursor:pointer;}
+  .spl-row:hover td{background:var(--surface2);}
+  .spl-detail td{background:var(--surface2);padding:8px 14px 10px !important;}
+  .spl-box{display:inline-block;vertical-align:top;margin:0 18px 6px 0;font-size:11px;}
+  .spl-box b{font-family:monospace;font-size:11px;color:var(--text);}
+  .spl-box div{color:var(--text-muted);margin-top:2px;}
+  .spl-note{font-size:11px;color:var(--text-hint);margin-top:10px;line-height:1.5;}
   .tab-btn.xpd-tab-btn:not(.active):hover{color:var(--xpd);}
 
   /* ── No Task tab (untasked_live.json) ─────────────────────────────────── */
@@ -954,7 +978,7 @@ body { animation: pageEnter 0.28s ease-out both; }
   <div class="top-bar">
     <div>
       <button class="back-btn" id="back-btn" onclick="window.close()" style="margin-bottom:10px;">&#x2190; Back to Ecom</button>
-      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.5</p>
+      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.6</p>
       <h1>Ecom Backlog &mdash; DC499</h1>
       <p class="subtitle">Live data &middot; Auto-refreshes every 2 min</p>
     </div>
@@ -1482,6 +1506,76 @@ body { animation: pageEnter 0.28s ease-out both; }
       <div class="tk-view-seg">
         <button class="tk-view-btn active" id="xpd-btn-all" onclick="setXpdView('all')">All Orders</button>
         <button class="tk-view-btn" id="xpd-btn-1dd" onclick="setXpdView('1dd')">1DD Focus <span class="xpd-1dd-dot" id="xpd-1dd-dot" style="display:none;"></span></button>
+        <button class="tk-view-btn" id="xpd-btn-splits" onclick="setXpdView('splits')">Splits <span class="xpd-1dd-dot" id="xpd-splits-dot" style="display:none;"></span></button>
+      </div>
+    </div>
+
+    <!-- ── Splits view (all Ecom orders packed into 2+ boxes) ── -->
+    <div id="xpd-view-splits" style="display:none;">
+      <div class="xpd-summary xpd-summary-5">
+        <div class="xpd-tile t-xpd">
+          <div class="xpd-tile-label">Split Orders</div>
+          <div class="xpd-tile-value" id="spl-t-orders">--</div>
+          <div class="xpd-tile-sub">this shift</div>
+        </div>
+        <div class="xpd-tile t-accent">
+          <div class="xpd-tile-label">Extra Boxes</div>
+          <div class="xpd-tile-value" id="spl-t-extra">--</div>
+          <div class="xpd-tile-sub">beyond 1 per order</div>
+        </div>
+        <div class="xpd-tile t-red" id="spl-t-fit-tile">
+          <div class="xpd-tile-label">Would Have Fit 1 Box</div>
+          <div class="xpd-tile-value" id="spl-t-fit">--</div>
+          <div class="xpd-tile-sub" id="spl-t-fit-sub"></div>
+        </div>
+        <div class="xpd-tile t-amber">
+          <div class="xpd-tile-label">Split Rate</div>
+          <div class="xpd-tile-value" id="spl-t-rate">--</div>
+          <div class="xpd-tile-sub" id="spl-t-rate-sub">of Ecom orders packed</div>
+        </div>
+        <div class="xpd-tile t-xpd">
+          <div class="xpd-tile-label">1DD / 2DD Split</div>
+          <div class="xpd-tile-value" id="spl-t-svc">--</div>
+          <div class="xpd-tile-sub">this shift</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Split Orders per Day &mdash; Last 14 Days</div>
+        <div class="spl-legend">
+          <span><i class="spl-key spl-key-fit"></i>Would have fit 1 box</span>
+          <span><i class="spl-key spl-key-need"></i>Needed the split</span>
+        </div>
+        <div class="spl-chart" id="spl-chart"></div>
+      </div>
+
+      <div class="card">
+        <div class="order-search-row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <div class="card-title" style="margin-bottom:0;">Split Orders &mdash; Last 7 Days</div>
+          <span style="flex:1;"></span>
+          <button class="xpd-filter-btn f-active" id="spl-f-fit" onclick="setSplFilter('fit')">Would have fit</button>
+          <button class="xpd-filter-btn" id="spl-f-all" onclick="setSplFilter('all')">All splits</button>
+          <input type="text" id="spl-search" placeholder="Search order #" oninput="renderSplitTable()" style="font-size:12px;padding:4px 8px;border:0.5px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);width:150px;">
+        </div>
+        <div class="xpd-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>SVC</th>
+                <th>Order #</th>
+                <th class="r">Units</th>
+                <th class="r">Boxes</th>
+                <th>Box Sizes</th>
+                <th class="r">Item Vol</th>
+                <th>One Box?</th>
+                <th>Packed</th>
+              </tr>
+            </thead>
+            <tbody id="spl-tbody"></tbody>
+          </table>
+        </div>
+        <div id="spl-empty" class="xpd-empty" style="display:none;">No split orders match.</div>
+        <div class="spl-note" id="spl-note"></div>
       </div>
     </div>
 
@@ -5385,8 +5479,9 @@ function renderExpediteData(data) {
   document.getElementById('xpd-table-card').style.display = open.length ? 'block' : 'none';
 
   renderExpediteTable();
-  setXpdView(xpdView);   // applies the saved sub-tab + renders 1DD Focus when it's showing
-  if (xpdView !== '1dd') render1dd(data);  // keeps the sub-tab badge current
+  setXpdView(xpdView);   // applies the saved sub-tab + renders 1DD Focus / Splits when showing
+  if (xpdView !== '1dd') render1dd(data);  // keeps the sub-tab badges current
+  if (xpdView !== 'splits') renderSplits(data);
 }
 
 function renderExpediteTable() {
@@ -5506,15 +5601,17 @@ function renderExpediteTable() {
 
 // ── Expedite: 1DD Focus sub-tab ──────────────────────────────────────────────
 // Cutoff rule (agent, verified vs MAWM ship-by 10/14): placed 12 PM → 11:59 AM next day = due 12 PM PT that day.
-var xpdView = (function(){ try { return localStorage.getItem('xpd_view_v1') === '1dd' ? '1dd' : 'all'; } catch(e) { return 'all'; } })();
+var XPD_VIEWS = ['all', '1dd', 'splits'];
+var xpdView = (function(){ try { var v = localStorage.getItem('xpd_view_v1'); return XPD_VIEWS.indexOf(v) >= 0 ? v : 'all'; } catch(e) { return 'all'; } })();
 function setXpdView(v) {
-  xpdView = v === '1dd' ? '1dd' : 'all';
+  xpdView = XPD_VIEWS.indexOf(v) >= 0 ? v : 'all';
   try { localStorage.setItem('xpd_view_v1', xpdView); } catch(e) {}
-  document.getElementById('xpd-view-all').style.display = xpdView === 'all' ? '' : 'none';
-  document.getElementById('xpd-view-1dd').style.display = xpdView === '1dd' ? '' : 'none';
-  document.getElementById('xpd-btn-all').classList.toggle('active', xpdView === 'all');
-  document.getElementById('xpd-btn-1dd').classList.toggle('active', xpdView === '1dd');
+  XPD_VIEWS.forEach(function(k) {
+    document.getElementById('xpd-view-' + k).style.display = xpdView === k ? '' : 'none';
+    document.getElementById('xpd-btn-' + k).classList.toggle('active', xpdView === k);
+  });
   if (xpdView === '1dd' && lastXpdData) render1dd(lastXpdData);
+  if (xpdView === 'splits' && lastXpdData) renderSplits(lastXpdData);
 }
 
 function xpdUtcMs(str) {
@@ -5620,6 +5717,118 @@ function render1dd(data) {
   });
   document.getElementById('odd-held-tbody').innerHTML = hh;
   document.getElementById('odd-held-empty').style.display = held.length ? 'none' : 'block';
+}
+
+// ── Expedite: Splits sub-tab ─────────────────────────────────────────────────
+// Agent (fetchSplits): every Ecom order packed into 2+ oLPNs. "Would have fit" = item volume
+// fits one box (at 85% fill) — the biggest box used, or a bigger one up to MD3. Volume only.
+var splFilter = 'fit';
+var splOpen = {};   // order_id -> true while its box detail is expanded (survives refresh)
+function setSplFilter(f) {
+  splFilter = f;
+  document.getElementById('spl-f-fit').classList.toggle('f-active', f === 'fit');
+  document.getElementById('spl-f-all').classList.toggle('f-active', f === 'all');
+  renderSplitTable();
+}
+function toggleSplRow(el) {
+  var id = el.dataset.oid;
+  if (splOpen[id]) delete splOpen[id]; else splOpen[id] = true;
+  renderSplitTable();
+}
+
+function renderSplits(data) {
+  var s = data.splits;
+  var dot = document.getElementById('xpd-splits-dot');
+  if (!s) {
+    dot.style.display = 'none';
+    document.getElementById('spl-chart').innerHTML = '<span style="font-size:12px;color:var(--text-hint);margin:auto;">Split data not available this refresh.</span>';
+    document.getElementById('spl-days') && document.getElementById('spl-days').remove();
+    lastSplList = [];
+    renderSplitTable();
+    return;
+  }
+  var sh = s.shift || {};
+  document.getElementById('spl-t-orders').textContent = sh.split_orders || 0;
+  document.getElementById('spl-t-extra').textContent = sh.extra_boxes || 0;
+  document.getElementById('spl-t-fit').textContent = sh.fit_orders || 0;
+  document.getElementById('spl-t-fit-sub').textContent = sh.split_orders
+    ? Math.round(100 * sh.fit_orders / sh.split_orders) + '% of split orders' : 'of split orders';
+  document.getElementById('spl-t-fit-tile').className = 'xpd-tile ' + (sh.fit_orders ? 't-red' : 't-quiet');
+  document.getElementById('spl-t-rate').textContent = sh.orders ? (100 * sh.split_orders / sh.orders).toFixed(1) + '%' : '—';
+  document.getElementById('spl-t-rate-sub').textContent = (sh.orders || 0).toLocaleString() + ' Ecom orders packed';
+  document.getElementById('spl-t-svc').textContent = sh.svc_split || 0;
+  dot.textContent = sh.fit_orders || 0;
+  dot.style.display = sh.fit_orders ? '' : 'none';
+
+  // 14-day chart: one bar per pack day, "would have fit" on top of "needed"
+  var days = s.days || [];
+  var max = Math.max.apply(null, days.map(function(d){ return d.split_orders; }).concat([1]));
+  var bars = '', labels = '';
+  days.forEach(function(d) {
+    var need = Math.max(0, d.split_orders - d.fit_orders);
+    var hFit = Math.round(110 * d.fit_orders / max), hNeed = Math.round(110 * need / max);
+    var dt = new Date(d.date + 'T12:00:00Z');
+    var lbl = dt.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }).slice(0, 2) + ' ' + (dt.getUTCMonth() + 1) + '/' + dt.getUTCDate();
+    var tip = lbl + ': ' + d.split_orders + ' split of ' + d.orders.toLocaleString() + ' orders (' + (d.orders ? (100 * d.split_orders / d.orders).toFixed(1) : 0) + '%)\n'
+            + d.fit_orders + ' would have fit 1 box · ' + need + ' needed the split · ' + d.extra_boxes + ' extra boxes';
+    bars += '<div class="spl-col" title="' + escHtml(tip) + '">'
+          + '<div class="spl-num">' + (d.split_orders || '') + '</div>'
+          + '<div class="spl-bar">'
+          + (hFit ? '<div class="spl-seg-fit" style="height:' + hFit + 'px;"></div>' : '')
+          + (hNeed ? '<div class="spl-seg-need" style="height:' + hNeed + 'px;"></div>' : '')
+          + '</div></div>';
+    labels += '<span>' + escHtml(lbl) + '</span>';
+  });
+  var chart = document.getElementById('spl-chart');
+  chart.innerHTML = bars || '<span style="font-size:12px;color:var(--text-hint);margin:auto;">No packed orders in the last 14 days.</span>';
+  var lblEl = document.getElementById('spl-days');
+  if (!lblEl) { lblEl = document.createElement('div'); lblEl.id = 'spl-days'; lblEl.className = 'spl-days'; chart.parentNode.appendChild(lblEl); }
+  lblEl.innerHTML = labels;
+
+  lastSplList = s.list || [];
+  document.getElementById('spl-note').textContent = 'One Box? compares the volume of every item in the order with the box sizes (a box counts as holding '
+    + Math.round((s.fill || 0.85) * 100) + '% of its space). It can’t see item shape, fragile items, or liquids that must ship apart — a "fits" order is worth a look, not proof.';
+  renderSplitTable();
+}
+
+var lastSplList = [];
+function renderSplitTable() {
+  var q = (document.getElementById('spl-search').value || '').trim().toLowerCase();
+  var rows = lastSplList.filter(function(o) {
+    if (q) return String(o.order_id).toLowerCase().indexOf(q) >= 0;   // search looks at every split
+    return splFilter === 'all' || o.fit === 'used' || o.fit === 'bigger';
+  });
+  var html = '';
+  rows.forEach(function(o) {
+    var sizes = {}, order = [];
+    o.boxes.forEach(function(b) { var k = b.size || '?'; if (!sizes[k]) { sizes[k] = 0; order.push(k); } sizes[k]++; });
+    var sizeTxt = order.map(function(k){ return sizes[k] > 1 ? k + ' ×' + sizes[k] : k; }).join(' + ');
+    var fitHtml = o.fit === 'used'   ? '<span class="spl-fit spl-fit-used" title="Fits the biggest box already used">Fits ' + escHtml(o.suggest || 'used box') + '</span>'
+                : o.fit === 'bigger' ? '<span class="spl-fit spl-fit-bigger" title="Fits one bigger box">Fits ' + escHtml(o.suggest || 'MD3') + '</span>'
+                : o.fit === 'needed' ? '<span class="spl-fit spl-fit-needed">Needed split</span>'
+                : '<span style="font-size:11px;color:var(--text-hint);">no units yet</span>';
+    var svc = o.svc === '1DD' ? '<span class="xpd-svc-1dd">1DD</span>' : o.svc === '2DD' ? '<span class="xpd-svc-2dd">2DD</span>' : '';
+    var open = !!splOpen[o.order_id];
+    html += '<tr class="spl-row" data-oid="' + escHtml(o.order_id) + '" onclick="toggleSplRow(this)">'
+      + '<td>' + svc + '</td>'
+      + '<td><span style="font-family:monospace;font-size:11px;">' + (open ? '&#9662; ' : '&#9656; ') + escHtml(o.order_id) + '</span></td>'
+      + '<td class="r">' + (o.units || '—') + '</td>'
+      + '<td class="r" style="font-weight:700;">' + o.boxes.length + '</td>'
+      + '<td style="font-size:11px;font-family:monospace;">' + escHtml(sizeTxt) + '</td>'
+      + '<td class="r" style="font-size:11px;">' + (o.item_vol ? o.item_vol.toFixed(2) + ' ft³' : '—') + '</td>'
+      + '<td>' + fitHtml + '</td>'
+      + '<td style="font-size:11px;color:var(--text-muted);white-space:nowrap;">' + escHtml(fmtPdt(o.packed_utc) || '—') + '</td>'
+      + '</tr>';
+    if (open) {
+      html += '<tr class="spl-detail"><td colspan="8">' + o.boxes.map(function(b) {
+        return '<div class="spl-box"><b>' + escHtml(b.olpn_id) + '</b> &middot; ' + escHtml(b.size || '?')
+          + (b.items.length ? b.items.map(function(it){ return '<div>' + escHtml(it[0]) + (it[1] > 1 ? ' &times;' + it[1] : '') + '</div>'; }).join('') : '<div>no items yet</div>')
+          + '</div>';
+      }).join('') + '</td></tr>';
+    }
+  });
+  document.getElementById('spl-tbody').innerHTML = html;
+  document.getElementById('spl-empty').style.display = rows.length ? 'none' : 'block';
 }
 
 // ── Hospital Putwall tab ──────────────────────────────────────────────────────
