@@ -855,6 +855,7 @@
   .tk-zone-pct{float:right;font-size:11px;font-weight:600;color:var(--text-hint);}
   .tk-zone-header td .tk-zone-name{font-size:12px;font-weight:700;color:var(--text-muted);font-family:monospace;}
   .tk-zone-header td .tk-zone-count{font-size:11px;font-weight:600;color:var(--accent);margin-left:8px;}
+  .tk-card-totals{float:right;font-size:12px;font-weight:600;color:var(--accent);text-transform:none;letter-spacing:0;}
   [data-theme="light"] .tk-zone-header td,[data-theme="carrie"] .tk-zone-header td{background:#f0f2f7;}
   [data-theme="solid"] .tk-zone-header td{background:#12192e;}
 
@@ -1351,6 +1352,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <div class="card" id="tk-pick-card" style="margin-top:0;">
         <div class="card-title">
           <span>Ecom Picking</span>
+          <span class="tk-card-totals" id="tk-pick-totals"></span>
         </div>
         <div class="tk-table-wrap">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -1374,6 +1376,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <div class="card" id="tk-replen-card" style="margin-top:0;">
         <div class="card-title">
           <span>Ecom Replen</span>
+          <span class="tk-card-totals" id="tk-replen-totals"></span>
         </div>
         <div class="tk-table-wrap">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -3317,6 +3320,16 @@ function renderFlowCarts(carts) {
   body.innerHTML = html;
 }
 
+// Sum of task details for a list of tasks. Shows done/total when the done counts are known.
+function tkDetailTotal(tasks) {
+  var tot = 0, done = 0, hasDone = false;
+  for (var i = 0; i < tasks.length; i++) {
+    tot += Number(tasks[i].detail_count) || 0;
+    if (tasks[i].detail_done !== null && tasks[i].detail_done !== undefined) { hasDone = true; done += Number(tasks[i].detail_done) || 0; }
+  }
+  return (hasDone ? done.toLocaleString() + '/' : '') + tot.toLocaleString();
+}
+
 function renderTaskTable(type) {
   var isPick   = type === 'picking';
   var tbodyId  = isPick ? 'tk-pick-tbody'  : 'tk-replen-tbody';
@@ -3357,6 +3370,9 @@ function renderTaskTable(type) {
 
   var tbody = document.getElementById(tbodyId);
   var empty = document.getElementById(emptyId);
+  var totalsEl = document.getElementById(isPick ? 'tk-pick-totals' : 'tk-replen-totals');
+  if (totalsEl) totalsEl.innerHTML = filtered.length
+    ? 'Tasks: ' + filtered.length + ' &nbsp;·&nbsp; Details: ' + tkDetailTotal(filtered) : '';
   if (!filtered.length) {
     tbody.innerHTML = '';
     empty.style.display = 'block';
@@ -3403,6 +3419,7 @@ function renderTaskTable(type) {
       + '<span class="tk-zone-pct">' + zonePct + '% of total</span>'
       + '<span class="tk-zone-name">' + zone + '</span>'
       + '<span class="tk-zone-count">Tasks: ' + zoneCount + '</span>'
+      + '<span class="tk-zone-count">Details: ' + tkDetailTotal(zoneTasks) + '</span>'
       + '</td></tr>';
     for (var ti = 0; ti < zoneTasks.length; ti++) {
       var t = zoneTasks[ti];
