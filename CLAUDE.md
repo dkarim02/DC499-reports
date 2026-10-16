@@ -690,6 +690,19 @@ Safe at 15 IDs; try 25–30 if count is high. Used in: `fetchTaskData()` for TSK
 
 ---
 
+## Nail the Plan — OneDrive version (built 2026-10-15, in testing)
+
+Getting leaders off GitHub Pages. Master copy: `ntp_onedrive/Nail the Plan.html` (repo, not root → not synced to SCOUT Live). **Live copy: `OneDrive - Nordstrom\Nail the Plan\Nail the Plan.html` — copy it there by hand after every edit** (nothing syncs it). That folder is a sibling of SCOUT Live, shared with **edit** rights to leaders; holds the page, `README.txt` (hand-written) and `data\`.
+- Leader picks the folder once (File System Access API, handle kept in IndexedDB `ntp_od`; one "Reconnect" click after a browser restart). Edge/Chrome only.
+- Files: `data/<plan date>/<Dept no spaces>_<shift>.json` = `{dept, shift, date, savedAt, savedBy, tab, rev, data:{proc:{Midday,EOD}}, ov}`. One file per dept + shift (Dean's call — people rarely edit the same dept at once). Page polls every 15 s; writes 1 s after typing stops.
+- Picker on open: dept + shift, or View only. Only that dept + shift is editable (inputs `readOnly`, same look — Dean wants locked depts fully readable). **Override = switch** which one you edit (one at a time, no PIN); edits made while overridden get `ov["proc|cp|field"]={by,at}` and a ✎ marker; the owner typing over it clears the tag.
+- Merge: 3-way per field against `OD.base` (last read/written copy) — a field untouched here takes the file's value, so an override and the owner editing at the same time both survive. OneDrive conflict copies (`Ecom_2nd-PCNAME.json`) are flagged in the sync bar, not merged.
+- Own cache key `ntp_od_v1` (never the old page's). NAIL: Ecom/Reserve still write `ntp_dc499_v1`; the new page picks up act_u/act_hc/shiftHours for the dept you're editing (< 30 min old), then empties that key. On file://, `ntpOpenUrl()` in Ecom_v3/Reserve opens the sibling folder — **shared folders appear on other PCs as "Karim, Dean's files - SCOUT Live"**, so it swaps the folder name's ending.
+- JSONBin kept as a bridge while both versions run: Teams post / Push still push; "Sync from Pages" + auto-sync only fill depts with no file and never yours. Remove JSONBin (key is public) once everyone has switched.
+- Tests: `.tmp_audit/ntp_mock/run.sh` (30 checks, fake folder in headless Edge; no `--user-data-dir` or it hangs). Screens: `shot_inject.js`.
+
+---
+
 ## Change log (Changelog.html — printed for Dean's binder)
 
 After every **finalized major change** (new report/tab/column, a fix to a number, a version bump), add a line to `Changelog.html` in the same commit. Skip small tweaks (spacing, colors, label wording, chart cosmetics), CLAUDE.md edits, and live data pushes.

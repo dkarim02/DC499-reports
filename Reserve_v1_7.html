@@ -1983,6 +1983,17 @@ function addTMFromLive(emp) {
 // ── NAIL THE PLAN (Reserve → Retail tab) ───────────────
 var NTP_KEY  = 'ntp_dc499_v1';
 var NTP_FILE = 'dc499-nail-the-plan 32.html';
+// Opened from OneDrive (file://) -> the shared-folder version in the sibling Nail the Plan folder.
+// Shared folders show up on other PCs as "<Owner>'s files - SCOUT Live", so swap the folder name's ending.
+function ntpOpenUrl() {
+  var base = window.location.href.replace(/\/[^\/]*$/, '/');
+  if (location.protocol !== 'file:') return base + NTP_FILE;
+  var m = base.match(/^(.*\/)([^\/]+)\/$/);
+  if (!m) return base + NTP_FILE;
+  var dir = decodeURIComponent(m[2]);
+  var sib = /SCOUT Live$/i.test(dir) ? dir.replace(/SCOUT Live$/i, 'Nail the Plan') : 'Nail the Plan';
+  return m[1] + encodeURIComponent(sib) + '/Nail%20the%20Plan.html';
+}
 
 // Mirror of NTP's currentBlock() — must stay in sync
 var NTP_BLOCKS = [
@@ -2036,8 +2047,7 @@ function nailFromLiveRS(btn) {
   state.meta.updatedAt = new Date().toISOString();
   try { localStorage.setItem(NTP_KEY, JSON.stringify(state)); } catch(e) { alert('Could not write to localStorage.'); return; }
   if (btn) { btn.textContent = '✓ Nailed'; btn.disabled = true; setTimeout(function(){ btn.textContent = '📌 NAIL'; btn.disabled = false; }, 3000); }
-  var base = window.location.href.replace(/\/[^\/]*$/, '/');
-  window.open(base + NTP_FILE, '_blank');
+  window.open(ntpOpenUrl(), '_blank');
 }
 
 // ── WEEKLY RECAP (data helpers — dashboard lives in Reserve_weekly.html) ──────
