@@ -1337,6 +1337,8 @@ async function fetchTaskData(accessToken) {
 
   // Two separate queries — ASSIGNED_USER_ID and PLANNED_START_TIME crash the connector (likely PII gate)
   // Safe columns only: TASK_ID, STATUS, TRANSACTION_ID, LABOR_ACTIVITY_ID, SOURCE_LOCATION_ID, TARGET_LOCATION_ID, CREATED_TIMESTAMP
+  // Tasks made before shift start count if still open or finished this shift (a batch released at 1:50 PM
+  // is mostly picked after 2 PM — without the 8000 line those never showed as completed)
   // Filter on TRANSACTION_ID not LABOR_ACTIVITY_ID — many tasks have 'Default Picking Activity' in LABOR_ACTIVITY_ID
   // but always have the correct ecom pick transaction name in TRANSACTION_ID
   const sqlPick = `
@@ -1349,6 +1351,7 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND (
     CREATED_TIMESTAMP >= '${startStr}'
     OR (STATUS IN ('3000','5000','7000') AND CREATED_TIMESTAMP >= NOW() - INTERVAL 2 DAY)
+    OR (STATUS = '8000' AND UPDATED_TIMESTAMP >= '${startStr}' AND CREATED_TIMESTAMP >= NOW() - INTERVAL 2 DAY)
   )
 ORDER BY CREATED_TIMESTAMP ASC`.trim();
 
@@ -1364,6 +1367,7 @@ WHERE FACILITY_ID = '${FACILITY}'
   AND (
     CREATED_TIMESTAMP >= '${startStr}'
     OR (STATUS IN ('3000','5000','7000') AND CREATED_TIMESTAMP >= NOW() - INTERVAL 2 DAY)
+    OR (STATUS = '8000' AND UPDATED_TIMESTAMP >= '${startStr}' AND CREATED_TIMESTAMP >= NOW() - INTERVAL 2 DAY)
   )
 ORDER BY CREATED_TIMESTAMP ASC`.trim();
 
