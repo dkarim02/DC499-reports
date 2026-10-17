@@ -1576,7 +1576,8 @@ async function queryAndWrite(accessToken) {
 // Cycle history for tuning (added 2026-10-13): the ⏱ line, with a Pacific date stamp, appended to
 // cycle_times.txt. ~720 lines a day; once it passes CYCLE_LOG_MAX lines it is cut back to the
 // newest CYCLE_LOG_KEEP (about a week). A logging error never touches the cycle.
-const CYCLE_LOG = path.join(__dirname, 'cycle_times.txt');
+// Kept on local disk, not OneDrive (2026-10-16) — a file rewritten every 2 min clogged OneDrive sync.
+const CYCLE_LOG = path.join(require('os').homedir(), 'SCOUT-local', 'cycle_times.txt');
 const CYCLE_LOG_MAX = 6000, CYCLE_LOG_KEEP = 5000;
 function logCycle(line) {
   try {

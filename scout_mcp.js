@@ -15,6 +15,7 @@
 // - Locks are only ever removed by their owner, or when stale (owner process gone / too old).
 
 const fs     = require('fs');
+const os     = require('os');
 const path   = require('path');
 const http   = require('http');
 const https  = require('https');
@@ -25,7 +26,12 @@ const DIR        = process.env.SCOUT_MCP_DIR || __dirname;   // override only fo
 const MCP_BASE   = 'https://mawm-data-mcp.nordstromaws.app';
 const CLIENT_ID  = 'https://claude.ai/oauth/claude-code-client-metadata';
 const TOKEN_FILE = path.join(DIR, '.mcp_token.json');
-const LOCK_FILE  = TOKEN_FILE + '.lock';
+// Lock files live on local disk, not OneDrive (2026-10-16): they are made and deleted for every
+// query, and OneDrive choked on it ("too many files") and held up all other syncing.
+// Every agent must use the same folder — restart all agents together after changing this.
+const LOCK_DIR   = process.env.SCOUT_MCP_LOCK_DIR || (process.env.SCOUT_MCP_DIR ? DIR : path.join(os.homedir(), 'SCOUT-local'));
+try { fs.mkdirSync(LOCK_DIR, { recursive: true }); } catch {}
+const LOCK_FILE  = path.join(LOCK_DIR, '.mcp_token.json.lock');
 const TOKEN_TTL  = 55 * 60 * 1000;   // fallback if the token has no expires_in
 
 // 3 = the most the old setup already hit at peak (refresh 2 + sub-agents 1). More than that
@@ -108,9 +114,9 @@ function _localRelease() {
   if (_localQueue.length) _localQueue.shift()(null);
   else _localActive--;
 }
-const slotFile = i => path.join(DIR, `.mcp_slot_${i}.lock`);
+const slotFile = i => path.join(LOCK_DIR, `.mcp_slot_${i}.lock`);
 
-const PRIO_FILE     = path.join(DIR, '.mcp_priority.lock');
+const PRIO_FILE     = path.join(LOCK_DIR, '.mcp_priority.lock');
 const PRIO_FRESH_MS = 10 * 1000;   // a flag not touched for 10 s is ignored
 let _prioPolling = 0, _prioWrittenAt = 0;
 function priorityWaiting() {
