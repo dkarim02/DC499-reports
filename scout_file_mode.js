@@ -16,11 +16,42 @@
   var DATA = window.SCOUT_FILE_DATA = window.SCOUT_FILE_DATA || {};
   var DATA_URL = /^(?:https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/|https:\/\/dkarim02\.github\.io\/DC499-reports\/|\.?\/)?([\w\-]+\.json)(?:[?#].*)?$/;
 
+  // ── Source pill (2026-10-20) ────────────────────────────────────────────────
+  // Bottom-right: which machine wrote the newest data this page loaded, and how old it is.
+  // Green = Laptop, blue = PC, red = newest data over 10 min old (whoever wrote it).
+  // Data files carry SCOUT_FILE_SRC[name] = {by, at}; older files without it show nothing.
+  var SRC = window.SCOUT_FILE_SRC = window.SCOUT_FILE_SRC || {};
+  var STALE_MS = 10 * 60 * 1000;
+  var pill = null, newest = null;
+  function drawPill() {
+    if (!newest) return;
+    if (!pill) {
+      pill = document.createElement('div');
+      pill.style.cssText = 'position:fixed;bottom:6px;right:8px;z-index:99999;font:600 11px system-ui,sans-serif;' +
+        'padding:3px 9px;border-radius:10px;color:#fff;opacity:.9;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.25)';
+      document.documentElement.appendChild(pill);   // not <body>: its entrance animation pins fixed children
+    }
+    var age = Date.now() - Date.parse(newest.at);
+    var mins = Math.max(0, Math.round(age / 60000));
+    var who = newest.by === 'laptop' ? 'Laptop' : newest.by === 'pc' ? 'PC' : newest.by;
+    var stale = !(age <= STALE_MS);
+    pill.style.background = stale ? '#c0392b' : (newest.by === 'laptop' ? '#15803d' : '#1d4ed8');
+    pill.textContent = '● ' + (stale ? 'Stale · ' + who + ' · ' + mins + ' min old' : who + ' · ' + (mins ? mins + ' min ago' : 'just now'));
+    pill.title = 'Data written by the ' + who + ' at ' + new Date(newest.at).toLocaleTimeString();
+  }
+  function noteSource(name) {
+    var s = SRC[name];
+    if (!s || !s.at) return;
+    if (!newest || Date.parse(s.at) > Date.parse(newest.at)) newest = s;
+    drawPill();
+  }
+  setInterval(drawPill, 30000);
+
   function loadSidecar(name) {
     return new Promise(function (resolve) {
       var s = document.createElement('script');
       s.src = 'filedata/' + name.replace(/\.json$/, '.js') + '?t=' + Date.now();
-      s.onload  = function () { s.remove(); resolve(DATA[name]); };
+      s.onload  = function () { s.remove(); noteSource(name); resolve(DATA[name]); };
       s.onerror = function () { s.remove(); resolve(undefined); };
       (document.head || document.documentElement).appendChild(s);
     });

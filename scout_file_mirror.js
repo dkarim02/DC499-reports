@@ -111,8 +111,12 @@ function mirror(file, data) {
     const name = path.basename(file);
     const text = typeof data === 'string' ? data : data.toString();
     const body = JSON.stringify(JSON.parse(text));   // compact — smaller sync
+    // SCOUT_FILE_SRC = which machine wrote this copy and when — scout_file_mode.js shows it as a
+    // colored pill on the page (2026-10-20), so it's clear which feed the team is looking at.
     const js   = 'window.SCOUT_FILE_DATA=window.SCOUT_FILE_DATA||{};'
-               + 'window.SCOUT_FILE_DATA[' + JSON.stringify(name) + ']=' + body + ';\n';
+               + 'window.SCOUT_FILE_DATA[' + JSON.stringify(name) + ']=' + body + ';'
+               + 'window.SCOUT_FILE_SRC=window.SCOUT_FILE_SRC||{};'
+               + 'window.SCOUT_FILE_SRC[' + JSON.stringify(name) + ']={by:"pc",at:' + JSON.stringify(new Date().toISOString()) + '};\n';
     const jsName = name.replace(/\.json$/, '.js');
     if (!fs.existsSync(MIRROR_DIR)) fs.mkdirSync(MIRROR_DIR);
     writeAtomic(path.join(MIRROR_DIR, jsName), js);
