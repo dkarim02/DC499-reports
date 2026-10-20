@@ -48,11 +48,23 @@ function fmtHHmm(ts) {
   } catch { return ts; }
 }
 
+// RCV_RECEIPT has ~18M rows and no CREATED_TIMESTAMP index, so each query read the whole table
+// (13–16 s alone, minutes with the 3 queries competing — the agent fell behind its 3-min cycle).
+// Its PK is time-based: PK = (epoch ms − 1e12) × 1e7 + sequence. `PK >= pkFloor(start)` lets
+// MySQL jump to the shift through the primary key (~0.5 s); the CREATED_TIMESTAMP filter stays,
+// so results are exactly the same. Checked 2026-10-19 on 5 shifts: same rows + LPNs every time;
+// PK time vs CREATED_TIMESTAMP never more than 0.25 s apart (118k rows), margin is 10 min.
+function pkFloor(utcSql, marginMin = 10) {
+  const ms = Date.parse(utcSql.replace(' ', 'T') + 'Z') - marginMin * 60000;
+  return ((BigInt(ms) - 1000000000000n) * 10000000n).toString();
+}
+
 // ── receiving query ────────────────────────────────────────────────────────────
 async function fetchReceiving(accessToken) {
   // 1st 6:00 AM–1:59 PM, 2nd from 2:00 PM local (DST-aware); before 6 AM = yesterday's 2nd
   const rcvShift = currentShift({ firstFrom: 6, secondFrom: 14, firstStart: [6, 0], secondStart: [14, 0] });
   const shiftStartUtc = rcvShift.startSql;
+  const pkMin = pkFloor(shiftStartUtc);
   // System accounts, not people. manhedgeuser = ASN purge / LPN service rows (0 units).
   const SYSTEM_USERS = [`system-msg-user@${FACILITY}`, 'manhedgeuser'].map(u => `'${u}'`).join(', ');
 
@@ -66,6 +78,7 @@ SELECT
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
+  AND PK >= ${pkMin}
   AND CREATED_BY NOT IN (${SYSTEM_USERS})
 GROUP BY CREATED_BY
 ORDER BY lpns DESC`.trim();
@@ -78,6 +91,7 @@ SELECT
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
+  AND PK >= ${pkMin}
   AND CREATED_BY NOT IN (${SYSTEM_USERS})
 GROUP BY hr
 ORDER BY hr ASC`.trim();
@@ -90,6 +104,7 @@ SELECT
 FROM default_receiving.RCV_RECEIPT
 WHERE FACILITY_ID = '${FACILITY}'
   AND CREATED_TIMESTAMP >= '${shiftStartUtc}'
+  AND PK >= ${pkMin}
   AND CREATED_BY NOT IN (${SYSTEM_USERS})
 GROUP BY CREATED_BY, hr
 ORDER BY CREATED_BY, hr ASC`.trim();

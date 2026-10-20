@@ -95,6 +95,7 @@ Backup path if GitHub is lost: share the folder through OneDrive and open pages 
 - `filedata/` is gitignored (OneDrive-only). `git fetch`/`push` have a 60s timeout so a GitHub outage can't hang the cycle.
 - localStorage (rosters, headcount, PPH, NTP) is per site: settings on github.io don't carry over to file://. Each user sets them up once in file mode.
 - **Share folder (2026-10-02): `OneDrive - Nordstrom\SCOUT Live`** — what the team syncs. Never share this reporter folder (agent code, `.mcp_token.json`, logs). scout_file_mirror.js writes every sidecar into `SCOUT Live/filedata` too (only if that folder exists; `SCOUT_SHARE_DIR` overrides), and `syncSharePages()` (called each dc499_refresh cycle) copies changed root `*.html` + favicon.svg, scout_file_mode.js, remi.mp4. New page or asset a page loads → it must be a root `*.html` or added to `SHARE_ASSETS`. A root page renamed/removed (version bump) is deleted from the share on the next cycle — only `*.html`; data, assets, README.txt stay. Page edits only reach the share while dc499_refresh is running. Share it as **view only**. `README.txt` there is hand-written, not synced.
+- **Switch-over marker (2026-10-19): `SCOUT Live\.metabase_owner`.** Present = the Metabase version (laptop, `OneDrive\SCOUT Metabase Code\scout_mb_live.js`) writes SCOUT Live pages + filedata, and this PC's `scout_file_mirror.js` stops writing the share (`shareOn()` false; checked ≤ every 30 s; GitHub pushes + this folder's filedata carry on). Made/removed by `switch_to_metabase.bat` / `switch_back_to_pc.bat` in SCOUT Metabase Code (switch refuses if the Metabase data is > 10 min old). Pages written by the laptop into SCOUT Live have no "Metabase version" tag. Tested in a throwaway folder (`SCOUT_SHARE_DIR`), 6/6. Team setup guide: `Downloads\SCOUT_Live_Setup_Guide.pdf` (source .html next to it).
 - The old `OneDrive - Nordstrom\DC499 Reporting` folder (Sept SharePoint attempt, `_sp` pages, stale since 9/14) is shared and contains a copy of the MAWM token — never share it; Dean was told to unshare it.
 
 ---
@@ -335,6 +336,8 @@ Output: expedite_live.json. REDIRECT_PORT 3122.
 ## Receiving Live (Receiving_live.html v2.0)
 
 **Agent:** scout_receiving_agent.js (option 30, every 3 min, `--once` = safe one-shot). Split out of dc499_refresh.js 2026-10-05: its 3 RCV_RECEIPT queries took ~50 s and were the slowest part of the 2-min live cycle. dc499_refresh still serves `/receiving_live.json` (reads the file) and pushes it. **If the Receiving agent is not running, Receiving Live goes stale.**
+
+**PK range (2026-10-19):** RCV_RECEIPT has ~18M rows and no CREATED_TIMESTAMP index, so each of the 3 queries read the whole table (13–16 s alone, 3–8 min with all 3 competing — the agent couldn't finish inside its 3-min cycle and Receiving Live went stale). PK is time-based: `PK = (epoch ms − 1e12) × 1e7 + sequence`. Every query now adds `AND PK >= pkFloor(shiftStart − 10 min)` (CREATED_TIMESTAMP filter kept) → ~0.5 s, whole agent ~1 s. Proof: 5 shifts same rows + LPNs; each query old vs new SAME; PK time vs CREATED_TIMESTAMP ≤ 0.25 s apart over 118k rows. **Same trick may work on other big tables with time-based PKs — check the PK first.**
 
 Rebuilt 2026-08-15. Color-coded hourly scoreboard (same 80/60/40/0 thresholds as Shipping). No manual shift selector — auto-detects from `data.shift` in JSON.
 
