@@ -668,24 +668,6 @@ Safe at 15 IDs; try 25–30 if count is high. Used in: `fetchTaskData()` for TSK
 
 ---
 
-## Metabase migration (in evaluation — 2026-08-10)
-
-**Proposed architecture:** Metabase holds direct MAWM DB connection (IT manages creds, no OIDC expiry). Reporter HTML/CSS/JS hosted on Nordstrom intranet. PC agent shrinks to ~100 lines — polls Metabase REST API for operational events only.
-
-**Key blocking question:** Can Dean push HTML/JS updates himself without an IT ticket? Must be confirmed before migration begins.
-
-**What stays in PC agent:** Teams webhooks, EOD email, shift detection.
-
-**What cannot move to Metabase:** Teams notifications on row-level events, EOD email generation, PPH pace math, headcount settings, custom themes.
-
-**Metabase REST API pattern:** `GET /api/card/{id}/query` with `X-Metabase-Session` header. Agent polls every 5 min, maps to existing JSON format.
-
-**SQL translations needed:** Dedup via `ROW_NUMBER() OVER (PARTITION BY employee, transaction_id, activity_datetime)`, Zone H via `CASE WHEN SUBSTR(location,3,1)='H'`, shift bucketing via `CONVERT_TZ`. All existing TX ID filters and `facility_id='499'` rules apply unchanged.
-
-**Next step:** Review eng manager's Metabase report — verify facility_id='499' (not '0499'), REST API intranet accessibility, and deploy access terms.
-
----
-
 ## Dev tooling (Claude Code sessions)
 
 - **Node isn't on the bash PATH.** Use the bundled copy: `"/c/Users/JLEO/OneDrive - Nordstrom/node/node-v24.18.0-win-x64/node.exe"` (same one dc499.bat uses). `--check file.js` does a syntax check.
@@ -756,7 +738,6 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 - [ ] Wave progress report (DCO_WAVE_AGGREGATE_ORDER)
 - [ ] Timeclock report (default_timeclock)
 - [ ] GitHub Pro ($4/mo) for private repo + Pages
-- [ ] IT/Metabase: review eng manager's report, confirm deploy access
 - [ ] Reserve Weekly: replen/pick ratio metrics
 
 ---
