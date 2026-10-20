@@ -24,17 +24,16 @@ const realWrite  = fs.writeFileSync;
 const SHARE_DIR    = process.env.SCOUT_SHARE_DIR || path.join(path.dirname(DIR), 'SCOUT Live');
 const SHARE_DATA   = path.join(SHARE_DIR, 'filedata');
 const SHARE_ASSETS = ['favicon.svg', 'scout_file_mode.js', 'remi.mp4'];
-// Switch-over (2026-10-19): when SCOUT Live\.metabase_owner exists, the Metabase version (laptop,
-// SCOUT Metabase Code\scout_mb_live.js) writes the share instead — this PC stops writing pages and
-// data into it (GitHub pushes and filedata/ in this folder carry on). Made/removed by
-// switch_to_metabase.bat / switch_back_to_pc.bat. Checked at most every 30 s.
-const OWNER_MARKER = path.join(SHARE_DIR, '.metabase_owner');
+// Share hand-off (2026-10-19): while SCOUT Live\.share_owner exists, another writer keeps the
+// share up to date, so this PC stops writing pages and data into it (GitHub pushes and this
+// folder's filedata/ carry on). Checked at most every 30 s.
+const OWNER_MARKER = path.join(SHARE_DIR, '.share_owner');
 let _ownerAt = 0, _ownerVal = false;
-function metabaseOwnsShare() {
+function shareHandedOff() {
   if (Date.now() - _ownerAt > 30000) { _ownerAt = Date.now(); _ownerVal = fs.existsSync(OWNER_MARKER); }
   return _ownerVal;
 }
-const shareOn = () => { try { return fs.statSync(SHARE_DIR).isDirectory() && !metabaseOwnsShare(); } catch { return false; } };
+const shareOn = () => { try { return fs.statSync(SHARE_DIR).isDirectory() && !shareHandedOff(); } catch { return false; } };
 
 function writeAtomic(out, text) {
   const tmp = out + '.tmp';

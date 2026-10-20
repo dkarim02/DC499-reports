@@ -961,7 +961,7 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
   // MA can't batch the order until that shelf is replenished, so it doesn't count toward the next batch.
   // units = the order's non-cancelled ordered quantity. Was a second query (sqlQueuedUnits) doing
   // the same DCO_ORDER scan again, run after this one; merged 2026-10-19 (same per-order units,
-  // checked on MCP + Metabase) — one ~7 s scan instead of two in a row.
+  // checked old vs new) — one ~7 s scan instead of two in a row.
   const sqlQueued = `
 SELECT o.ORDER_ID,
   MAX(CASE WHEN a.ALLOCATION_ID IS NOT NULL
