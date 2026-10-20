@@ -40,7 +40,7 @@ const INTERVAL   = (() => {
 
 // ── Reserve groups ─────────────────────────────────────────────────────────────
 // GROUP BY aggregation means result rows = distinct employees, never hits 10k cap.
-// Zone H filter (3rd char of TARGET_LOCATION_ID = 'H') applied in SQL for replen/putaway.
+// zoneH: true = Retail shelves only (see zoneJoin/zoneWhere — by MA allocation zone since 10/19).
 const RS_GROUPS = [
   {
     key:    'pick_f1',
@@ -100,33 +100,50 @@ function shiftStartUtc(now = new Date()) {
 // ── SQL builder ────────────────────────────────────────────────────────────────
 // Per-employee, per-PDT-hour sums. Shift totals are rolled up from these rows in Node,
 // so each associate's hourly values always add up to their total.
+// Retail-shelf filter (replen + putaway): the shelf's pick allocation zone in DCI_LOCATION is a
+// Retail one (PAZ_*RETAIL* — F1H/P1H/F2H/P2H/R1H/R2H + A1A0101A01); target shelf first, source as
+// fallback. Same rule as the Owner column in scout_ecom_agent.js, so a row counts on exactly one
+// page. Replaced "3rd character of TARGET = H" 2026-10-19 (that also caught RTV E1H and U1H shelves);
+// checked 10/16–10/19, both rules gave the same rows. LOCATION_ID is unique per PROFILE_ID.
+function zoneJoin(group) {
+  return group.zoneH ? [
+    `LEFT JOIN default_dcinventory.DCI_LOCATION lt ON lt.LOCATION_ID = t.TARGET_LOCATION_ID AND lt.PROFILE_ID = '${FACILITY}'`,
+    `LEFT JOIN default_dcinventory.DCI_LOCATION ls ON ls.LOCATION_ID = t.SOURCE_LOCATION_ID AND ls.PROFILE_ID = '${FACILITY}'`,
+  ] : [];
+}
+function zoneWhere(group) {
+  return group.zoneH ? [`  AND COALESCE(lt.PICK_ALLOCATION_ZONE_ID, ls.PICK_ALLOCATION_ZONE_ID) LIKE '%RETAIL%'`] : [];
+}
+
 function buildGroupSql(shiftStart, group) {
   const txList = group.txIds.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
-  const zoneFilter = group.zoneH ? `  AND SUBSTR(TARGET_LOCATION_ID, 3, 1) = 'H'\n` : '';
   return [
-    `SELECT CREATED_BY AS Employee,`,
-    `  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%H') AS pdt_hr,`,
-    `  SUM(${group.metric}) AS total_qty`,
-    `FROM default_task.TSK_ACTIVITY_TRACKING`,
-    `WHERE FACILITY_ID = '${FACILITY}'`,
-    `  AND TRANSACTION_ID IN (${txList})`,
-    `  AND CREATED_TIMESTAMP >= '${shiftStart}'`,
-    zoneFilter + `GROUP BY CREATED_BY, pdt_hr`,
+    `SELECT t.CREATED_BY AS Employee,`,
+    `  DATE_FORMAT(CONVERT_TZ(t.CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%H') AS pdt_hr,`,
+    `  SUM(t.${group.metric}) AS total_qty`,
+    `FROM default_task.TSK_ACTIVITY_TRACKING t`,
+    ...zoneJoin(group),
+    `WHERE t.FACILITY_ID = '${FACILITY}'`,
+    `  AND t.TRANSACTION_ID IN (${txList})`,
+    `  AND t.CREATED_TIMESTAMP >= '${shiftStart}'`,
+    ...zoneWhere(group),
+    `GROUP BY t.CREATED_BY, pdt_hr`,
   ].join('\n');
 }
 
 // Distinct containers can't be summed across hours, so replen containers keep a shift-level query.
 function buildContainerSql(shiftStart, group) {
   const txList = group.txIds.map(t => `'${t.replace(/'/g, "''")}'`).join(', ');
-  const zoneFilter = group.zoneH ? `  AND SUBSTR(TARGET_LOCATION_ID, 3, 1) = 'H'\n` : '';
   return [
-    `SELECT CREATED_BY AS Employee,`,
-    `  COUNT(DISTINCT CASE WHEN COMPLETED_QUANTITY > 0 THEN CONTAINER_ID END) AS container_count`,
-    `FROM default_task.TSK_ACTIVITY_TRACKING`,
-    `WHERE FACILITY_ID = '${FACILITY}'`,
-    `  AND TRANSACTION_ID IN (${txList})`,
-    `  AND CREATED_TIMESTAMP >= '${shiftStart}'`,
-    zoneFilter + `GROUP BY CREATED_BY`,
+    `SELECT t.CREATED_BY AS Employee,`,
+    `  COUNT(DISTINCT CASE WHEN t.COMPLETED_QUANTITY > 0 THEN t.CONTAINER_ID END) AS container_count`,
+    `FROM default_task.TSK_ACTIVITY_TRACKING t`,
+    ...zoneJoin(group),
+    `WHERE t.FACILITY_ID = '${FACILITY}'`,
+    `  AND t.TRANSACTION_ID IN (${txList})`,
+    `  AND t.CREATED_TIMESTAMP >= '${shiftStart}'`,
+    ...zoneWhere(group),
+    `GROUP BY t.CREATED_BY`,
   ].join('\n');
 }
 

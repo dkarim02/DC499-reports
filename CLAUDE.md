@@ -65,7 +65,8 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 **Dedup key:** Employee + Transaction ID + Activity Datetime. NEVER use CP Trace Id.
 
 **Location filter (shared TX IDs only):**
-- Zone H (3rd character of location string) = Reserve Stock; any other zone = Ecom
+- **Since 2026-10-19 (Ecom v3.3): owner = the shelf's MA pick allocation zone**, `DCI_LOCATION.PICK_ALLOCATION_ZONE_ID` (PROFILE_ID='499', LOCATION_ID unique → join never adds rows), target shelf first, source as fallback. `%RETAIL%` = Retail (F1H/P1H/F2H/P2H/R1H/R2H + A1A0101A01); `%ECOM%` / `PAZ_ReplenArea%` = Ecom; RTV (E1H) / Unallocated (U1H) = Other; null = staging/P1-PK/Z1. scout_ecom_agent.js Group A adds an `Owner` column (`OWNER_SQL`); Ecom_v3.html drops only `Owner === 'Retail'` (everything else stays Ecom); scout_reserve_agent.js counts only `%RETAIL%` (`zoneJoin`/`zoneWhere`). Same rule both sides → no double count, no gap. Old-vs-new check: `.tmp_audit/compare_owner.js` (10/16–10/19 identical on every replen row). The task itself (labor activity, pool, type) is identical for both — can't be used.
+- Fallback for uploaded CSVs only (no Owner column): Zone H (3rd character of location string) = Reserve Stock; any other zone = Ecom
 - Check Current Location first, Previous Location as fallback, default Ecom if both blank
 - Applies to: System/User Directed Putaway, iLPN Replen Fill/Pull variants
 - Must be applied in processData(), addToFullReport(), AND renderSidePanel()
@@ -257,7 +258,7 @@ Output: ecom_live.json. Query groups A/B/C/D/E fire in parallel (`Promise.all`).
 
 **History snapshot gate:** `updateEcomHistory()` only fires for 1st shift (always) or 2nd shift after ≥420 min elapsed (~9:10 PM PDT). Before that, console prints `history snapshot skipped`. Gate is offset-based from shift start — DST-safe, no hardcoded UTC hour.
 
-**Archive vs live consistency:** **Replen (v3.2, 2026-10-19): zone H filter now applied everywhere** — `replenRowCounts(r)` (no P1-PK drop + `rowBelongsToEcom`) in `forEachCountedRow` (tiles, cards, side panel, hourly, PPH strip) and both replen LPN counts; the agent's `updateEcomHistory` uses the same rule, so archive shifts from 10/19 on match. Before: only the Full Report CSV path checked zone H, so Retail fills into F1H/P1H/F2H/P2H counted on Ecom AND Reserve (10/19 2nd: 5,562 of 5,978 Ecom replen units; true Ecom 368). History before 10/19 still includes them. **Putaway still has no live zone H filter — check it (Dean: next session), plus the replen PPH target (set against the inflated number).**
+**Archive vs live consistency:** **Replen (v3.2, 2026-10-19): zone H filter now applied everywhere** — `replenRowCounts(r)` (no P1-PK drop + `rowBelongsToEcom`) in `forEachCountedRow` (tiles, cards, side panel, hourly, PPH strip) and both replen LPN counts; the agent's `updateEcomHistory` uses the same rule, so archive shifts from 10/19 on match. Before: only the Full Report CSV path checked zone H, so Retail fills into F1H/P1H/F2H/P2H counted on Ecom AND Reserve (10/19 2nd: 5,562 of 5,978 Ecom replen units; true Ecom 368). History before 10/19 still includes them. **Putaway still has no live Retail filter** — rows carry `Owner` since v3.3, but Ecom putaway still counts Retail shelves (10/16–10/19: 544 of 2,556 putaway scans, F2H/R1H etc., also counted on Reserve). Waiting on Dean. Also still open: the replen PPH target (set against the inflated number).
 
 **Pending TX type:** `Returns System Directed Putaway` — not yet assigned to a group.
 

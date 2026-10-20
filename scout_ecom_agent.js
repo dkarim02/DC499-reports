@@ -88,9 +88,27 @@ function shiftStartUtc(now = new Date()) {
 // ── SQL builder ────────────────────────────────────────────────────────────────
 // Location columns follow the MAWM CSV export: Current = where the scan went (target),
 // Previous = where it came from (source). Ecom_v3.html's P1-PK replen rule reads Current.
-function buildSql(shiftStart, txGroup, criteriaFilter = null) {
+//
+// withOwner (Group A only): adds an `Owner` column = which dept the shelf belongs to, read from
+// the shelf's pick allocation zone in DCI_LOCATION (target shelf first, source as fallback).
+// 'Retail' = PAZ_*RETAIL* (F1H/P1H/F2H/P2H/R1H/R2H + A1A0101A01), 'Ecom' = PAZ_*ECOM* / PAZ_ReplenArea*,
+// 'Other' = RTV / Unallocated, null = no zone (staging, P1-PK, Z1). Ecom_v3.html drops only 'Retail'
+// rows; scout_reserve_agent.js counts only 'Retail' — same rule on both sides. Replaced the
+// "3rd character = H" guess 2026-10-19; checked 10/16–10/19, both rules matched on every replen row.
+// LOCATION_ID is unique per PROFILE_ID, so the joins never add rows.
+const OWNER_SQL = `CASE
+    WHEN COALESCE(lt.PICK_ALLOCATION_ZONE_ID, ls.PICK_ALLOCATION_ZONE_ID) LIKE '%RETAIL%' THEN 'Retail'
+    WHEN COALESCE(lt.PICK_ALLOCATION_ZONE_ID, ls.PICK_ALLOCATION_ZONE_ID) LIKE '%ECOM%'
+      OR COALESCE(lt.PICK_ALLOCATION_ZONE_ID, ls.PICK_ALLOCATION_ZONE_ID) LIKE 'PAZ_ReplenArea%' THEN 'Ecom'
+    WHEN COALESCE(lt.PICK_ALLOCATION_ZONE_ID, ls.PICK_ALLOCATION_ZONE_ID) IS NOT NULL THEN 'Other'
+  END`;
+function buildSql(shiftStart, txGroup, criteriaFilter = null, withOwner = false) {
   const txList = txGroup.map(t => `'${t.replace(/'/g, "''")}'`).join(',');
   const criteriaClause = criteriaFilter ? `\n  AND t.CRITERIA_ID = '${criteriaFilter}'` : '';
+  const ownerCol  = withOwner ? `,\n  ${OWNER_SQL}                                            AS \`Owner\`` : '';
+  const ownerJoin = withOwner ? `
+LEFT JOIN default_dcinventory.DCI_LOCATION lt ON lt.LOCATION_ID = t.TARGET_LOCATION_ID AND lt.PROFILE_ID = '${FACILITY}'
+LEFT JOIN default_dcinventory.DCI_LOCATION ls ON ls.LOCATION_ID = t.SOURCE_LOCATION_ID AND ls.PROFILE_ID = '${FACILITY}'` : '';
   return `
 SELECT
   t.USER_ID                                              AS \`Employee\`,
@@ -103,8 +121,8 @@ SELECT
   t.TARGET_LOCATION_ID                                   AS \`Current Location\`,
   t.SOURCE_LOCATION_ID                                   AS \`Previous Location\`,
   t.TARGET_LOCATION_ID                                   AS \`Target Location\`,
-  t.CRITERIA_ID                                          AS \`Criteria\`
-FROM default_task.TSK_ACTIVITY_TRACKING t
+  t.CRITERIA_ID                                          AS \`Criteria\`${ownerCol}
+FROM default_task.TSK_ACTIVITY_TRACKING t${ownerJoin}
 WHERE t.FACILITY_ID = '${FACILITY}'
   AND t.CREATED_TIMESTAMP >= '${shiftStart}'
   AND t.TRANSACTION_ID IN (${txList})${criteriaClause}
@@ -112,6 +130,14 @@ ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 }
 
 // ── history snapshot ───────────────────────────────────────────────────────────
+// Retail shelf? Uses the Owner column from the query (see OWNER_SQL). Rows without it fall back
+// to the old guess: zone H (3rd character 'H') in any location field.
+function isRetailRow(r) {
+  if ('Owner' in r) return r['Owner'] === 'Retail';
+  return ['Current Location', 'Previous Location', 'Target Location']
+    .some(k => { const l = (r[k] || '').trim(); return l.length >= 3 && l[2].toUpperCase() === 'H'; });
+}
+
 function updateEcomHistory(rows, shift, shiftStartUtcStr) {
   const SORT_CRITERIA = 'NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA';
   const SHIPPING_2ND = 'OB Putaway By Ship Via';
@@ -133,12 +159,9 @@ function updateEcomHistory(rows, shift, shiftStartUtcStr) {
 
     if (tx === 'iLPN Replen Fill' || tx === 'iLPN Replen Fill Large') {
       const curLoc = (r['Current Location'] || '').trim();
-      // Same rule as Ecom_v3.html replenRowCounts(): no P1-PK drops, no zone H (Retail) fills —
-      // zone H = 3rd character 'H' in any location field. Added 2026-10-19; history before that
-      // counted Retail fills (also on Reserve) as Ecom replen.
-      const zoneH = ['Current Location', 'Previous Location', 'Target Location']
-        .some(k => { const l = (r[k] || '').trim(); return l.length >= 3 && l[2].toUpperCase() === 'H'; });
-      if (!/^P1-PK/i.test(curLoc) && !zoneH) m.replen += parseFloat(r['Completed Quantity']) || 0;
+      // Same rule as Ecom_v3.html replenRowCounts(): no P1-PK drops, no Retail-shelf fills.
+      // Added 2026-10-19; history before that counted Retail fills (also on Reserve) as Ecom replen.
+      if (!/^P1-PK/i.test(curLoc) && !isRetailRow(r)) m.replen += parseFloat(r['Completed Quantity']) || 0;
     } else if (tx === 'System Directed Putaway' || tx === 'User Directed Putaway') {
       m.putaway += 1;
     } else if (tx === 'Ecom Mezz Pick To Putwall Cart' || tx === 'Ecom Non-Mezz Pick To Putwall Cart' || tx === 'Ecom Singles Bulk LPN Pick') {
@@ -202,7 +225,7 @@ async function fetchEcomLive(accessToken) {
 
   console.log(`[${ts()}] Querying Groups A-E in parallel since ${shiftStart}...`);
   const [respA, respB, respC, respD, respE] = await Promise.all([
-    mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_A)),
+    mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_A, null, true)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_B)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_C)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_D)),

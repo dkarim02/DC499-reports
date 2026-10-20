@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Report Processor v3.2</title>
+<title>Ecom Report Processor v3.3</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -571,7 +571,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.2</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.3</p>
   </div>
 
   <p class="nordstrom-tag">Dean Karim &middot; Nordstrom &middot; Ecom &middot; Last updated: <span id="last-updated"></span></p>
@@ -1142,6 +1142,10 @@ function getLocationZone(loc) {
 function rowBelongsToEcom(r) {
   var txId = (r['Transaction ID'] || '').trim();
   if (SHARED_TX.indexOf(txId) === -1) return true; // not shared — trust transaction ID
+  // Live rows (v3.3+) carry Owner from the agent = the shelf's pick allocation zone in MA.
+  // Only shelves set up as Retail leave Ecom; Ecom, RTV/Other and no-zone (staging) rows stay.
+  if (r.hasOwnProperty('Owner')) return r['Owner'] !== 'Retail';
+  // Uploaded CSVs have no Owner — fall back to the old guess:
   // zone H in any location field (source, previous, or target) = retail, exclude
   var locs = [r['Current Location'], r['Previous Location'], r['Target Location']];
   for (var i = 0; i < locs.length; i++) {
@@ -1149,7 +1153,8 @@ function rowBelongsToEcom(r) {
   }
   return true;
 }
-// A replen row counts for Ecom unless it is a P1-PK drop or a zone H (Retail) fill.
+// A replen row counts for Ecom unless it is a P1-PK drop or a Retail-shelf fill.
+// v3.3 (2026-10-19): Retail = the shelf's MA allocation zone (Owner), not the zone H letter.
 // Zone H added to the live tiles, cards, side panel and hourly 2026-10-19 (v3.2): before that
 // only the Full Report CSV path checked it, so Retail fills into F1H/P1H/F2H/P2H were counted
 // on Ecom AND on Reserve (10/19 2nd shift: 5,562 of 6,273 Ecom replen units).
