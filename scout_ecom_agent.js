@@ -133,7 +133,12 @@ function updateEcomHistory(rows, shift, shiftStartUtcStr) {
 
     if (tx === 'iLPN Replen Fill' || tx === 'iLPN Replen Fill Large') {
       const curLoc = (r['Current Location'] || '').trim();
-      if (!/^P1-PK/i.test(curLoc)) m.replen += parseFloat(r['Completed Quantity']) || 0;
+      // Same rule as Ecom_v3.html replenRowCounts(): no P1-PK drops, no zone H (Retail) fills —
+      // zone H = 3rd character 'H' in any location field. Added 2026-10-19; history before that
+      // counted Retail fills (also on Reserve) as Ecom replen.
+      const zoneH = ['Current Location', 'Previous Location', 'Target Location']
+        .some(k => { const l = (r[k] || '').trim(); return l.length >= 3 && l[2].toUpperCase() === 'H'; });
+      if (!/^P1-PK/i.test(curLoc) && !zoneH) m.replen += parseFloat(r['Completed Quantity']) || 0;
     } else if (tx === 'System Directed Putaway' || tx === 'User Directed Putaway') {
       m.putaway += 1;
     } else if (tx === 'Ecom Mezz Pick To Putwall Cart' || tx === 'Ecom Non-Mezz Pick To Putwall Cart' || tx === 'Ecom Singles Bulk LPN Pick') {

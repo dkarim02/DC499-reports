@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Report Processor v3.1</title>
+<title>Ecom Report Processor v3.2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -571,7 +571,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.1</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.2</p>
   </div>
 
   <p class="nordstrom-tag">Dean Karim &middot; Nordstrom &middot; Ecom &middot; Last updated: <span id="last-updated"></span></p>
@@ -699,7 +699,7 @@ function renderLiveReport(d) {
       filtered.forEach(function(r) {
         var e = (r['Employee']||'').trim();
         if (!TEAM.has(e)) return;
-        if (/^P1-PK/i.test((r['Current Location']||'').trim())) return;
+        if (!replenRowCounts(r)) return;
         var cid = (r['Container ID']||'').trim();
         if (cid && (parseFloat(r['Completed Quantity'])||0) > 0) replenContainerSeen.add(e + '|' + cid);
       });
@@ -789,7 +789,7 @@ function renderLiveReport(d) {
       var containerSets = {};
       filtered.forEach(function(r) {
         var e = (r['Employee']||'').trim();
-        if (/^P1-PK/i.test((r['Current Location']||'').trim())) return;
+        if (!replenRowCounts(r)) return;
         var cid = (r['Container ID']||'').trim();
         if (cid && (parseFloat(r['Completed Quantity'])||0) > 0) {
           if (!containerSets[e]) containerSets[e] = new Set();
@@ -1149,6 +1149,14 @@ function rowBelongsToEcom(r) {
   }
   return true;
 }
+// A replen row counts for Ecom unless it is a P1-PK drop or a zone H (Retail) fill.
+// Zone H added to the live tiles, cards, side panel and hourly 2026-10-19 (v3.2): before that
+// only the Full Report CSV path checked it, so Retail fills into F1H/P1H/F2H/P2H were counted
+// on Ecom AND on Reserve (10/19 2nd shift: 5,562 of 6,273 Ecom replen units).
+function replenRowCounts(r) {
+  if (/^P1-PK/i.test((r['Current Location']||'').trim())) return false;
+  return rowBelongsToEcom(r);
+}
 
 var FULL_TX = {
   replen:  ['iLPN Replen Fill','iLPN Replen Fill Large'],
@@ -1193,7 +1201,7 @@ function forEachCountedRow(rows, typ, empFilter, cb) {
     var e = (r['Employee']||'').trim();
     if (!e) return;
     if (empFilter && !empFilter(e)) return;
-    if (typ === 'replen' && /^P1-PK/i.test((r['Current Location']||'').trim())) return;
+    if (typ === 'replen' && !replenRowCounts(r)) return;
     if (typ === 'packing' && (r['Container ID']||'').trim().startsWith('T')) return;
     if (dedupByContainer) {
       var cid = (r['Container ID']||'').trim();

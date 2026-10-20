@@ -257,7 +257,7 @@ Output: ecom_live.json. Query groups A/B/C/D/E fire in parallel (`Promise.all`).
 
 **History snapshot gate:** `updateEcomHistory()` only fires for 1st shift (always) or 2nd shift after ≥420 min elapsed (~9:10 PM PDT). Before that, console prints `history snapshot skipped`. Gate is offset-based from shift start — DST-safe, no hardcoded UTC hour.
 
-**Archive vs live consistency:** No zone H filter on either archive or live tab. P1-PK excluded from replen on both. `rowBelongsToEcom()` (zone H filter) is only called in `addToFullReport()` — the CSV upload path in Full Report tab — NOT in the live summary tiles.
+**Archive vs live consistency:** **Replen (v3.2, 2026-10-19): zone H filter now applied everywhere** — `replenRowCounts(r)` (no P1-PK drop + `rowBelongsToEcom`) in `forEachCountedRow` (tiles, cards, side panel, hourly, PPH strip) and both replen LPN counts; the agent's `updateEcomHistory` uses the same rule, so archive shifts from 10/19 on match. Before: only the Full Report CSV path checked zone H, so Retail fills into F1H/P1H/F2H/P2H counted on Ecom AND Reserve (10/19 2nd: 5,562 of 5,978 Ecom replen units; true Ecom 368). History before 10/19 still includes them. **Putaway still has no live zone H filter — check it (Dean: next session), plus the replen PPH target (set against the inflated number).**
 
 **Pending TX type:** `Returns System Directed Putaway` — not yet assigned to a group.
 
