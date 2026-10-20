@@ -959,6 +959,9 @@ ORDER BY CREATED_TIMESTAMP ASC, BATCH_ID ASC`.trim();
   // detail row tied to any batch this shift = truly queued, not yet released.
   // blocked = 1 if any untasked allocation sits on a short shelf (on hand < allocated) —
   // MA can't batch the order until that shelf is replenished, so it doesn't count toward the next batch.
+  // units = the order's non-cancelled ordered quantity. Was a second query (sqlQueuedUnits) doing
+  // the same DCO_ORDER scan again, run after this one; merged 2026-10-19 (same per-order units,
+  // checked on MCP + Metabase) — one ~7 s scan instead of two in a row.
   const sqlQueued = `
 SELECT o.ORDER_ID,
   MAX(CASE WHEN a.ALLOCATION_ID IS NOT NULL
@@ -966,7 +969,9 @@ SELECT o.ORDER_ID,
                       WHERE i.FACILITY_ID='${FACILITY}' AND i.LOCATION_ID=a.LOCATION_ID AND i.ITEM_ID=a.ITEM_ID),0)
           < COALESCE((SELECT SUM(i.ALLOCATED) FROM default_dcinventory.DCI_INVENTORY i
                       WHERE i.FACILITY_ID='${FACILITY}' AND i.LOCATION_ID=a.LOCATION_ID AND i.ITEM_ID=a.ITEM_ID),0)
-      THEN 1 ELSE 0 END) AS blocked
+      THEN 1 ELSE 0 END) AS blocked,
+  (SELECT SUM(ol.ORDERED_QUANTITY) FROM default_dcorder.DCO_ORDER_LINE ol
+    WHERE ol.ORDER_ID = o.ORDER_ID AND ol.FACILITY_ID = o.FACILITY_ID AND ol.CANCELLED = 0) AS units
 FROM default_dcorder.DCO_ORDER o
 LEFT JOIN default_dcinventory.DCI_ALLOCATION a
   ON a.ORDER_ID = o.ORDER_ID AND a.FACILITY_ID = '${FACILITY}' AND a.STATUS IN ('3000','3000.0')
@@ -985,53 +990,25 @@ WHERE o.FACILITY_ID     = '${FACILITY}'
   )
 GROUP BY o.ORDER_ID`.trim();
 
-  const sqlQueuedUnits = `
-SELECT o.ORDER_ID, SUM(ol.ORDERED_QUANTITY) AS units
-FROM default_dcorder.DCO_ORDER o
-JOIN default_dcorder.DCO_ORDER_LINE ol
-  ON ol.ORDER_ID    = o.ORDER_ID
- AND ol.FACILITY_ID = o.FACILITY_ID
- AND ol.CANCELLED   = 0
-WHERE o.FACILITY_ID     = '${FACILITY}'
-  AND o.ORDER_TYPE      = 'ECOM'
-  AND o.CANCELLED       = 0
-  AND o.SINGLE_LINE_ORDER = 0
-  AND o.MAXIMUM_STATUS  = '2090'
-  AND NOT EXISTS (
-    SELECT 1
-    FROM default_task.TSK_TASK_DETAIL td
-    WHERE td.FACILITY_ID         = '${FACILITY}'
-      AND td.ORDER_ID            = o.ORDER_ID
-      AND td.RESOURCE_BATCH_ID   IS NOT NULL
-      AND td.CREATED_TIMESTAMP   >= '${lookbackStart}'
-  )
-GROUP BY o.ORDER_ID`.trim();
-
+  // The queued query starts with the batch query (scout_mcp.js caps queries in flight, so
+  // running them together is safe — the old "run after to avoid parallel timeout" predates that).
+  const queuedP = mcpQuery(accessToken, sqlQueued).catch(e => { console.warn(`  Queued orders query failed: ${e.message}`); return null; });
   const resp = await mcpQuery(accessToken, sql);
   const rows = resp.rows || [];
 
-  // Run queued orders + units queries after batch query to avoid parallel timeout
   // queuedOrders/queuedUnits = ready to batch; blockedOrders = waiting on a short shelf
   let queuedOrders  = null;
   let queuedUnits   = null;
   let blockedOrders = null;
-  let blockedIds    = null;
-  try {
-    const respQueued = await mcpQuery(accessToken, sqlQueued);
+  const respQueued = await queuedP;
+  if (respQueued) {
     const qRows = respQueued.rows || [];
-    blockedIds    = new Set(qRows.filter(r => Number(r.blocked) === 1).map(r => r.ORDER_ID));
+    const blockedIds = new Set(qRows.filter(r => Number(r.blocked) === 1).map(r => r.ORDER_ID));
     blockedOrders = blockedIds.size;
     queuedOrders  = qRows.length - blockedOrders;
-  } catch(e) {
-    console.warn(`  Queued orders query failed: ${e.message}`);
-  }
-  try {
-    const respUnits = await mcpQuery(accessToken, sqlQueuedUnits);
-    queuedUnits = Math.round((respUnits.rows || [])
-      .filter(r => !blockedIds || !blockedIds.has(r.ORDER_ID))
+    queuedUnits   = Math.round(qRows
+      .filter(r => !blockedIds.has(r.ORDER_ID))
       .reduce((s, r) => s + Number(r.units || 0), 0));
-  } catch(e) {
-    console.warn(`  Queued units query failed: ${e.message}`);
   }
 
   // MAWM timestamps have no timezone marker — always force UTC before converting
