@@ -65,6 +65,11 @@ function pdtDateToUtcWindow(pdtDate) {
   return { start: pacificMidnightSql(pdtDate), end: pacificMidnightSql(addDays(pdtDate, 1)) };
 }
 
+// Local date (YYYY-MM-DD) of a UTC 'YYYY-MM-DD HH:MM:SS' string
+function pacificDateOf(utcSql) {
+  return new Date(utcSql.replace(' ', 'T') + 'Z').toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+}
+
 function lookbackUtc() {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - LOOKBACK_DAYS);
@@ -204,52 +209,47 @@ ORDER BY CREATED_TIMESTAMP DESC
 `.trim();
 }
 
-// Step 1: Get all wave dates that still have active (non-shipped) orders.
-function sqlActiveWaveDates(since) {
-  return `
-SELECT
-  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS wave_date,
-  COUNT(DISTINCT ORDER_ID) AS active_orders
-FROM default_dcorder.DCO_ORDER
-WHERE FACILITY_ID = '${FACILITY}'
-  AND ORDER_TYPE = 'RETAIL'
-  AND CANCELLED = 0
-  AND MAXIMUM_STATUS NOT IN ('8000', '9000')
-  AND CREATED_TIMESTAMP >= '${since}'
-GROUP BY wave_date
-ORDER BY wave_date DESC
-`.trim();
-}
+// DCO_ORDER has no index on CREATED_TIMESTAMP, so every query here reads the whole order table
+// (~3.5M rows, 8–16 s). Until 2026-10-19 this ran 4 queries PER WAVE plus a wave-date query —
+// 21 full reads (~64 s for 5 waves). Now 3 reads cover every wave at once, grouped by wave date
+// (the local date of CREATED_TIMESTAMP — same midnight-to-midnight window as before), and all
+// start together. Same output, checked old vs new at the same moment.
+//
+// The lower bound is local midnight of the lookback day, so the oldest wave day is counted in
+// full, as the old per-wave windows did. A day only counts as a wave if it has an active order
+// created inside the lookback itself (`recent`), as the old wave-date query did.
 
-// Step 2: Status breakdown for one wave date window.
+// Wave days + order counts by MINIMUM_STATUS and by store, in one read.
 // Bucket by MINIMUM_STATUS (where the order is blocked) not MAXIMUM_STATUS.
 // An order with min=Allocated, max=Packed still has open allocated lines — it belongs in Allocated.
 // MAXIMUM_STATUS filter still excludes fully shipped/cancelled orders.
-function sqlStatusBreakdown(utcStart, utcEnd) {
+function sqlWaveOrders(dayStart, since) {
   return `
 SELECT
+  DATE_FORMAT(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS wave_date,
   MINIMUM_STATUS,
-  COUNT(DISTINCT ORDER_ID) AS orders
+  DESTINATION_FACILITY_ID AS store_id,
+  COUNT(DISTINCT ORDER_ID) AS orders,
+  SUM(CASE WHEN CREATED_TIMESTAMP >= '${since}' THEN 1 ELSE 0 END) AS recent
 FROM default_dcorder.DCO_ORDER
 WHERE FACILITY_ID = '${FACILITY}'
   AND ORDER_TYPE = 'RETAIL'
   AND CANCELLED = 0
-  AND CREATED_TIMESTAMP >= '${utcStart}'
-  AND CREATED_TIMESTAMP < '${utcEnd}'
   AND MAXIMUM_STATUS NOT IN ('8000', '9000')
-GROUP BY MINIMUM_STATUS
-ORDER BY MINIMUM_STATUS
+  AND CREATED_TIMESTAMP >= '${dayStart}'
+GROUP BY wave_date, MINIMUM_STATUS, store_id
 `.trim();
 }
 
-// Step 3: Unit counts by line STATUS for one wave date window.
+// Unit counts by line STATUS, per wave day.
 // MAWM retail: ALLOCATED/PACKED/MANIFESTED_QUANTITY columns mirror ORDERED_QUANTITY (set once, never decremented).
 // Correct approach: sum ORDERED_QUANTITY grouped by line STATUS, then bucket by status string.
 // STATUS strings: READY, ALLOCATED, PACKING, PACKED, LOADED, MANIFESTED, SHIPPED
 // READY = line not given stock yet. Before 10/12 it was left out of every bucket and of ordered.
-function sqlUnitCounts(utcStart, utcEnd) {
+function sqlUnitCounts(dayStart) {
   return `
 SELECT
+  DATE_FORMAT(CONVERT_TZ(o.CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS wave_date,
   ol.STATUS AS line_status,
   SUM(ol.ORDERED_QUANTITY) AS units
 FROM default_dcorder.DCO_ORDER o
@@ -258,19 +258,19 @@ JOIN default_dcorder.DCO_ORDER_LINE ol
 WHERE o.FACILITY_ID = '${FACILITY}'
   AND o.ORDER_TYPE = 'RETAIL'
   AND o.CANCELLED = 0
-  AND o.CREATED_TIMESTAMP >= '${utcStart}'
-  AND o.CREATED_TIMESTAMP < '${utcEnd}'
+  AND o.CREATED_TIMESTAMP >= '${dayStart}'
   AND o.MAXIMUM_STATUS NOT IN ('8000', '9000')
   AND ol.CANCELLED = 0
-GROUP BY ol.STATUS
+GROUP BY wave_date, ol.STATUS
 `.trim();
 }
 
-// Step 5: Allocated order list for one wave date window.
+// Allocated order list, per wave day.
 // Orders blocked at Allocated (MINIMUM_STATUS 2090) with their still-allocated lines/units — what's left to pick.
-function sqlAllocatedOrders(utcStart, utcEnd) {
+function sqlAllocatedOrders(dayStart) {
   return `
 SELECT
+  DATE_FORMAT(CONVERT_TZ(o.CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}), '%Y-%m-%d') AS wave_date,
   o.ORDER_ID,
   o.DESTINATION_FACILITY_ID AS store_id,
   COUNT(ol.ORDER_LINE_ID) AS line_count,
@@ -281,32 +281,12 @@ JOIN default_dcorder.DCO_ORDER_LINE ol
 WHERE o.FACILITY_ID = '${FACILITY}'
   AND o.ORDER_TYPE = 'RETAIL'
   AND o.CANCELLED = 0
-  AND o.CREATED_TIMESTAMP >= '${utcStart}'
-  AND o.CREATED_TIMESTAMP < '${utcEnd}'
+  AND o.CREATED_TIMESTAMP >= '${dayStart}'
   AND o.MAXIMUM_STATUS NOT IN ('8000', '9000')
   AND o.MINIMUM_STATUS = '2090'
   AND ol.CANCELLED = 0
   AND ol.STATUS = 'ALLOCATED'
-GROUP BY o.ORDER_ID, o.DESTINATION_FACILITY_ID
-ORDER BY units DESC
-`.trim();
-}
-
-// Step 4: Store (destination facility) breakdown for one wave date window.
-function sqlStoreBreakdown(utcStart, utcEnd) {
-  return `
-SELECT
-  DESTINATION_FACILITY_ID AS store_id,
-  COUNT(DISTINCT ORDER_ID) AS orders
-FROM default_dcorder.DCO_ORDER
-WHERE FACILITY_ID = '${FACILITY}'
-  AND ORDER_TYPE = 'RETAIL'
-  AND CANCELLED = 0
-  AND CREATED_TIMESTAMP >= '${utcStart}'
-  AND CREATED_TIMESTAMP < '${utcEnd}'
-  AND MAXIMUM_STATUS NOT IN ('8000', '9000')
-GROUP BY DESTINATION_FACILITY_ID
-ORDER BY orders DESC
+GROUP BY wave_date, o.ORDER_ID, o.DESTINATION_FACILITY_ID
 `.trim();
 }
 
@@ -328,35 +308,34 @@ function buildWaveNumMap(rows) {
 async function fetchRetailBacklog(accessToken) {
   console.log(`[${ts()}] Retail Backlog — fetching active waves...`);
   const since = lookbackUtc();
+  const dayStart = pacificMidnightSql(pacificDateOf(since));
 
-  // Zone workload is best-effort — a failure here shouldn't block the wave data
-  let zoneWork = null;
-  try {
-    zoneWork = await fetchZoneWork(accessToken);
-  } catch (e) {
-    console.warn(`[${ts()}] Zone work query failed (non-fatal):`, e.message);
-  }
+  // Everything starts together — scout_mcp.js caps queries in flight across all agents.
+  // Zone workload, wave numbers, units and the allocated list are best-effort, as before.
+  const [zoneWork, runResp, waveResp, unitResp, allocResp] = await Promise.all([
+    fetchZoneWork(accessToken).catch(e => { console.warn(`[${ts()}] Zone work query failed (non-fatal):`, e.message); return null; }),
+    mcpQuery(accessToken, sqlWaveRunIds(since)).catch(e => { console.warn(`[${ts()}] Wave run ID query failed (non-fatal):`, e.message); return null; }),
+    mcpQuery(accessToken, sqlWaveOrders(dayStart, since)).catch(e => { console.error(`[${ts()}] Wave date query failed:`, e.message); return null; }),
+    mcpQuery(accessToken, sqlUnitCounts(dayStart)).catch(e => ({ error: e })),
+    mcpQuery(accessToken, sqlAllocatedOrders(dayStart)).catch(e => ({ error: e })),
+  ]);
 
-  // Step 0: Get wave run IDs for wave number labeling (best-effort)
-  let waveNumMap = {};
-  try {
-    const resp = await mcpQuery(accessToken, sqlWaveRunIds(since));
-    waveNumMap = buildWaveNumMap(resp.rows || []);
-    console.log(`[${ts()}] Wave run IDs loaded: ${Object.keys(waveNumMap).length} dates`);
-  } catch (e) {
-    console.warn(`[${ts()}] Wave run ID query failed (non-fatal):`, e.message);
-  }
+  // Step 0: wave run IDs for wave number labeling
+  const waveNumMap = runResp ? buildWaveNumMap(runResp.rows || []) : {};
+  if (runResp) console.log(`[${ts()}] Wave run IDs loaded: ${Object.keys(waveNumMap).length} dates`);
 
-  // Step 1: Get active wave dates
-  let waveDates = [];
-  try {
-    const resp = await mcpQuery(accessToken, sqlActiveWaveDates(since));
-    waveDates = (resp.rows || []).map(r => r.wave_date);
-    console.log(`[${ts()}] Active waves found: ${waveDates.join(', ') || 'none'}`);
-  } catch (e) {
-    console.error(`[${ts()}] Wave date query failed:`, e.message);
-    return;
+  // Step 1: active wave dates (newest first) — without them there is nothing to write
+  if (!waveResp) return;
+  const byDate = {};
+  for (const r of (waveResp.rows || [])) {
+    const d = (byDate[r.wave_date] ||= { recent: 0, status: {}, stores: {} });
+    const n = Number(r.orders) || 0;
+    d.recent += Number(r.recent) || 0;
+    d.status[r.MINIMUM_STATUS] = (d.status[r.MINIMUM_STATUS] || 0) + n;
+    d.stores[r.store_id] = (d.stores[r.store_id] || 0) + n;
   }
+  const waveDates = Object.keys(byDate).filter(d => byDate[d].recent > 0).sort().reverse();
+  console.log(`[${ts()}] Active waves found: ${waveDates.join(', ') || 'none'}`);
 
   if (!waveDates.length) {
     const output = {
@@ -370,65 +349,61 @@ async function fetchRetailBacklog(accessToken) {
     return;
   }
 
-  // Steps 2–5: For each wave, fire status + units + store + allocated-order queries in parallel
-  const waves = await Promise.all(waveDates.map(async (waveDate) => {
-    const { start, end } = pdtDateToUtcWindow(waveDate);
-    try {
-      const [statusResp, unitResp, storeResp] = await Promise.all([
-        mcpQuery(accessToken, sqlStatusBreakdown(start, end)),
-        mcpQuery(accessToken, sqlUnitCounts(start, end)),
-        mcpQuery(accessToken, sqlStoreBreakdown(start, end)),
-      ]);
+  // Steps 2–5: build each wave from the shared reads
+  const unitsByDate = {};
+  if (!unitResp.error) for (const r of (unitResp.rows || [])) {
+    (unitsByDate[r.wave_date] ||= {})[r.line_status] = Math.round(Number(r.units) || 0);
+  }
+  const allocByDate = {};
+  if (allocResp.error) console.warn(`[${ts()}] Allocated order list failed (non-fatal):`, allocResp.error.message);
+  else for (const r of (allocResp.rows || [])) {
+    (allocByDate[r.wave_date] ||= []).push({
+      order_id: r.ORDER_ID,
+      store_id: r.store_id,
+      lines:    Number(r.line_count) || 0,
+      units:    Math.round(Number(r.units) || 0),
+    });
+  }
 
-      // Allocated order list is best-effort — a failure here shouldn't drop the wave
-      let allocatedOrders = null;
-      try {
-        const allocResp = await mcpQuery(accessToken, sqlAllocatedOrders(start, end));
-        allocatedOrders = (allocResp.rows || []).map(r => ({
-          order_id: r.ORDER_ID,
-          store_id: r.store_id,
-          lines:    Number(r.line_count) || 0,
-          units:    Math.round(Number(r.units) || 0),
-        }));
-      } catch (e) {
-        console.warn(`[${ts()}] Wave ${waveDate} allocated order list failed (non-fatal):`, e.message);
-      }
-
-      const statusCounts = {};
-      let totalActive = 0;
-      for (const row of (statusResp.rows || [])) {
-        statusCounts[row.MINIMUM_STATUS] = Number(row.orders);
-        totalActive += Number(row.orders);
-      }
-
-      // Map line STATUS strings → unit buckets
-      // ALLOCATED_QUANTITY etc. mirror ORDERED_QUANTITY in MAWM retail — use STATUS grouping instead
-      const unitByStatus = {};
-      for (const row of (unitResp.rows || [])) {
-        unitByStatus[row.line_status] = Math.round(Number(row.units) || 0);
-      }
-      const ready      = unitByStatus['READY']      || 0;
-      const allocated  = (unitByStatus['ALLOCATED']  || 0) + (unitByStatus['PACKING'] || 0);
-      const packed     = unitByStatus['PACKED']     || 0;
-      const manifested = unitByStatus['MANIFESTED'] || 0;
-      const shipped    = unitByStatus['SHIPPED']    || 0;
-      const loaded     = unitByStatus['LOADED']     || 0;
-      const ordered    = ready + allocated + packed + manifested + shipped + loaded;
-      const unitCounts = { ordered, ready, allocated, packed, manifested, shipped, loaded };
-
-      const stores = (storeResp.rows || []).map(r => ({
-        store_id: r.store_id,
-        orders: Number(r.orders),
-      }));
-
-      const waveNum = waveNumMap[waveDate] || null;
-      console.log(`[${ts()}] Wave ${waveDate}${waveNum ? ` (${waveNum})` : ''}: ${totalActive} active orders, ${unitCounts.ordered} ordered units, ${stores.length} stores`);
-      return { wave_date: waveDate, wave_number: waveNum, total_active_orders: totalActive, status_counts: statusCounts, unit_counts: unitCounts, stores, allocated_orders: allocatedOrders };
-    } catch (e) {
-      console.error(`[${ts()}] Wave ${waveDate} queries failed:`, e.message);
-      return { wave_date: waveDate, wave_number: waveNumMap[waveDate] || null, total_active_orders: null, status_counts: {}, stores: [], error: true };
+  const waves = waveDates.map(waveDate => {
+    const waveNum = waveNumMap[waveDate] || null;
+    if (unitResp.error) {
+      console.error(`[${ts()}] Wave ${waveDate} queries failed:`, unitResp.error.message);
+      return { wave_date: waveDate, wave_number: waveNum, total_active_orders: null, status_counts: {}, stores: [], error: true };
     }
-  }));
+    const d = byDate[waveDate];
+
+    const statusCounts = {};
+    let totalActive = 0;
+    for (const st of Object.keys(d.status).sort()) {
+      statusCounts[st] = d.status[st];
+      totalActive += d.status[st];
+    }
+
+    // Map line STATUS strings → unit buckets
+    // ALLOCATED_QUANTITY etc. mirror ORDERED_QUANTITY in MAWM retail — use STATUS grouping instead
+    const unitByStatus = unitsByDate[waveDate] || {};
+    const ready      = unitByStatus['READY']      || 0;
+    const allocated  = (unitByStatus['ALLOCATED']  || 0) + (unitByStatus['PACKING'] || 0);
+    const packed     = unitByStatus['PACKED']     || 0;
+    const manifested = unitByStatus['MANIFESTED'] || 0;
+    const shipped    = unitByStatus['SHIPPED']    || 0;
+    const loaded     = unitByStatus['LOADED']     || 0;
+    const ordered    = ready + allocated + packed + manifested + shipped + loaded;
+    const unitCounts = { ordered, ready, allocated, packed, manifested, shipped, loaded };
+
+    // Most orders first (ties by store id, so the order is stable between refreshes)
+    const stores = Object.entries(d.stores)
+      .map(([store_id, orders]) => ({ store_id, orders }))
+      .sort((a, b) => b.orders - a.orders || String(a.store_id).localeCompare(String(b.store_id)));
+
+    // Most units first (ties by order id)
+    const allocatedOrders = allocResp.error ? null : (allocByDate[waveDate] || [])
+      .sort((a, b) => b.units - a.units || String(a.order_id).localeCompare(String(b.order_id)));
+
+    console.log(`[${ts()}] Wave ${waveDate}${waveNum ? ` (${waveNum})` : ''}: ${totalActive} active orders, ${unitCounts.ordered} ordered units, ${stores.length} stores`);
+    return { wave_date: waveDate, wave_number: waveNum, total_active_orders: totalActive, status_counts: statusCounts, unit_counts: unitCounts, stores, allocated_orders: allocatedOrders };
+  });
 
   const output = {
     generated: new Date().toISOString(),
