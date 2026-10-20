@@ -163,7 +163,8 @@ function updateEcomHistory(rows, shift, shiftStartUtcStr) {
       // Added 2026-10-19; history before that counted Retail fills (also on Reserve) as Ecom replen.
       if (!/^P1-PK/i.test(curLoc) && !isRetailRow(r)) m.replen += parseFloat(r['Completed Quantity']) || 0;
     } else if (tx === 'System Directed Putaway' || tx === 'User Directed Putaway') {
-      m.putaway += 1;
+      // Putaway into Retail shelves (R1H/R2H/F2H/P2H…) is Reserve's work — excluded from 2026-10-19 (v3.4)
+      if (!isRetailRow(r)) m.putaway += 1;
     } else if (tx === 'Ecom Mezz Pick To Putwall Cart' || tx === 'Ecom Non-Mezz Pick To Putwall Cart' || tx === 'Ecom Singles Bulk LPN Pick') {
       m.picking += parseFloat(r['Quantity']) || 0;
     } else if (tx === 'NRDR CORE PACK FOR ECOM PACK STATION') {

@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Report Processor v3.3</title>
+<title>Ecom Report Processor v3.4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -571,7 +571,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.3</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.4</p>
   </div>
 
   <p class="nordstrom-tag">Dean Karim &middot; Nordstrom &middot; Ecom &middot; Last updated: <span id="last-updated"></span></p>
@@ -1207,6 +1207,8 @@ function forEachCountedRow(rows, typ, empFilter, cb) {
     if (!e) return;
     if (empFilter && !empFilter(e)) return;
     if (typ === 'replen' && !replenRowCounts(r)) return;
+    // v3.4: putaway into Retail shelves (R1H/R2H/F2H/P2H…) is Reserve's work, not Ecom's
+    if (typ === 'putaway' && !rowBelongsToEcom(r)) return;
     if (typ === 'packing' && (r['Container ID']||'').trim().startsWith('T')) return;
     if (dedupByContainer) {
       var cid = (r['Container ID']||'').trim();
