@@ -5,7 +5,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Backlog Live v1.6 -- DC499</title>
+<title>Ecom Backlog Live v1.7 -- DC499</title>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -558,6 +558,17 @@
   .xpd-stage-allocated{background:var(--green-bg,#f0fdf4);color:var(--green);border:0.5px solid var(--green);}
   .xpd-loc-sub{display:block;font-size:10px;font-family:monospace;color:var(--text-hint);margin-top:2px;}
   .xpd-pick-stage{display:block;font-size:10px;color:var(--text-hint);margin-top:2px;font-style:italic;}
+  .xpd-stage-red{background:var(--red-bg);color:var(--red);border:0.5px solid var(--red);}
+  .xpd-where{font-size:12px;color:var(--text);}
+  .xpd-where b{font-family:monospace;font-size:11.5px;}
+  .xpd-where-warn{color:var(--red);font-weight:600;}
+  .xpd-tr-row{cursor:pointer;}
+  .xpd-tr-row:hover td{background:var(--surface2);}
+  .xpd-tr-caret{display:inline-block;width:10px;font-size:9px;color:var(--text-hint);}
+  .xpd-tr-detail td{background:var(--surface2);padding:6px 10px 10px 26px;}
+  .xpd-tr-units{width:100%;border-collapse:collapse;font-size:11px;}
+  .xpd-tr-units th{text-align:left;font-size:10px;font-weight:600;color:var(--text-hint);padding:2px 8px 4px 0;text-transform:uppercase;letter-spacing:0.04em;cursor:default;}
+  .xpd-tr-units td{padding:2px 8px 2px 0;background:transparent;font-family:monospace;color:var(--text-muted);border:none;}
   .xpd-empty{text-align:center;padding:2.5rem 1rem;color:var(--text-hint);font-size:13px;}
   .xpd-summary.xpd-summary-5{grid-template-columns:repeat(5,1fr);margin-bottom:0.5rem;}
   @media(max-width:700px){.xpd-summary.xpd-summary-5{grid-template-columns:repeat(2,1fr);}}
@@ -978,7 +989,7 @@ body { animation: pageEnter 0.28s ease-out both; }
   <div class="top-bar">
     <div>
       <button class="back-btn" id="back-btn" onclick="window.close()" style="margin-bottom:10px;">&#x2190; Back to Ecom</button>
-      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.6</p>
+      <p class="dept-label"><span class="live-dot"></span>Ecom Backlog Live v1.7</p>
       <h1>Ecom Backlog &mdash; DC499</h1>
       <p class="subtitle">Live data &middot; Auto-refreshes every 2 min</p>
     </div>
@@ -1618,7 +1629,7 @@ body { animation: pageEnter 0.28s ease-out both; }
               <tr>
                 <th>Order #</th>
                 <th>Status</th>
-                <th>oLPN / Location</th>
+                <th>Where Is It</th>
                 <th class="r">Due</th>
                 <th class="r">Left</th>
                 <th>Placed</th>
@@ -1628,6 +1639,26 @@ body { animation: pageEnter 0.28s ease-out both; }
           </table>
         </div>
         <div id="odd-risk-empty" class="xpd-empty" style="display:none;">No 1DD orders late or within 2 hours of cutoff.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Late &amp; At Risk &mdash; 2DD <span style="font-weight:400;color:var(--text-hint);font-size:11px;">(within 4 hrs of the 48-hr mark)</span></div>
+        <div class="xpd-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Status</th>
+                <th>Where Is It</th>
+                <th class="r">Due</th>
+                <th class="r">Left</th>
+                <th>Placed</th>
+              </tr>
+            </thead>
+            <tbody id="odd-risk2-tbody"></tbody>
+          </table>
+        </div>
+        <div id="odd-risk2-empty" class="xpd-empty" style="display:none;">No 2DD orders late or within 4 hours of the 48-hr mark.</div>
       </div>
 
       <div class="card">
@@ -1699,7 +1730,7 @@ body { animation: pageEnter 0.28s ease-out both; }
               <th onclick="xpdSort('order_id')">Order #<span class="xpd-sort-arrow" id="xpd-sa-order_id">&#x25B2;&#x25BC;</span></th>
               <th onclick="xpdSort('status')">Status<span class="xpd-sort-arrow" id="xpd-sa-status">&#x25B2;&#x25BC;</span></th>
               <th onclick="xpdSort('carrier')">Carrier<span class="xpd-sort-arrow" id="xpd-sa-carrier">&#x25B2;&#x25BC;</span></th>
-              <th>oLPN / Location</th>
+              <th>Where Is It</th>
               <th class="r" onclick="xpdSort('qty')">Qty<span class="xpd-sort-arrow" id="xpd-sa-qty">&#x25B2;&#x25BC;</span></th>
               <th class="r" onclick="xpdSort('age')">Age<span class="xpd-sort-arrow" id="xpd-sa-age">&#x25B2;&#x25BC;</span></th>
               <th class="r" onclick="xpdSort('true_ship_by')">Ship By<span class="xpd-sort-arrow" id="xpd-sa-true_ship_by">&#x25B2;&#x25BC;</span></th>
@@ -5536,7 +5567,7 @@ function renderExpediteTable() {
   orders.forEach(function(o) {
     var svc      = o.service_level || '—';
     var svcCls   = svc === '1DD' ? 'xpd-svc-1dd' : svc === '2DD' ? 'xpd-svc-2dd' : '';
-    var stg      = xpdStage(o.order_status);
+    var stg      = xpdOrderStage(o);
     var age      = xpdAge(o.placed_utc);
     var countdown    = xpdCountdown(o.ship_by_utc);
     var trueCountdown= xpdTrueCountdown(o);
@@ -5564,7 +5595,9 @@ function renderExpediteTable() {
     // For allocated orders (2090) with no location, show pick task stage if known.
     var PICK_STAGE_LABEL = { '3000': 'In Queue', '5000': 'Assigned', '7000': 'Picking' };
     var olpnHtml;
-    if (o.olpns && o.olpns.length) {
+    if (o.trace) {
+      olpnHtml = xpdTraceWhere(o);
+    } else if (o.olpns && o.olpns.length) {
       var loc = o.olpn_location || '';
       var subHtml = '';
       if (loc.startsWith('P1') && o.olpn_pallet) {
@@ -5629,6 +5662,151 @@ function xpdCutoffLabel(ms) {
   return new Date(ms).toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', timeZone: 'America/Los_Angeles' }) + ' 12 PM';
 }
 
+// ── Expedite: "where is it" trace (v1.7) ─────────────────────────────────────
+// Agent (fetchTrace) adds o.trace to orders near SLA that are not packed yet: pick task →
+// tote → putwall cubby → cubby LPN. The order stays Allocated in MA until it is packed,
+// so this stage replaces the plain status badge when we have it.
+var XPD_TRACE_STAGE = {
+  not_allocated: { label: 'Not Allocated', cls: 'xpd-stage-open' },
+  not_released:  { label: 'Not Released',  cls: 'xpd-stage-open' },
+  queued:        { label: 'In Queue',      cls: 'xpd-stage-planned' },
+  assigned:      { label: 'Assigned',      cls: 'xpd-stage-planned' },
+  picking:       { label: 'Picking',       cls: 'xpd-stage-planned' },
+  no_task:       { label: '⚠ No Task',     cls: 'xpd-stage-red' },
+  in_tote:       { label: 'In Tote',       cls: 'xpd-stage-allocated' },
+  in_cubby:      { label: 'In Cubby',      cls: 'xpd-stage-allocated' },
+  cubby_out:     { label: 'Cubby Pushed',  cls: 'xpd-stage-allocated' },
+  at_pack:       { label: 'At Pack',       cls: 'xpd-stage-packed' }
+};
+var XPD_TASK_LABEL = { '3000': 'In Queue', '5000': 'Assigned', '7000': 'Picking' };
+var xpdTrOpen = {};   // order_id -> true while its unit list is open (survives refresh)
+function toggleXpdTrace(el) {
+  var id = el.dataset.oid;
+  if (xpdTrOpen[id]) delete xpdTrOpen[id]; else xpdTrOpen[id] = true;
+  if (lastXpdData) render1dd(lastXpdData);
+}
+function xpdOrderStage(o) {
+  if (o.trace && XPD_TRACE_STAGE[o.trace.stage]) return XPD_TRACE_STAGE[o.trace.stage];
+  return xpdStage(o.order_status);
+}
+function xpdLocLabel(loc) {
+  if (!loc) return 'no location yet';
+  if (/^D1-SN/.test(loc)) return loc + ' (pack)';
+  var pw = /^D1-PW-(\d+)/.exec(loc);
+  if (pw) return loc + ' (putwall ' + Number(pw[1]) + ')';
+  return loc;
+}
+function xpdTime(utc) { return utc ? new Date(xpdUtcMs(utc)).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' }) : ''; }
+
+// Two-line summary: where to go first, then what else to know
+function xpdTraceWhere(o) {
+  var t = o.trace, L = t.lines || [];
+  var main = '', sub = '';
+  var unsorted = L.filter(function(u) { return u.st === 'picked' && !u.sorted; });
+  var openU = L.filter(function(u) { return u.st === 'open'; });
+  var cancelled = L.filter(function(u) { return u.st === 'cancelled'; });
+  var toteLine = function(list) {
+    var seen = {}, out = [];
+    list.forEach(function(u) {
+      if (!u.tote || seen[u.tote]) return; seen[u.tote] = 1;
+      out.push('<b>' + escHtml(u.tote) + '</b> · ' + escHtml(u.tote_has === false ? 'emptied — unit not in tote now' : xpdLocLabel(u.tote_loc)));
+    });
+    return out.join('<br>');
+  };
+  switch (t.stage) {
+    case 'at_pack':
+    case 'cubby_out':
+      if (t.cubby_lpn) {
+        main = 'Cubby LPN <b>' + escHtml(t.cubby_lpn) + '</b> · ' + escHtml(xpdLocLabel(t.cubby_lpn_loc));
+        sub = t.sorted + ' of ' + t.units + ' units · from cubby ' + escHtml(t.cubby_slot || '—');
+      } else {
+        main = 'Tote ' + toteLine(unsorted);
+        sub = t.units === 1 ? 'single' : t.picked + ' of ' + t.units + ' units picked';
+      }
+      break;
+    case 'in_cubby':
+      main = 'Cubby <b>' + escHtml(t.cubby_slot) + '</b> · ' + t.sorted + ' of ' + t.units + ' units sorted';
+      if (unsorted.length) sub = 'Not sorted yet: tote ' + toteLine(unsorted);
+      else if (openU.length) sub = 'Still to pick: ' + openU.length + ' · ' + escHtml(openU[0].task);
+      break;
+    case 'in_tote':
+      main = 'Tote ' + toteLine(unsorted);
+      sub = t.picked + ' of ' + t.units + ' units picked · not sorted to a cubby yet';
+      break;
+    case 'picking': case 'assigned': case 'queued':
+      var tasks = {}; openU.forEach(function(u) { tasks[u.task] = u.task_status; });
+      main = 'Task <b>' + Object.keys(tasks).map(escHtml).join(', ') + '</b> · ' + escHtml(XPD_TASK_LABEL[openU[0].task_status] || 'Open');
+      sub = openU.length + ' of ' + t.units + ' left · next shelf ' + escHtml(openU[0].shelf || '—');
+      if (t.picked) sub += '<br>Picked: tote ' + toteLine(unsorted);
+      break;
+    case 'no_task':
+      var c = cancelled[0];
+      main = '<span class="xpd-where-warn">' + (c ? 'Pick task cancelled ' + escHtml(xpdTime(c.at)) + ', nothing open' : 'Partly picked, nothing open for the rest') + '</span>';
+      sub = c ? 'Shelf ' + escHtml(c.shelf || '—') + ' · item ' + escHtml(c.item || '—') + ' · ' + escHtml(c.task || '') : '';
+      if (t.picked) sub += (sub ? '<br>' : '') + t.picked + ' of ' + t.units + ' picked: tote ' + toteLine(unsorted);
+      break;
+    case 'not_allocated':
+      main = 'Not allocated yet'; break;
+    default:
+      main = 'No pick task yet';
+  }
+  return '<div class="xpd-where">' + main + '</div>' + (sub ? '<span class="xpd-loc-sub">' + sub + '</span>' : '');
+}
+
+// Unit list shown when a row is clicked
+function xpdTraceDetail(o) {
+  var L = (o.trace && o.trace.lines) || [];
+  if (!L.length) return '<span style="font-size:11px;color:var(--text-hint);">No pick task lines found for this order.</span>';
+  var h = '<table class="xpd-tr-units"><thead><tr><th>Item</th><th>Shelf</th><th>Task</th><th>Status</th><th>Tote</th><th>Now</th><th>Time</th></tr></thead><tbody>';
+  L.forEach(function(u) {
+    var st, now = '';
+    if (u.st === 'picked') {
+      st = 'Picked';
+      now = u.sorted ? (o.trace.cubby_lpn ? 'cubby LPN ' + o.trace.cubby_lpn : 'cubby ' + (o.trace.cubby_slot || '')) : (u.tote_has === false ? 'not in tote now' : xpdLocLabel(u.tote_loc));
+    } else if (u.st === 'open') st = XPD_TASK_LABEL[u.task_status] || 'Open';
+    else st = '<span class="xpd-where-warn">Cancelled</span>';
+    h += '<tr><td>' + escHtml(u.item || '—') + '</td><td>' + escHtml(u.shelf || '—') + '</td><td>' + escHtml(u.task || '—') + '</td>'
+      + '<td style="font-family:inherit;">' + st + '</td><td>' + escHtml(u.tote || '—') + '</td><td>' + escHtml(now || '—') + '</td>'
+      + '<td>' + escHtml(xpdTime(u.at)) + '</td></tr>';
+  });
+  return h + '</tbody></table>';
+}
+
+// Late & At Risk table (1DD + 2DD share it). dueMs(o) = deadline; dueLabel(ms) = Due column.
+function renderXpdRiskTable(rows, tbodyId, emptyId, dueMs, dueLabel) {
+  var now = Date.now(), html = '';
+  rows.forEach(function(o) {
+    var stg = xpdOrderStage(o);
+    var left = dueMs(o) - now;
+    var leftHtml = left <= 0
+      ? '<span class="xpd-deadline-late">LATE ' + xpdDur(-left / 60000) + '</span>'
+      : '<span class="xpd-deadline-warn">' + xpdDur(left / 60000) + '</span>';
+    var where = '', open = !!xpdTrOpen[o.order_id];
+    if (o.trace) {
+      where = xpdTraceWhere(o);
+    } else if (o.olpns && o.olpns.length) {
+      where = o.olpns.map(function(id){ return '<span class="xpd-olpn-loc">' + escHtml(id) + '</span>'; }).join('<br>');
+      if (o.olpn_pallet)        where += '<span class="xpd-loc-sub" title="Pallet">&#x1F4E6; ' + escHtml(o.olpn_pallet) + '</span>';
+      else if (o.olpn_location) where += '<span class="xpd-loc-sub">' + escHtml(o.olpn_location) + '</span>';
+    } else {
+      where = '<span style="color:var(--text-hint);">—</span>';
+    }
+    var rowAttr = o.trace ? ' class="xpd-tr-row" data-oid="' + escHtml(o.order_id) + '" onclick="toggleXpdTrace(this)"' : '';
+    var caret = o.trace ? '<span class="xpd-tr-caret">' + (open ? '&#x25BC;' : '&#x25B6;') + '</span>' : '<span class="xpd-tr-caret"></span>';
+    html += '<tr' + rowAttr + '>'
+      + '<td>' + caret + '<span style="font-family:monospace;font-size:11px;">' + escHtml(o.order_id || '—') + '</span></td>'
+      + '<td><span class="xpd-stage-badge ' + stg.cls + '">' + escHtml(stg.label) + '</span></td>'
+      + '<td>' + where + '</td>'
+      + '<td class="r" style="font-size:12px;white-space:nowrap;">' + escHtml(dueLabel(dueMs(o))) + '</td>'
+      + '<td class="r">' + leftHtml + '</td>'
+      + '<td style="font-size:11px;color:var(--text-muted);white-space:nowrap;">' + escHtml(fmtPdt(o.placed_utc) || '—') + '</td>'
+      + '</tr>';
+    if (o.trace && open) html += '<tr class="xpd-tr-detail"><td colspan="6">' + xpdTraceDetail(o) + '</td></tr>';
+  });
+  document.getElementById(tbodyId).innerHTML = html;
+  document.getElementById(emptyId).style.display = rows.length ? 'none' : 'block';
+}
+
 function render1dd(data) {
   var odd = data.one_dd || {};
   var now = Date.now();
@@ -5672,36 +5850,14 @@ function render1dd(data) {
     lcEl.textContent = odd.last_cutoff ? 'Last cutoff: no 1DD orders were due.' : '';
   }
 
-  // Late & At Risk table — late first, then by due, then oldest placed
-  var rows = late.concat(risk).sort(function(a, b) {
-    return (xpdUtcMs(a.due_utc) - xpdUtcMs(b.due_utc)) || (xpdUtcMs(a.placed_utc) - xpdUtcMs(b.placed_utc));
-  });
-  var html = '';
-  rows.forEach(function(o) {
-    var stg = xpdStage(o.order_status);
-    var left = xpdUtcMs(o.due_utc) - now;
-    var leftHtml = left <= 0
-      ? '<span class="xpd-deadline-late">LATE ' + xpdDur(-left / 60000) + '</span>'
-      : '<span class="xpd-deadline-warn">' + xpdDur(left / 60000) + '</span>';
-    var where = '';
-    if (o.olpns && o.olpns.length) {
-      where = o.olpns.map(function(id){ return '<span class="xpd-olpn-loc">' + escHtml(id) + '</span>'; }).join('<br>');
-      if (o.olpn_pallet)        where += '<span class="xpd-loc-sub" title="Pallet">&#x1F4E6; ' + escHtml(o.olpn_pallet) + '</span>';
-      else if (o.olpn_location) where += '<span class="xpd-loc-sub">' + escHtml(o.olpn_location) + '</span>';
-    } else {
-      where = '<span style="color:var(--text-hint);">—</span>';
-    }
-    html += '<tr>'
-      + '<td><span style="font-family:monospace;font-size:11px;">' + escHtml(o.order_id || '—') + '</span></td>'
-      + '<td><span class="xpd-stage-badge ' + stg.cls + '">' + escHtml(stg.label) + '</span></td>'
-      + '<td>' + where + '</td>'
-      + '<td class="r" style="font-size:12px;white-space:nowrap;">' + escHtml(xpdCutoffLabel(xpdUtcMs(o.due_utc))) + '</td>'
-      + '<td class="r">' + leftHtml + '</td>'
-      + '<td style="font-size:11px;color:var(--text-muted);white-space:nowrap;" title="24-hr mark: ' + escHtml(fmtPdt(new Date(xpdUtcMs(o.placed_utc) + 86400000).toISOString()) || '') + '">' + escHtml(fmtPdt(o.placed_utc) || '—') + '</td>'
-      + '</tr>';
-  });
-  document.getElementById('odd-risk-tbody').innerHTML = html;
-  document.getElementById('odd-risk-empty').style.display = rows.length ? 'none' : 'block';
+  // Late & At Risk tables — late first, then by due, then oldest placed
+  var byDue = function(dueMs) { return function(a, b) { return (dueMs(a) - dueMs(b)) || (xpdUtcMs(a.placed_utc) - xpdUtcMs(b.placed_utc)); }; };
+  var due1 = function(o) { return xpdUtcMs(o.due_utc); };
+  renderXpdRiskTable(late.concat(risk).sort(byDue(due1)), 'odd-risk-tbody', 'odd-risk-empty', due1, xpdCutoffLabel);
+  // 2DD: placed + 48 h, late or within 4 hrs (same window the agent traces)
+  var due2 = function(o) { return xpdUtcMs(o.placed_utc) + 48 * 3600000; };
+  var risk2 = (data.orders || []).filter(function(o) { return o.service_level === '2DD' && o.placed_utc && due2(o) - now < 4 * 3600000; });
+  renderXpdRiskTable(risk2.sort(byDue(due2)), 'odd-risk2-tbody', 'odd-risk2-empty', due2, function(ms) { return fmtPdt(new Date(ms).toISOString()) || '—'; });
 
   // Held table
   var hh = '';

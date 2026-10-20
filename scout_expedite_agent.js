@@ -33,6 +33,9 @@ const LOOKBACK_DAYS = 5;    // open 1DD/2DD orders placed in the last 5 days (De
 const OLPN_BATCH    = 200;  // order IDs per oLPN lookup
 const SCAN_BATCH    = 200;  // oLPN IDs per pack/palletize scan lookup
 const HOLD_MIN      = 60;   // 1DD oLPN packed this long with no pallet = held
+const TRACE_1DD_HRS = 2;    // "where is it" trace: 1DD late or within 2 hrs of cutoff
+const TRACE_2DD_HRS = 4;    //                      2DD late or within 4 hrs of placed + 48 h
+const TRACE_BATCH   = 100;  // order / container IDs per trace lookup
 
 // 1DD cutoff (verified vs EXT_ESTIMATEDSHIPBYDATETIME 10/14): placed 12:00 PM → 11:59 AM next day
 // = due 12:00 PM PT that next day. Always earlier than placed + 24 hrs.
@@ -227,7 +230,10 @@ WHERE FACILITY_ID = '${FACILITY}'
     };
   });
 
-  const [oneDD, splits] = await Promise.all([
+  const [, oneDD, splits] = await Promise.all([
+    fetchTrace(accessToken, orders, nowUtc).catch(e => {
+      console.warn(`[${ts()}] Where-is-it trace failed: ${e.message}`);
+    }),
     fetchOneDD(accessToken, openOrders, olpnMap, shiftStart, nowUtc).catch(e => {
       console.warn(`[${ts()}] 1DD focus failed: ${e.message}`);
       return null;
@@ -257,6 +263,158 @@ WHERE FACILITY_ID = '${FACILITY}'
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
   console.log(`[${ts()}] ✓ expedite_live.json — ${output.open_count} open, ${output.shipped_count} shipped`);
   console.log(`[${ts()}] expedite_live.json ready — dc499_refresh will push on next cycle`);
+}
+
+// ── Where is it: pick task → tote → putwall cubby → cubby LPN, per order (10/20) ──
+// Orders near SLA only: 1DD late or < TRACE_1DD_HRS to cutoff, 2DD < TRACE_2DD_HRS to placed + 48 h.
+// Why: the order stays at 2090 (Allocated) until it is packed, so picked orders looked untouched,
+// and a cancelled pick task (nothing open) looked the same as "waiting to release".
+// Links (checked 10/20 on 5 live 1DD orders): TSK_TASK_DETAIL.TARGET_CONTAINER_ID = the tote each
+// unit was picked into; 'OB Sort To Putwall Cubby' rows carry ORDER_ID — CONTAINER_ID is the cubby
+// (S1-PW-0606B05) while sorting, then the cubby LPN (S1000…) when the cubby is pushed to pack.
+// Singles skip the putwall: the tote goes straight to D1-SN-01.
+async function fetchTrace(accessToken, orders, nowUtc) {
+  const now = nowUtc.getTime();
+  const scope = orders.filter(o => {
+    if (Number(o.order_status) >= 7200) return false;            // packed — the oLPN says where it is
+    const due = o.service_level === '1DD' ? utcMs(o.due_utc)
+              : o.service_level === '2DD' ? utcMs(o.placed_utc) + 48 * 3600000 : NaN;
+    const hrs = o.service_level === '1DD' ? TRACE_1DD_HRS : TRACE_2DD_HRS;
+    return !isNaN(due) && due - now < hrs * 3600000;
+  });
+  if (!scope.length) { console.log(`[${ts()}] Where-is-it: no orders near SLA`); return; }
+
+  const floorMs = Math.min(...scope.map(o => utcMs(o.placed_utc)).filter(n => !isNaN(n))) - 3600000;
+  const floorStr = new Date(isFinite(floorMs) ? floorMs : now - LOOKBACK_DAYS * 86400000)
+    .toISOString().slice(0, 19).replace('T', ' ');
+
+  const details = {}, sorts = {};   // ORDER_ID -> rows
+  for (let i = 0; i < scope.length; i += TRACE_BATCH) {
+    const ids = scope.slice(i, i + TRACE_BATCH).map(o => `'${o.order_id}'`).join(',');
+    const [rd, rs] = await Promise.all([
+      mcpQuery(accessToken, `
+SELECT td.ORDER_ID, td.TASK_ID, t.STATUS AS task_status, td.STATUS AS det_status, td.ITEM_ID,
+       td.SOURCE_LOCATION_ID, td.TARGET_CONTAINER_ID, td.QUANTITY, td.ACTUAL_END_TIME, td.UPDATED_TIMESTAMP
+FROM default_task.TSK_TASK_DETAIL td
+JOIN default_task.TSK_TASK t ON t.TASK_ID = td.TASK_ID AND t.FACILITY_ID = td.FACILITY_ID
+WHERE td.FACILITY_ID = '${FACILITY}'
+  AND td.ORDER_ID IN (${ids})
+  AND td.CREATED_TIMESTAMP >= '${floorStr}'
+  AND t.TRANSACTION_ID IN ('Ecom Mezz Pick To Putwall Cart','Ecom Non-Mezz Pick To Putwall Cart')`.trim()),
+      mcpQuery(accessToken, `
+SELECT ORDER_ID, CONTAINER_ID, ITEM_ID, QUANTITY, CREATED_TIMESTAMP
+FROM default_task.TSK_ACTIVITY_TRACKING
+WHERE FACILITY_ID = '${FACILITY}'
+  AND TRANSACTION_ID = 'OB Sort To Putwall Cubby'
+  AND ORDER_ID IN (${ids})
+  AND CREATED_TIMESTAMP >= '${floorStr}'`.trim()),
+    ]);
+    for (const r of (rd.rows || [])) (details[r.ORDER_ID] = details[r.ORDER_ID] || []).push(r);
+    for (const r of (rs.rows || [])) (sorts[r.ORDER_ID] = sorts[r.ORDER_ID] || []).push(r);
+  }
+
+  // Build each order's units first, then look up where its totes / cubby LPN are now
+  const built = scope.map(o => {
+    const rows = details[o.order_id] || [];
+    const sr = (sorts[o.order_id] || []).sort((a, b) => utcMs(a.CREATED_TIMESTAMP) - utcMs(b.CREATED_TIMESTAMP));
+    const slotRows = sr.filter(r => /^S1-PW/.test(r.CONTAINER_ID || ''));
+    const lpnRows  = sr.filter(r => r.CONTAINER_ID && !/^S1-PW/.test(r.CONTAINER_ID));
+    const sortedRows = slotRows.length ? slotRows : lpnRows;
+    const sortedLeft = {};   // ITEM_ID -> units sorted, used up as picked units get marked
+    for (const r of sortedRows) sortedLeft[r.ITEM_ID] = (sortedLeft[r.ITEM_ID] || 0) + (Number(r.QUANTITY) || 1);
+
+    const units = [];
+    const done = rows.filter(r => r.det_status === '8000' && Number(r.QUANTITY) > 0);
+    const open = rows.filter(r => r.det_status !== '8000' && r.det_status !== '9000');
+    for (const r of done) {
+      for (let q = 0; q < Number(r.QUANTITY); q++) {
+        const sorted = (sortedLeft[r.ITEM_ID] || 0) > 0;
+        if (sorted) sortedLeft[r.ITEM_ID]--;
+        units.push({ item: r.ITEM_ID, shelf: r.SOURCE_LOCATION_ID, task: r.TASK_ID, st: 'picked',
+                     tote: r.TARGET_CONTAINER_ID || null, at: isoUtc(utcMs(r.ACTUAL_END_TIME)), sorted });
+      }
+    }
+    for (const r of open) {
+      units.push({ item: r.ITEM_ID, shelf: r.SOURCE_LOCATION_ID, task: r.TASK_ID, st: 'open',
+                   task_status: String(r.task_status || '').split('.')[0] });
+    }
+    // Cancelled pick with nothing picked or open for that item = a unit nobody will pick
+    const covered = new Set(done.concat(open).map(r => r.ITEM_ID));
+    const lastCancel = {};
+    for (const r of rows) {
+      if (r.det_status !== '9000' || covered.has(r.ITEM_ID)) continue;
+      if (!lastCancel[r.ITEM_ID] || utcMs(r.UPDATED_TIMESTAMP) > utcMs(lastCancel[r.ITEM_ID].UPDATED_TIMESTAMP)) lastCancel[r.ITEM_ID] = r;
+    }
+    for (const r of Object.values(lastCancel)) {
+      units.push({ item: r.ITEM_ID, shelf: r.SOURCE_LOCATION_ID, task: r.TASK_ID, st: 'cancelled',
+                   at: isoUtc(utcMs(r.UPDATED_TIMESTAMP)) });
+    }
+    return { o, units, open, picked: done.reduce((s, r) => s + Number(r.QUANTITY), 0),
+             sortedCount: sortedRows.reduce((s, r) => s + (Number(r.QUANTITY) || 1), 0),
+             cubbySlot: slotRows.length ? slotRows[slotRows.length - 1].CONTAINER_ID : null,
+             cubbyLpn:  lpnRows.length  ? lpnRows[lpnRows.length - 1].CONTAINER_ID  : null };
+  });
+
+  // Current location of totes still holding an unsorted unit + every cubby LPN
+  const lpnIds = new Set();
+  for (const b of built) {
+    if (b.cubbyLpn) lpnIds.add(b.cubbyLpn);
+    for (const u of b.units) if (u.st === 'picked' && !u.sorted && u.tote) lpnIds.add(u.tote);
+  }
+  const lpnInfo = {};   // ILPN_ID -> { loc, items:Set }
+  const idList = [...lpnIds];
+  for (let i = 0; i < idList.length; i += TRACE_BATCH) {
+    const ids = idList.slice(i, i + TRACE_BATCH).map(id => `'${id}'`).join(',');
+    try {
+      const r = await mcpQuery(accessToken, `
+SELECT il.ILPN_ID, il.CURRENT_LOCATION_ID, inv.ITEM_ID, inv.ON_HAND
+FROM default_dcinventory.DCI_ILPN il
+LEFT JOIN default_dcinventory.DCI_INVENTORY inv ON inv.ILPN_ID = il.ILPN_ID AND inv.FACILITY_ID = il.FACILITY_ID
+WHERE il.FACILITY_ID = '${FACILITY}'
+  AND il.ILPN_ID IN (${ids})`.trim());
+      for (const row of (r.rows || [])) {
+        const x = lpnInfo[row.ILPN_ID] = lpnInfo[row.ILPN_ID] || { loc: row.CURRENT_LOCATION_ID || null, items: new Set() };
+        if (row.ITEM_ID && Number(row.ON_HAND) > 0) x.items.add(row.ITEM_ID);
+      }
+    } catch (e) {
+      console.warn(`[${ts()}] Where-is-it: tote/cubby lookup failed: ${e.message}`);
+    }
+  }
+
+  const counts = {};
+  for (const b of built) {
+    const { o, units, open } = b;
+    for (const u of units) {
+      if (u.st !== 'picked' || u.sorted || !u.tote) continue;
+      const info = lpnInfo[u.tote];
+      u.tote_loc = info ? info.loc : null;
+      u.tote_has = info ? info.items.has(u.item) : null;   // false = tote no longer holds this item
+    }
+    const total = o.quantity || units.filter(u => u.st !== 'cancelled').length;
+    const unsorted = units.filter(u => u.st === 'picked' && !u.sorted);
+    const lpnLoc = b.cubbyLpn && lpnInfo[b.cubbyLpn] ? lpnInfo[b.cubbyLpn].loc : null;
+    const atPack = loc => /^D1-SN/.test(loc || '');
+    let stage;
+    if (b.cubbyLpn)                   stage = atPack(lpnLoc) ? 'at_pack' : 'cubby_out';
+    else if (b.cubbySlot)             stage = 'in_cubby';
+    else if (open.length) {
+      const top = Math.max(...open.map(r => Number(String(r.task_status).split('.')[0]) || 0));
+      stage = top >= 7000 ? 'picking' : top >= 5000 ? 'assigned' : 'queued';
+    }
+    else if (b.picked >= total && b.picked > 0)
+      stage = unsorted.length && unsorted.every(u => atPack(u.tote_loc)) ? 'at_pack' : 'in_tote';
+    else if (b.picked > 0 || units.some(u => u.st === 'cancelled')) stage = 'no_task';
+    else                              stage = o.order_status === '1000' ? 'not_allocated' : 'not_released';
+    counts[stage] = (counts[stage] || 0) + 1;
+
+    o.trace = {
+      stage, units: total, picked: b.picked, sorted: b.sortedCount,
+      cubby_slot: b.cubbySlot, cubby_lpn: b.cubbyLpn, cubby_lpn_loc: lpnLoc,
+      lines: units,
+    };
+  }
+  console.log(`[${ts()}] Where-is-it: ${scope.length} orders near SLA — ` +
+    Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(', '));
 }
 
 // ── 1DD focus: last cutoff on-time, pack → pallet time, held oLPNs ─────────────
