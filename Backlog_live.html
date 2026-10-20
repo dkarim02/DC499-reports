@@ -1622,7 +1622,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <div class="odd-cutoff-line" id="odd-cutoff-line"></div>
 
       <div class="card">
-        <div class="card-title">Late &amp; At Risk &mdash; 1DD</div>
+        <div class="card-title">Late &amp; At Risk &mdash; 1DD<button class="xpd-filter-btn" style="float:right;text-transform:none;letter-spacing:0;" onclick="exportXpdRiskCsv('1dd')">&#x2B07; Export CSV</button></div>
         <div class="xpd-table-wrap">
           <table>
             <thead>
@@ -1642,7 +1642,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       </div>
 
       <div class="card">
-        <div class="card-title">Late &amp; At Risk &mdash; 2DD <span style="font-weight:400;color:var(--text-hint);font-size:11px;">(within 4 hrs of the 48-hr mark)</span></div>
+        <div class="card-title"><button class="xpd-filter-btn" style="float:right;text-transform:none;letter-spacing:0;" onclick="exportXpdRiskCsv('2dd')">&#x2B07; Export CSV</button>Late &amp; At Risk &mdash; 2DD <span style="font-weight:400;color:var(--text-hint);font-size:11px;">(within 4 hrs of the 48-hr mark)</span></div>
         <div class="xpd-table-wrap">
           <table>
             <thead>
@@ -5772,8 +5772,59 @@ function xpdTraceDetail(o) {
   return h + '</tbody></table>';
 }
 
+// CSV export of a Late & At Risk table — one row per unit, so it sorts by tote / cubby / shelf in Excel.
+// Packed orders (no trace) get one row per oLPN. All-digit IDs are written as ="…" so Excel keeps
+// every digit (oLPN 00499000000001155556 would turn into 4.99E+17).
+function exportXpdRiskCsv(which) {
+  var last = xpdRiskLast[which === '2dd' ? 'odd-risk2-tbody' : 'odd-risk-tbody'];
+  if (!last || !last.rows.length) { alert('Nothing to export — no orders in this list.'); return; }
+  var now = Date.now();
+  var txt = function(html) { var d = document.createElement('div'); d.innerHTML = String(html).replace(/<br\s*\/?>/gi, ' / ').replace(/<\/div>/gi, ' — '); return d.textContent.replace(/\s+/g, ' ').trim(); };
+  var cell = function(v) {
+    v = v == null ? '' : String(v);
+    if (/^\d{6,}$/.test(v)) return '="' + v + '"';
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  };
+  var pt = function(ms) { return isNaN(ms) ? '' : new Date(ms).toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Los_Angeles' }); };
+  var head = ['SVC', 'Order #', 'Stage', 'Due (PT)', 'Minutes Left', 'Placed (PT)', 'Where Is It',
+              'Item', 'Shelf', 'Pick Task', 'Unit Status', 'Tote', 'Tote Location', 'Cubby', 'Cubby LPN', 'Cubby LPN Location', 'Time (PT)', 'oLPN', 'oLPN Location / Pallet'];
+  var out = [head.join(',')];
+  last.rows.forEach(function(o) {
+    var due = last.dueMs(o);
+    var base = [o.service_level, o.order_id, xpdOrderStage(o).label.replace('⚠ ', ''), pt(due), Math.round((due - now) / 60000), pt(xpdUtcMs(o.placed_utc))];
+    var t = o.trace;
+    if (t) {
+      var where = txt(xpdTraceWhere(o));
+      var lines = t.lines && t.lines.length ? t.lines : [null];
+      lines.forEach(function(u) {
+        var st = !u ? '' : u.st === 'picked' ? (u.sorted ? 'Picked, sorted' : 'Picked') : u.st === 'open' ? (XPD_TASK_LABEL[u.task_status] || 'Open') : 'Cancelled';
+        var inTote = u && u.st === 'picked' && !u.sorted;
+        out.push(base.concat([where,
+          u ? u.item : '', u ? u.shelf : '', u ? u.task : '', st,
+          u ? u.tote : '', inTote ? (u.tote_has === false ? 'unit not in tote now' : (u.tote_loc || '')) : '',
+          t.cubby_slot, t.cubby_lpn, t.cubby_lpn_loc, u && u.at ? pt(xpdUtcMs(u.at)) : '',
+          (o.olpns || []).join(' / '), '']).map(cell).join(','));
+      });
+    } else {
+      var olpns = o.olpns && o.olpns.length ? o.olpns : [''];
+      olpns.forEach(function(id) {
+        out.push(base.concat([o.olpn_location || '', '', '', '', '', '', '', '', '', '', '', id, o.olpn_pallet || o.olpn_location || '']).map(cell).join(','));
+      });
+    }
+  });
+  var stamp = new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' }).slice(0, 16).replace(/[-: ]/g, '').replace(/^(\d{8})(\d{4})$/, '$1_$2');
+  var blob = new Blob(['\uFEFF' + out.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Expedite_' + (which === '2dd' ? '2DD' : '1DD') + '_at_risk_' + stamp + '.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
 // Late & At Risk table (1DD + 2DD share it). dueMs(o) = deadline; dueLabel(ms) = Due column.
+var xpdRiskLast = {};   // tbodyId -> { rows, dueMs } from the last render, for the CSV export
 function renderXpdRiskTable(rows, tbodyId, emptyId, dueMs, dueLabel) {
+  xpdRiskLast[tbodyId] = { rows: rows, dueMs: dueMs };
   var now = Date.now(), html = '';
   rows.forEach(function(o) {
     var stg = xpdOrderStage(o);
