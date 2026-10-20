@@ -27,10 +27,34 @@ const SHARE_ASSETS = ['favicon.svg', 'scout_file_mode.js', 'remi.mp4'];
 // Share hand-off (2026-10-19): while SCOUT Live\.share_owner exists, another writer keeps the
 // share up to date, so this PC stops writing pages and data into it (GitHub pushes and this
 // folder's filedata/ carry on). Checked at most every 30 s.
+// Fallback (2026-10-20): the other writer keeps SCOUT Live\.share_heartbeat fresh (JSON {at}) while
+// its data is current. If the heartbeat that reaches THIS PC is older than FALLBACK_MS — writer
+// stopped, asleep, or its OneDrive stuck (10/20: 80 min unnoticed) — this PC writes the share
+// again on its own, and steps back as soon as fresh heartbeats arrive. Transitions are logged.
 const OWNER_MARKER = path.join(SHARE_DIR, '.share_owner');
-let _ownerAt = 0, _ownerVal = false;
+const HEARTBEAT    = path.join(SHARE_DIR, '.share_heartbeat');
+const FALLBACK_MS  = 10 * 60 * 1000;
+let _ownerAt = 0, _ownerVal = false, _fallback = false;
+function heartbeatAgeMs() {
+  try { return Date.now() - Date.parse(JSON.parse(fs.readFileSync(HEARTBEAT, 'utf8')).at); }
+  catch { return Infinity; }
+}
 function shareHandedOff() {
-  if (Date.now() - _ownerAt > 30000) { _ownerAt = Date.now(); _ownerVal = fs.existsSync(OWNER_MARKER); }
+  if (Date.now() - _ownerAt > 30000) {
+    _ownerAt = Date.now();
+    const marker = fs.existsSync(OWNER_MARKER);
+    const age = marker ? heartbeatAgeMs() : 0;
+    const fallback = marker && !(age <= FALLBACK_MS);
+    if (fallback !== _fallback) {
+      const line = fallback
+        ? `Share: other writer quiet for ${isFinite(age) ? Math.round(age / 60000) + ' min' : 'a while (no heartbeat)'} — this PC is keeping SCOUT Live updated`
+        : 'Share: other writer is back — this PC stepped back from SCOUT Live';
+      console.log(`  ${line}`);
+      try { fs.appendFileSync(path.join(require('os').homedir(), 'SCOUT-local', 'share_fallback.log'), `${new Date().toISOString()}  ${line}\n`); } catch {}
+      _fallback = fallback;
+    }
+    _ownerVal = marker && !fallback;
+  }
   return _ownerVal;
 }
 const shareOn = () => { try { return fs.statSync(SHARE_DIR).isDirectory() && !shareHandedOff(); } catch { return false; } };
