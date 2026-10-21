@@ -79,10 +79,11 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 
 **Sorting filter:** Requires BOTH Transaction ID AND Criteria = NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA.
 
-**Version bumps — always update 3 places:**
+**Version bumps — always update 4 places:**
 1. HTML title tag
 2. Settings footer nordstrom-tag paragraph
 3. Menu card badge + openApp() filename
+4. `version:` in the page's `SCOUT_UI.bar({...})` call (shared top bar). A **Menu** rename also = `MENU_PAGE` in scout_ui.js.
 
 ---
 
@@ -551,6 +552,19 @@ Storage key: `rs_weekly_v1`. Per-day payload includes `employees: {email: {pick_
 **Functions:** `toggleTMFromLive/Panel(emp, typ)` — toggle `typ` in/out of `disabled_tx`. `disableTMAllFromLive/Panel(emp)` — set `enabled = false`, clear `disabled_tx`.
 
 **`loadRoster` normalization:** Always ensures `disabled_tx: []` present — backward-compatible with pre-field rosters.
+
+---
+
+## Shared top bar + one theme — scout_ui.js (2026-10-21)
+
+Every dept page (not the Menu) has the same bar: ← Menu · dept + title + version · the page's own buttons · "Updated" chip (green ≤ 10 min / amber ≤ 30 / red) · Pacific clock + shift · theme picker · ⚙. It replaced each page's old title block, theme picker and yellow stale banner. Low motion on purpose (Dean): nothing in the bar animates.
+- Page markup: `<div id="scout-bar"></div>` + the elements it moves in (status line `sub`, buttons `actions`) right after it. Page JS: `if (window.SCOUT_UI) SCOUT_UI.bar({mount, dept, title, version, sub, actions, settings, oldThemeKey, applyTheme}) else <apply theme>` — the fallback keeps the page working if scout_ui.js hasn't synced yet. After each data load: `SCOUT_UI.updated(date)`.
+- **One theme key for the site: `dc499_theme_v1`** (the Menu's). A page's old key is read once on first visit (`mixed`→pastel, `candy`→starr). A `storage` listener switches other open tabs live (Menu too). The page's `applyTheme(t)` now only switches colors — the bar saves and draws the picker.
+- **All 8 themes on every page:** dark, solid, pastel, starr, carrie, remi (Rem), scout, light. Missing ones were added by copying Pastel → Rem and Carrie → Starr rules with the colors swapped. Totes calls Pastel `mixed` (its applyTheme maps it). Reserve Weekly + Item Prep v2.0 were Dark/Light only: dark themes run on the dark layout, Carrie/Starr on the light one, plus `html[data-variant=…]` color vars — so `data-theme` stays dark/light for their own checks.
+- The bar picks light/dark styling from the page's real background color (Receiving's Starr is dark pink).
+- New page → add the bar (same pattern). scout_ui.js is in SHARE_ASSETS, the laptop runner's ASSETS list (see local notes) and the PC server's ASSET_JS.
+- Kept in place: Backlog's Send dropdown still uses `.theme-picker`/`.theme-menu` CSS (don't remove it). Backlog's Rem sprite switch and "Back to Ecom" moved into the bar. Totes TV mode hides the bar with the rest of the page.
+- Conversion scripts + screenshot harness (local): `.tmp_audit/topbar/` (`shot.js <Page> <theme> [height] [js]`).
 
 ---
 
