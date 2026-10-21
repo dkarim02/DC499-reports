@@ -68,7 +68,16 @@ function writeAtomic(out, text) {
 
 // Copy pages/assets that are new or changed (size or modified time). Cheap — a few
 // dozen stats — so the live cycle can call it every time.
+// OneDrive "kept both" copies ("<name>-<COMPUTER>.js", "-<COMPUTER>-2.js") left when two machines
+// wrote the same share file close together (10/20). Pages never load them. Real data files are
+// lowercase_with_underscores, so this pattern can't match one. Runs every live cycle.
+const CONFLICT_COPY = /-[A-Z]-[A-Z0-9]{5,}(-\d+)?\.js$/;
+function cleanShareConflicts() {
+  try { for (const f of fs.readdirSync(SHARE_DATA)) if (CONFLICT_COPY.test(f)) { try { fs.unlinkSync(path.join(SHARE_DATA, f)); } catch {} } } catch {}
+}
+
 function syncSharePages() {
+  cleanShareConflicts();
   if (!shareOn()) return 0;
   let copied = 0;
   let names;
