@@ -599,7 +599,9 @@ var DEPTS = [
     icon: '🏪', name: 'Reserve Stock', sub: 'Pick · Replen · Putaway', ver: 'v2.2',
     color: '#B57FDD',
     tools: [
-      { icon: '🏬', name: 'Retail Backlog', ver: 'v1.2', file: 'Retail_backlog.html' }
+      { icon: '🏬', name: 'Retail Backlog', ver: 'v1.2', file: 'Retail_backlog.html' },
+      // Shubham's retail board. OneDrive folders only (file://) — it is not on the public site.
+      { icon: '📊', name: 'Retail Board', ver: 'Live', file: 'Retail%20board/dc499-board.html', fileOnly: true }
     ]
   },
   {
@@ -646,6 +648,7 @@ function makeCardWrap(d, featured) {
       + '<div class="flyout-header">' + d.name + '</div>';
     for (var i = 0; i < d.tools.length; i++) {
       var t = d.tools[i];
+      if (t.fileOnly && location.protocol !== 'file:') continue;
       flyout += '<button class="tool-chip" onclick="openApp(\'' + t.file + '\',\'' + d.id + '\')">'
         + '<span class="tool-chip-icon">' + t.icon + '</span>'
         + '<span class="tool-chip-name">' + t.name + '</span>'

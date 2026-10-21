@@ -46,10 +46,31 @@ function cleanShareConflicts() {
   try { for (const f of fs.readdirSync(SHARE_DATA)) if (CONFLICT_COPY.test(f)) { try { fs.unlinkSync(path.join(SHARE_DATA, f)); } catch {} } } catch {}
 }
 
+// Menu "Retail Board" chip (2026-10-20) opens Retail board/dc499-board.html. Here that file is a
+// tiny redirect to the retail board's own live page in its shared OneDrive folder (a sibling
+// folder ending in "DC499_Retail_Dashboard") — nothing big is copied or uploaded from this PC.
+function retailBoardLink() {
+  try {
+    const parent = path.dirname(SHARE_DIR);
+    const name = fs.readdirSync(parent).find(n => /DC499_Retail_Dashboard$/.test(n));
+    if (!name) return 0;
+    const parts = [name, 'DC499_Retail-main', 'live', 'dc499-board.html'];
+    if (!fs.existsSync(path.join(parent, ...parts))) return 0;
+    const href = '../../' + parts.map(encodeURIComponent).join('/');
+    const html = `<!DOCTYPE html><meta charset="utf-8"><title>Retail Board</title>`
+               + `<meta http-equiv="refresh" content="0;url=${href}"><a href="${href}">Open the Retail Board</a>\n`;
+    const dir = path.join(SHARE_DIR, 'Retail board'), out = path.join(dir, 'dc499-board.html');
+    try { if (fs.readFileSync(out, 'utf8') === html) return 0; } catch {}
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    writeAtomic(out, html);
+    return 1;
+  } catch (e) { console.warn(`  Retail Board link skipped: ${e.message}`); return 0; }
+}
+
 function syncSharePages() {
   cleanShareConflicts();
   if (!shareOn()) return 0;
-  let copied = 0;
+  let copied = retailBoardLink();
   let names;
   try { names = fs.readdirSync(DIR).filter(n => n.endsWith('.html')).concat(SHARE_ASSETS); }
   catch (e) { console.warn(`  Share sync skipped: ${e.message}`); return 0; }
