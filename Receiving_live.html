@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="scout_file_mode.js"></script>
+<script src="scout_ui.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,9 +21,13 @@
     --bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;
     --text:#e4e8f4;--text-muted:#8090b0;--text-hint:#4a5570;
   }
-  [data-theme="pastel"]{
+  [data-theme="pastel"],[data-theme="remi"]{
     --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
     --text:#d4d0e8;--text-muted:#8b8aaa;--text-hint:#565670;
+  }
+  [data-theme="remi"]{
+    --bg:#0e0b18;--surface:#16112a;--surface2:#1e1838;--border:#2e2550;--border-light:#1e1838;--border-mid:#3a3060;
+    --text:#e8e0f8;--text-muted:#9880cc;--text-hint:#6a5890;
   }
   [data-theme="starr"]{
     --bg:#1a0a14;--surface:#261020;--surface2:#311528;--border:#4a2040;--border-light:#311528;--border-mid:#5a2850;
@@ -53,33 +58,12 @@
 
   /* Top bar */
   .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;}
-  .top-bar-left .eyebrow{font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:3px;}
-  .top-bar-left h1{font-size:22px;font-weight:800;color:var(--text);line-height:1.1;}
-  .top-bar-left .subtitle{font-size:12px;color:var(--text-muted);margin-top:3px;}
-  .live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:5px;animation:livepulse 2s infinite;vertical-align:middle;}
-  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.75);}}
   .top-bar-right{display:flex;align-items:center;gap:8px;}
   .btn{font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;padding:6px 14px;border-radius:8px;cursor:pointer;border:0.5px solid var(--border);background:var(--surface2);color:var(--text-muted);transition:all 0.15s;white-space:nowrap;}
   .btn:hover{color:var(--text);background:var(--border);}
   .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
   .btn-primary:hover{opacity:0.85;color:#fff;}
   .gear-btn{font-size:16px;padding:6px 10px;}
-
-  /* Theme picker */
-  .theme-picker{position:relative;}
-  .theme-btn{display:flex;align-items:center;gap:6px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:var(--text-muted);cursor:pointer;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;}
-  .theme-btn:hover{color:var(--text);}
-  .theme-btn-chevron{font-size:9px;opacity:0.6;transition:transform 0.15s;}
-  .theme-picker.open .theme-btn-chevron{transform:rotate(180deg);}
-  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;min-width:110px;box-shadow:0 8px 24px rgba(0,0,0,0.35);z-index:200;}
-  .theme-picker.open .theme-menu{display:block;}
-  .theme-option{padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;color:var(--text-muted);}
-  .theme-option:hover{background:var(--surface2);color:var(--text);}
-  .theme-option.active{color:var(--accent);}
-
-  /* Stale banner */
-  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px;margin-bottom:1rem;text-align:center;}
-  [data-theme="light"] .stale-banner,[data-theme="carrie"] .stale-banner{background:#FFF3CD;color:#7A4F00;}
 
   /* Legend */
   .legend{display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap;}
@@ -181,34 +165,9 @@ body { animation: pageEnter 0.28s ease-out both; }
 <body>
 <div class="container">
 
-  <div class="top-bar">
-    <div class="top-bar-left">
-      <div class="eyebrow">DC499 &middot; RECEIVING</div>
-      <h1><span class="live-dot"></span>Receiving Live</h1>
-      <p class="subtitle" id="run-info">Loading...</p>
-    </div>
-    <div class="top-bar-right">
-      <button class="btn btn-primary" onclick="manualRefresh()">&#x21BA; Refresh</button>
-      <div class="theme-picker" id="theme-picker">
-        <button class="theme-btn" onclick="toggleThemeMenu()">
-          <span id="toggle-label">Dark</span>
-          <span class="theme-btn-chevron">&#9660;</span>
-        </button>
-        <div class="theme-menu" id="theme-menu">
-          <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
-          <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
-          <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
-          <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr</div>
-          <div class="theme-option" data-tv="carrie"  onclick="pickTheme('carrie')">Carrie ☁</div>
-          <div class="theme-option" data-tv="scout"  onclick="pickTheme('scout')">✦ Scout</div>
-          <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
-        </div>
-      </div>
-      <button class="btn gear-btn" onclick="openSettings()" title="Settings">&#9881;</button>
-    </div>
-  </div>
-
-  <div class="stale-banner" id="stale-banner"></div>
+  <div id="scout-bar"></div>
+  <p class="subtitle" id="run-info">Loading...</p>
+  <button class="btn btn-primary" id="refresh-btn" onclick="manualRefresh()">&#x21BA; Refresh</button>
 
   <div class="legend">
     <div class="legend-chip"><div class="legend-box lbox-green">80+</div> On pace</div>
@@ -308,25 +267,7 @@ function totalCls(n) {
 // -- Theme --------------------------------------------------------------------
 var THEME_VALS  = ['dark','solid','pastel','starr','carrie','scout','light'];
 var THEME_NAMES = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr',carrie:'Carrie ☁',scout:'✦ Scout',light:'Light'};
-function applyTheme(t) {
-  document.documentElement.setAttribute('data-theme', t);
-  document.getElementById('toggle-label').textContent = THEME_NAMES[t] || t;
-  document.querySelectorAll('.theme-option').forEach(function(el) {
-    el.classList.toggle('active', el.getAttribute('data-tv') === t);
-  });
-  try { localStorage.setItem(THEME_KEY, t); } catch(e) {}
-}
-function toggleThemeMenu() { document.getElementById('theme-picker').classList.toggle('open'); }
-function pickTheme(t) { applyTheme(t); document.getElementById('theme-picker').classList.remove('open'); }
-document.addEventListener('click', function(e) {
-  var p = document.getElementById('theme-picker');
-  if (p && !p.contains(e.target)) p.classList.remove('open');
-});
-(function() {
-  var saved; try { saved = localStorage.getItem(THEME_KEY); } catch(e) {}
-  applyTheme(saved && THEME_VALS.indexOf(saved) !== -1 ? saved
-    : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-})();
+function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); }
 
 // -- Settings -----------------------------------------------------------------
 function loadSettings() {
@@ -468,6 +409,8 @@ function scheduleAutoRefresh() {
 }
 
 function manualRefresh() { fetchData(true); }
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Receiving",title:"Receiving Live",version:"v2.1",sub:"run-info",actions:["refresh-btn"],settings:openSettings}, { oldThemeKey: THEME_KEY, applyTheme: applyTheme }));
+else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY) || 'dark');
 
 function fetchData(isManual) {
   document.getElementById('run-info').textContent = 'Loading...';
@@ -508,15 +451,7 @@ function renderScoreboard(data) {
   var allHours = shift === '1st' ? ALL_1ST : ALL_2ND;
   var hours    = allHours.filter(function(h) { return h <= nowHour; });
 
-  // Stale check
-  var staleEl = document.getElementById('stale-banner');
-  var ageMs   = data.generated ? Date.now() - new Date(data.generated.endsWith('Z') ? data.generated : data.generated+'Z').getTime() : 0;
-  if (ageMs > 15 * 60 * 1000) {
-    staleEl.style.display = 'block';
-    staleEl.textContent = '⚠ Data is ' + Math.round(ageMs/60000) + ' min old — the live agent may not be running';
-  } else {
-    staleEl.style.display = 'none';
-  }
+  if (window.SCOUT_UI && data.generated) SCOUT_UI.updated(new Date(data.generated.endsWith('Z') ? data.generated : data.generated + 'Z'));
 
   // Run info
   var genStr = '';
@@ -525,7 +460,7 @@ function renderScoreboard(data) {
     genStr = d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
   } catch(e) {}
   document.getElementById('run-info').textContent =
-    shift + ' shift \xb7 ' + (data.associates||[]).length + ' associates \xb7 updated ' + genStr;
+    shift + ' shift \xb7 ' + (data.associates||[]).length + ' associates';
   document.getElementById('card-meta').textContent =
     (data.associates||[]).length + ' receivers';
 

@@ -40,12 +40,23 @@
     return valid(t) ? t : 'dark';
   }
 
+  // light or dark from the page's real background (themes differ a little page to page)
+  function pageIsLight() {
+    var els = [document.body, document.documentElement];
+    for (var i = 0; i < els.length; i++) {
+      var m = (getComputedStyle(els[i]).backgroundColor || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+      if (m && (m[4] === undefined || Number(m[4]) > 0.1)) return (0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3]) > 150;
+    }
+    return null;
+  }
+
   function applyTheme(t, save) {
     if (!valid(t)) t = 'dark';
     if (save) store(THEME_KEY, t);
     if (opts && opts.applyTheme) { try { opts.applyTheme(t); } catch (e) { console.warn('[scout_ui] applyTheme', e); } }
     if (barEl) {
-      barEl.classList.toggle('sui-light', !!LIGHT_THEMES[t]);
+      var light = pageIsLight();
+      barEl.classList.toggle('sui-light', light == null ? !!LIGHT_THEMES[t] : light);
       var lbl = barEl.querySelector('.sui-theme-label');
       if (lbl) lbl.textContent = label(t);
       var items = barEl.querySelectorAll('.sui-theme-opt');

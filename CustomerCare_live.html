@@ -3,6 +3,7 @@
 <head>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
+<script src="scout_ui.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CC Pick List v1.0 -- DC499</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,10 +31,17 @@
     --green:#4ade80;--amber:#fbbf24;--red:#f87171;
     --box-green:#22c55e;--box-amber:#f59e0b;--box-red:#ef4444;--box-grey:#6b7280;
   }
-  [data-theme="pastel"]{
+  [data-theme="pastel"],[data-theme="remi"]{
     --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
     --text:#e8e4f8;--text-muted:#9b9aaa;--text-hint:#565670;
     --accent:#7ecec4;--accent-bg:#152e2c;--accent-muted:#7ecec4;
+    --green:#86efac;--amber:#fde68a;--red:#fca5a5;
+    --box-green:#34d399;--box-amber:#fbbf24;--box-red:#f87171;--box-grey:#6b7280;
+  }
+  [data-theme="remi"]{
+    --bg:#0e0b18;--surface:#16112a;--surface2:#1e1838;--border:#2e2550;--border-light:#1e1838;--border-mid:#3a3060;
+    --text:#e8e0f8;--text-muted:#9880cc;--text-hint:#6a5890;
+    --accent:#8ee8de;--accent-bg:#2a1850;--accent-muted:#8ee8de;
     --green:#86efac;--amber:#fde68a;--red:#fca5a5;
     --box-green:#34d399;--box-amber:#fbbf24;--box-red:#f87171;--box-grey:#6b7280;
   }
@@ -69,32 +77,6 @@
 
   /* TOP BAR */
   .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:12px;flex-wrap:wrap;}
-  .top-left{display:flex;flex-direction:column;gap:3px;}
-  .top-eyebrow{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.12em;}
-  .top-title{display:flex;align-items:center;gap:8px;font-size:21px;font-weight:900;color:var(--text);line-height:1.1;}
-  .ver-badge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;background:var(--accent-bg);color:var(--accent);letter-spacing:0.04em;}
-  .top-sub{font-size:11px;font-weight:600;color:var(--text-hint);margin-top:1px;}
-  .top-right{display:flex;align-items:center;gap:6px;}
-
-  /* BUTTONS */
-  .icon-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;border:0.5px solid var(--border);background:none;cursor:pointer;color:var(--text-muted);font-size:15px;transition:background 0.12s,color 0.12s;}
-  .icon-btn:hover{background:var(--surface2);color:var(--text);}
-  .pill-btn{font-family:'Nunito',system-ui,sans-serif;font-size:11px;font-weight:700;padding:4px 13px;border:0.5px solid var(--border);border-radius:20px;background:var(--surface);cursor:pointer;color:var(--text-muted);white-space:nowrap;transition:background 0.12s,color 0.12s,border-color 0.12s;}
-  .pill-btn:hover{background:var(--surface2);}
-  .pill-btn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent-muted);}
-
-  /* THEME PICKER */
-  .theme-picker{position:relative;}
-  .theme-btn{display:flex;align-items:center;gap:5px;font-family:'Nunito',system-ui,sans-serif;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:7px;padding:4px 10px;white-space:nowrap;}
-  .theme-btn:hover{background:var(--surface2);}
-  .theme-chevron{font-size:9px;opacity:0.6;transition:transform 0.15s;}
-  .theme-picker.open .theme-chevron{transform:rotate(180deg);}
-  .theme-menu{display:none;position:absolute;top:calc(100% + 5px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;overflow:hidden;min-width:110px;box-shadow:0 8px 24px rgba(0,0,0,0.28);z-index:300;}
-  .theme-picker.open .theme-menu{display:block;}
-  .theme-opt{font-family:'Nunito',system-ui,sans-serif;display:block;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--text-muted);}
-  .theme-opt:hover{background:var(--surface2);}
-  .theme-opt.active{color:var(--accent);}
-
   /* UPLOAD ZONE */
   .upload-zone{border:2px dashed var(--border-mid);border-radius:14px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;background:var(--surface);}
   .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--accent-bg);}
@@ -149,11 +131,11 @@
   /* TIMEFRAME BADGE */
   .tf-badge{display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;}
   .tf-standard{background:#e5e7eb;color:#374151;}
-  [data-theme="dark"] .tf-standard,[data-theme="solid"] .tf-standard,[data-theme="pastel"] .tf-standard{background:#374151;color:#d1d5db;}
+  [data-theme="dark"] .tf-standard,[data-theme="solid"] .tf-standard,[data-theme="pastel"] .tf-standard,[data-theme="remi"] .tf-standard{background:#374151;color:#d1d5db;}
   .tf-twobd{background:#fef3c7;color:#92400e;}
-  [data-theme="dark"] .tf-twobd,[data-theme="solid"] .tf-twobd,[data-theme="pastel"] .tf-twobd{background:#422006;color:#fde68a;}
+  [data-theme="dark"] .tf-twobd,[data-theme="solid"] .tf-twobd,[data-theme="pastel"] .tf-twobd,[data-theme="remi"] .tf-twobd{background:#422006;color:#fde68a;}
   .tf-rush{background:#fee2e2;color:#991b1b;}
-  [data-theme="dark"] .tf-rush,[data-theme="solid"] .tf-rush,[data-theme="pastel"] .tf-rush{background:#450a0a;color:#fca5a5;}
+  [data-theme="dark"] .tf-rush,[data-theme="solid"] .tf-rush,[data-theme="pastel"] .tf-rush,[data-theme="remi"] .tf-rush{background:#450a0a;color:#fca5a5;}
   .tf-unknown{background:var(--surface2);color:var(--text-muted);}
 
   /* NORDY BADGE */
@@ -162,10 +144,10 @@
   .nb-inf{background:#ede9fe;color:#4c1d95;}
   .nb-mem{background:#d1fae5;color:#065f46;}
   .nb-non{background:#f3f4f6;color:#6b7280;}
-  [data-theme="dark"] .nb-amb,[data-theme="solid"] .nb-amb,[data-theme="pastel"] .nb-amb{background:#422006;color:#fde68a;}
-  [data-theme="dark"] .nb-inf,[data-theme="solid"] .nb-inf,[data-theme="pastel"] .nb-inf{background:#2e1065;color:#c4b5fd;}
-  [data-theme="dark"] .nb-mem,[data-theme="solid"] .nb-mem,[data-theme="pastel"] .nb-mem{background:#022c22;color:#6ee7b7;}
-  [data-theme="dark"] .nb-non,[data-theme="solid"] .nb-non,[data-theme="pastel"] .nb-non{background:#1f2937;color:#9ca3af;}
+  [data-theme="dark"] .nb-amb,[data-theme="solid"] .nb-amb,[data-theme="pastel"] .nb-amb,[data-theme="remi"] .nb-amb{background:#422006;color:#fde68a;}
+  [data-theme="dark"] .nb-inf,[data-theme="solid"] .nb-inf,[data-theme="pastel"] .nb-inf,[data-theme="remi"] .nb-inf{background:#2e1065;color:#c4b5fd;}
+  [data-theme="dark"] .nb-mem,[data-theme="solid"] .nb-mem,[data-theme="pastel"] .nb-mem,[data-theme="remi"] .nb-mem{background:#022c22;color:#6ee7b7;}
+  [data-theme="dark"] .nb-non,[data-theme="solid"] .nb-non,[data-theme="pastel"] .nb-non,[data-theme="remi"] .nb-non{background:#1f2937;color:#9ca3af;}
 
   /* EXPAND ROWS */
   .expand-row{display:none;}
@@ -218,34 +200,9 @@
 <div class="container">
 
   <!-- TOP BAR -->
-  <div class="top-bar">
-    <div class="top-left">
-      <div class="top-eyebrow">DC499 — Customer Care</div>
-      <div class="top-title">
-        <span>CC Pick List</span>
-        <span class="ver-badge">v1.0</span>
-      </div>
-      <div class="top-sub" id="fileLabel">Upload a 489 GWP Replacements XLSX to get started</div>
-    </div>
-    <div class="top-right">
-      <button class="icon-btn" onclick="clearData()" title="Clear / Upload new file" id="clearBtn" style="display:none;">&#10005;</button>
-      <div class="theme-picker" id="themePicker">
-        <button class="theme-btn" onclick="toggleThemeMenu()">
-          Theme <span class="theme-chevron">&#9660;</span>
-        </button>
-        <div class="theme-menu" id="themeMenu">
-          <div class="theme-opt" onclick="setTheme('')">Default</div>
-          <div class="theme-opt" onclick="setTheme('dark')">Dark</div>
-          <div class="theme-opt" onclick="setTheme('solid')">Solid</div>
-          <div class="theme-opt" onclick="setTheme('pastel')">Pastel</div>
-          <div class="theme-opt" onclick="setTheme('starr')">Starr</div>
-          <div class="theme-opt" onclick="setTheme('carrie')">Carrie ☁</div>
-          <div class="theme-opt" onclick="setTheme('light')">Light</div>
-        </div>
-      </div>
-      <button class="icon-btn" onclick="goBack()" title="Back to menu">&#8592;</button>
-    </div>
-  </div>
+  <div id="scout-bar"></div>
+  <div class="top-sub" id="fileLabel">Upload a 489 GWP Replacements XLSX to get started</div>
+  <button class="icon-btn" onclick="clearData()" title="Clear / Upload new file" id="clearBtn" style="display:none;">&#10005;</button>
 
   <!-- UPLOAD ZONE (shown when no data) -->
   <div id="uploadZone" class="upload-zone" onclick="document.getElementById('fileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
@@ -345,15 +302,9 @@
 <script>
 // ── THEME ────────────────────────────────────────────────
 const THEME_KEY = 'cc_picklist_theme_v1';
-function setTheme(t){
-  document.body.dataset.theme = t;
-  localStorage.setItem(THEME_KEY, t);
-  document.querySelectorAll('.theme-opt').forEach(o => o.classList.toggle('active', o.textContent.toLowerCase().replace('default','').split(' ')[0] === t));
-  document.getElementById('themePicker').classList.remove('open');
-}
-function toggleThemeMenu(){document.getElementById('themePicker').classList.toggle('open');}
-document.addEventListener('click', e => { if(!e.target.closest('#themePicker')) document.getElementById('themePicker').classList.remove('open'); });
-(function(){ const t = localStorage.getItem(THEME_KEY)||''; setTheme(t); })();
+function setTheme(t){ document.body.dataset.theme = t; }
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Customer Care",title:"CC Pick List",version:"v1.0",sub:"fileLabel",actions:["clearBtn"]}, { oldThemeKey: THEME_KEY, applyTheme: setTheme }));
+else setTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY) || 'dark');
 
 // ── NAV ──────────────────────────────────────────────────
 function goBack(){ window.location.href = 'Menu_v2.0.html'; }

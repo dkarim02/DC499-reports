@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="scout_file_mode.js"></script>
+<script src="scout_ui.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,9 +33,16 @@
     --green:#22c55e;--green-bg:#052e16;--amber:#FFB74D;--amber-bg:#2a1f00;--red:#EF9A9A;--red-bg:#2d0a0a;
     --purple:#a78bfa;--purple-bg:#1e1040;--blue:#5B9BD5;--blue-bg:#0d2340;--teal:#22d3ee;--teal-bg:#0a2830;
   }
-  [data-theme="pastel"]{
+  [data-theme="pastel"],[data-theme="remi"]{
     --bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;
     --text:#d4d0e8;--text-muted:#8b8aaa;--text-hint:#565670;--bar-bg:#3c3f52;
+    --accent:#fde68a;--accent-bg:#2e2410;
+    --green:#86efac;--green-bg:#162b22;--amber:#fdba74;--amber-bg:#2e2010;--red:#fca5a5;--red-bg:#2e1a1a;
+    --purple:#c4b5fd;--purple-bg:#1e1840;--blue:#93c5fd;--blue-bg:#152238;--teal:#67e8f9;--teal-bg:#0c2830;
+  }
+  [data-theme="remi"]{
+    --bg:#0e0b18;--surface:#16112a;--surface2:#1e1838;--border:#2e2550;--border-light:#1e1838;--border-mid:#3a3060;
+    --text:#e8e0f8;--text-muted:#9880cc;--text-hint:#6a5890;--bar-bg:#2e2550;
     --accent:#fde68a;--accent-bg:#2e2410;
     --green:#86efac;--green-bg:#162b22;--amber:#fdba74;--amber-bg:#2e2010;--red:#fca5a5;--red-bg:#2e1a1a;
     --purple:#c4b5fd;--purple-bg:#1e1840;--blue:#93c5fd;--blue-bg:#152238;--teal:#67e8f9;--teal-bg:#0c2830;
@@ -77,24 +85,6 @@
   h1{font-size:20px;font-weight:500;margin-bottom:2px;}
   .subtitle{font-size:14px;color:var(--text-muted);}
   .top-bar-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-
-  /* ── theme picker ── */
-  .theme-picker{position:relative;}
-  .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
-  .theme-btn:hover{background:var(--surface2);}
-  .theme-btn-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
-  .theme-picker.open .theme-btn-chevron{transform:rotate(180deg);}
-  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;min-width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:200;}
-  .theme-picker.open .theme-menu{display:block;}
-  .theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
-  .theme-option:hover{background:var(--surface2);color:var(--text);}
-  .theme-option.active{color:var(--accent);}
-
-  /* ── live dot / header ── */
-  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;margin-right:5px;animation:livepulse 2s infinite;flex-shrink:0;}
-  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.35;transform:scale(0.75);}}
-  .header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:12px;flex-wrap:wrap;}
-  .run-time{display:flex;align-items:center;font-size:12px;color:var(--text-hint);}
 
   /* ── tiles ── */
   .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.25rem;}
@@ -184,34 +174,8 @@
 <body>
 <div class="container">
 
-  <div class="top-bar">
-    <div>
-      <div class="dept-label">DC499 — Item Prep</div>
-      <h1>Container Watch</h1>
-      <div class="subtitle">Containers to research before they end up on the CUP report</div>
-    </div>
-    <div class="top-bar-right">
-      <div class="theme-picker" id="themePicker">
-        <button class="theme-btn" onclick="toggleThemeMenu()">
-          <span id="themeLabel">Theme</span>
-          <span class="theme-btn-chevron">&#9660;</span>
-        </button>
-        <div class="theme-menu">
-          <div class="theme-option" onclick="setTheme('light')">Light</div>
-          <div class="theme-option" onclick="setTheme('dark')">Dark</div>
-          <div class="theme-option" onclick="setTheme('solid')">Solid</div>
-          <div class="theme-option" onclick="setTheme('pastel')">Pastel</div>
-          <div class="theme-option" onclick="setTheme('starr')">Starr</div>
-          <div class="theme-option" onclick="setTheme('carrie')">Carrie ☁</div>
-          <div class="theme-option" onclick="setTheme('scout')">Scout</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="header-row">
-    <div class="run-time"><span class="live-dot"></span><span id="runTime">Loading...</span></div>
-  </div>
+  <div id="scout-bar"></div>
+  <div class="subtitle" id="cw-sub">Containers to research before they end up on the CUP report</div>
 
   <div class="metrics">
     <div class="metric t-fc" onclick="setTab('staging','P1-FC')">
@@ -261,25 +225,9 @@
 const THEME_KEY = 'container_watch_theme_v1';
 const THEME_NAMES = { light:'Light', dark:'Dark', solid:'Solid', pastel:'Pastel', starr:'Starr', carrie:'Carrie ☁', scout:'Scout' };
 
-function applyTheme(t) {
-  const entering = document.body.classList.contains('is-entering');
-  const exiting  = document.body.classList.contains('is-exiting');
-  document.documentElement.setAttribute('data-theme', t === 'light' ? '' : t);
-  document.body.className = '';
-  if (entering) document.body.classList.add('is-entering');
-  if (exiting)  document.body.classList.add('is-exiting');
-  document.getElementById('themeLabel').textContent = THEME_NAMES[t] || 'Theme';
-  document.querySelectorAll('.theme-option').forEach(el => {
-    el.classList.toggle('active', el.textContent.toLowerCase().split(' ')[0] === t);
-  });
-}
-function setTheme(t) { localStorage.setItem(THEME_KEY, t); applyTheme(t); closeThemeMenu(); }
-function toggleThemeMenu() { document.getElementById('themePicker').classList.toggle('open'); }
-function closeThemeMenu()  { document.getElementById('themePicker').classList.remove('open'); }
-document.addEventListener('click', e => {
-  if (!document.getElementById('themePicker').contains(e.target)) closeThemeMenu();
-});
-applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+function applyTheme(t) { document.documentElement.setAttribute('data-theme', t === 'light' ? '' : t); }
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Item Prep",title:"Container Watch",version:"v1.0",sub:"cw-sub"}, { oldThemeKey: THEME_KEY, applyTheme: applyTheme }));
+else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY) || 'dark');
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 function esc(s) {
@@ -479,7 +427,7 @@ async function loadData() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     data = await res.json();
     const pdt = new Date(data.generated).toLocaleTimeString('en-US', { ...PT, hour12: true, hour: 'numeric', minute: '2-digit' });
-    document.getElementById('runTime').textContent = `Updated ${pdt} PT`;
+    if (window.SCOUT_UI) SCOUT_UI.updated(new Date(data.generated));
 
     const s = data.summary;
     document.getElementById('m-fc').textContent = s.fc;
@@ -496,7 +444,6 @@ async function loadData() {
     render();
   } catch (e) {
     document.getElementById('tbody').innerHTML = `<tr><td class="empty">Could not load data — ${esc(e.message)}</td></tr>`;
-    document.getElementById('runTime').textContent = 'Data unavailable';
   }
 }
 
