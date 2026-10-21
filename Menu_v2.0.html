@@ -212,6 +212,14 @@ body.light .shift-dot.inactive,body.carrie .shift-dot.inactive { background: #bb
   font-size: 11px; color: #3a3a3a; font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }
+
+/* Status light — SCOUT Team folder only (Status.html lives there, not here) */
+.status-pill { text-decoration: none; cursor: pointer; transition: border-color .2s; }
+.status-pill:hover { border-color: rgba(255,255,255,0.25); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #64748b; flex-shrink: 0; }
+.status-dot.g, .status-dot.s { background: #22c55e; }
+.status-dot.a { background: #f59e0b; }
+.status-dot.r { background: #ef4444; animation: pulse-dot 2.2s ease-in-out infinite; }
 body.light .header-clock,body.carrie .header-clock { color: #999; }
   body.starr .header-clock{ color: #999; }
 
@@ -594,6 +602,10 @@ body.carrie .menu-theme-option:hover { background: rgba(11,107,203,0.08); color:
         <span id="shift-label">—</span>
       </div>
       <div class="header-clock" id="clock"></div>
+      <a class="shift-pill status-pill" id="status-pill" href="Status.html" style="display:none"
+         onclick="openApp('Status.html'); return false;" title="Are the reports up to date?">
+        <span class="status-dot" id="status-dot"></span><span id="status-label">Status</span>
+      </a>
     </div>
   </div>
 
@@ -831,6 +843,31 @@ function loadWhatsNew() {
     })
     .catch(function() { el.textContent = 'Could not load updates.'; });
 }
+/* ── STATUS LIGHT ────────────────────────────────────────────────
+   Only in the SCOUT Team folder: that is where the laptop writes the status file
+   and Status.html. Hidden on GitHub Pages, localhost and SCOUT Live. */
+(function () {
+  var dir = decodeURIComponent(location.pathname).replace(/\/[^\/]*$/, '');
+  if (location.protocol !== 'file:' || !/SCOUT Team$/i.test(dir)) return;
+  var s = document.createElement('script');
+  s.src = 'scout_status_check.js';
+  s.onload = function () {
+    var C = window.SCOUT_STATUS_CHECK;
+    function run() {
+      C.check().then(function (res) {
+        var sum = C.summary(res);
+        document.getElementById('status-dot').className = 'status-dot ' + sum.state;
+        document.getElementById('status-label').textContent = sum.text;
+        document.getElementById('status-pill').title = sum.long + ' Click for details.';
+        document.getElementById('status-pill').style.display = '';
+      }).catch(function () {});
+    }
+    run();
+    setInterval(run, 120000);
+  };
+  document.head.appendChild(s);
+})();
+
 function formatDate(iso) {
   try { return new Date(iso + 'T12:00:00').toLocaleDateString([], {year:'numeric',month:'long',day:'numeric'}); }
   catch(e) { return iso; }
