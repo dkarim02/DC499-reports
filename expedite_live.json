@@ -1,11 +1,11 @@
 {
-  "generated": "2026-10-21T19:36:04",
+  "generated": "2026-10-21T19:38:55",
   "facility": "499",
   "shift_label": "1st shift",
   "shift_start": "2026-10-21 10:00:00",
-  "open_count": 720,
+  "open_count": 730,
   "open_1dd": 77,
-  "open_2dd": 643,
+  "open_2dd": 653,
   "shipped_count": 523,
   "shipped_1dd": 56,
   "shipped_2dd": 467,
@@ -2507,7 +2507,7 @@
     },
     {
       "order_id": "1067176225-50001",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-21T08:08:34",
       "ship_by_utc": "2026-10-21T18:00:00",
@@ -2516,11 +2516,11 @@
       "olpns": [
         "00499000000001157523"
       ],
-      "olpn_status": "1000",
+      "olpn_status": "7200",
       "olpn_location": null,
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -3987,7 +3987,7 @@
     },
     {
       "order_id": "1067206718-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-21T15:11:44",
       "ship_by_utc": "2026-10-21T18:00:00",
@@ -5570,8 +5570,8 @@
         "00499000000001157930"
       ],
       "olpn_status": "7200",
-      "olpn_location": null,
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A019",
+      "olpn_pallet": "00105499100000507953",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -8111,12 +8111,12 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "7000",
+      "pick_stage": null,
       "due_utc": "2026-10-21T19:00:00",
       "trace": {
-        "stage": "picking",
+        "stage": "in_tote",
         "units": 4,
-        "picked": 3,
+        "picked": 4,
         "sorted": 0,
         "cubby_slot": null,
         "cubby_lpn": null,
@@ -8152,15 +8152,19 @@
             "tote": "T000008847",
             "at": "2026-10-21T19:35:31",
             "sorted": false,
-            "tote_loc": null,
+            "tote_loc": "C1-PM-01",
             "tote_has": true
           },
           {
             "item": "2327607",
             "shelf": "F2C0292G05",
             "task": "WRPICK0000299092",
-            "st": "open",
-            "task_status": "7000"
+            "st": "picked",
+            "tote": "T000008847",
+            "at": "2026-10-21T19:37:48",
+            "sorted": false,
+            "tote_loc": "C1-PM-01",
+            "tote_has": true
           }
         ]
       }
@@ -8983,9 +8987,9 @@
       "pick_stage": "7000",
       "due_utc": "2026-10-21T19:00:00",
       "trace": {
-        "stage": "picking",
+        "stage": "in_tote",
         "units": 3,
-        "picked": 2,
+        "picked": 3,
         "sorted": 0,
         "cubby_slot": null,
         "cubby_lpn": null,
@@ -9017,8 +9021,12 @@
             "item": "9683710",
             "shelf": "F2C03104G04",
             "task": "WRPICK0000299092",
-            "st": "open",
-            "task_status": "7000"
+            "st": "picked",
+            "tote": "T000008847",
+            "at": "2026-10-21T19:36:18",
+            "sorted": false,
+            "tote_loc": "C1-PM-01",
+            "tote_has": true
           }
         ]
       }
@@ -9203,7 +9211,7 @@
     },
     {
       "order_id": "1067217390-50005",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "1DD",
       "placed_utc": "2026-10-21T16:16:39",
       "ship_by_utc": "2026-10-21T19:00:00",
@@ -9212,35 +9220,13 @@
       "olpns": [
         "00499000000001157932"
       ],
-      "olpn_status": "1000",
+      "olpn_status": "7200",
       "olpn_location": null,
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
-      "due_utc": "2026-10-21T19:00:00",
-      "trace": {
-        "stage": "at_pack",
-        "units": 1,
-        "picked": 1,
-        "sorted": 0,
-        "cubby_slot": null,
-        "cubby_lpn": null,
-        "cubby_lpn_loc": null,
-        "lines": [
-          {
-            "item": "A7865627",
-            "shelf": "F1D0514B02",
-            "task": "WRPICK0000298982",
-            "st": "picked",
-            "tote": "T000009829",
-            "at": "2026-10-21T17:19:25",
-            "sorted": false,
-            "tote_loc": "D1-SN-01",
-            "tote_has": true
-          }
-        ]
-      }
+      "due_utc": "2026-10-21T19:00:00"
     },
     {
       "order_id": "1067218333-50001",
@@ -9309,13 +9295,13 @@
       "pick_stage": null,
       "due_utc": "2026-10-21T19:00:00",
       "trace": {
-        "stage": "cubby_out",
+        "stage": "at_pack",
         "units": 2,
         "picked": 2,
         "sorted": 2,
         "cubby_slot": "S1-PW-0502B01",
         "cubby_lpn": "S100003014",
-        "cubby_lpn_loc": null,
+        "cubby_lpn_loc": "D1-SN-01",
         "lines": [
           {
             "item": "39911711",
@@ -11069,7 +11055,7 @@
     },
     {
       "order_id": "1067171958-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-21T06:04:42",
       "ship_by_utc": "2026-10-22T18:00:00",
@@ -11162,7 +11148,7 @@
     },
     {
       "order_id": "1067176069-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-21T08:01:15",
       "ship_by_utc": "2026-10-22T18:00:00",
@@ -11171,11 +11157,11 @@
       "olpns": [
         "00499000000001157517"
       ],
-      "olpn_status": "1000",
-      "olpn_location": null,
+      "olpn_status": "7200",
+      "olpn_location": "O1-WB-0101A03",
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -11295,7 +11281,7 @@
     },
     {
       "order_id": "1067185519-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-21T12:21:05",
       "ship_by_utc": "2026-10-22T18:00:00",
@@ -11304,11 +11290,11 @@
       "olpns": [
         "00499000000001157591"
       ],
-      "olpn_status": "1000",
-      "olpn_location": null,
+      "olpn_status": "7200",
+      "olpn_location": "O1-WB-0101A03",
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -12944,7 +12930,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": null,
       "due_utc": null
     },
     {
@@ -12997,8 +12983,8 @@
         "00499000000001158162"
       ],
       "olpn_status": "7200",
-      "olpn_location": null,
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A019",
+      "olpn_pallet": "00105499100000507953",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -13424,7 +13410,7 @@
     },
     {
       "order_id": "1067231016-50001",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-21T17:40:24",
       "ship_by_utc": "2026-10-22T18:00:00",
@@ -13433,11 +13419,11 @@
       "olpns": [
         "00499000000001158250"
       ],
-      "olpn_status": "1000",
+      "olpn_status": "7200",
       "olpn_location": null,
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -13481,7 +13467,7 @@
     },
     {
       "order_id": "1067231623-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-21T17:43:57",
       "ship_by_utc": "2026-10-22T18:00:00",
@@ -13490,11 +13476,11 @@
       "olpns": [
         "00499000000001158212"
       ],
-      "olpn_status": "1000",
+      "olpn_status": "7200",
       "olpn_location": null,
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -14781,6 +14767,142 @@
       "due_utc": null
     },
     {
+      "order_id": "1067248936-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:28:40",
+      "ship_by_utc": "2026-10-22T18:00:00",
+      "deliver_by_utc": "2026-10-24T03:00:00",
+      "quantity": 3,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067249093-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:29:31",
+      "ship_by_utc": "2026-10-22T18:00:00",
+      "deliver_by_utc": "2026-10-24T03:00:00",
+      "quantity": 1,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067249074-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:29:25",
+      "ship_by_utc": "2026-10-22T18:00:00",
+      "deliver_by_utc": "2026-10-24T03:00:00",
+      "quantity": 1,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067248872-50001",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:28:17",
+      "ship_by_utc": "2026-10-22T18:00:00",
+      "deliver_by_utc": "2026-10-24T03:00:00",
+      "quantity": 2,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067248895-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:28:24",
+      "ship_by_utc": "2026-10-22T18:00:00",
+      "deliver_by_utc": "2026-10-25T03:00:00",
+      "quantity": 1,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067249069-50001",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:29:23",
+      "ship_by_utc": "2026-10-22T18:00:00",
+      "deliver_by_utc": "2026-10-24T03:00:00",
+      "quantity": 1,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067249301-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:30:51",
+      "ship_by_utc": "2026-10-22T18:00:00",
+      "deliver_by_utc": "2026-10-25T03:00:00",
+      "quantity": 1,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067249433-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:31:46",
+      "ship_by_utc": "2026-10-22T18:00:00",
+      "deliver_by_utc": "2026-10-24T03:00:00",
+      "quantity": 2,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
       "order_id": "1067247063-50001",
       "order_status": "2090",
       "service_level": "1DD",
@@ -15702,6 +15824,40 @@
       "order_status": "1000",
       "service_level": "2DD",
       "placed_utc": "2026-10-21T19:27:35",
+      "ship_by_utc": "2026-10-23T18:00:00",
+      "deliver_by_utc": "2026-10-25T03:00:00",
+      "quantity": 2,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067249168-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:30:03",
+      "ship_by_utc": "2026-10-23T18:00:00",
+      "deliver_by_utc": "2026-10-25T03:00:00",
+      "quantity": 1,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067249540-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-21T19:32:29",
       "ship_by_utc": "2026-10-23T18:00:00",
       "deliver_by_utc": "2026-10-25T03:00:00",
       "quantity": 2,
