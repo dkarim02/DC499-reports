@@ -4031,7 +4031,7 @@ fetchUntaskedData();
 
 function utFlaggedCount(d) {
   var s = d.summary || {};
-  return (s.short_shelf || 0) + (s.wont_fit || 0) + (s.replen_loop || 0) + (s.has_stock || 0) + (s.ghosts || 0) + (s.no_task_made || 0);
+  return (s.short_shelf || 0) + (s.wont_fit || 0) + (s.replen_loop || 0) + (s.has_stock || 0) + (s.ghosts || 0) + (s.case_pick || 0) + (s.no_task_made || 0);
 }
 // The tab itself has no bubble (keeps the tab bar uniform); the count lives on the Stuck orders button
 function utUpdateTabCount(d) {
@@ -4047,6 +4047,7 @@ var UT_LANES = [
   { key: 'loop',  name: 'Replen loop',            owner: 'Floor — check shelf space', color: 'var(--amber)' },
   { key: 'stock', name: 'Stock but no task',      owner: 'Check batch release',       color: 'var(--text-muted)', hideEmpty: true },
   { key: 'ghost', name: 'Shipped, still holding', owner: 'Send to ICQA',              color: 'var(--accent)' },
+  { key: 'case',  name: 'Waiting on a reserve case', owner: 'Floor — pick the case from reserve', color: 'var(--alloc)', hideEmpty: true },
   { key: 'ntm',   name: 'No task made',           owner: 'Send to MA support',        color: 'var(--xpd)' },
 ];
 var utLane = localStorage.getItem('ut_lane_v1') || 'all';
@@ -4291,7 +4292,7 @@ function renderUntaskedData(d) {
   var ids    = function(list) { return list.map(function(o) { return o.order_id; }); };
   var groups = {
     short: byCat('short_shelf'), fit: byCat('wont_fit'), loop: byCat('replen_loop'), stock: byCat('has_stock'),
-    ghost: d.ghosts || [], ntm: d.no_task_made || [],
+    ghost: d.ghosts || [], case: d.case_pick || [], ntm: d.no_task_made || [],
   };
 
   // Lane filters
@@ -4385,6 +4386,38 @@ function renderUntaskedData(d) {
               fmt(l.on_hand) + ' on shelf, ' + fmt(l.allocated) + ' held</div>';
           }).join('') + '</div>' + utAgeHtml(g.mins) + '</div>';
       }).join(''));
+  }
+
+  if (show('case') && groups.case.length) {
+    // One block per reserve case (several orders often share one), oldest open task first
+    var caseMap = {}, caseList = [];
+    groups.case.forEach(function(n) {
+      n.lines.forEach(function(l) {
+        (l.cases || []).forEach(function(c) {
+          var k = c.lpn + '|' + c.task_id;
+          if (!caseMap[k]) { caseMap[k] = { c: c, item: l, orders: [] }; caseList.push(caseMap[k]); }
+          if (caseMap[k].orders.indexOf(n) < 0) caseMap[k].orders.push(n);
+        });
+      });
+    });
+    caseList.sort(function(a, b) { return a.c.since < b.c.since ? -1 : 1; });
+    var caseBody = caseList.map(function(x) {
+      var mins = Math.max(0, Math.round((Date.now() - new Date(x.c.since).getTime()) / 6e4));
+      return '<div class="ut-shelf"><div class="ut-item"><span class="ut-loc">' + escHtml(x.c.loc || '—') + '</span> · case <b>' + escHtml(x.c.lpn || '—') + '</b> · ' + utItem(x.item) + '</div>' +
+        '<div class="ut-shelf-facts"><span><b>' + fmt(x.c.units) + '</b> in the case</span>' +
+        '<span>task <b>' + escHtml(x.c.task_id) + '</b> open since ' + utTime(x.c.since) + ' (' + utAge(mins) + ')</span>' +
+        '<span><b>' + fmt(x.orders.length) + '</b> ' + (x.orders.length === 1 ? 'order' : 'orders') + ' waiting</span></div></div>' +
+        x.orders.map(function(n) {
+          return '<div class="ut-row nested"><span></span>' + utSvc(n.svc) +
+            '<div><div class="ut-oid">' + escHtml(n.order_id) + '</div><div class="ut-osub">' + (n.single ? 'Single' : 'Multi') + '</div></div><span></span>' +
+            '<div class="ut-what"><div class="ut-item ut-desc">released ' + (fmtPdt(n.released) || '—') + '</div></div>' +
+            utAgeHtml(n.mins) + '</div>';
+        }).join('');
+    }).join('');
+    html += utSection(lane('case'),
+      utPlural(groups.case.length, 'order', 'orders') + ' · ' + utPlural(caseList.length, 'case', 'cases'),
+      'The pick shelf was empty when these released, so MA sent the pick to a whole case in reserve. The task is open but nobody has picked it. Pick the case, or cancel the task in MA so the orders re-allocate to the shelf once it\'s filled.',
+      ids(groups.case), caseBody);
   }
 
   if (show('ntm')) {

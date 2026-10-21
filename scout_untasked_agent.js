@@ -7,6 +7,7 @@
  *   replen_loop   — same, but the replen for that shelf keeps getting cancelled
  *   has_stock     — every shelf has stock and there's still no task after the grace period
  *   ghost         — order already shipped/cancelled but still holds stock on the shelf
+ *   case_pick     — released as a whole reserve case pick (shelf was empty); the case task is open, not picked yet
  *   no_task_made  — allocation was released but a task was never created (system glitch)
  * Allocations newer than GRACE_MIN are normal (waiting for the next batch release) — counted, not flagged.
  * Writes untasked_live.json.
@@ -152,7 +153,7 @@ WHERE a.FACILITY_ID='${FACILITY}' AND a.STATUS IN (${ALLOC_3000}) AND o.ORDER_TY
 // (A cancelled-only task = short-pick leftover, which re-allocates on its own; not flagged.)
 function sqlNoTaskMade(cutoff) {
   return `
-SELECT a.ALLOCATION_ID, a.ORDER_ID, a.TYPE_ID, a.ITEM_ID, a.LOCATION_ID, a.QUANTITY, a.UPDATED_TIMESTAMP,
+SELECT a.ALLOCATION_ID, a.ORDER_ID, a.TYPE_ID, a.ITEM_ID, a.LOCATION_ID, a.QUANTITY, a.UPDATED_TIMESTAMP, a.BULK_GROUP_ID,
   o.MINIMUM_STATUS, o.MAXIMUM_STATUS, o.SINGLE_LINE_ORDER, o.DESIGNATED_SERVICE_LEVEL_ID AS svc, ol.DESCRIPTION
 FROM default_dcinventory.DCI_ALLOCATION a
 JOIN default_dcorder.DCO_ORDER o ON o.ORDER_ID=a.ORDER_ID AND o.FACILITY_ID='${FACILITY}'
@@ -162,6 +163,25 @@ WHERE a.FACILITY_ID='${FACILITY}' AND a.STATUS IN (${ALLOC_5000})
   AND a.UPDATED_TIMESTAMP < '${cutoff}'
   AND NOT EXISTS (SELECT 1 FROM default_task.TSK_TASK_DETAIL td
                   WHERE td.ALLOCATION_ID=a.ALLOCATION_ID AND td.FACILITY_ID='${FACILITY}')`.trim();
+}
+
+// Reserve case picks behind a "no task" order. When the Ecom shelf is empty at singles release, MA
+// allocates a whole reserve case (TYPE SINGLES_PICK, no ORDER_ID, FULL_CONTAINER_ALLOCATED=1) and gives
+// each order a PACK allocation with no location. Same BULK_GROUP_ID + ITEM_ID links them; the pick task
+// hangs off the case allocation, so the order's own allocation never has a task row.
+// 10/20: 12 GWP orders on one 12-unit case at R1D0307A01, task open and never assigned since 11:06 AM.
+function sqlCaseAllocs(groups) {
+  return `
+SELECT ALLOCATION_ID, BULK_GROUP_ID, ITEM_ID, LOCATION_ID, INVENTORY_CONTAINER_ID, QUANTITY
+FROM default_dcinventory.DCI_ALLOCATION
+WHERE FACILITY_ID='${FACILITY}' AND ORDER_ID IS NULL AND STATUS IN (${ALLOC_5000})
+  AND BULK_GROUP_ID IN (${sqlList(groups)})`.trim();
+}
+function sqlCaseTasks(allocIds) {
+  return `
+SELECT ALLOCATION_ID, TASK_ID, STATUS, CREATED_TIMESTAMP
+FROM default_task.TSK_TASK_DETAIL
+WHERE FACILITY_ID='${FACILITY}' AND ALLOCATION_ID IN (${sqlList(allocIds)})`.trim();
 }
 
 // First time the order got stock, counting allocations MA has since cancelled. MA drops and
@@ -839,7 +859,36 @@ async function fetchUntasked(token) {
     const u = toIso(r.UPDATED_TIMESTAMP);
     if (u < n.released) n.released = u;
     n.lines.push({ item: r.ITEM_ID, desc: r.DESCRIPTION || '', gwp: isGwp(r.DESCRIPTION, r.ITEM_ID), loc: r.LOCATION_ID || null,
-                   units: num(r.QUANTITY), type: r.TYPE_ID });
+                   units: num(r.QUANTITY), type: r.TYPE_ID, bulk_group: r.BULK_GROUP_ID || null });
+  }
+
+  // Case pick: every line rides on a reserve case whose pick task is still open → not a missing task,
+  // the floor just hasn't picked the case. A done/cancelled case task (case picked, order never packed)
+  // stays in no_task_made.
+  const casePick = [];
+  const bulkGroups = [...new Set([...ntmMap.values()].flatMap(n => n.lines.map(l => l.bulk_group)).filter(Boolean))];
+  if (bulkGroups.length) {
+    const caseRows = await batched(token, bulkGroups, 25, sqlCaseAllocs, 'case allocation');
+    const taskRows = caseRows.length
+      ? await batched(token, caseRows.map(r => r.ALLOCATION_ID), 50, sqlCaseTasks, 'case task')
+      : [];
+    const openTask = {};   // case allocation → oldest open task
+    for (const t of taskRows) {
+      if (['8000', '9000'].includes(String(t.STATUS).split('.')[0])) continue;
+      const c = toIso(t.CREATED_TIMESTAMP), cur = openTask[t.ALLOCATION_ID];
+      if (!cur || c < cur.since) openTask[t.ALLOCATION_ID] = { task_id: t.TASK_ID, since: c };
+    }
+    const casesFor = l => caseRows
+      .filter(r => String(r.BULK_GROUP_ID) === String(l.bulk_group) && r.ITEM_ID === l.item && openTask[r.ALLOCATION_ID])
+      .map(r => ({ lpn: r.INVENTORY_CONTAINER_ID, loc: r.LOCATION_ID, units: num(r.QUANTITY), ...openTask[r.ALLOCATION_ID] }));
+    for (const [id, n] of ntmMap) {
+      const withCases = n.lines.map(l => ({ ...l, cases: casesFor(l) }));
+      if (!withCases.every(l => l.cases.length)) continue;
+      ntmMap.delete(id);
+      const since = withCases.flatMap(l => l.cases.map(c => c.since)).sort()[0];
+      casePick.push({ ...n, lines: withCases, task_since: since, mins: ageMin(n.released) });
+    }
+    casePick.sort(bySvcThenAge);
   }
   const noTaskMade = [...ntmMap.values()].map(n => ({ ...n, mins: ageMin(n.released) })).sort(bySvcThenAge);
 
@@ -861,21 +910,23 @@ async function fetchUntasked(token) {
       ghosts: ghosts.length,
       ghost_units: ghosts.reduce((t, g) => t + g.lines.reduce((u, l) => u + l.units, 0), 0),
       no_task_made: noTaskMade.length,
+      case_pick: casePick.length,
       waiting,
-      oldest_mins: Math.max(0, ...outOrders.map(o => o.mins), ...noTaskMade.map(n => n.mins)),
-      expedite: outOrders.filter(o => o.svc !== 'STD').length + noTaskMade.filter(n => n.svc !== 'STD').length,
+      oldest_mins: Math.max(0, ...outOrders.map(o => o.mins), ...noTaskMade.map(n => n.mins), ...casePick.map(n => n.mins)),
+      expedite: [...outOrders, ...noTaskMade, ...casePick].filter(o => o.svc !== 'STD').length,
     },
     orders: outOrders,
     shelves: outShelves,
     ghosts,
     no_task_made: noTaskMade,
+    case_pick: casePick,
   };
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output));
   const s = output.summary;
   console.log(`[${ts()}] ✓ untasked_live.json written in ${Math.round((Date.now() - t0) / 1000)}s — ` +
     `short shelf ${s.short_shelf} · won't fit ${s.wont_fit} · replen loop ${s.replen_loop} · has stock ${s.has_stock} · ` +
-    `ghosts ${s.ghosts} · no task made ${s.no_task_made} · waiting ${s.waiting}`);
+    `ghosts ${s.ghosts} · case pick ${s.case_pick} · no task made ${s.no_task_made} · waiting ${s.waiting}`);
   console.log(`[${ts()}] untasked_live.json ready — dc499_refresh will push on next cycle`);
 }
 
