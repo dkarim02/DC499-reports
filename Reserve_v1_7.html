@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="scout_file_mode.js"></script>
+<script src="scout_ui.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -75,18 +76,6 @@
   .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; }
   h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
   .subtitle { font-size: 14px; color: var(--text-muted); }
-  .theme-picker{position:relative;}
-  .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
-  .theme-btn:hover{background:var(--surface2);}
-  .theme-btn-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
-  .theme-picker.open .theme-btn-chevron{transform:rotate(180deg);}
-  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;min-width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:200;}
-  .theme-options-scroll{overflow-y:auto;overflow-x:hidden;max-height:144px;}
-  .theme-options-scroll::-webkit-scrollbar{width:4px;}.theme-options-scroll::-webkit-scrollbar-track{background:transparent;}.theme-options-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-  .theme-picker.open .theme-menu{display:block;}
-  .theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
-  .theme-option:hover{background:var(--surface2);color:var(--text);}
-  .theme-option.active{color:var(--accent,#7F77DD);background:var(--surface2);}
   .tabs { display: flex; align-items: center; border-bottom: 1.5px solid var(--border); margin-bottom: 1.5rem; }
   .tabs-left { display: flex; align-items: center; }
   .tabs-right { margin-left: auto; }
@@ -428,35 +417,10 @@ body { animation: pageEnter 0.28s ease-out both; }
 </head>
 <body>
 <div class="container">
-  <div class="top-bar">
-    <div>
-      <h1>Reserve Stock Report Processor</h1>
-      <p style="font-size:11px;color:#0891B2;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">Reserve Stock</p>
-      <p class="subtitle" id="main-subtitle">2nd Shift · Upload a CSV to get started</p>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <button onclick="openWeeklyRecap()" style="font-family:inherit;font-size:12px;padding:6px 12px;border:0.5px solid #7F77DD;border-radius:8px;background:var(--surface);color:#7F77DD;cursor:pointer;white-space:nowrap;">&#x1F4C5; Weekly Recap</button>
-      <button id="retail-board-pill" onclick="openRetailBoard()" title="Shubham's Retail Board" style="display:none;font-family:inherit;font-size:12px;padding:6px 12px;border:0.5px solid #0891B2;border-radius:8px;background:var(--surface);color:#0891B2;cursor:pointer;white-space:nowrap;">&#x1F4CA; Retail Board</button>
-      <div class="theme-picker" id="theme-picker">
-        <button class="theme-btn" onclick="toggleThemeMenu()">
-          <span id="toggle-label">Light</span>
-          <span class="theme-btn-chevron">&#9660;</span>
-        </button>
-        <div class="theme-menu" id="theme-menu">
-          <div class="theme-options-scroll">
-            <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
-            <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
-            <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
-            <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
-            <div class="theme-option" data-tv="starr"  onclick="pickTheme('starr')">Starr ⭐</div>
-            <div class="theme-option" data-tv="carrie"  onclick="pickTheme('carrie')">Carrie ☁</div>
-            <div class="theme-option" data-tv="remi"   onclick="pickTheme('remi')">Rem 🧙</div>
-            <div class="theme-option" data-tv="scout"  onclick="pickTheme('scout')">✦ Scout</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div id="scout-bar"></div>
+  <p class="subtitle" id="main-subtitle">2nd Shift · Upload a CSV to get started</p>
+  <button id="weekly-btn" onclick="openWeeklyRecap()" style="font-family:inherit;font-size:12px;padding:6px 12px;border:0.5px solid #7F77DD;border-radius:8px;background:var(--surface);color:#7F77DD;cursor:pointer;white-space:nowrap;">&#x1F4C5; Weekly Recap</button>
+  <button id="retail-board-pill" onclick="openRetailBoard()" title="Shubham's Retail Board" style="display:none;font-family:inherit;font-size:12px;padding:6px 12px;border:0.5px solid #0891B2;border-radius:8px;background:var(--surface);color:#0891B2;cursor:pointer;white-space:nowrap;">&#x1F4CA; Retail Board</button>
 
   <div class="tabs">
     <div class="tabs-left">
@@ -640,21 +604,13 @@ var THEME_VALS_RS  = ['light','dark','solid','pastel','starr','carrie','remi','s
 var THEME_NAMES_RS = {light:'Light',dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr ⭐',carrie:'Carrie ☁',remi:'Rem 🧙',scout:'✦ Scout'};
 var DARK_THEMES_RS = ['dark','solid','pastel','remi','scout'];
 function isDarkTheme() { return document.documentElement.classList.contains('dk'); }
-function applyTheme(t, noSave) {
+function applyTheme(t) {
   if (THEME_VALS_RS.indexOf(t) === -1) t = 'light';
   var dark = DARK_THEMES_RS.indexOf(t) !== -1;
   document.documentElement.setAttribute('data-theme', t);
   document.documentElement.classList.toggle('dk', dark);
-  document.getElementById('toggle-label').textContent = THEME_NAMES_RS[t];
-  document.querySelectorAll('.theme-option').forEach(function(el) { el.classList.toggle('active', el.getAttribute('data-tv') === t); });
   Object.values(charts).forEach(function(c) { if (c) updateChartTheme(c, dark); });
-  if (!noSave) { try { localStorage.setItem(THEME_KEY_RS, t); } catch(e) {} }
 }
-function toggleThemeMenu() { document.getElementById('theme-picker').classList.toggle('open'); }
-function pickTheme(t) { applyTheme(t); document.getElementById('theme-picker').classList.remove('open'); }
-document.addEventListener('click', function(e) {
-  var p = document.getElementById('theme-picker'); if (p && !p.contains(e.target)) p.classList.remove('open');
-});
 function updateChartTheme(chart, dark) {
   const grid = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
   const tick = dark ? '#777' : '#888';
@@ -664,16 +620,8 @@ function updateChartTheme(chart, dark) {
   chart.options.scales.y.grid.color = grid;
   chart.update('none');
 }
-(function() {
-  var saved;
-  try { saved = localStorage.getItem(THEME_KEY_RS); } catch(e) {}
-  if (saved && THEME_VALS_RS.indexOf(saved) !== -1) applyTheme(saved);
-  else applyTheme(prefersDark.matches ? 'dark' : 'light', true);
-})();
-prefersDark.addEventListener('change', function(e) {
-  var saved; try { saved = localStorage.getItem(THEME_KEY_RS); } catch(err) {}
-  if (!saved) applyTheme(e.matches ? 'dark' : 'light', true);
-});
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Reserve Stock",title:"Reserve Stock Report Processor",version:"v2.2",sub:"main-subtitle",actions:["weekly-btn","retail-board-pill"]}, { oldThemeKey: THEME_KEY_RS, applyTheme: applyTheme }));
+else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY_RS) || 'dark');
 
 // ── TABS ──────────────────────────────────────────────
 function switchTab(tab) {
@@ -1728,6 +1676,7 @@ function renderLiveReport(d) {
   }
 
   var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
+  if (window.SCOUT_UI && d.generated) SCOUT_UI.updated(new Date(d.generated));
   var dataShift = d.shift || '2nd';
   if (meta) meta.textContent = dataShift + ' shift \xb7 updated ' + gen;
 
