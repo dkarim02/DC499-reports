@@ -36,7 +36,11 @@
 
   function getTheme(oldKey) {
     var t = store(THEME_KEY);
-    if (!valid(t) && oldKey) { t = store(oldKey); if (valid(t)) store(THEME_KEY, t); }
+    if (!valid(t) && oldKey) {
+      t = store(oldKey);
+      t = { mixed: 'pastel', candy: 'starr' }[t] || t;     // old names on some pages
+      if (valid(t)) store(THEME_KEY, t);
+    }
     return valid(t) ? t : 'dark';
   }
 
