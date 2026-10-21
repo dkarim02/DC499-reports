@@ -1236,9 +1236,9 @@ function gitPush() {
   try {
     // Remove stale index.lock left by a killed/crashed prior cycle
     try { fs.unlinkSync(path.join(gitDir(), 'index.lock')); } catch {}
-    execSync('git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json ecom_history.json shipping_live.json reserve_live.json putaway_live.json expedite_live.json container_watch_live.json untasked_live.json dead_shelves_live.json empty_locations_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
+    execSync('git add receiving_live.json totes_live.json backlog_live.json batch_status.json retail_replen.json shipped_live.json tasks_live.json ecom_live.json ecom_history.json shipping_live.json reserve_live.json expedite_live.json container_watch_live.json untasked_live.json dead_shelves_live.json empty_locations_live.json',  { cwd: REPORT_DIR, stdio: 'pipe' });
     const staged = execSync('git diff --cached --name-only', { cwd: REPORT_DIR, stdio: 'pipe' }).toString().trim().split('\n').filter(Boolean);
-    const LABELS = { 'receiving_live.json': 'receiving', 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve', 'putaway_live.json': 'putaway', 'expedite_live.json': 'expedite', 'container_watch_live.json': 'watch', 'untasked_live.json': 'untasked', 'dead_shelves_live.json': 'dead', 'empty_locations_live.json': 'empty' };
+    const LABELS = { 'receiving_live.json': 'receiving', 'ecom_live.json': 'ecom', 'shipping_live.json': 'shipping', 'reserve_live.json': 'reserve', 'expedite_live.json': 'expedite', 'container_watch_live.json': 'watch', 'untasked_live.json': 'untasked', 'dead_shelves_live.json': 'dead', 'empty_locations_live.json': 'empty' };
     const extras = staged.map(f => LABELS[f]).filter(Boolean);
     const suffix = extras.length ? ` [+${extras.join(', ')}]` : '';
     execSync(`git commit -m "Live update -- ${stamp}${suffix}"`,    { cwd: REPORT_DIR, stdio: 'pipe' });
@@ -1750,7 +1750,6 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       '/Menu_v1.6.html':      'Menu_v1.6.html',
       '/Changelog.html':      'Changelog.html',
       '/Reserve_v1_7.html':      'Reserve_v1_7.html',
-      '/Reserve_putaway.html':   'Reserve_putaway.html',
       '/Shipping_live.html':     'Shipping_live.html',
     };
     const file = fileMap[url.pathname];

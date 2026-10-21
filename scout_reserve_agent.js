@@ -262,6 +262,8 @@ async function fetchReserveLive(accessToken) {
 // Queries DCI_ILPN → DCI_INVENTORY → ITE_ITEM → RCV_RECEIPT for retail LPNs
 // in pending putaway status (STATUS=3000) at inbound staging locations.
 // Excludes: Z1Z (lost), shelf locations (R1H/R2H/R1B/R1C/R1D/R1E/R1F), 60-day cutoff.
+// Putaway WIP (putaway_live.json → Reserve_putaway.html) archived 2026-10-20 — no longer called.
+// Restore: see archived/putaway_wip/README.md.
 async function fetchPutawayWip(accessToken) {
   console.log(`[${ts()}] Putaway WIP — querying retail pending putaway...`);
 
@@ -377,8 +379,8 @@ async function main() {
       if (e instanceof AuthError) return doAuthFlow();
       throw e;
     });
-    console.log(`[${ts()}] Priming reserve_live + putaway_live in parallel...`);
-    await Promise.all([fetchReserveLive(token), fetchPutawayWip(token)]);
+    console.log(`[${ts()}] Priming reserve_live...`);
+    await fetchReserveLive(token);
     let busy = false;
     setInterval(async () => {
       // Skip if the last cycle is still running, so cycles never stack up
@@ -386,8 +388,8 @@ async function main() {
       busy = true;
       try {
         const t = await getAccessTokenSilent();
-        console.log(`[${ts()}] Refreshing reserve_live + putaway_live in parallel...`);
-        await Promise.all([fetchReserveLive(t), fetchPutawayWip(t)]);
+        console.log(`[${ts()}] Refreshing reserve_live...`);
+        await fetchReserveLive(t);
       } catch (e) {
         console.error(`[${ts()}] Error:`, e.message);
       } finally {
@@ -398,8 +400,8 @@ async function main() {
   }
 
   const token = await getAccessToken();
-  console.log(`[${ts()}] Priming reserve_live + putaway_live in parallel...`);
-  await Promise.all([fetchReserveLive(token), fetchPutawayWip(token)]);
+  console.log(`[${ts()}] Priming reserve_live...`);
+  await fetchReserveLive(token);
 }
 
 main().catch(e => { console.error(e.message); process.exit(1); });

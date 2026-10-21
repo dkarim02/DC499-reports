@@ -28,7 +28,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | dc499_refresh.js | totes_live.json, backlog_live.json, batch_status.json, retail_replen.json, tasks_live.json, shipped_live.json | Totes_live.html, Backlog_live.html, Batches_live.html |
 | scout_ecom_agent.js | ecom_live.json | Ecom_v3.html |
 | scout_shipping_agent.js | shipping_live.json | Shipping_live.html |
-| scout_reserve_agent.js | reserve_live.json, putaway_live.json | Reserve_v1_7.html, Reserve_putaway.html |
+| scout_reserve_agent.js | reserve_live.json (~~putaway_live.json~~ archived 10/20) | Reserve_v1_7.html (~~Reserve_putaway.html~~ archived 10/20) |
 | scout_expedite_agent.js | expedite_live.json | Backlog_live.html (Expedite tab) |
 | scout_itemprep_agent.js | itemprep_live.json | ItemPrep_live.html |
 | ~~scout_retail_agent.js~~ | ~~retail_backlog_live.json~~ | ~~Retail_backlog.html~~ — **archived 2026-10-20** (archived/retail_backlog/) |
@@ -349,7 +349,9 @@ Rebuilt 2026-08-15. Color-coded hourly scoreboard (same 80/60/40/0 thresholds as
 
 ---
 
-## Reserve Putaway WIP (Reserve_putaway.html)
+## Reserve Putaway WIP (Reserve_putaway.html) — ARCHIVED 2026-10-20
+
+**Archived 2026-10-20** with Retail Backlog (Dean). Page + last JSON in `archived/putaway_wip/` (README = restore steps). The Reserve agent no longer calls `fetchPutawayWip` (function kept); putaway_live.json is no longer pushed; the pill on Reserve_v1_7.html is gone. Notes below kept for reference.
 
 Entry point: orange "📦 Putaway WIP" pill in Reserve_v1_7.html top bar. Data: `putaway_live.json`.
 
