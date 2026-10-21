@@ -43,7 +43,7 @@ The suite has two modes:
 | File | Description |
 |---|---|
 | `index.html` | Redirects to Menu |
-| `Menu_v1.6.html` | Department selection menu |
+| `Menu_v2.0.html` | Department selection menu |
 | `Ecom_v3.html` | Ecom report processor (CSV + live) |
 | `Reserve_v1_7.html` | Reserve Stock report processor (CSV + live) |
 | `Reserve_putaway.html` | Reserve putaway WIP report (live) |

@@ -68,7 +68,7 @@ SCOUT is organized around dedicated pages per department and function, all acces
 | `Reserve_putaway.html` | Reserve putaway WIP — pending iLPNs by age, location, and category |
 | `Reserve_weekly.html` | Reserve weekly recap — bar charts, per-day breakdown, associate detail |
 
-All pages are accessible from `Menu_v1.6.html`, the central department selection hub.
+All pages are accessible from `Menu_v2.0.html`, the central department selection hub.
 
 ---
 

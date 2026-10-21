@@ -30,7 +30,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | scout_shipping_agent.js | shipping_live.json | Shipping_live.html |
 | scout_reserve_agent.js | reserve_live.json (~~putaway_live.json~~ archived 10/20) | Reserve_v1_7.html (~~Reserve_putaway.html~~ archived 10/20) |
 | scout_expedite_agent.js | expedite_live.json | Backlog_live.html (Expedite tab) |
-| scout_itemprep_agent.js | itemprep_live.json | ItemPrep_live.html |
+| ~~scout_itemprep_agent.js~~ | ~~itemprep_live.json~~ | ~~ItemPrep_live.html~~ — **archived 2026-10-21** (archived/itemprep_live/; menu card still opens ItemPrep_v2.0.html) |
 | ~~scout_retail_agent.js~~ | ~~retail_backlog_live.json~~ | ~~Retail_backlog.html~~ — **archived 2026-10-20** (archived/retail_backlog/) |
 | scout_watch_agent.js | container_watch_live.json | Container_watch.html |
 | scout_untasked_agent.js | untasked_live.json | Backlog_live.html (No Task tab) |
@@ -49,7 +49,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | 5–7 | Ecom Live (one-shot / auto / auth) | scout_ecom_agent.js |
 | 8–10 | Shipping Live (one-shot / auto / auth) | scout_shipping_agent.js |
 | 11–13 | Reserve Live (one-shot / auto / auth) | scout_reserve_agent.js |
-| 14–16 | Item Prep Live (one-shot / auto / auth) | scout_itemprep_agent.js |
+| 14–16 | Item Prep Live — **archived 2026-10-21** (prints a note) | — |
 | 17–19 | Expedite Live (one-shot / auto / auth) | scout_expedite_agent.js |
 | 20–22 | Retail Backlog — **archived 2026-10-20** (prints a note) | — |
 | 23–25 | Container Watch (one-shot / auto every 15 min / auth) | scout_watch_agent.js |

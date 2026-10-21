@@ -1736,25 +1736,19 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
       return;
     }
 
-    // serve HTML files
-    const fileMap = {
-      '/':                    'index.html',
-      '/index.html':          'index.html',
-      '/Receiving_live.html': 'Receiving_live.html',
-      '/Totes_live.html':     'Totes_live.html',
-      '/Backlog_live.html':   'Backlog_live.html',
-      '/Ecom_v3.html':        'Ecom_v3.html',
-      '/MegaDash_v1.2.html':  'MegaDash_v1.2.html',
-      '/Menu_v1.6.html':      'Menu_v1.6.html',
-      '/Changelog.html':      'Changelog.html',
-      '/Reserve_v1_7.html':      'Reserve_v1_7.html',
-      '/Shipping_live.html':     'Shipping_live.html',
-    };
-    const file = fileMap[url.pathname];
-    if (file) {
-      const filePath = path.join(REPORT_DIR, file);
+    // serve any root page + the few assets pages load (no sub-folders, so archived/ and data stay out)
+    const ASSET_TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8',
+                          '.svg': 'image/svg+xml', '.mp4': 'video/mp4' };
+    const ASSET_JS = new Set(['scout_file_mode.js']);
+    let name = '';
+    try { name = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname.slice(1)); } catch {}
+    const ext = path.extname(name).toLowerCase();
+    const okName = /^[\w .-]+$/.test(name) && !name.startsWith('.')
+                && (ext === '.html' || ASSET_JS.has(name) || name === 'favicon.svg' || name === 'remi.mp4');
+    if (okName) {
+      const filePath = path.join(REPORT_DIR, name);
       if (fs.existsSync(filePath)) {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.writeHead(200, { 'Content-Type': ASSET_TYPES[ext] });
         res.end(fs.readFileSync(filePath));
         return;
       }

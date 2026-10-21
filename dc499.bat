@@ -32,9 +32,7 @@ echo  11 Reserve Live - one-shot refresh
 echo  12 Reserve Live - start auto-refresh (every 3 min)
 echo  13 Reserve Live - auth
 echo ──────────────────────────────
-echo  14 Item Prep Live - one-shot refresh
-echo  15 Item Prep Live - start auto-refresh (every 3 min)
-echo  16 Item Prep Live - auth
+echo  14-16 Item Prep Live - ARCHIVED 2026-10-21 (see archived\itemprep_live)
 echo ──────────────────────────────
 echo  17 Expedite Live - one-shot refresh
 echo  18 Expedite Live - start auto-refresh (every 3 min)
@@ -148,27 +146,9 @@ if "%choice%"=="13" (
     pause
     exit /b
 )
-if "%choice%"=="14" (
-    echo.
-    echo Running Item Prep Live one-shot refresh...
-    "%NODE_EXE%" "%~dp0scout_itemprep_agent.js"
-    pause
-    exit /b
-)
-if "%choice%"=="15" (
-    echo.
-    echo Starting Item Prep Live auto-refresh every 3 min...
-    "%NODE_EXE%" "%~dp0scout_itemprep_agent.js" --serve --interval=3
-    pause
-    exit /b
-)
-if "%choice%"=="16" (
-    echo.
-    echo Starting Item Prep Live auth flow...
-    "%NODE_EXE%" "%~dp0scout_itemprep_agent.js" --auth
-    pause
-    exit /b
-)
+if "%choice%"=="14" goto itemprep_archived
+if "%choice%"=="15" goto itemprep_archived
+if "%choice%"=="16" goto itemprep_archived
 if "%choice%"=="17" (
     echo.
     echo Running Expedite Live one-shot refresh...
@@ -257,6 +237,13 @@ if "%choice%"=="31" (
     exit /b
 )
 echo Invalid selection.
+pause
+exit /b
+
+:itemprep_archived
+echo.
+echo Item Prep Live was archived on 2026-10-21. The Item Prep card on the menu still works.
+echo The files are in archived\itemprep_live - see the README there to bring it back.
 pause
 exit /b
 
