@@ -52,9 +52,7 @@ The suite has two modes:
 | `Receiving_live.html` | Receiving live dashboard (hourly scoreboard) |
 | `Shipping_live.html` | Shipping live dashboard (hourly scoreboard) |
 | `Backlog_live.html` | Backlog + PPH projection dashboard |
-| `Batches_live.html` | Wave/batch status dashboard |
 | `Totes_live.html` | Tote status live view |
-| `RetailReplen_live.html` | Retail replenishment live view |
 | `EOS_live.html` | End-of-Shift report viewer |
 
 ### JSON — live data payloads (auto-updated by agents)

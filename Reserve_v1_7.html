@@ -436,6 +436,7 @@ body { animation: pageEnter 0.28s ease-out both; }
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
       <button onclick="openWeeklyRecap()" style="font-family:inherit;font-size:12px;padding:6px 12px;border:0.5px solid #7F77DD;border-radius:8px;background:var(--surface);color:#7F77DD;cursor:pointer;white-space:nowrap;">&#x1F4C5; Weekly Recap</button>
+      <button id="retail-board-pill" onclick="openRetailBoard()" title="Shubham's Retail Board" style="display:none;font-family:inherit;font-size:12px;padding:6px 12px;border:0.5px solid #0891B2;border-radius:8px;background:var(--surface);color:#0891B2;cursor:pointer;white-space:nowrap;">&#x1F4CA; Retail Board</button>
       <div class="theme-picker" id="theme-picker">
         <button class="theme-btn" onclick="toggleThemeMenu()">
           <span id="toggle-label">Light</span>
@@ -696,6 +697,12 @@ function openWeeklyRecap() {
   var base = window.location.href.replace(/\/[^\/]*$/, '/');
   window.open(base + 'Reserve_weekly.html', '_blank');
 }
+// Retail Board link only exists in the SCOUT Live share (same rule as the menu chip)
+function openRetailBoard() {
+  var base = window.location.href.replace(/\/[^\/]*$/, '/');
+  window.open(base + 'Retail%20board/dc499-board.html', '_blank');
+}
+if (location.protocol === 'file:') document.getElementById('retail-board-pill').style.display = '';
 
 // ── ROSTER ──────────────────────────────────────────────
 function loadRoster() {

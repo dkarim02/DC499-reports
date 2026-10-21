@@ -25,7 +25,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 
 | Agent | Output JSON | HTML report |
 |---|---|---|
-| dc499_refresh.js | totes_live.json, backlog_live.json, batch_status.json, retail_replen.json, tasks_live.json, shipped_live.json | Totes_live.html, Backlog_live.html, Batches_live.html |
+| dc499_refresh.js | totes_live.json, backlog_live.json, batch_status.json, retail_replen.json, tasks_live.json, shipped_live.json | Totes_live.html, Backlog_live.html (~~Batches_live.html~~, ~~RetailReplen_live.html~~ archived 10/21) |
 | scout_ecom_agent.js | ecom_live.json | Ecom_v3.html |
 | scout_shipping_agent.js | shipping_live.json | Shipping_live.html |
 | scout_reserve_agent.js | reserve_live.json (~~putaway_live.json~~ archived 10/20) | Reserve_v1_7.html (~~Reserve_putaway.html~~ archived 10/20) |
@@ -524,7 +524,7 @@ Storage key: `rs_weekly_v1`. Per-day payload includes `employees: {email: {pick_
 
 ---
 
-## Batches_live.html / Backlog_live.html
+## Backlog_live.html (Batches tab; ~~Batches_live.html~~ archived 10/21)
 
 **Themes:** dark, solid, pastel, starr, light. `starr` = pink glamour (Dean's boss). THEME_VALS and THEME_NAMES arrays must stay in sync with CSS and dropdown HTML.
 

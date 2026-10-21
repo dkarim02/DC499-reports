@@ -57,10 +57,8 @@ SCOUT is organized around dedicated pages per department and function, all acces
 
 | Page | Purpose |
 |---|---|
-| `Batches_live.html` | Wave/batch status — release cadence, picks in progress, cleared counts |
 | `Backlog_live.html` | Open orders, PPH pace projection, daily backlog breakdown |
 | `Totes_live.html` | Tote status and counts |
-| `RetailReplen_live.html` | Retail replenishment status |
 | `EOS_live.html` | End-of-Shift summary report — shift-over-shift comparison |
 
 ### Supplemental reports
@@ -172,10 +170,10 @@ The coordinator and sub-agents each produce a set of JSON files that feed the li
 | `shipping_live.json` | `scout_shipping_agent.js` | `Shipping_live.html` |
 | `receiving_live.json` | `dc499_refresh.js` | `Receiving_live.html` |
 | `backlog_live.json` | `dc499_refresh.js` | `Backlog_live.html` |
-| `batch_status.json` | `dc499_refresh.js` | `Batches_live.html` |
+| `batch_status.json` | `dc499_refresh.js` | `Backlog_live.html` (Batches tab) |
 | `tasks_live.json` | `dc499_refresh.js` | Tasks tab in `Backlog_live.html` |
 | `totes_live.json` | `dc499_refresh.js` | `Totes_live.html` |
-| `retail_replen.json` | `dc499_refresh.js` | `RetailReplen_live.html` |
+| `retail_replen.json` | `dc499_refresh.js` | `Backlog_live.html` |
 | `shipped_live.json` | `dc499_refresh.js` | Shipped counts in `Backlog_live.html` |
 
 ---
