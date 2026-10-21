@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="scout_file_mode.js"></script>
+<script src="scout_ui.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -35,6 +36,11 @@
     --text:#d4d0e8;--text-muted:#8b8aaa;--text-hint:#565670;
     --bar-bg:#3c3f52;--drop-hover:#2c2f3e;
   }
+  [data-theme="remi"]{
+    --bg:#0e0b18;--surface:#16112a;--surface2:#1e1838;--border:#2e2550;--border-light:#1e1838;--border-mid:#3a3060;
+    --text:#e8e0f8;--text-muted:#9880cc;--text-hint:#6a5890;
+    --bar-bg:#2e2550;--drop-hover:#1e1838;
+  }
   [data-theme="scout"] {
     --bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-light:#141825;--border-mid:#222a3c;
     --text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;
@@ -44,6 +50,11 @@
     --bg:#c9e6f8;--surface:#f5fbff;--surface2:#e4f2fc;--border:#a6cde8;--border-light:#eef8fe;--border-mid:#cde4f4;
     --text:#0e2a40;--text-muted:#46698a;--text-hint:#7699b6;
     --bar-bg:#cde4f4;--drop-hover:#e4f2fc;
+  }
+  [data-theme="starr"]{
+    --bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;
+    --text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;
+    --bar-bg:#e8c0d8;--drop-hover:#f5cfe8;
   }
   /* Scout: twilight glow — teal top-left, deep indigo bottom-right */
   [data-theme="scout"] body, body[data-theme="scout"] {
@@ -60,17 +71,7 @@
   .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; }
   h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
   .subtitle { font-size: 14px; color: var(--text-muted); }
-  .theme-picker{position:relative;}
-  .theme-btn{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-muted);cursor:pointer;background:none;border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:inherit;white-space:nowrap;}
-  .theme-btn:hover{background:var(--surface2);}
-  .theme-btn-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
-  .theme-picker.open .theme-btn-chevron{transform:rotate(180deg);}
-  .theme-menu{display:none;position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;overflow:hidden;min-width:120px;box-shadow:0 8px 24px rgba(0,0,0,0.25);z-index:200;}
-  .theme-picker.open .theme-menu{display:block;}
-  .theme-option{padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-muted);transition:background 0.1s;}
-  .theme-option:hover{background:var(--surface2);color:var(--text);}
-  .theme-option.active{color:#185FA5;background:var(--surface2);}
-  [data-theme="scout"] .theme-option.active{color:#0E9E8E;}
+  .sui-right .backlog-pill { margin-top: 0; }
 
   /* ── BACKLOG PILL ── */
   .backlog-pill { display: none; align-items: center; gap: 0; margin-top: 8px; border-radius: 20px; overflow: hidden; border: 1.5px solid #185FA5; font-size: 13px; font-weight: 700; flex-shrink: 0; cursor: pointer; transition: opacity 0.15s, box-shadow 0.15s; }
@@ -85,7 +86,9 @@
   .bp-ready { color: #4CAF50; }
   .bp-alloc { color: #FFB74D; }
   [data-theme="carrie"] .bp-ready { color: #17663a; }
+  [data-theme="starr"] .bp-ready{ color: #17663a; }
   [data-theme="carrie"] .bp-alloc { color: #9a4500; }
+  [data-theme="starr"] .bp-alloc{ color: #9a4500; }
 
   /* ── TABS ── */
   .tabs { display: flex; align-items: center; border-bottom: 1.5px solid var(--border); margin-bottom: 1.5rem; }
@@ -217,6 +220,7 @@
 
   .stale-banner { display:none; background:#5C3A00; color:#FFD77A; font-size:12px; padding:6px 14px; border-radius:8px; margin-bottom:1rem; text-align:center; }
   [data-theme="light"] .stale-banner,[data-theme="carrie"] .stale-banner { background:#FFF3CD; color:#7A4F00; }
+  [data-theme="starr"] .stale-banner{ background:#FFF3CD; color:#7A4F00; }
 
 
   .tab.active-day { color: #7F77DD; border-bottom-color: #7F77DD; font-weight: 500; }
@@ -332,6 +336,7 @@
   .arch-shift-btn:hover { background:var(--surface2); color:var(--text); }
   .arch-shift-btn.active { background:#EEEDFE; color:#534AB7; border-color:#7F77DD; }
   [data-theme="dark"] .arch-shift-btn.active, [data-theme="solid"] .arch-shift-btn.active, [data-theme="pastel"] .arch-shift-btn.active { background:#3C3489; color:#CECBF6; border-color:#7F77DD; }
+  [data-theme="remi"] .arch-shift-btn.active{ background:#3C3489; color:#CECBF6; border-color:#7F77DD; }
   [data-theme="scout"] .arch-shift-btn.active { background:#0c2e2b; color:#6ee0d6; border-color:#0E9E8E; }
   .arch-meta { font-size:12px; color:var(--text-hint); margin-bottom:1rem; }
   .arch-summary { display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:1rem; overflow-x:auto; }
@@ -366,49 +371,29 @@
 }
 body { animation: pageEnter 0.28s ease-out both; }
   [data-theme="carrie"] body, body[data-theme="carrie"]{background:#c9e6f8 fixed;}
+  [data-theme="starr"] body,body[data-theme="starr"]{background:#e8a8c8 fixed;}
 </style>
 </head>
 <body>
 <div class="container">
 
   <!-- TOP BAR -->
-  <div class="top-bar">
-    <div>
-      <h1>Ecom Report Processor</h1>
-      <p style="font-size:11px;color:#185FA5;font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-top:2px;">Ecom</p>
-      <p class="subtitle" id="main-subtitle">Upload a CSV to populate the Full Report</p>
+  <div id="scout-bar"></div>
+  <p class="subtitle" id="main-subtitle">Upload a CSV to populate the Full Report</p>
+  <div class="backlog-pill" id="backlog-pill" onclick="openBacklog()" title="Open Ecom Backlog">
+    <div class="bp-total">
+      <span class="bp-total-lbl">Backlog</span>
+      <span class="bp-total-val" id="bs-total">--</span>
     </div>
-    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0;">
-      <div class="theme-picker" id="theme-picker">
-        <button class="theme-btn" onclick="toggleThemeMenu()">
-          <span id="toggle-label">Dark</span>
-          <span class="theme-btn-chevron">&#9660;</span>
-        </button>
-        <div class="theme-menu" id="theme-menu">
-          <div class="theme-option" data-tv="dark"   onclick="pickTheme('dark')">Dark</div>
-          <div class="theme-option" data-tv="solid"  onclick="pickTheme('solid')">Solid</div>
-          <div class="theme-option" data-tv="pastel" onclick="pickTheme('pastel')">Pastel</div>
-          <div class="theme-option" data-tv="scout"  onclick="pickTheme('scout')">✦ Scout</div>
-          <div class="theme-option" data-tv="carrie"  onclick="pickTheme('carrie')">Carrie ☁</div>
-          <div class="theme-option" data-tv="light"  onclick="pickTheme('light')">Light</div>
-        </div>
-      </div>
-      <div class="backlog-pill" id="backlog-pill" onclick="openBacklog()" title="Open Ecom Backlog">
-        <div class="bp-total">
-          <span class="bp-total-lbl">Backlog</span>
-          <span class="bp-total-val" id="bs-total">--</span>
-        </div>
-        <div class="bp-divider"></div>
-        <div class="bp-stat">
-          <span class="bp-stat-val bp-ready" id="bs-ready">--</span>
-          <span class="bp-stat-lbl">Ready</span>
-        </div>
-        <div class="bp-divider"></div>
-        <div class="bp-stat">
-          <span class="bp-stat-val bp-alloc" id="bs-alloc">--</span>
-          <span class="bp-stat-lbl">Alloc</span>
-        </div>
-      </div>
+    <div class="bp-divider"></div>
+    <div class="bp-stat">
+      <span class="bp-stat-val bp-ready" id="bs-ready">--</span>
+      <span class="bp-stat-lbl">Ready</span>
+    </div>
+    <div class="bp-divider"></div>
+    <div class="bp-stat">
+      <span class="bp-stat-val bp-alloc" id="bs-alloc">--</span>
+      <span class="bp-stat-lbl">Alloc</span>
     </div>
   </div>
 
@@ -595,19 +580,9 @@ const SHIFT_BOUNDS = { '1st': {start:3, end:13}, '2nd': {start:14, end:25} };
 var THEME_KEY_ECOM = 'dc499_ecom_theme_v1';
 var THEME_NAMES_ECOM = {dark:'Dark',solid:'Solid',pastel:'Pastel',scout:'✦ Scout',carrie:'Carrie ☁', light:'Light'};
 var THEME_VALS_ECOM  = ['dark','solid','pastel','scout','carrie','light'];
-function applyTheme(t) {
-  document.documentElement.setAttribute('data-theme', t);
-  document.getElementById('toggle-label').textContent = THEME_NAMES_ECOM[t] || t;
-  document.querySelectorAll('.theme-option').forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-tv') === t); });
-  try { localStorage.setItem(THEME_KEY_ECOM, t); } catch(e) {}
-}
-function toggleThemeMenu() { document.getElementById('theme-picker').classList.toggle('open'); }
-function pickTheme(t) { applyTheme(t); document.getElementById('theme-picker').classList.remove('open'); }
-document.addEventListener('click', function(e){ var p=document.getElementById('theme-picker'); if(p&&!p.contains(e.target)) p.classList.remove('open'); });
-(function(){
-  var saved; try { saved = localStorage.getItem(THEME_KEY_ECOM); } catch(e) {}
-  applyTheme(saved && THEME_VALS_ECOM.indexOf(saved) !== -1 ? saved : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-})();
+function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); }
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Report Processor",version:"v3.4",sub:"main-subtitle",actions:["backlog-pill"]}, { oldThemeKey: THEME_KEY_ECOM, applyTheme: applyTheme }));
+else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY_ECOM) || 'dark');
 
 // ── TABS ───────────────────────────────────────────────
 var ACTIVE_TAB_KEY = 'ecom_active_tab_v1';
@@ -669,6 +644,7 @@ function renderLiveReport(d) {
   }
 
   var gen = d.generated ? new Date(d.generated).toLocaleTimeString('en-US', { timeZone:'America/Los_Angeles', hour:'numeric', minute:'2-digit' }) : '';
+  if (window.SCOUT_UI && d.generated) SCOUT_UI.updated(new Date(d.generated));
   var truncWarn = d.truncated ? ' · ⚠ row cap hit — data may be incomplete' : '';
   if (meta) {
     meta.textContent = d.shift + ' shift · ' + d.row_count + ' events · updated ' + gen + truncWarn;
@@ -1712,7 +1688,7 @@ function toggleAssocDetail(empKey) {
   });
   if (!isOpen) {
     detailRow.classList.add('open');
-    var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    var isDark = ['light','carrie','starr'].indexOf(document.documentElement.getAttribute('data-theme')) === -1;
     var canvasId = 'assoc-chart-' + empKey;
     setTimeout(function() { drawAssocChart(canvasId, detailRow.getAttribute('data-emp'), isDark); }, 50);
   }
@@ -1871,7 +1847,7 @@ function drawFullChart(filterTyp) {
   if (window._fullChart) { window._fullChart.destroy(); window._fullChart = null; }
   var mode = window._fullChartMode || 'smooth';
 
-  var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  var isDark = ['light','carrie','starr'].indexOf(document.documentElement.getAttribute('data-theme')) === -1;
   var grid = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
   var tick = isDark ? '#777' : '#888';
   var shift = getShift();
