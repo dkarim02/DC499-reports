@@ -200,12 +200,64 @@
     tickClock(); setInterval(tickClock, 30000);
   }
 
+  // ── count-up numbers ──
+  // SCOUT_UI.countUp(['m-ready', ...]) — those elements roll to a new number (~0.5 s) instead of jumping.
+  // The page keeps writing textContent as before; a watcher catches the change before it is drawn.
+  // Instant (no roll) when: first value, not a plain number, 0 on either side, more than 2× / less than ½
+  // (e.g. a units ↔ orders switch, a new shift), tab hidden, or Windows "reduce motion" is on.
+  var COUNT_MS = 500;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  function parseNum(t) {
+    t = String(t == null ? '' : t).trim();
+    if (!/^-?[\d,]+(\.\d+)?$/.test(t)) return null;
+    return Number(t.replace(/,/g, ''));
+  }
+  function fmtLike(n, sample, commas) {
+    var dec = (String(sample).split('.')[1] || '').length;
+    var s = n.toFixed(dec);
+    if (commas) { var parts = s.split('.'); parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ','); s = parts.join('.'); }
+    return s;
+  }
+  function watchCount(node) {
+    if (!node || node._suiCount) return;
+    var st = node._suiCount = { shown: node.textContent, raf: 0 };
+    var obs = new MutationObserver(function () {
+      var target = node.textContent, from = parseNum(st.shown), to = parseNum(target);
+      var still = from != null && to != null && from !== to && from !== 0 && to !== 0 &&
+                  to / from <= 2 && to / from >= 0.5 && !document.hidden && !(reduceMotion && reduceMotion.matches);
+      if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; }
+      clearTimeout(st.safety);
+      if (!still) { st.shown = target; return; }
+      // safety: if the browser pauses frames, the real number still lands right after the roll time
+      st.safety = setTimeout(function () {
+        if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; }
+        if (node.textContent !== target) { st.shown = target; write(target); }
+      }, COUNT_MS + 150);
+      var t0 = null;
+      var commas = /,/.test(st.shown + target);
+      function write(txt) { node.textContent = txt; obs.takeRecords(); }   // our own writes are not new values
+      function step(ts) {
+        if (t0 == null) t0 = ts;
+        var k = Math.min(1, (ts - t0) / COUNT_MS), e = 1 - Math.pow(1 - k, 3);   // ease-out
+        if (k < 1) { st.shown = fmtLike(from + (to - from) * e, target, commas); write(st.shown); st.raf = requestAnimationFrame(step); }
+        else { st.raf = 0; clearTimeout(st.safety); st.shown = target; write(target); }
+      }
+      write(st.shown);                                    // put the old number back before it is drawn
+      st.raf = requestAnimationFrame(step);
+    });
+    obs.observe(node, { childList: true, characterData: true, subtree: true });
+  }
+  function countUp(ids) {
+    (ids || []).forEach(function (id) { watchCount(typeof id === 'string' ? document.getElementById(id) : id); });
+  }
+
   // another tab changed the theme → follow it
   window.addEventListener('storage', function (e) { if (e.key === THEME_KEY && valid(e.newValue)) applyTheme(e.newValue, false); });
 
   window.SCOUT_UI = {
     bar: bar,
     updated: function (d) { lastUpdated = d ? new Date(d) : null; renderUpdated(); },
+    countUp: countUp,
     theme: { get: function () { return getTheme(); }, set: function (t) { applyTheme(t, true); }, list: THEMES.slice(), key: THEME_KEY },
     menuPage: MENU_PAGE
   };
