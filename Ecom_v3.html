@@ -2358,7 +2358,7 @@ function ntpOpenUrl() {
   var m = base.match(/^(.*\/)([^\/]+)\/$/);
   if (!m) return base + NTP_FILE;
   var dir = decodeURIComponent(m[2]);
-  var sib = /SCOUT Live$/i.test(dir) ? dir.replace(/SCOUT Live$/i, 'Nail the Plan') : 'Nail the Plan';
+  var sib = /SCOUT (Live|Team)$/i.test(dir) ? dir.replace(/SCOUT (Live|Team)$/i, 'Nail the Plan') : 'Nail the Plan';
   return m[1] + encodeURIComponent(sib) + '/Nail%20the%20Plan.html';
 }
 
