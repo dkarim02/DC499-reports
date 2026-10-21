@@ -6,7 +6,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reserve Stock Report Processor v2.2</title>
+<title>Retail Report Processor v2.2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -72,7 +72,7 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; transition: background 0.2s, color 0.2s; }
-  .container { max-width: 720px; margin: 0 auto; }
+  .container { max-width: 960px; margin: 0 auto; }
   .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; }
   h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
   .subtitle { font-size: 14px; color: var(--text-muted); }
@@ -520,7 +520,7 @@ body { animation: pageEnter 0.28s ease-out both; }
     <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v2.2</p>
   </div>
 
-  <p class="nordstrom-tag">Nordstrom &middot; Reserve Stock &middot; Last updated: <span id="last-updated"></span></p>
+  <p class="nordstrom-tag">Nordstrom &middot; Retail &middot; Last updated: <span id="last-updated"></span></p>
   <p class="nordstrom-tag" style="margin-top:4px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.5;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</p>
 </div>
 
@@ -620,7 +620,7 @@ function updateChartTheme(chart, dark) {
   chart.options.scales.y.grid.color = grid;
   chart.update('none');
 }
-if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Reserve Stock",title:"Reserve Stock Report Processor",version:"v2.2",sub:"main-subtitle",actions:["weekly-btn","retail-board-pill"]}, { oldThemeKey: THEME_KEY_RS, applyTheme: applyTheme }));
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Retail",title:"Retail Report Processor",version:"v2.2",sub:"main-subtitle",actions:["weekly-btn","retail-board-pill"]}, { oldThemeKey: THEME_KEY_RS, applyTheme: applyTheme }));
 else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY_RS) || 'dark');
 
 // ── TABS ──────────────────────────────────────────────

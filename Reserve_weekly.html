@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <script src="scout_ui.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reserve Weekly Recap</title>
+<title>Retail Weekly Recap</title>
 <style>
 :root{--bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;--text:#1a1a1a;--text-muted:#666;--text-hint:#888;--bar-bg:#e5e5e5;}
 [data-theme="dark"]{--bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;--text:#f0f0ee;--text-muted:#999;--text-hint:#777;--bar-bg:#3a3a3a;}
@@ -152,7 +152,7 @@ body { animation: pageEnter 0.28s ease-out both; }
 
   <div id="main-content"></div>
 
-  <p class="nordstrom-tag">Nordstrom &middot; Reserve Stock &middot; Weekly Recap<br>
+  <p class="nordstrom-tag">Nordstrom &middot; Retail &middot; Weekly Recap<br>
   <span style="font-size:10px;">Disclaimer: This tool measures throughput only and may not be used to evaluate, coach, or hold team members accountable on performance.</span></p>
 </div>
 
@@ -180,7 +180,7 @@ function applyTheme(t) {
   if (t === 'dark' || t === 'light') document.documentElement.removeAttribute('data-variant');
   else document.documentElement.setAttribute('data-variant', t);
 }
-if (window.SCOUT_UI) SCOUT_UI.bar({ mount:'scout-bar', dept:'Reserve Stock', title:'Reserve Weekly Recap', sub:'wk-subtitle',
+if (window.SCOUT_UI) SCOUT_UI.bar({ mount:'scout-bar', dept:'Retail', title:'Retail Weekly Recap', sub:'wk-subtitle',
   actions:['wk-shift-sw','wk-seed','wk-clear'], oldThemeKey:'rs_weekly_theme', applyTheme:applyTheme });
 else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem('rs_weekly_theme') || 'dark');
 
@@ -445,7 +445,7 @@ function render() {
   var sub = document.getElementById('wk-subtitle');
   if (sub) {
     var mon = weekMonday(todayISO());
-    sub.textContent = 'Week of ' + new Date(mon + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · Reserve Stock · ' + (_wkShift === '1st' ? '1st Shift' : '2nd Shift');
+    sub.textContent = 'Week of ' + new Date(mon + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' · Retail · ' + (_wkShift === '1st' ? '1st Shift' : '2nd Shift');
   }
 
   var content = document.getElementById('main-content');

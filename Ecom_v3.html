@@ -71,7 +71,7 @@
   .top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.5rem; }
   h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
   .subtitle { font-size: 14px; color: var(--text-muted); }
-  .sui-right .backlog-pill { margin-top: 0; }
+  .tabs-right .backlog-pill { margin: 0 12px 0 0; }
 
   /* ── BACKLOG PILL ── */
   .backlog-pill { display: none; align-items: center; gap: 0; margin-top: 8px; border-radius: 20px; overflow: hidden; border: 1.5px solid #185FA5; font-size: 13px; font-weight: 700; flex-shrink: 0; cursor: pointer; transition: opacity 0.15s, box-shadow 0.15s; }
@@ -93,7 +93,7 @@
   /* ── TABS ── */
   .tabs { display: flex; align-items: center; border-bottom: 1.5px solid var(--border); margin-bottom: 1.5rem; }
   .tabs-left { display: flex; align-items: center; }
-  .tabs-right { margin-left: auto; }
+  .tabs-right { margin-left: auto; display: flex; align-items: center; }
   .tab { font-size: 14px; padding: 8px 20px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1.5px; color: var(--text-hint); background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; transition: color 0.15s; }
   .tab:hover { color: var(--text); }
   .tab.active-replen { color: #185FA5; border-bottom-color: #185FA5; font-weight: 500; }
@@ -380,23 +380,6 @@ body { animation: pageEnter 0.28s ease-out both; }
   <!-- TOP BAR -->
   <div id="scout-bar"></div>
   <p class="subtitle" id="main-subtitle">Upload a CSV to populate the Full Report</p>
-  <div class="backlog-pill" id="backlog-pill" onclick="openBacklog()" title="Open Ecom Backlog">
-    <div class="bp-total">
-      <span class="bp-total-lbl">Backlog</span>
-      <span class="bp-total-val" id="bs-total">--</span>
-    </div>
-    <div class="bp-divider"></div>
-    <div class="bp-stat">
-      <span class="bp-stat-val bp-ready" id="bs-ready">--</span>
-      <span class="bp-stat-lbl">Ready</span>
-    </div>
-    <div class="bp-divider"></div>
-    <div class="bp-stat">
-      <span class="bp-stat-val bp-alloc" id="bs-alloc">--</span>
-      <span class="bp-stat-lbl">Alloc</span>
-    </div>
-  </div>
-
   <!-- TABS -->
   <div class="tabs">
     <div class="tabs-left" id="tabs-left">
@@ -405,6 +388,22 @@ body { animation: pageEnter 0.28s ease-out both; }
       <button class="tab" id="tab-archive" draggable="true" onclick="switchTab('archive')" style="color:var(--text-muted);">&#x1F4C5; Archive</button>
     </div>
     <div class="tabs-right">
+      <div class="backlog-pill" id="backlog-pill" onclick="openBacklog()" title="Open Ecom Backlog">
+        <div class="bp-total">
+          <span class="bp-total-lbl">Backlog</span>
+          <span class="bp-total-val" id="bs-total">--</span>
+        </div>
+        <div class="bp-divider"></div>
+        <div class="bp-stat">
+          <span class="bp-stat-val bp-ready" id="bs-ready">--</span>
+          <span class="bp-stat-lbl">Ready</span>
+        </div>
+        <div class="bp-divider"></div>
+        <div class="bp-stat">
+          <span class="bp-stat-val bp-alloc" id="bs-alloc">--</span>
+          <span class="bp-stat-lbl">Alloc</span>
+        </div>
+      </div>
       <button class="tab-settings" id="tab-settings" onclick="switchTab('settings')">&#9881; Settings</button>
     </div>
   </div>
@@ -581,7 +580,7 @@ var THEME_KEY_ECOM = 'dc499_ecom_theme_v1';
 var THEME_NAMES_ECOM = {dark:'Dark',solid:'Solid',pastel:'Pastel',scout:'✦ Scout',carrie:'Carrie ☁', light:'Light'};
 var THEME_VALS_ECOM  = ['dark','solid','pastel','scout','carrie','light'];
 function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); }
-if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Report Processor",version:"v3.4",sub:"main-subtitle",actions:["backlog-pill"]}, { oldThemeKey: THEME_KEY_ECOM, applyTheme: applyTheme }));
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Report Processor",version:"v3.4",sub:"main-subtitle"}, { oldThemeKey: THEME_KEY_ECOM, applyTheme: applyTheme }));
 else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY_ECOM) || 'dark');
 
 // ── TABS ───────────────────────────────────────────────
