@@ -3,11 +3,20 @@
 <head>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
+<script src="scout_ui.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reserve Weekly Recap</title>
 <style>
 :root{--bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;--text:#1a1a1a;--text-muted:#666;--text-hint:#888;--bar-bg:#e5e5e5;}
 [data-theme="dark"]{--bg:#1a1a1a;--surface:#252525;--surface2:#2e2e2e;--border:#3a3a3a;--border-light:#2e2e2e;--border-mid:#333;--text:#f0f0ee;--text-muted:#999;--text-hint:#777;--bar-bg:#3a3a3a;}
+/* Extra themes (shared top bar) — on top of the dark / light layout */
+html[data-variant="solid"]{--bg:#13172b;--surface:#1b2035;--surface2:#232840;--border:#2e3650;--border-light:#232840;--border-mid:#3a4360;--text:#e4e8f4;--text-muted:#8090b0;--text-hint:#4a5570;--bar-bg:#2e3650;--drop-hover:#232840;}
+html[data-variant="pastel"]{--bg:#1a1c24;--surface:#232631;--surface2:#2c2f3e;--border:#3c3f52;--border-light:#2c2f3e;--border-mid:#484c60;--text:#d4d0e8;--text-muted:#8b8aaa;--text-hint:#565670;--bar-bg:#3c3f52;--drop-hover:#2c2f3e;}
+html[data-variant="remi"]{--bg:#0e0b18;--surface:#16112a;--surface2:#1e1838;--border:#2e2550;--border-light:#1e1838;--border-mid:#3a3060;--text:#e8e0f8;--text-muted:#9880cc;--text-hint:#6a5890;--bar-bg:#2e2550;--drop-hover:#1e1838;}
+html[data-variant="scout"]{--bg:#0c0d14;--surface:#111420;--surface2:#171b2a;--border:#1c2232;--border-light:#141825;--border-mid:#222a3c;--text:#e2e8e8;--text-muted:#5a7a78;--text-hint:#2e4a48;--bar-bg:#1c2232;--drop-hover:#171b2a;}
+html[data-variant="scout"] body{background:radial-gradient(ellipse 70% 55% at 0% 0%,rgba(14,158,142,0.13) 0%,transparent 65%),radial-gradient(ellipse 60% 50% at 100% 100%,rgba(24,95,165,0.12) 0%,transparent 65%),#0c0d14;}
+html[data-variant="carrie"]{--bg:#c9e6f8;--surface:#f5fbff;--surface2:#e4f2fc;--border:#a6cde8;--border-light:#eef8fe;--border-mid:#cde4f4;--text:#0e2a40;--text-muted:#46698a;--text-hint:#7699b6;--bar-bg:#cde4f4;--drop-hover:#e4f2fc;}
+html[data-variant="starr"]{--bg:#e8a8c8;--surface:#fdf0f8;--surface2:#f5cfe8;--border:#d888b8;--border-light:#f0d8ec;--border-mid:#e8c0d8;--text:#1e0a16;--text-muted:#6b2048;--text-hint:#9e5070;--bar-bg:#e8c0d8;--drop-hover:#f5cfe8;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:2rem;transition:background 0.2s,color 0.2s;}
 .container{max-width:1100px;margin:0 auto;}
@@ -132,24 +141,14 @@ body { animation: pageEnter 0.28s ease-out both; }
 </head>
 <body>
 <div class="container">
-  <div class="top-bar">
-    <div>
-      <h1>&#x1F4C5; Reserve Weekly Recap</h1>
-      <p class="subtitle" id="wk-subtitle">Loading...</p>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <div style="display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:3px;">
-        <button id="wk-shift-1st" onclick="setWkShift('1st')" style="font-family:inherit;font-size:11px;font-weight:500;padding:4px 12px;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--text-hint);transition:all 0.15s;">&#9728; 1st</button>
-        <button id="wk-shift-2nd" onclick="setWkShift('2nd')" style="font-family:inherit;font-size:11px;font-weight:500;padding:4px 12px;border:none;border-radius:6px;cursor:pointer;background:#185FA5;color:#fff;transition:all 0.15s;">&#9790; 2nd</button>
-      </div>
-      <button class="btn btn-seed" onclick="reseedDummy()">&#x1F9EA; Reseed Demo</button>
-      <button class="btn btn-danger" onclick="clearAll()">&#x21BA; Clear Week</button>
-      <button class="dark-toggle" onclick="toggleDark()">
-        <span id="toggle-label">Dark mode</span>
-        <div class="toggle-track"><div class="toggle-thumb"></div></div>
-      </button>
-    </div>
+  <div id="scout-bar"></div>
+  <p class="subtitle" id="wk-subtitle">Loading...</p>
+  <div id="wk-shift-sw" style="display:flex;background:var(--surface2);border-radius:8px;padding:3px;gap:3px;">
+    <button id="wk-shift-1st" onclick="setWkShift('1st')" style="font-family:inherit;font-size:11px;font-weight:500;padding:4px 12px;border:none;border-radius:6px;cursor:pointer;background:transparent;color:var(--text-hint);transition:all 0.15s;">&#9728; 1st</button>
+    <button id="wk-shift-2nd" onclick="setWkShift('2nd')" style="font-family:inherit;font-size:11px;font-weight:500;padding:4px 12px;border:none;border-radius:6px;cursor:pointer;background:#185FA5;color:#fff;transition:all 0.15s;">&#9790; 2nd</button>
   </div>
+  <button class="btn btn-seed" id="wk-seed" onclick="reseedDummy()">&#x1F9EA; Reseed Demo</button>
+  <button class="btn btn-danger" id="wk-clear" onclick="clearAll()">&#x21BA; Clear Week</button>
 
   <div id="main-content"></div>
 
@@ -175,18 +174,15 @@ var _detailTab = 'dept'; // 'dept' | 'emp'
 var _uphMode = 'pick'; // 'pick' | 'replen' | 'putaway'
 
 // ── theme ──────────────────────────────────────────────
-var prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-function applyTheme(dark) {
+function applyTheme(t) {
+  var dark = ['dark','solid','pastel','remi','scout'].indexOf(t) !== -1;
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-  document.getElementById('toggle-label').textContent = dark ? 'Light mode' : 'Dark mode';
-  try { localStorage.setItem('rs_weekly_theme', dark ? 'dark' : 'light'); } catch(e) {}
+  if (t === 'dark' || t === 'light') document.documentElement.removeAttribute('data-variant');
+  else document.documentElement.setAttribute('data-variant', t);
 }
-(function() {
-  var saved; try { saved = localStorage.getItem('rs_weekly_theme'); } catch(e) {}
-  applyTheme(saved ? saved === 'dark' : prefersDark.matches);
-})();
-prefersDark.addEventListener('change', function(e) { applyTheme(e.matches); });
-function toggleDark() { applyTheme(document.documentElement.getAttribute('data-theme') !== 'dark'); }
+if (window.SCOUT_UI) SCOUT_UI.bar({ mount:'scout-bar', dept:'Reserve Stock', title:'Reserve Weekly Recap', sub:'wk-subtitle',
+  actions:['wk-shift-sw','wk-seed','wk-clear'], oldThemeKey:'rs_weekly_theme', applyTheme:applyTheme });
+else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem('rs_weekly_theme') || 'dark');
 
 // ── helpers ────────────────────────────────────────────
 function todayISO() {
