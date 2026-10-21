@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="scout_file_mode.js"></script>
+<script src="scout_ui.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -53,6 +54,13 @@
     --green:#17663a;--amber:#9a4500;--red:#a3122a;
     --box-green:#16a34a;--box-lime:#65a30d;--box-orange:#c2410c;--box-red:#be123c;
   }
+  [data-theme="remi"]{
+    --bg:#0e0b18;--surface:#16112a;--surface2:#1e1838;--border:#2e2550;--border-light:#1e1838;--border-mid:#3a3060;
+    --text:#e8e0f8;--text-muted:#9880cc;--text-hint:#6a5890;
+    --accent:#8ee8de;--accent-bg:#2a1850;--accent-muted:#8ee8de;
+    --green:#4ade80;--amber:#fbbf24;--red:#f87171;
+    --box-green:#22c55e;--box-lime:#a3e635;--box-orange:#fb923c;--box-red:#ef4444;
+  }
   [data-theme="light"]{
     --bg:#f9fafb;--surface:#fff;--surface2:#f3f4f6;--border:#e5e7eb;--border-light:#f3f4f6;--border-mid:#d1d5db;
     --text:#111827;--text-muted:#4b5563;--text-hint:#9ca3af;
@@ -83,20 +91,6 @@
     display:flex;align-items:flex-start;justify-content:space-between;
     margin-bottom:1.1rem;gap:12px;flex-wrap:wrap;
   }
-  .top-left{display:flex;flex-direction:column;gap:2px;}
-  .top-eyebrow{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1px;}
-  .top-title{display:flex;align-items:center;gap:7px;font-size:19px;font-weight:800;color:var(--text);line-height:1.15;}
-  .top-sub{font-size:12px;font-weight:600;color:var(--text-muted);margin-top:2px;}
-  .top-right{display:flex;align-items:center;gap:6px;padding-top:2px;}
-
-  /* live dot */
-  .live-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0;animation:livepulse 2s infinite;}
-  @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.3;transform:scale(0.7);}}
-
-  /* stale */
-  .stale-banner{display:none;background:#5C3A00;color:#FFD77A;font-size:13px;font-weight:700;padding:7px 14px;border-radius:6px;margin-bottom:0.9rem;text-align:center;}
-  [data-theme="light"] .stale-banner,[data-theme="starr"] .stale-banner,[data-theme="carrie"] .stale-banner{background:#FFF3CD;color:#7A4F00;}
-
   /* ── BUTTONS ── */
   .icon-btn{
     display:flex;align-items:center;justify-content:center;
@@ -116,32 +110,6 @@
     display:flex;align-items:center;gap:4px;
   }
   .refresh-btn:hover{opacity:0.8;}
-
-  /* ── THEME PICKER ── */
-  .theme-picker{position:relative;}
-  .theme-btn{
-    display:flex;align-items:center;gap:5px;
-    font-family:'Nunito',system-ui,sans-serif;font-size:12px;font-weight:700;
-    color:var(--text-muted);cursor:pointer;background:none;
-    border:0.5px solid var(--border);border-radius:7px;
-    padding:5px 11px;white-space:nowrap;
-  }
-  .theme-btn:hover{background:var(--surface2);}
-  .theme-chevron{font-size:10px;opacity:0.6;transition:transform 0.15s;}
-  .theme-picker.open .theme-chevron{transform:rotate(180deg);}
-  .theme-menu{
-    display:none;position:absolute;top:calc(100% + 5px);right:0;
-    background:var(--surface);border:0.5px solid var(--border);
-    border-radius:8px;overflow:hidden;min-width:110px;
-    box-shadow:0 8px 24px rgba(0,0,0,0.28);z-index:300;
-  }
-  .theme-picker.open .theme-menu{display:block;}
-  .theme-option{
-    padding:9px 16px;font-size:13px;font-weight:700;
-    cursor:pointer;color:var(--text-muted);transition:background 0.1s;
-  }
-  .theme-option:hover{background:var(--surface2);color:var(--text);}
-  .theme-option.active{color:var(--accent);}
 
   /* ── LEGEND ── */
   .legend{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;margin-bottom:0.9rem;flex-wrap:wrap;}
@@ -330,34 +298,9 @@ body { animation: pageEnter 0.28s ease-out both; }
 <div class="container">
 
   <!-- Compact header -->
-  <div class="top-bar">
-    <div class="top-left">
-      <div class="top-eyebrow">DC499 &middot; Shipping</div>
-      <div class="top-title"><span class="live-dot"></span>Shipping Live</div>
-      <div class="top-sub" id="run-info">Loading...</div>
-    </div>
-    <div class="top-right">
-      <button class="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
-      <div class="theme-picker" id="theme-picker">
-        <button class="theme-btn" onclick="toggleThemePicker()">
-          <span id="theme-label">Dark</span>
-          <span class="theme-chevron">&#9660;</span>
-        </button>
-        <div class="theme-menu">
-          <div class="theme-option" onclick="setTheme('dark')">Dark</div>
-          <div class="theme-option" onclick="setTheme('solid')">Solid</div>
-          <div class="theme-option" onclick="setTheme('pastel')">Pastel</div>
-          <div class="theme-option" onclick="setTheme('starr')">Starr</div>
-          <div class="theme-option" onclick="setTheme('carrie')">Carrie ☁</div>
-          <div class="theme-option" onclick="setTheme('scout')">✦ Scout</div>
-          <div class="theme-option" onclick="setTheme('light')">Light</div>
-        </div>
-      </div>
-      <button class="icon-btn" onclick="openSettings()" title="Settings">&#9881;</button>
-    </div>
-  </div>
-
-  <div class="stale-banner" id="stale-banner">Data is more than 15 minutes old — hit Refresh.</div>
+  <div id="scout-bar"></div>
+  <div class="top-sub" id="run-info">Loading...</div>
+  <button class="refresh-btn" id="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
 
   <!-- Legend -->
   <div class="legend">
@@ -417,21 +360,7 @@ const THEME_NAMES  = {dark:'Dark',solid:'Solid',pastel:'Pastel',starr:'Starr',ca
 let lastData = null;
 
 // ── theme ──────────────────────────────────────────────────────────────────────
-function setTheme(t) {
-  document.body.dataset.theme = t;
-  localStorage.setItem(THEME_KEY, t);
-  document.getElementById('theme-label').textContent = THEME_NAMES[t] || t;
-  document.querySelectorAll('.theme-option').forEach(el => {
-    el.classList.toggle('active', el.textContent === (THEME_NAMES[t] || t));
-  });
-  document.getElementById('theme-picker').classList.remove('open');
-}
-function toggleThemePicker() {
-  document.getElementById('theme-picker').classList.toggle('open');
-}
-document.addEventListener('click', e => {
-  if (!e.target.closest('#theme-picker')) document.getElementById('theme-picker').classList.remove('open');
-});
+function setTheme(t) { document.body.dataset.theme = t; }
 
 // ── settings modal ─────────────────────────────────────────────────────────────
 function openSettings() {
@@ -592,15 +521,15 @@ async function loadData() {
     lastData = data;
 
     const gen    = new Date(data.generated);
+    if (window.SCOUT_UI) SCOUT_UI.updated(gen);
     const ageMs  = Date.now() - gen.getTime();
     const genStr = gen.toLocaleTimeString('en-US', {timeZone:'America/Los_Angeles',hour:'numeric',minute:'2-digit',hour12:true});
 
     const dateStr = data.shift_date || '';
     document.getElementById('run-info').textContent =
-      `${data.shift||'2nd'} shift · ${dateStr ? dateStr + ' · ' : ''}${(data.employees||[]).length} associates · updated ${genStr}`;
+      `${data.shift||'2nd'} shift · ${dateStr ? dateStr + ' · ' : ''}${(data.employees||[]).length} associates`;
     document.getElementById('card-meta').textContent =
       `${data.row_count||0} rows${data.truncated?' ⚠ truncated':''}`;
-    document.getElementById('stale-banner').style.display = ageMs > STALE_MS ? 'block' : 'none';
 
     renderScoreboard(data);
     renderSettings(data.employees || []);
@@ -614,7 +543,9 @@ async function loadData() {
 
 // ── init ───────────────────────────────────────────────────────────────────────
 (function init() {
-  setTheme(localStorage.getItem(THEME_KEY) || 'dark');
+  if (window.SCOUT_UI) SCOUT_UI.bar({ mount:'scout-bar', dept:'Shipping', title:'Shipping Live', version:'v1.7',
+    sub:'run-info', actions:['refresh-btn'], settings:openSettings, oldThemeKey:THEME_KEY, applyTheme:setTheme });
+  else setTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY) || 'dark');
   loadData();
   setInterval(loadData, 5 * 60 * 1000);
 })();

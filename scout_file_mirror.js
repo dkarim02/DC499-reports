@@ -23,7 +23,7 @@ const realWrite  = fs.writeFileSync;
 // writes each data file into <share>/filedata.
 const SHARE_DIR    = process.env.SCOUT_SHARE_DIR || path.join(path.dirname(DIR), 'SCOUT Live');
 const SHARE_DATA   = path.join(SHARE_DIR, 'filedata');
-const SHARE_ASSETS = ['favicon.svg', 'scout_file_mode.js', 'remi.mp4'];
+const SHARE_ASSETS = ['favicon.svg', 'scout_file_mode.js', 'scout_ui.js', 'remi.mp4'];
 // One writer per OneDrive folder (2026-10-20): this PC is the only writer of SCOUT Live. The
 // 10/19–10/20 hand-off (a second machine writing this share, with a heartbeat fallback) was
 // removed — two writers on one folder caused OneDrive conflict copies and blank pages.

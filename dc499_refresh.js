@@ -1739,7 +1739,7 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
     // serve any root page + the few assets pages load (no sub-folders, so archived/ and data stay out)
     const ASSET_TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8',
                           '.svg': 'image/svg+xml', '.mp4': 'video/mp4' };
-    const ASSET_JS = new Set(['scout_file_mode.js']);
+    const ASSET_JS = new Set(['scout_file_mode.js', 'scout_ui.js']);
     let name = '';
     try { name = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname.slice(1)); } catch {}
     const ext = path.extname(name).toLowerCase();
