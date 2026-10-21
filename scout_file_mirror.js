@@ -127,8 +127,13 @@ function mirror(file, data) {
                + 'window.SCOUT_FILE_SRC=window.SCOUT_FILE_SRC||{};'
                + 'window.SCOUT_FILE_SRC[' + JSON.stringify(name) + ']={by:"pc",at:' + JSON.stringify(new Date().toISOString()) + '};\n';
     const jsName = name.replace(/\.json$/, '.js');
-    if (!fs.existsSync(MIRROR_DIR)) fs.mkdirSync(MIRROR_DIR);
-    writeAtomic(path.join(MIRROR_DIR, jsName), js);
+    // This folder's own filedata/ (for opening the reporter pages straight from disk) is off by
+    // default since 2026-10-20: the team opens SCOUT Live instead, and these ~13 files / ~6 MB per
+    // cycle kept this PC's OneDrive from ever finishing a sync. SCOUT_LOCAL_FILEDATA=1 turns it on.
+    if (process.env.SCOUT_LOCAL_FILEDATA === '1') {
+      if (!fs.existsSync(MIRROR_DIR)) fs.mkdirSync(MIRROR_DIR);
+      writeAtomic(path.join(MIRROR_DIR, jsName), js);
+    }
     if (shareOn()) {
       try {
         if (!fs.existsSync(SHARE_DATA)) fs.mkdirSync(SHARE_DATA);
