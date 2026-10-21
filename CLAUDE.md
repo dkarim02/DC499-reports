@@ -31,7 +31,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | scout_reserve_agent.js | reserve_live.json, putaway_live.json | Reserve_v1_7.html, Reserve_putaway.html |
 | scout_expedite_agent.js | expedite_live.json | Backlog_live.html (Expedite tab) |
 | scout_itemprep_agent.js | itemprep_live.json | ItemPrep_live.html |
-| scout_retail_agent.js | retail_backlog_live.json | Retail_backlog.html |
+| ~~scout_retail_agent.js~~ | ~~retail_backlog_live.json~~ | ~~Retail_backlog.html~~ — **archived 2026-10-20** (archived/retail_backlog/) |
 | scout_watch_agent.js | container_watch_live.json | Container_watch.html |
 | scout_untasked_agent.js | untasked_live.json | Backlog_live.html (No Task tab) |
 | scout_receiving_agent.js | receiving_live.json | Receiving_live.html |
@@ -51,7 +51,7 @@ Browser-based reporting suite on GitHub Pages. No backend, no build system — p
 | 11–13 | Reserve Live (one-shot / auto / auth) | scout_reserve_agent.js |
 | 14–16 | Item Prep Live (one-shot / auto / auth) | scout_itemprep_agent.js |
 | 17–19 | Expedite Live (one-shot / auto / auth) | scout_expedite_agent.js |
-| 20–22 | Retail Backlog (one-shot / auto every 5 min / auth) | scout_retail_agent.js |
+| 20–22 | Retail Backlog — **archived 2026-10-20** (prints a note) | — |
 | 23–25 | Container Watch (one-shot / auto every 15 min / auth) | scout_watch_agent.js |
 | 26–28 | Untasked Orders (one-shot / auto every 5 min / auth) | scout_untasked_agent.js |
 | 29–31 | Receiving Live (one-shot / auto every 3 min / auth) | scout_receiving_agent.js |
@@ -365,7 +365,9 @@ Entry point: orange "📦 Putaway WIP" pill in Reserve_v1_7.html top bar. Data: 
 
 ---
 
-## Retail Backlog (scout_retail_agent.js → Retail_backlog.html)
+## Retail Backlog (scout_retail_agent.js → Retail_backlog.html) — ARCHIVED 2026-10-20
+
+**Archived 2026-10-20** (Dean: Shubham's retail board covers it). Files in `archived/retail_backlog/` with a README on how to bring it back (move files back, dc499.bat 20–22, gitPush add list + LABELS, Menu chip). Removed from the menu, dc499.bat, the git push list and the second machine's runner. The menu's Reserve Stock card now has a **Retail Board** chip instead (`Retail%20board/dc499-board.html`, `fileOnly` — hidden on http/Pages; in SCOUT Live it is a small redirect written by `retailBoardLink()` in scout_file_mirror.js). Notes below kept for reference.
 
 Store replen order progress by wave. Output: retail_backlog_live.json. REDIRECT_PORT 3123. Menu entry: Reserve Stock card → "Retail Backlog" tool chip.
 
@@ -722,7 +724,7 @@ Disclaimer: This tool measures throughput only and may not be used to evaluate, 
 - [x] **Git history moved out of OneDrive (DONE 2026-10-08; old copy deleted 10/12).** `.git` in this folder is a one-line pointer file → `C:\Users\JLEO\SCOUT-git\DC499-reports\.git` (packed clone, `core.worktree` = this folder, tag `pre-shared-mcp`; `nordtech` remote re-added 10/12). This folder's git only works on this PC. `gitPush()` finds the git dir via `git rev-parse --absolute-git-dir`. Moving `.git` *out* of OneDrive hung (OneDrive downloads online-only files before letting them leave), so it was renamed *inside*: `.git-old-onedrive\` (~525k files), ignored via the clone's `.git/info/exclude`. 10/12 scan: 2,631 pushes since the swap, no gap > 20 min; every old ref is in the new copy; all 7 old autostashes saved in `archived/stash_backup/`. Both `.git-old-onedrive` and `_broken_clone_2026-10-02` were deleted 10/12, in place (Explorer asks for admin because git's files are read-only; `attrib -R` + `rm -rf` from the shell works, ~11 min).
 - **`DC499 Reporter - NordTech` folder removed from OneDrive (2026-10-16):** a broken half-clone (no HEAD/refs, 7,257 tiny git files) that clogged OneDrive sync. Its only unique objects were 595 old autostash commits (Jul 16–Aug 8); kept at `C:\Users\JLEO\SCOUT-git\_nordtech_onedrive_copy_2026-09-14\` (README there). `git ls-remote nordtech` says repo not found (private/no access or never made).
 - **CLAUDE.md is tracked by git** (the `.gitignore` line does nothing for a tracked file). **Commit CLAUDE.md edits right away**, like any other file — uncommitted edits get caught in the 2-min push's autostash and stranded (that's what wiped the 10/2 and 10/8 notes, not another session; see the 10/4 stash patch). Note: that also means CLAUDE.md is on the public GitHub repo.
-- [ ] **Verify Zones tab live (from 2026-09-24):** restart the Retail agent (option 21) so it runs the v1.1 code. Confirm a `Zones — picks: … · replen: …` line appears in the console and the tab fills in. So far it's been tested with real query results plus a page screenshot, not a full agent run.
+- [~] *(Retail Backlog archived 10/20 — the next 3 items are on hold)* **Verify Zones tab live (from 2026-09-24):** restart the Retail agent (option 21) so it runs the v1.1 code. Confirm a `Zones — picks: … · replen: …` line appears in the console and the tab fills in. So far it's been tested with real query results plus a page screenshot, not a full agent run.
 - [ ] **NEXT SESSION — Zones tab v2:** (1) rename zones to what the team calls them (ask Dean for names first), (2) tap a zone to expand its running list of open tasks (task ID, status, units, age, source), (3) show Tasks + Units instead of Lines + Units, (4) ~~group downstairs/upstairs~~ DONE 2026-09-24 (P/F split rejected — keep zones whole). Mock up first. See Zones Tab v2 memory.
 - [ ] **Retail Backlog next:** order lists for other status pills, replen tasks blocking picks, zone task visibility (Zones tab shipped v1.1 — TM-per-zone headcount still open), TM throughput, mixed-SKU case locations, open waves → release date/pending qty, failed orders by reason. See Retail Report Backlog memory.
 

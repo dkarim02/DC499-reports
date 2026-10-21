@@ -40,9 +40,7 @@ echo  17 Expedite Live - one-shot refresh
 echo  18 Expedite Live - start auto-refresh (every 3 min)
 echo  19 Expedite Live - auth
 echo ──────────────────────────────
-echo  20 Retail Backlog - one-shot refresh
-echo  21 Retail Backlog - start auto-refresh (every 5 min)
-echo  22 Retail Backlog - auth
+echo  20-22 Retail Backlog - ARCHIVED 2026-10-20 (see archived\retail_backlog)
 echo ──────────────────────────────
 echo  23 Container Watch - one-shot refresh
 echo  24 Container Watch - start auto-refresh (every 15 min)
@@ -192,27 +190,9 @@ if "%choice%"=="19" (
     pause
     exit /b
 )
-if "%choice%"=="20" (
-    echo.
-    echo Running Retail Backlog one-shot refresh...
-    "%NODE_EXE%" "%~dp0scout_retail_agent.js"
-    pause
-    exit /b
-)
-if "%choice%"=="21" (
-    echo.
-    echo Starting Retail Backlog auto-refresh every 5 min...
-    "%NODE_EXE%" "%~dp0scout_retail_agent.js" --serve --interval=5
-    pause
-    exit /b
-)
-if "%choice%"=="22" (
-    echo.
-    echo Starting Retail Backlog auth flow...
-    "%NODE_EXE%" "%~dp0scout_retail_agent.js" --auth
-    pause
-    exit /b
-)
+if "%choice%"=="20" goto retail_archived
+if "%choice%"=="21" goto retail_archived
+if "%choice%"=="22" goto retail_archived
 if "%choice%"=="23" (
     echo.
     echo Running Container Watch one-shot refresh...
@@ -278,3 +258,11 @@ if "%choice%"=="31" (
 )
 echo Invalid selection.
 pause
+exit /b
+
+:retail_archived
+echo.
+echo Retail Backlog was archived on 2026-10-20 (Shubham's retail board covers it).
+echo The files are in archived\retail_backlog - see the README there to bring it back.
+pause
+exit /b
