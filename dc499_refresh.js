@@ -1738,17 +1738,18 @@ h2{color:#8ee8de}p{color:#aaa}</style></head>
 
     // serve any root page + the few assets pages load (no sub-folders, so archived/ and data stay out)
     const ASSET_TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8',
-                          '.svg': 'image/svg+xml', '.mp4': 'video/mp4' };
+                          '.svg': 'image/svg+xml', '.mp4': 'video/mp4', '.json': 'application/json' };
     const ASSET_JS = new Set(['scout_file_mode.js', 'scout_ui.js']);
     let name = '';
     try { name = url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname.slice(1)); } catch {}
     const ext = path.extname(name).toLowerCase();
     const okName = /^[\w .-]+$/.test(name) && !name.startsWith('.')
-                && (ext === '.html' || ASSET_JS.has(name) || name === 'favicon.svg' || name === 'remi.mp4');
+                && (ext === '.html' || ASSET_JS.has(name) || name === 'favicon.svg' || name === 'remi.mp4'
+                    || /^[\w-]+\.json$/.test(name));   // any data file (dot files like .mcp_token.json stay out)
     if (okName) {
       const filePath = path.join(REPORT_DIR, name);
       if (fs.existsSync(filePath)) {
-        res.writeHead(200, { 'Content-Type': ASSET_TYPES[ext] });
+        res.writeHead(200, { 'Content-Type': ASSET_TYPES[ext], 'Access-Control-Allow-Origin': '*' });
         res.end(fs.readFileSync(filePath));
         return;
       }

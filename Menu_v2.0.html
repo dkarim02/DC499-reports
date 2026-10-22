@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <script src="scout_file_mode.js"></script>
+<script src="scout_ui.js"></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -182,6 +183,9 @@ body.pastel .header-wordmark { color: #d4d0e8; }
 .header-ver { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-indent: 0; text-transform: none; vertical-align: middle;
   margin-left: 4px; padding: 2px 7px; border-radius: 20px; background: rgba(14,158,142,0.16); color: #3cc7b5; }
 body.light .header-ver, body.carrie .header-ver, body.starr .header-ver { background: rgba(14,158,142,0.12); color: #0a7a6d; }
+
+.find-pill { cursor: pointer; font-family: inherit; }
+.find-pill:hover { color: #aaa; border-color: rgba(255,255,255,0.2); }
 
 .header-meta { display: flex; align-items: center; justify-content: center; gap: 10px; }
 
@@ -602,6 +606,7 @@ body.carrie .menu-theme-option:hover { background: rgba(11,107,203,0.08); color:
         <span id="shift-label">—</span>
       </div>
       <div class="header-clock" id="clock"></div>
+      <button type="button" class="shift-pill find-pill" onclick="if(window.SCOUT_UI)SCOUT_UI.openFind()" title="Find an order, LPN, tote, task or page">&#x1F50D; Find &middot; Ctrl+K</button>
       <a class="shift-pill status-pill" id="status-pill" href="Status.html" style="display:none"
          onclick="openApp('Status.html'); return false;" title="Are the reports up to date?">
         <span class="status-dot" id="status-dot"></span><span id="status-label">Status</span>
@@ -809,6 +814,7 @@ function initTheme() {
 /* ── INIT ─────────────────────────────────────────────────────── */
 document.getElementById('date').textContent = new Date().toLocaleDateString();
 initTheme();
+if (window.SCOUT_UI && SCOUT_UI.initFind) SCOUT_UI.initFind();   // Ctrl+K quick find
 window.addEventListener('storage', function(e) {
   if (e.key === THEME_KEY && MENU_THEME_VALS.indexOf(e.newValue) !== -1) applyTheme(e.newValue);
 });

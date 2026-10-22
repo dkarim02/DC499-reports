@@ -178,6 +178,9 @@
     var time = el('span', 'sui-chip sui-time'); time.appendChild(el('span', 'sui-clock')); time.appendChild(el('span', 'sui-shift'));
     right.appendChild(time);
 
+    var fb = el('button', 'sui-btn', '🔍'); fb.type = 'button'; fb.title = 'Find an order, LPN, tote, task or page (Ctrl+K)';
+    fb.onclick = function () { openPalette(); }; right.appendChild(fb);
+
     var th = el('div', 'sui-theme');
     var tb = el('button', 'sui-btn'); tb.type = 'button'; tb.title = 'Colors (same on every page)';
     tb.appendChild(el('span', 'sui-theme-label')); tb.appendChild(el('span', null, '▾'));
@@ -200,19 +203,24 @@
 
     applyTheme(getTheme(opts.oldThemeKey), true);
     tickClock(); setInterval(tickClock, 30000);
+    initFind();
   }
 
   // ── count-up numbers ──
-  // SCOUT_UI.countUp(['m-ready', ...]) — those elements roll to a new number (~0.5 s) instead of jumping.
-  // The page keeps writing textContent as before; a watcher catches the change before it is drawn.
-  // Instant (no roll) when: first value, not a plain number, 0 on either side, more than 2× / less than ½
+  // Big numbers roll to a new value (~0.5 s) instead of jumping. Two ways in:
+  //   SCOUT_UI.countUp(['m-ready', ...])  — elements the page updates in place (textContent). A watcher
+  //                                         catches the change before it is drawn.
+  //   <div data-sui-count="ecom-replen">  — pages that rebuild their tiles (innerHTML): after each redraw
+  //   SCOUT_UI.countKeys(rootEl)            call this; it rolls each tagged number from its last value.
+  // A number may have words after it ("37 total flagged") — it rolls only if the words stay the same.
+  // Instant (no roll) when: first value, not a number, 0 on either side, more than 2× / less than ½
   // (e.g. a units ↔ orders switch, a new shift), tab hidden, or Windows "reduce motion" is on.
   var COUNT_MS = 500;
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
   function parseNum(t) {
-    t = String(t == null ? '' : t).trim();
-    if (!/^-?[\d,]+(\.\d+)?$/.test(t)) return null;
-    return Number(t.replace(/,/g, ''));
+    var m = String(t == null ? '' : t).match(/^\s*(-?[\d,]+(?:\.\d+)?)([\s\S]*)$/);
+    if (!m || !/\d/.test(m[1])) return null;
+    return { n: Number(m[1].replace(/,/g, '')), num: m[1], rest: m[2] };
   }
   function fmtLike(n, sample, commas) {
     var dec = (String(sample).split('.')[1] || '').length;
@@ -220,37 +228,316 @@
     if (commas) { var parts = s.split('.'); parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ','); s = parts.join('.'); }
     return s;
   }
+  function shouldRoll(a, b) {
+    return a && b && a.rest === b.rest && a.n !== b.n && a.n !== 0 && b.n !== 0 &&
+           b.n / a.n <= 2 && b.n / a.n >= 0.5 && !document.hidden && !(reduceMotion && reduceMotion.matches);
+  }
+  // roll node's text from fromText to toText; write(txt) does the actual write; st keeps timers
+  function roll(st, fromText, toText, write) {
+    if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; }
+    clearTimeout(st.safety);
+    var a = parseNum(fromText), b = parseNum(toText);
+    if (!shouldRoll(a, b)) { st.shown = toText; return false; }
+    var commas = /,/.test(a.num + b.num), t0 = null;
+    st.safety = setTimeout(function () {         // if the browser pauses frames, the real number still lands
+      if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; }
+      st.shown = toText; write(toText);
+    }, COUNT_MS + 150);
+    function step(ts) {
+      if (t0 == null) t0 = ts;
+      var k = Math.min(1, (ts - t0) / COUNT_MS), e = 1 - Math.pow(1 - k, 3);   // ease-out
+      if (k < 1) { st.shown = fmtLike(a.n + (b.n - a.n) * e, b.num, commas) + b.rest; write(st.shown); st.raf = requestAnimationFrame(step); }
+      else { st.raf = 0; clearTimeout(st.safety); st.shown = toText; write(toText); }
+    }
+    st.shown = fromText; write(fromText);         // put the old number back before it is drawn
+    st.raf = requestAnimationFrame(step);
+    return true;
+  }
   function watchCount(node) {
     if (!node || node._suiCount) return;
     var st = node._suiCount = { shown: node.textContent, raf: 0 };
     var obs = new MutationObserver(function () {
-      var target = node.textContent, from = parseNum(st.shown), to = parseNum(target);
-      var still = from != null && to != null && from !== to && from !== 0 && to !== 0 &&
-                  to / from <= 2 && to / from >= 0.5 && !document.hidden && !(reduceMotion && reduceMotion.matches);
-      if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; }
-      clearTimeout(st.safety);
-      if (!still) { st.shown = target; return; }
-      // safety: if the browser pauses frames, the real number still lands right after the roll time
-      st.safety = setTimeout(function () {
-        if (st.raf) { cancelAnimationFrame(st.raf); st.raf = 0; }
-        if (node.textContent !== target) { st.shown = target; write(target); }
-      }, COUNT_MS + 150);
-      var t0 = null;
-      var commas = /,/.test(st.shown + target);
-      function write(txt) { node.textContent = txt; obs.takeRecords(); }   // our own writes are not new values
-      function step(ts) {
-        if (t0 == null) t0 = ts;
-        var k = Math.min(1, (ts - t0) / COUNT_MS), e = 1 - Math.pow(1 - k, 3);   // ease-out
-        if (k < 1) { st.shown = fmtLike(from + (to - from) * e, target, commas); write(st.shown); st.raf = requestAnimationFrame(step); }
-        else { st.raf = 0; clearTimeout(st.safety); st.shown = target; write(target); }
-      }
-      write(st.shown);                                    // put the old number back before it is drawn
-      st.raf = requestAnimationFrame(step);
+      var target = node.textContent;
+      roll(st, st.shown, target, function (txt) { node.textContent = txt; obs.takeRecords(); });  // own writes ≠ new values
     });
     obs.observe(node, { childList: true, characterData: true, subtree: true });
   }
   function countUp(ids) {
     (ids || []).forEach(function (id) { watchCount(typeof id === 'string' ? document.getElementById(id) : id); });
+  }
+  var keyState = {};                               // data-sui-count name → {shown, raf, safety}
+  function countKeys(root) {
+    var els = (root || document).querySelectorAll('[data-sui-count]');
+    for (var i = 0; i < els.length; i++) (function (el) {
+      var key = el.getAttribute('data-sui-count'), target = el.textContent;
+      var st = keyState[key] || (keyState[key] = { shown: null, raf: 0 });
+      var from = st.shown;
+      if (from == null) { st.shown = target; return; }            // first time this number is seen
+      roll(st, from, target, function (txt) { if (el.isConnected) el.textContent = txt; });
+    })(els[i]);
+  }
+
+  // ── quick find (Ctrl+K or 🔍) ──
+  // Paste an order #, oLPN, iLPN / case / LPN…, tote or task ID and jump straight to where SCOUT shows it.
+  // Searches only what SCOUT already has (the agents' data files) — late, stuck or flagged things.
+  // A page gets routed to with ?sui_find=<id>&sui_go=<route>; the page's own find(route, id) hook
+  // (SCOUT_UI.bar option) opens the right tab and returns the element to outline.
+  // Never shows associate names (Container Watch rows carry them; they stay in the page's detail).
+  var FIND_SOURCES = ['backlog_live.json', 'expedite_live.json', 'untasked_live.json',
+                      'container_watch_live.json', 'totes_live.json', 'tasks_live.json'];
+  var PAGES = [
+    ['Menu', MENU_PAGE, 'home'], ['Ecom', 'Ecom_v3.html', 'ecom live pph'],
+    ['Ecom Backlog', 'Backlog_live.html', 'backlog orders'],
+    ['Ecom Backlog · Batches', 'Backlog_live.html', 'batches putwall', 'tab', 'batches'],
+    ['Ecom Backlog · Tasks', 'Backlog_live.html', 'tasks carts', 'tab', 'tasks'],
+    ['Ecom Backlog · Expedite', 'Backlog_live.html', 'expedite 1dd 2dd', 'tab', 'expedite'],
+    ['Ecom Backlog · Floor Check', 'Backlog_live.html', 'floor check no task untasked', 'tab', 'untasked'],
+    ['Open Totes', 'Totes_live.html', 'totes'], ['Shipping', 'Shipping_live.html', 'shipping palletize'],
+    ['Receiving', 'Receiving_live.html', 'receiving'], ['Retail', 'Reserve_v1_7.html', 'retail reserve stock'],
+    ['Retail Weekly Recap', 'Reserve_weekly.html', 'weekly recap retail'],
+    ['Item Prep', 'ItemPrep_v2.0.html', 'item prep'], ['Container Watch', 'Container_watch.html', 'container watch cup'],
+    ['CC Pick List', 'CustomerCare_live.html', 'customer care gwp'], ['Change log', 'Changelog.html', 'changelog notes']
+  ];
+  var findIdx = null, findAt = 0, findLoading = null;
+
+  function loadData(name) {
+    if (location.protocol === 'file:' && !window.SCOUT_FILE_MODE) {        // page without the file-mode shim
+      return new Promise(function (res) {
+        var s = document.createElement('script');
+        s.src = 'filedata/' + name.replace(/\.json$/, '.js') + '?t=' + Date.now();
+        s.onload = function () { s.remove(); res((window.SCOUT_FILE_DATA || {})[name] || null); };
+        s.onerror = function () { s.remove(); res(null); };
+        document.head.appendChild(s);
+      });
+    }
+    return fetch(name + '?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; });
+  }
+  var XPD_ST = { '1000': 'Ready', '2090': 'Allocated', '7100': 'Packing', '7200': 'Packed', '7600': 'Manifested' };
+  var UT_CAT = { short_shelf: 'Short shelf', wont_fit: "Replen won't fit", count_open_since: 'Count open',
+                 replen_loop: 'Replen loop', has_stock: 'Has stock, no task' };
+  function shortDate(s) { var d = new Date(String(s).replace(' ', 'T') + (/Z|[+-]\d\d:\d\d$/.test(s) ? '' : 'Z'));
+    return isNaN(d) ? '' : d.toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric' }); }
+  function buildIndex(D) {
+    var out = [];
+    function add(id, kind, where, detail, page, go, key) {
+      if (id) out.push({ id: String(id), kind: kind, where: where, detail: detail || '', page: page, go: go, key: String(key || id) });
+    }
+    var bl = D['backlog_live.json'];
+    (bl && bl.dates || []).forEach(function (d) { (d.orders || []).forEach(function (o) {
+      add(o.order_id, 'Order', 'Ecom Backlog', [o.status && o.status.charAt(0) + o.status.slice(1).toLowerCase(),
+        'from ' + shortDate(d.date + 'T12:00:00Z'), (o.line_count || 0) + ' line' + (o.line_count === 1 ? '' : 's'),
+        o.hazmat === 'Y' ? 'Hazmat' : ''].filter(Boolean).join(' · '), 'Backlog_live.html', 'bl-order');
+    }); });
+    var x = D['expedite_live.json'];
+    (x && x.orders || []).forEach(function (o) {
+      var det = [XPD_ST[o.order_status] || o.order_status, o.olpn_location || '', o.quantity ? o.quantity + ' u' : ''].filter(Boolean).join(' · ');
+      add(o.order_id, 'Order', 'Expedite · ' + (o.service_level || ''), det, 'Backlog_live.html', 'xpd');
+      (o.olpns || []).forEach(function (l) { add(l, 'oLPN', 'Expedite · ' + (o.service_level || ''), 'order ' + o.order_id + ' · ' + det, 'Backlog_live.html', 'xpd', o.order_id); });
+    });
+    (x && x.splits && x.splits.list || []).forEach(function (o) {
+      var det = (o.boxes || []).length + ' boxes' + (o.fit === 'used' ? ' · would have fit one box' : '');
+      add(o.order_id, 'Order', 'Expedite · Splits', det, 'Backlog_live.html', 'xpd-splits');
+      (o.boxes || []).forEach(function (b) { add(b.olpn_id, 'oLPN', 'Expedite · Splits', 'order ' + o.order_id + ' · ' + det, 'Backlog_live.html', 'xpd-splits', o.order_id); });
+    });
+    var u = D['untasked_live.json'];
+    if (u) {
+      (u.orders || []).forEach(function (o) { add(o.order_id, 'Order', 'Floor Check', [UT_CAT[o.category] || o.category, o.svc, o.mins != null ? xMins(o.mins) + ' untasked' : ''].filter(Boolean).join(' · '), 'Backlog_live.html', 'ut'); });
+      (u.ghosts || []).forEach(function (o) { add(o.order_id, 'Order', 'Floor Check', 'Ghost allocation · order ' + (o.status || '').toLowerCase(), 'Backlog_live.html', 'ut'); });
+      (u.no_task_made || []).forEach(function (o) { add(o.order_id, 'Order', 'Floor Check', 'No task made · ' + (o.svc || ''), 'Backlog_live.html', 'ut'); });
+      (u.case_pick || []).forEach(function (o) {
+        add(o.order_id, 'Order', 'Floor Check', 'Waiting on a reserve case · ' + (o.svc || ''), 'Backlog_live.html', 'ut');
+        (o.lines || []).forEach(function (ln) { (ln.cases || []).forEach(function (c) {
+          add(c.lpn, 'Case', 'Floor Check', 'reserve case for order ' + o.order_id, 'Backlog_live.html', 'ut', o.order_id);
+          add(c.task_id, 'Task', 'Floor Check', 'case pick for order ' + o.order_id, 'Backlog_live.html', 'ut', o.order_id);
+        }); });
+      });
+      (u.shelves || []).forEach(function (s) { (s.deferred || []).forEach(function (d) { add(d.ilpn, 'iLPN', 'Floor Check', 'replen deferred to ' + (s.location || s.loc || 'a shelf'), 'Backlog_live.html', 'ut'); }); });
+    }
+    var c = D['container_watch_live.json'];
+    [['staging', 'Staging'], ['splits', 'Item Prep Splits'], ['found', 'Found Freight']].forEach(function (t) {
+      (c && c[t[0]] || []).forEach(function (r) {
+        var det = [r.loc || (t[0] === 'splits' ? 'no location' : ''), r.units ? r.units + ' u' : '', (r.tags || []).join(', ').replace(/_/g, ' ')].filter(Boolean).join(' · ');
+        add(r.lpn, 'Container', 'Container Watch · ' + t[1], det, 'Container_watch.html', 'cw-' + t[0]);
+        if (r.parent_lpn) add(r.parent_lpn, 'Carton', 'Container Watch · ' + t[1], 'parent carton of ' + r.lpn, 'Container_watch.html', 'cw-' + t[0], r.lpn);
+      });
+    });
+    var tt = D['totes_live.json'];
+    ['case1', 'case2', 'case3'].forEach(function (k) { (tt && tt[k] || []).forEach(function (t) {
+      add(t.olpn, 'Tote', 'Open Totes', [t.location || 'not dropped', t.timer_min != null ? xMins(t.timer_min) : ''].filter(Boolean).join(' · '), 'Totes_live.html', 'tote');
+    }); });
+    var tk = D['tasks_live.json'];
+    [['picking', 'Pick task'], ['replen', 'Replen task']].forEach(function (g) {
+      (tk && tk[g[0]] && tk[g[0]].tasks || []).forEach(function (t) {
+        add(t.task_id, 'Task', 'Ecom Backlog · Tasks', [g[1], t.status_label, t.source].filter(Boolean).join(' · '), 'Backlog_live.html', 'tasks');
+      });
+    });
+    ['pick_drop_carts', 'flow_carts'].forEach(function (k) { (tk && tk[k] || []).forEach(function (cart) {
+      (cart.ilpns || []).forEach(function (l) { add(l.ilpn_id, 'iLPN', 'Ecom Backlog · Tasks', 'on cart at ' + cart.location, 'Backlog_live.html', 'tasks', cart.location); });
+    }); });
+    return out;
+  }
+  function xMins(m) { m = Math.round(m); return m < 60 ? m + ' min' : m < 1440 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : Math.floor(m / 1440) + ' d'; }
+  function ensureIndex() {
+    if (findIdx && Date.now() - findAt < 90000) return Promise.resolve(findIdx);
+    if (findLoading) return findLoading;
+    findLoading = Promise.all(FIND_SOURCES.map(loadData)).then(function (arr) {
+      var D = {}; FIND_SOURCES.forEach(function (n, i) { D[n] = arr[i]; });
+      findIdx = buildIndex(D); findAt = Date.now(); findLoading = null; return findIdx;
+    });
+    return findLoading;
+  }
+  function norm(s) { return String(s || '').toUpperCase().replace(/\s+/g, ''); }
+  function search(q) {
+    var n = norm(q), res = [];
+    if (!n) return res;
+    var seen = {};
+    (findIdx || []).forEach(function (e) {
+      var id = norm(e.id), score = id === n ? 3 : (n.length >= 4 && id.indexOf(n) !== -1) ? (id.slice(-n.length) === n ? 2 : 1) : 0;
+      var k = e.id + '|' + e.where + '|' + e.go;
+      if (score && !seen[k]) { seen[k] = 1; res.push({ e: e, s: score }); }
+    });
+    res.sort(function (a, b) { return b.s - a.s; });
+    var low = String(q).toLowerCase().trim();
+    var pages = PAGES.filter(function (p) { return low.length >= 2 && (p[0] + ' ' + p[2]).toLowerCase().indexOf(low) !== -1; });
+    return res.slice(0, 12).map(function (r) { return r.e; }).concat(pages.map(function (p) {
+      return { page: p[1], kind: 'Page', where: p[0], detail: '', go: p[3] || '', key: p[4] || '', isPage: true };
+    }));
+  }
+
+  var palEl = null, palSel = 0, palRes = [];
+  var PAL_CSS = [
+    '.sui-pal-back{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.45);display:none;align-items:flex-start;justify-content:center;padding-top:12vh;}',
+    '.sui-pal-back.open{display:flex;}',
+    '.sui-pal{width:min(640px,92vw);border-radius:14px;background:#1d1f27;color:#e6e6e4;border:1px solid rgba(255,255,255,0.12);',
+    ' box-shadow:0 18px 48px rgba(0,0,0,0.45);overflow:hidden;font-family:-apple-system,"Segoe UI",sans-serif;}',
+    '.sui-pal.sui-light{background:#fff;color:#1a1a1a;border-color:rgba(0,0,0,0.12);}',
+    '.sui-pal input{width:100%;box-sizing:border-box;border:0;outline:0;padding:16px 18px;font-size:16px;background:transparent;color:inherit;',
+    ' border-bottom:1px solid rgba(127,127,127,0.25);font-family:inherit;}',
+    '.sui-pal-list{max-height:52vh;overflow-y:auto;padding:6px;}',
+    '.sui-pal-item{display:flex;gap:12px;align-items:baseline;padding:9px 12px;border-radius:9px;cursor:pointer;}',
+    '.sui-pal-item.sel{background:rgba(14,158,142,0.18);}',
+    '.sui-pal-kind{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;min-width:64px;opacity:0.6;}',
+    '.sui-pal-main{flex:1;min-width:0;}',
+    '.sui-pal-id{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;word-break:break-all;}',
+    '.sui-pal-where{font-size:12px;opacity:0.85;margin-top:1px;}',
+    '.sui-pal-det{font-size:11px;opacity:0.6;margin-top:1px;}',
+    '.sui-pal-msg{padding:14px 16px;font-size:13px;opacity:0.7;line-height:1.5;}',
+    '.sui-pal-foot{padding:8px 14px;font-size:11px;opacity:0.5;border-top:1px solid rgba(127,127,127,0.2);}',
+    '.sui-found{outline:2px solid #0E9E8E !important;outline-offset:2px;background-color:rgba(14,158,142,0.14) !important;}',
+    '.sui-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:100001;padding:10px 16px;border-radius:10px;',
+    ' background:#1d1f27;color:#e6e6e4;font:13px -apple-system,"Segoe UI",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,0.35);max-width:90vw;}'
+  ].join('\n');
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function palDraw(q, msg) {
+    var list = palEl.querySelector('.sui-pal-list');
+    if (msg) { list.innerHTML = '<div class="sui-pal-msg">' + msg + '</div>'; return; }
+    if (!palRes.length) {
+      list.innerHTML = '<div class="sui-pal-msg">' + (norm(q).length >= 4
+        ? '<b>' + esc(q) + '</b> is not on any SCOUT list right now. SCOUT only lists late, stuck or flagged work, so this usually means nothing is wrong with it.'
+        : 'Paste an order #, oLPN, iLPN / case, tote or task ID — or type a page name.') + '</div>';
+      return;
+    }
+    list.innerHTML = palRes.map(function (r, i) {
+      return '<div class="sui-pal-item' + (i === palSel ? ' sel' : '') + '" data-i="' + i + '"><div class="sui-pal-kind">' + esc(r.kind) +
+        '</div><div class="sui-pal-main">' + (r.isPage ? '' : '<div class="sui-pal-id">' + esc(r.id) + '</div>') +
+        '<div class="sui-pal-where">' + esc(r.where) + '</div>' + (r.detail ? '<div class="sui-pal-det">' + esc(r.detail) + '</div>' : '') + '</div></div>';
+    }).join('');
+    var s = list.querySelector('.sel'); if (s) s.scrollIntoView({ block: 'nearest' });
+  }
+  function palRun() {
+    var q = palEl.querySelector('input').value;
+    palRes = search(q); palSel = 0; palDraw(q);
+  }
+  function openPalette() {
+    if (!palEl) {
+      if (!document.getElementById('sui-pal-css')) { var st = document.createElement('style'); st.id = 'sui-pal-css'; st.textContent = PAL_CSS; document.head.appendChild(st); }
+      palEl = document.createElement('div'); palEl.className = 'sui-pal-back';
+      palEl.innerHTML = '<div class="sui-pal" role="dialog" aria-label="Quick find"><input type="text" placeholder="Find an order, oLPN, LPN, tote, task — or a page" autocomplete="off" spellcheck="false">' +
+        '<div class="sui-pal-list"></div><div class="sui-pal-foot">↑ ↓ to pick · Enter to open · Esc to close · searches what SCOUT is showing right now</div></div>';
+      document.body.appendChild(palEl);
+      var inp = palEl.querySelector('input');
+      inp.addEventListener('input', function () { ensureIndex().then(palRun); });
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown') { palSel = Math.min(palRes.length - 1, palSel + 1); palDraw(inp.value); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { palSel = Math.max(0, palSel - 1); palDraw(inp.value); e.preventDefault(); }
+        else if (e.key === 'Enter') { if (palRes[palSel]) goTo(palRes[palSel]); e.preventDefault(); }
+        else if (e.key === 'Escape') closePalette();
+      });
+      palEl.addEventListener('mousedown', function (e) { if (e.target === palEl) closePalette(); });
+      palEl.querySelector('.sui-pal-list').addEventListener('click', function (e) {
+        var it = e.target.closest && e.target.closest('.sui-pal-item'); if (it) goTo(palRes[+it.getAttribute('data-i')]);
+      });
+    }
+    palEl.querySelector('.sui-pal').classList.toggle('sui-light', !!pageIsLight());
+    palEl.classList.add('open');
+    var inp2 = palEl.querySelector('input'); inp2.value = ''; inp2.focus();
+    palRes = []; palDraw('', findIdx ? null : 'Loading what SCOUT is showing…');
+    ensureIndex().then(function () { if (palEl.classList.contains('open') && !inp2.value) palDraw(''); else palRun(); });
+  }
+  function closePalette() { if (palEl) palEl.classList.remove('open'); }
+
+  function here(page) { return (location.pathname.split('/').pop() || 'index.html') === page; }
+  function goTo(r) {
+    closePalette();
+    if (!r) return;
+    var id = r.key;
+    if (here(r.page)) { if (r.go) runFind(r.go, id); return; }
+    var url = r.page + (r.go ? '?sui_go=' + encodeURIComponent(r.go) + '&sui_find=' + encodeURIComponent(id) : '');
+    location.href = url;
+  }
+  function toast(msg) {
+    var t = document.createElement('div'); t.className = 'sui-toast'; t.textContent = msg; document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 5000);
+  }
+  // find text `id` inside root → the row-like element holding it
+  function findText(root, id) {
+    var n = norm(id); if (!root || !n) return null;
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), node;
+    while ((node = w.nextNode())) {
+      if (norm(node.nodeValue).indexOf(n) === -1) continue;
+      var el = node.parentElement;
+      if (!el || el.offsetParent === null) continue;               // hidden
+      return el.closest('tr, .order-entry, [data-oid], li, .tote-card, .tote-row') || el;
+    }
+    return null;
+  }
+  function highlight(el) {
+    if (!el) return;
+    el.scrollIntoView({ block: 'center' });
+    el.classList.add('sui-found');
+    setTimeout(function () { el.classList.remove('sui-found'); }, 6000);
+  }
+  // ask the page's find hook (retries while its data is still loading)
+  function runFind(go, id) {
+    if (!document.getElementById('sui-pal-css')) { var st = document.createElement('style'); st.id = 'sui-pal-css'; st.textContent = PAL_CSS; document.head.appendChild(st); }
+    var hook = opts && opts.find, tries = 0, redo = 0;
+    (function attempt() {
+      var el = null;
+      try { el = hook ? hook(go, id, findText) : findText(document.body, id); } catch (e) { console.warn('[scout_ui] find', e); }
+      if (el && el.nodeType === 1) {
+        highlight(el);
+        // the page may redraw its table right after (data still landing) — find the new row again
+        var check = function () { if (!el.isConnected && redo++ < 3) { tries = 0; attempt(); } };
+        setTimeout(check, 1200); setTimeout(check, 3500);
+        return;
+      }
+      if (el === true) return;                                     // page handled it itself
+      if (++tries < 20) { setTimeout(attempt, 500); return; }
+      toast(id + ' is not showing on this page right now — it may be hidden by a filter, or it just cleared.');
+    })();
+  }
+  function initFind() {
+    if (window._suiFindInit) return; window._suiFindInit = true;
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); openPalette(); }
+    });
+    var p = new URLSearchParams(location.search), go = p.get('sui_go'), id = p.get('sui_find');
+    if (go && id) {
+      p.delete('sui_go'); p.delete('sui_find');                    // a refresh won't re-run it; keep ?from=ecom etc.
+      try { history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p.toString() : '')); } catch (e) {}
+      setTimeout(function () { runFind(go, id); }, 300);
+    }
   }
 
   // another tab changed the theme → follow it
@@ -260,7 +547,11 @@
     bar: bar,
     updated: function (d) { lastUpdated = d ? new Date(d) : null; renderUpdated(); },
     countUp: countUp,
+    countKeys: countKeys,
     theme: { get: function () { return getTheme(); }, set: function (t) { applyTheme(t, true); }, list: THEMES.slice(), key: THEME_KEY },
-    menuPage: MENU_PAGE
+    menuPage: MENU_PAGE,
+    // quick find for a page without the bar (the Menu): SCOUT_UI.initFind()
+    initFind: function (o) { if (o) opts = o; initFind(); },
+    openFind: function () { openPalette(); }
   };
 })();

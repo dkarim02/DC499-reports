@@ -226,8 +226,17 @@ const THEME_KEY = 'container_watch_theme_v1';
 const THEME_NAMES = { light:'Light', dark:'Dark', solid:'Solid', pastel:'Pastel', starr:'Starr', carrie:'Carrie ☁', scout:'Scout' };
 
 function applyTheme(t) { document.documentElement.setAttribute('data-theme', t === 'light' ? '' : t); }
-if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Item Prep",title:"Container Watch",version:"v1.0",sub:"cw-sub"}, { oldThemeKey: THEME_KEY, applyTheme: applyTheme }));
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Item Prep",title:"Container Watch",version:"v1.0",sub:"cw-sub"}, { oldThemeKey: THEME_KEY, applyTheme: applyTheme, find: function (go, id, findText) {
+  if (!data) return null;                                    // still loading
+  var tab = go.replace('cw-', '');
+  if (activeTab !== tab) setTab(tab);
+  var s = document.getElementById('search');
+  if (s.value !== id) { s.value = id; render(); }            // the page's own search narrows the table to it
+  return findText(document.getElementById('tbody'), id);
+} }));
 else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY) || 'dark');
+// big numbers roll to a new value instead of jumping (scout_ui.js)
+if (window.SCOUT_UI && SCOUT_UI.countUp) SCOUT_UI.countUp(['m-fc','m-pk','m-ghost','m-match']);
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 function esc(s) {
