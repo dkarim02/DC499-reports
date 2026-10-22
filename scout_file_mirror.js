@@ -46,25 +46,35 @@ function cleanShareConflicts() {
   try { for (const f of fs.readdirSync(SHARE_DATA)) if (CONFLICT_COPY.test(f)) { try { fs.unlinkSync(path.join(SHARE_DATA, f)); } catch {} } } catch {}
 }
 
-// Menu "Retail Board" chip (2026-10-20) opens Retail board/dc499-board.html. Here that file is a
-// tiny redirect to the retail board's own live page in its shared OneDrive folder (a sibling
-// folder ending in "DC499_Retail_Dashboard") — nothing big is copied or uploaded from this PC.
+// Menu "Retail Board" / "Item Prep Board" chips (2026-10-20 / 10-21) open <folder>/<page>. Here each
+// file is a tiny redirect to Shubham's own live page in its shared OneDrive folder (a sibling folder
+// ending in "DC499_Retail_Dashboard") — nothing big is copied or uploaded from this PC.
+const BOARD_LINKS = [
+  { title: 'Retail Board',    dir: 'Retail board',    page: 'dc499-board.html' },
+  { title: 'Item Prep Board', dir: 'Item Prep board', page: 'itemprep-board.html' },
+];
 function retailBoardLink() {
+  let n = 0;
   try {
     const parent = path.dirname(SHARE_DIR);
-    const name = fs.readdirSync(parent).find(n => /DC499_Retail_Dashboard$/.test(n));
+    const name = fs.readdirSync(parent).find(x => /DC499_Retail_Dashboard$/.test(x));
     if (!name) return 0;
-    const parts = [name, 'DC499_Retail-main', 'live', 'dc499-board.html'];
-    if (!fs.existsSync(path.join(parent, ...parts))) return 0;
-    const href = '../../' + parts.map(encodeURIComponent).join('/');
-    const html = `<!DOCTYPE html><meta charset="utf-8"><title>Retail Board</title>`
-               + `<meta http-equiv="refresh" content="0;url=${href}"><a href="${href}">Open the Retail Board</a>\n`;
-    const dir = path.join(SHARE_DIR, 'Retail board'), out = path.join(dir, 'dc499-board.html');
-    try { if (fs.readFileSync(out, 'utf8') === html) return 0; } catch {}
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-    writeAtomic(out, html);
-    return 1;
-  } catch (e) { console.warn(`  Retail Board link skipped: ${e.message}`); return 0; }
+    for (const b of BOARD_LINKS) {
+      try {
+        const parts = [name, 'DC499_Retail-main', 'live', b.page];
+        if (!fs.existsSync(path.join(parent, ...parts))) continue;
+        const href = '../../' + parts.map(encodeURIComponent).join('/');
+        const html = `<!DOCTYPE html><meta charset="utf-8"><title>${b.title}</title>`
+                   + `<meta http-equiv="refresh" content="0;url=${href}"><a href="${href}">Open the ${b.title}</a>\n`;
+        const dir = path.join(SHARE_DIR, b.dir), out = path.join(dir, b.page);
+        try { if (fs.readFileSync(out, 'utf8') === html) continue; } catch {}
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+        writeAtomic(out, html);
+        n++;
+      } catch (e) { console.warn(`  ${b.title} link skipped: ${e.message}`); }
+    }
+  } catch (e) { console.warn(`  Board links skipped: ${e.message}`); }
+  return n;
 }
 
 function syncSharePages() {
