@@ -1,11 +1,11 @@
 {
-  "generated": "2026-10-22T23:32:51",
+  "generated": "2026-10-22T23:35:53",
   "facility": "499",
   "shift_label": "2nd shift",
   "shift_start": "2026-10-22 21:00:00",
-  "open_count": 754,
+  "open_count": 758,
   "open_1dd": 61,
-  "open_2dd": 693,
+  "open_2dd": 697,
   "shipped_count": 201,
   "shipped_1dd": 26,
   "shipped_2dd": 175,
@@ -18,9 +18,9 @@
       "shipped_late": 48,
       "not_shipped": 31
     },
-    "pallet_avg_min": 26,
-    "pallet_median_min": 20,
-    "pallet_count": 7,
+    "pallet_avg_min": 35,
+    "pallet_median_min": 41,
+    "pallet_count": 10,
     "hold_min": 60,
     "held": [
       {
@@ -35,20 +35,6 @@
         "order_id": "1067376857-50000",
         "packed_utc": "2026-10-22T22:14:03",
         "location": "O1-WB-0101A02",
-        "olpn_status": "7200"
-      },
-      {
-        "olpn_id": "00499000000001161141",
-        "order_id": "1067398736-50000",
-        "packed_utc": "2026-10-22T22:31:04",
-        "location": null,
-        "olpn_status": "7200"
-      },
-      {
-        "olpn_id": "00499000000001161142",
-        "order_id": "1067398371-50000",
-        "packed_utc": "2026-10-22T22:31:57",
-        "location": null,
         "olpn_status": "7200"
       }
     ]
@@ -1880,8 +1866,8 @@
         "00499000000001160855"
       ],
       "olpn_status": "7200",
-      "olpn_location": "O1-WB-0201A12",
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A003",
+      "olpn_pallet": "00105499100000510019",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -2792,7 +2778,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -2887,7 +2873,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -3759,7 +3745,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -4025,7 +4011,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -4277,7 +4263,7 @@
     },
     {
       "order_id": "1067332404-50001",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "1DD",
       "placed_utc": "2026-10-22T05:34:25",
       "ship_by_utc": "2026-10-22T19:00:00",
@@ -4286,23 +4272,13 @@
       "olpns": [
         "00499000000001161917"
       ],
-      "olpn_status": "7000",
-      "olpn_location": null,
+      "olpn_status": "7200",
+      "olpn_location": "O1-WB-0301A21",
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
-      "due_utc": "2026-10-22T19:00:00",
-      "trace": {
-        "stage": "not_released",
-        "units": 3,
-        "picked": 0,
-        "sorted": 0,
-        "cubby_slot": null,
-        "cubby_lpn": null,
-        "cubby_lpn_loc": null,
-        "lines": []
-      }
+      "due_utc": "2026-10-22T19:00:00"
     },
     {
       "order_id": "1067365923-50001",
@@ -4641,8 +4617,8 @@
         "00499000000001161344"
       ],
       "olpn_status": "7200",
-      "olpn_location": "O1-WB-0301A21",
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A019",
+      "olpn_pallet": "00105499100000510000",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -4955,12 +4931,12 @@
       "pick_stage": null,
       "due_utc": "2026-10-22T19:00:00",
       "trace": {
-        "stage": "in_tote",
+        "stage": "cubby_out",
         "units": 2,
         "picked": 2,
-        "sorted": 0,
-        "cubby_slot": null,
-        "cubby_lpn": null,
+        "sorted": 2,
+        "cubby_slot": "S1-PW-0605B03",
+        "cubby_lpn": "S100000678",
         "cubby_lpn_loc": null,
         "lines": [
           {
@@ -4970,9 +4946,7 @@
             "st": "picked",
             "tote": "T000009092",
             "at": "2026-10-22T22:16:48",
-            "sorted": false,
-            "tote_loc": "D1-PW-06",
-            "tote_has": true
+            "sorted": true
           },
           {
             "item": "43749267",
@@ -4981,9 +4955,7 @@
             "st": "picked",
             "tote": "T000009092",
             "at": "2026-10-22T22:18:05",
-            "sorted": false,
-            "tote_loc": "D1-PW-06",
-            "tote_has": true
+            "sorted": true
           }
         ]
       }
@@ -5190,8 +5162,8 @@
         "00499000000001161563"
       ],
       "olpn_status": "7200",
-      "olpn_location": null,
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A019",
+      "olpn_pallet": "00105499100000510000",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -5237,7 +5209,7 @@
     },
     {
       "order_id": "1067401312-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-22T18:38:34",
       "ship_by_utc": "2026-10-23T00:00:00",
@@ -5246,11 +5218,11 @@
       "olpns": [
         "00499000000001161448"
       ],
-      "olpn_status": "1000",
-      "olpn_location": null,
+      "olpn_status": "7200",
+      "olpn_location": "O1-WB-0201A12",
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -5399,8 +5371,8 @@
         "00499000000001161545"
       ],
       "olpn_status": "7200",
-      "olpn_location": null,
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A003",
+      "olpn_pallet": "00105499100000510019",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -5423,7 +5395,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -5466,7 +5438,7 @@
     },
     {
       "order_id": "1067404349-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-22T18:57:58",
       "ship_by_utc": "2026-10-23T01:00:00",
@@ -5475,11 +5447,11 @@
       "olpns": [
         "00499000000001161515"
       ],
-      "olpn_status": "1000",
+      "olpn_status": "7200",
       "olpn_location": null,
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -5533,8 +5505,8 @@
         "00499000000001161505"
       ],
       "olpn_status": "7200",
-      "olpn_location": null,
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A019",
+      "olpn_pallet": "00105499100000510000",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -5704,8 +5676,8 @@
         "00499000000001161578"
       ],
       "olpn_status": "7200",
-      "olpn_location": null,
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A003",
+      "olpn_pallet": "00105499100000510019",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -5742,8 +5714,8 @@
         "00499000000001161470"
       ],
       "olpn_status": "7200",
-      "olpn_location": null,
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A003",
+      "olpn_pallet": "00105499100000510019",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -6012,7 +5984,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -6031,7 +6003,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -6103,8 +6075,8 @@
         "00499000000001161628"
       ],
       "olpn_status": "7200",
-      "olpn_location": null,
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A019",
+      "olpn_pallet": "00105499100000510000",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -6240,7 +6212,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -6378,7 +6350,7 @@
     },
     {
       "order_id": "1067409821-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-22T19:34:18",
       "ship_by_utc": "2026-10-23T01:00:00",
@@ -6387,11 +6359,11 @@
       "olpns": [
         "00499000000001161605"
       ],
-      "olpn_status": "1000",
+      "olpn_status": "7200",
       "olpn_location": null,
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -6430,7 +6402,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -6739,7 +6711,7 @@
     },
     {
       "order_id": "1067411537-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-22T19:45:42",
       "ship_by_utc": "2026-10-23T01:00:00",
@@ -7152,7 +7124,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -7627,7 +7599,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -7703,7 +7675,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -7741,7 +7713,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -7760,7 +7732,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -7798,7 +7770,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -7855,7 +7827,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -8026,7 +7998,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -8385,7 +8357,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -8518,7 +8490,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -8537,7 +8509,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -8611,7 +8583,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -8725,7 +8697,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -8763,7 +8735,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -8801,7 +8773,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": "2026-10-23T19:00:00"
     },
     {
@@ -8856,7 +8828,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -8951,7 +8923,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -9141,7 +9113,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -9160,7 +9132,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -9217,7 +9189,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -9236,7 +9208,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -9348,7 +9320,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -9498,7 +9470,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -9536,7 +9508,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -9779,7 +9751,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -9912,7 +9884,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": "2026-10-23T19:00:00"
     },
     {
@@ -10102,7 +10074,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -10364,7 +10336,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -10383,7 +10355,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -10548,7 +10520,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -10662,7 +10634,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -10681,7 +10653,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -10719,7 +10691,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -10738,7 +10710,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -10757,7 +10729,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -10928,7 +10900,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -11000,7 +10972,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -11112,7 +11084,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -11326,6 +11298,40 @@
       "placed_utc": "2026-10-22T23:26:19",
       "ship_by_utc": "2026-10-23T05:00:00",
       "deliver_by_utc": "2026-10-25T03:00:00",
+      "quantity": 1,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067443200-50001",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-22T23:28:42",
+      "ship_by_utc": "2026-10-23T05:00:00",
+      "deliver_by_utc": "2026-10-27T03:00:00",
+      "quantity": 4,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067443275-50001",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-22T23:29:12",
+      "ship_by_utc": "2026-10-23T05:00:00",
+      "deliver_by_utc": "2026-10-27T03:00:00",
       "quantity": 1,
       "olpns": [],
       "olpn_status": null,
@@ -11846,7 +11852,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -12203,8 +12209,8 @@
         "00499000000001161428"
       ],
       "olpn_status": "7200",
-      "olpn_location": "O1-WB-0301A21",
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A019",
+      "olpn_pallet": "00105499100000510000",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -12801,7 +12807,7 @@
     },
     {
       "order_id": "1067407546-50002",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-22T19:19:31",
       "ship_by_utc": "2026-10-23T18:00:00",
@@ -12810,11 +12816,11 @@
       "olpns": [
         "00499000000001161485"
       ],
-      "olpn_status": "1000",
+      "olpn_status": "7200",
       "olpn_location": null,
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -13046,7 +13052,7 @@
     },
     {
       "order_id": "1067411260-50000",
-      "order_status": "2090",
+      "order_status": "7200",
       "service_level": "2DD",
       "placed_utc": "2026-10-22T19:43:47",
       "ship_by_utc": "2026-10-23T18:00:00",
@@ -13055,11 +13061,11 @@
       "olpns": [
         "00499000000001161637"
       ],
-      "olpn_status": "1000",
+      "olpn_status": "7200",
       "olpn_location": null,
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -13170,8 +13176,8 @@
         "00499000000001161623"
       ],
       "olpn_status": "7200",
-      "olpn_location": "O1-WB-0101A02",
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A003",
+      "olpn_pallet": "00105499100000510019",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -13231,7 +13237,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -13283,11 +13289,11 @@
       "olpns": [
         "00499000000001161584"
       ],
-      "olpn_status": "1000",
+      "olpn_status": "7200",
       "olpn_location": null,
       "olpn_pallet": null,
-      "olpn_svc": "ECMS_GENERIC",
-      "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
+      "olpn_svc": "ONTRAC_GROUND_ECMS",
+      "carrier": "ONTRAC",
       "pick_stage": null,
       "due_utc": null
     },
@@ -13307,7 +13313,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -13535,7 +13541,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -13573,7 +13579,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -13607,8 +13613,8 @@
         "00499000000001161834"
       ],
       "olpn_status": "7200",
-      "olpn_location": "O1-WB-0301A21",
-      "olpn_pallet": null,
+      "olpn_location": "P1OB02A003",
+      "olpn_pallet": "00105499100000510019",
       "olpn_svc": "ONTRAC_GROUND_ECMS",
       "carrier": "ONTRAC",
       "pick_stage": null,
@@ -13915,7 +13921,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -13970,7 +13976,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -14044,7 +14050,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -14403,7 +14409,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -14800,7 +14806,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -14857,7 +14863,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -14876,7 +14882,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -14952,7 +14958,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -15140,7 +15146,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -15330,7 +15336,7 @@
       "olpn_pallet": null,
       "olpn_svc": "ECMS_GENERIC",
       "carrier": "ECMS_GENERIC_SERVICE_PROVIDER",
-      "pick_stage": "3000",
+      "pick_stage": "7000",
       "due_utc": null
     },
     {
@@ -15477,6 +15483,40 @@
       "ship_by_utc": "2026-10-23T18:00:00",
       "deliver_by_utc": "2026-10-27T03:00:00",
       "quantity": 2,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067443212-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-22T23:28:47",
+      "ship_by_utc": "2026-10-23T18:00:00",
+      "deliver_by_utc": "2026-10-27T03:00:00",
+      "quantity": 1,
+      "olpns": [],
+      "olpn_status": null,
+      "olpn_location": null,
+      "olpn_pallet": null,
+      "olpn_svc": null,
+      "carrier": null,
+      "pick_stage": null,
+      "due_utc": null
+    },
+    {
+      "order_id": "1067443296-50000",
+      "order_status": "1000",
+      "service_level": "2DD",
+      "placed_utc": "2026-10-22T23:29:26",
+      "ship_by_utc": "2026-10-23T18:00:00",
+      "deliver_by_utc": "2026-10-27T03:00:00",
+      "quantity": 1,
       "olpns": [],
       "olpn_status": null,
       "olpn_location": null,
