@@ -69,5 +69,13 @@
     });
   };
 
+  // For a page whose data is inside the page itself (no sidecar), e.g. the Retail Board copy in
+  // the team folder: SCOUT_FILE_NOTE({ by: 'laptop', at: <ISO time> }) draws the same pill.
+  window.SCOUT_FILE_NOTE = function (s) {
+    if (!s || !s.at) return;
+    if (!newest || Date.parse(s.at) > Date.parse(newest.at)) newest = s;
+    drawPill();
+  };
+
   window.SCOUT_FILE_MODE = true;
 })();

@@ -10,6 +10,7 @@
  *     actions: ['refresh-btn'],        // optional: ids of the page's own buttons, moved to the right side
  *     settings: openSettings,          // optional: ⚙ button
  *     applyTheme: function (t) { ... } // the page's own way of switching colors
+ *     menu:    '../Menu_v2.0.html'     // optional: menu link for a page in a subfolder
  *   });
  *   SCOUT_UI.updated(new Date(data.generated));   // after each data load
  *
@@ -156,7 +157,7 @@
     if (!document.getElementById('sui-css')) { var s = el('style'); s.id = 'sui-css'; s.textContent = CSS; document.head.appendChild(s); }
 
     barEl = el('header', 'sui-bar');
-    var menu = el('a', 'sui-menu', '← Menu'); menu.href = MENU_PAGE; menu.title = 'Back to the SCOUT menu';
+    var menu = el('a', 'sui-menu', '← Menu'); menu.href = opts.menu || MENU_PAGE; menu.title = 'Back to the SCOUT menu';
     barEl.appendChild(menu);
     barEl.appendChild(el('div', 'sui-divider'));
 
