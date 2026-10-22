@@ -669,9 +669,12 @@ var DEPTS = [
     id: 'itemprep', file: 'ItemPrep_v2.0.html', cls: 'card-itemprep',
     icon: '🧥', name: 'Item Prep', sub: 'Crossdock Pack', ver: 'v2.0',
     color: '#C8B420',
+    // From OneDrive the card opens Shubham's Item Prep SLA board (ours is not in use, Dean 10/21);
+    // ours stays one click away as a chip. GitHub Pages keeps ours (his board is OneDrive only).
+    fileMode: { file: 'Item%20Prep%20board/itemprep-board.html', ver: 'Live', sub: 'SLA Board' },
     tools: [
       { icon: '🔎', name: 'Container Watch', ver: 'v1.0', file: 'Container_watch.html' },
-      { icon: '📊', name: 'Item Prep Board', ver: 'Live', file: 'Item%20Prep%20board/itemprep-board.html', fileOnly: true }
+      { icon: '🧥', name: 'Item Prep (SCOUT)', ver: 'v2.0', file: 'ItemPrep_v2.0.html', fileOnly: true }
     ]
   },
   {
@@ -721,6 +724,7 @@ function renderBento() {
 }
 
 function makeCardWrap(d, featured) {
+  if (d.fileMode && location.protocol === 'file:') d = Object.assign({}, d, d.fileMode);
   var wrapCls = 'card-wrap' + (featured ? ' wrap-featured' : '');
   var recentLabel = featured ? '<div class="card-recent-label">Recent</div>' : '';
   var cardInner = '<button class="card ' + d.cls + (featured ? ' card-featured' : '') + '" onclick="openApp(\'' + d.file + '\',\'' + d.id + '\')">'
