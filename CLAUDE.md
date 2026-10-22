@@ -564,6 +564,7 @@ Every dept page (not the Menu) has the same bar: ← Menu · dept + title + vers
 - The bar picks light/dark styling from the page's real background color (Receiving's Starr is dark pink).
 - New page → add the bar (same pattern). scout_ui.js is in SHARE_ASSETS, the laptop runner's ASSETS list (see local notes) and the PC server's ASSET_JS.
 - Kept in place: Backlog's Send dropdown still uses `.theme-picker`/`.theme-menu` CSS (don't remove it). Backlog's Rem sprite switch and "Back to Ecom" moved into the bar. Totes TV mode hides the bar with the rest of the page.
+- **Count-up numbers (10/21, Dean: roll only, no color tint):** big tile numbers roll to the new value in 0.5 s. Two ways in: numbers updated in place → `SCOUT_UI.countUp([ids])` once after the bar init (Backlog tiles, Totes pills + Backlog pill, Container Watch tiles, Ecom Backlog pill); tiles rebuilt with innerHTML → tag the number `data-sui-count="<unique key>"` and call `SCOUT_UI.countKeys(container)` right after the innerHTML write (Ecom + Retail `renderLiveReport`). "37 total flagged" style text rolls only if the words stay the same. Instant on first value, 0 either side, > 2× / < ½ (lines ↔ orders, new shift), hidden tab, reduce-motion. A safety timer always lands the real number even if the browser pauses frames. Not for tables/scoreboards. Tests: `.tmp_audit/topbar/count_test.html` (`#frames` fakes frames in headless).
 - Conversion scripts + screenshot harness (local): `.tmp_audit/topbar/` (`shot.js <Page> <theme> [height] [js]`).
 
 ---
