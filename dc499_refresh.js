@@ -1257,6 +1257,136 @@ function gitPush() {
 }
 
 // ── shipped oLPNs query ────────────────────────────────────────────────────────
+// ── FLOW (Backlog › Visuals, added 2026-10-22) ──────────────────────────────
+// Since Pacific midnight, by Pacific hour:
+//   packed      units at the Ecom pack stations (NRDR CORE PACK FOR ECOM / CUSTOM PACK STATION)
+//   palletized  units scanned onto an outbound pallet (OB Putaway By Ship Via) — box by box, so smoother
+//               than ship confirms (those land per trailer). One box counted once (its first scan).
+//   packline    orders + units that reached the pack line D1-SN-01: multi cubby LPNs (OB Putaway To Ecom
+//               Pack Station Stage, 1 order each, units from the OB Sort To Putwall Cubby rows before the
+//               push), singles totes (OB Putaway For Singles And Multis) and chase totes (OB Putaway Chase
+//               Totes) — orders + units from the completed pick lines into that tote (TSK_TASK_DETAIL).
+// Cubby LPNs and totes are reused all day, so contents are matched to each arrival by time (after the
+// container's previous arrival). Contents are cached per arrival; only new arrivals are looked up.
+// Bridged (lines dropped) is already in backlog_live.json `hourly`.
+const PACKLINE_TX = { 'OB Putaway To Ecom Pack Station Stage': 'multi', 'OB Putaway For Singles And Multis': 'singles',
+                      'OB Putaway Chase Totes': 'chase' };
+const PACKLINE_RESCAN_MS = 30 * 60 * 1000;     // same container again within 30 min = a re-scan, not a new arrival
+const FLOW_LOOKUPS_PER_CYCLE = 150;            // arrivals looked up per cycle (≈ 4 small queries)
+let flowCache = { day: null, arrivals: {} };   // `${container}|${ts}` → { orders, units }
+let lastFlow = null;                           // last good fetchFlow() result (kept if a pass fails)
+
+async function fetchFlow(accessToken) {
+  const todayStr = nowPdt().toLocaleDateString('en-CA');
+  const midnight = pacificMidnightSql(todayStr);
+  if (flowCache.day !== todayStr) flowCache = { day: todayStr, arrivals: {} };
+  const contentsFrom = new Date(new Date(midnight.replace(' ', 'T') + 'Z').getTime() - 12 * 3600 * 1000)
+    .toISOString().slice(0, 19).replace('T', ' ');
+  const hr = `HOUR(CONVERT_TZ(CREATED_TIMESTAMP, '+00:00', ${SQL_TZ}))`;
+
+  const sqlPacked = `SELECT ${hr} AS hr, SUM(QUANTITY) AS units, COUNT(DISTINCT CONTAINER_ID) AS olpns
+FROM default_task.TSK_ACTIVITY_TRACKING
+WHERE CREATED_TIMESTAMP >= '${midnight}'
+  AND TRANSACTION_ID IN ('NRDR CORE PACK FOR ECOM PACK STATION','NRDR CORE PACK FOR CUSTOM PACK STATION')
+GROUP BY hr`;
+  const sqlPallet = `SELECT HOUR(CONVERT_TZ(first_ts, '+00:00', ${SQL_TZ})) AS hr, COUNT(*) AS olpns, SUM(qty) AS units
+FROM (SELECT CONTAINER_ID, MIN(CREATED_TIMESTAMP) AS first_ts, MAX(QUANTITY) AS qty
+      FROM default_task.TSK_ACTIVITY_TRACKING
+      WHERE CREATED_TIMESTAMP >= '${midnight}' AND TRANSACTION_ID = 'OB Putaway By Ship Via'
+      GROUP BY CONTAINER_ID) x
+GROUP BY hr`;
+  const sqlArrivals = `SELECT CONTAINER_ID, TRANSACTION_ID, CREATED_TIMESTAMP
+FROM default_task.TSK_ACTIVITY_TRACKING
+WHERE CREATED_TIMESTAMP >= '${midnight}' AND TARGET_LOCATION_ID = 'D1-SN-01'
+  AND TRANSACTION_ID IN (${Object.keys(PACKLINE_TX).map(t => `'${t}'`).join(',')})`;
+
+  const [rPacked, rPallet, rArr] = await Promise.all([
+    mcpQuery(accessToken, sqlPacked), mcpQuery(accessToken, sqlPallet), mcpQuery(accessToken, sqlArrivals)]);
+
+  // arrivals: one per container visit (re-scans within 30 min folded), oldest first
+  const msOf = s => new Date(String(s).replace(' ', 'T') + (/Z$/.test(s) ? '' : 'Z')).getTime();
+  const scans = (rArr.rows || []).map(r => ({ c: r.CONTAINER_ID, kind: PACKLINE_TX[r.TRANSACTION_ID], ms: msOf(r.CREATED_TIMESTAMP) }))
+    .filter(s => s.c && s.kind && !isNaN(s.ms)).sort((a, b) => a.ms - b.ms);
+  const lastSeen = {}, arrivals = [];
+  for (const s of scans) {
+    const prev = lastSeen[s.c];
+    if (prev != null && s.ms - prev < PACKLINE_RESCAN_MS) { lastSeen[s.c] = s.ms; continue; }
+    arrivals.push({ c: s.c, kind: s.kind, ms: s.ms, prevMs: prev != null ? prev : null });
+    lastSeen[s.c] = s.ms;
+  }
+  // contents for arrivals not cached yet: cubbies from the sort rows, totes from the pick lines
+  const keyOf = a => `${a.c}|${a.ms}`;
+  // newest first, capped: after a restart the day's backlog fills in over a few cycles instead of
+  // holding up one cycle (~600 arrivals ≈ 2.5 min in one go)
+  const todo = arrivals.filter(a => !flowCache.arrivals[keyOf(a)]).reverse().slice(0, FLOW_LOOKUPS_PER_CYCLE);
+  const cubbies = [...new Set(todo.filter(a => a.kind === 'multi').map(a => a.c))];
+  const totes   = [...new Set(todo.filter(a => a.kind !== 'multi').map(a => a.c))];
+  const rows = { multi: [], tote: [] };
+  const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+  let lookupFailed = 0;
+  for (const ids of chunk(cubbies, 50)) {
+    try {
+      const r = await mcpQuery(accessToken, `SELECT CONTAINER_ID AS c, ORDER_ID AS o, QUANTITY AS q, CREATED_TIMESTAMP AS t
+FROM default_task.TSK_ACTIVITY_TRACKING
+WHERE CONTAINER_ID IN (${ids.map(i => `'${i}'`).join(',')}) AND TRANSACTION_ID = 'OB Sort To Putwall Cubby'
+  AND CREATED_TIMESTAMP >= '${contentsFrom}'`);
+      rows.multi.push(...(r.rows || []));
+    } catch (e) { lookupFailed++; console.warn(`  flow: cubby contents batch failed: ${e.message}`); }
+  }
+  for (const ids of chunk(totes, 25)) {
+    try {
+      const r = await mcpQuery(accessToken, `SELECT TARGET_CONTAINER_ID AS c, ORDER_ID AS o, QUANTITY AS q, UPDATED_TIMESTAMP AS t, TASK_ID AS g
+FROM default_task.TSK_TASK_DETAIL
+WHERE TARGET_CONTAINER_ID IN (${ids.map(i => `'${i}'`).join(',')}) AND STATUS = '8000'
+  AND CREATED_TIMESTAMP >= '${contentsFrom}'`);
+      rows.tote.push(...(r.rows || []));
+    } catch (e) { lookupFailed++; console.warn(`  flow: tote contents batch failed: ${e.message}`); }
+  }
+  // match contents to each new arrival. A container makes several trips a day and not every trip ends at
+  // the pack line (a tote of multis goes to the putwall), so take only its LAST trip before this arrival:
+  // the last pick task into the tote / the last order sorted into the cubby (a cubby holds one order).
+  const byC = {};
+  for (const r of rows.multi) (byC[r.c] = byC[r.c] || []).push({ o: r.o, g: r.o, q: Number(r.q) || 0, ms: msOf(r.t) });
+  for (const r of rows.tote)  (byC[r.c] = byC[r.c] || []).push({ o: r.o, g: r.g || r.o, q: Number(r.q) || 0, ms: msOf(r.t) });
+  for (const a of todo) {
+    if (lookupFailed) break;                       // try the whole set again next cycle
+    const from = a.prevMs != null ? a.prevMs : a.ms - 12 * 3600 * 1000;
+    const before = (byC[a.c] || []).filter(x => x.ms > from && x.ms <= a.ms + 60 * 1000);
+    let lastG = null, lastMs = -Infinity;
+    for (const x of before) if (x.ms > lastMs) { lastMs = x.ms; lastG = x.g; }
+    const mine = before.filter(x => x.g === lastG);
+    const orders = new Set(mine.map(x => x.o).filter(Boolean));
+    flowCache.arrivals[keyOf(a)] = { orders: a.kind === 'multi' ? 1 : orders.size,   // a cubby LPN is one order
+                                     units: mine.reduce((s, x) => s + x.q, 0) };
+  }
+
+  // by Pacific hour, midnight → now
+  const curHour = nowPdt().getHours();
+  const hourOf = ms => Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hourCycle: 'h23' }).format(new Date(ms)));
+  const blank = () => ({ multi_orders: 0, multi_units: 0, singles_orders: 0, singles_units: 0, chase_orders: 0, chase_units: 0, containers: 0 });
+  const pl = {};
+  for (const a of arrivals) {
+    const c = flowCache.arrivals[keyOf(a)]; if (!c) continue;
+    const h = hourOf(a.ms), b = pl[h] = pl[h] || blank();
+    b[a.kind + '_orders'] += c.orders; b[a.kind + '_units'] += c.units; b.containers++;
+  }
+  const packed = {}, pallet = {};
+  for (const r of rPacked.rows || []) packed[Number(r.hr)] = { units: Number(r.units) || 0, olpns: Number(r.olpns) || 0 };
+  for (const r of rPallet.rows || []) pallet[Number(r.hr)] = { units: Number(r.units) || 0, olpns: Number(r.olpns) || 0 };
+  const hours = [];
+  for (let h = 0; h <= curHour; h++) {
+    const p = pl[h] || blank();
+    hours.push({ hour: h,
+      packed_units: (packed[h] || {}).units || 0, packed_olpns: (packed[h] || {}).olpns || 0,
+      palletized_units: (pallet[h] || {}).units || 0, palletized_olpns: (pallet[h] || {}).olpns || 0,
+      ...p });
+  }
+  const missing = arrivals.filter(a => !flowCache.arrivals[keyOf(a)]).length;
+  console.log(`[${ts()}]   flow: ${arrivals.length} pack-line arrivals (${todo.length} looked up, ${missing} pending), ` +
+              `packed ${hours.reduce((s, h) => s + h.packed_units, 0)} u, palletized ${hours.reduce((s, h) => s + h.palletized_units, 0)} u`);
+  return { generated: new Date().toISOString().slice(0, 19), day: todayStr, hours, pending_arrivals: missing };
+}
+
 async function fetchShipped(accessToken) {
   // 1st shift counts from 6:00 AM, 2nd from 2:10 PM local (matches Ecom Live); DST-aware
   const shippedShift  = currentShift({ firstFrom: 3, secondFrom: 14, firstStart: [6, 0], secondStart: [14, 10] });
@@ -1489,14 +1619,16 @@ async function queryAndWrite(accessToken) {
   const timed = (name, p) => p.then(
     v => { sectionMs[name] = Date.now() - cycleStart; return v; },
     e => { sectionMs[name] = Date.now() - cycleStart; console.warn(`  ${name} query failed: ${e.message}`); return null; });
-  const [backlogData, batchStatusData, retailReplenData, totesData, shippedData, tasksData] = await Promise.all([
+  const [backlogData, batchStatusData, retailReplenData, totesData, shippedData, tasksData, flowData] = await Promise.all([
     timed('Backlog',       fetchBacklog(accessToken)),
     timed('Batch status',  fetchBatchStatus(accessToken)),
     timed('Retail replen', fetchRetailReplen(accessToken)),
     timed('Totes',         fetchTotes(accessToken)),
     timed('Shipped',       fetchShipped(accessToken)),
     timed('Tasks',         fetchTaskData(accessToken)),
+    timed('Flow',          fetchFlow(accessToken)),
   ]);
+  if (flowData) lastFlow = flowData;               // a failed flow pass keeps the last good one on the page
   const queryMs = Date.now() - cycleStart;
   const qs = takeStats();
 
@@ -1506,6 +1638,7 @@ async function queryAndWrite(accessToken) {
   }
 
   if (backlogData) {
+    if (lastFlow && lastFlow.day === backlogData.today) backlogData.flow = lastFlow;
     fs.writeFileSync(BACKLOG_FILE, JSON.stringify(backlogData, null, 4));
     const today = backlogData.dates[0];
     const open = today.ready + today.allocated + today.packed;

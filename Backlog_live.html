@@ -154,6 +154,38 @@
   .tab-btn.dragging{opacity:0.35;}
   .tab-bar.reordering .tab-btn{cursor:grabbing;}
   .tab-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+  /* ── Visuals sub-tab (flow charts, 2026-10-22) ── */
+  .flow-root{--f1:#3987e5;--f2:#d95926;--f3:#199e70;--g1:#9085e9;--g2:#d55181;--g3:#c98500;}
+  [data-theme="light"] .flow-root,[data-theme="carrie"] .flow-root,[data-theme="starr"] .flow-root{--f1:#2a78d6;--f2:#eb6834;--f3:#1baf7a;--g1:#4a3aa7;--g2:#e87ba4;--g3:#eda100;}
+  .flow-card{background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px 12px;margin-bottom:1rem;}
+  .flow-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+  .flow-title{font-size:14px;font-weight:600;color:var(--text);}
+  .flow-sub{font-size:12px;color:var(--text-muted);}
+  .flow-tools{margin-left:auto;display:flex;gap:8px;align-items:center;}
+  .flow-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-bottom:8px;}
+  .flow-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
+  .flow-plot{position:relative;height:220px;margin-top:22px;display:flex;align-items:flex-end;gap:6px;padding:0 2px 0 34px;border-bottom:1px solid var(--border);}
+  .flow-grid{position:absolute;left:34px;right:0;border-top:1px dashed var(--border);opacity:.6;pointer-events:none;}
+  .flow-grid span{position:absolute;left:-34px;top:-7px;width:30px;text-align:right;font-size:10px;color:var(--text-hint);}
+  .flow-col{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;height:100%;cursor:default;position:relative;min-width:0;}
+  .flow-col:hover{background:var(--surface2);border-radius:6px 6px 0 0;}
+  .flow-bar{flex:1;max-width:16px;border-radius:4px 4px 0 0;min-height:0;}
+  .flow-stack{flex:1;max-width:30px;display:flex;flex-direction:column-reverse;gap:2px;height:100%;justify-content:flex-start;}
+  .flow-stack .seg{border-radius:0;} .flow-stack .seg:last-child{border-radius:4px 4px 0 0;}
+  .flow-col.now::after{content:'now';position:absolute;top:-16px;font-size:9px;font-weight:700;letter-spacing:.06em;color:var(--text-hint);text-transform:uppercase;}
+  .flow-x{display:flex;gap:6px;padding:4px 2px 0 34px;}
+  .flow-x span{flex:1;text-align:center;font-size:10px;color:var(--text-hint);min-width:0;overflow:hidden;}
+  .flow-note{font-size:11px;color:var(--text-hint);margin-top:8px;line-height:1.5;}
+  .flow-tip{position:fixed;z-index:500;pointer-events:none;background:var(--surface);color:var(--text);border:0.5px solid var(--border-mid);
+    border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.25);display:none;min-width:150px;}
+  .flow-tip b{display:block;margin-bottom:4px;}
+  .flow-tip .r{display:flex;justify-content:space-between;gap:14px;} .flow-tip .r i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;}
+  .flow-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;}
+  .flow-table th{text-align:right;font-weight:600;color:var(--text-muted);padding:6px 8px;border-bottom:0.5px solid var(--border);font-size:11px;}
+  .flow-table th:first-child,.flow-table td:first-child{text-align:left;}
+  .flow-table td{text-align:right;padding:5px 8px;border-bottom:0.5px solid var(--border-light);font-variant-numeric:tabular-nums;color:var(--text);}
+  .flow-table tr.tot td{font-weight:700;border-top:1px solid var(--border);}
+  .metric.rfp-click{cursor:pointer;}
   .tab-pane{display:none;}
   .tab-pane.active{display:block;}
 
@@ -1035,7 +1067,15 @@ body { animation: pageEnter 0.28s ease-out both; }
       </div>
     </div>
 
-    <div class="page-layout">
+    <!-- Sub-tabs: Numbers / Visuals -->
+    <div class="tk-view-bar" style="margin-bottom:12px;">
+      <div class="tk-view-seg">
+        <button class="tk-view-btn active" id="bl-sub-numbers" onclick="setBlSub('numbers')">Numbers</button>
+        <button class="tk-view-btn" id="bl-sub-visuals" onclick="setBlSub('visuals')">Visuals</button>
+      </div>
+    </div>
+
+    <div class="page-layout" id="bl-numbers">
       <div class="page-main">
         <div class="total-capsule" id="total-capsule" style="display:none;">
           <div class="total-capsule-left">
@@ -1062,7 +1102,7 @@ body { animation: pageEnter 0.28s ease-out both; }
             <div class="metric-value" id="m-alloc">--</div>
             <div class="metric-sub">Not in Packing</div>
           </div>
-          <div class="metric rfp">
+          <div class="metric rfp rfp-click" onclick="openRfpFlow(event)" title="See orders reaching the pack line each hour">
             <span class="d1sn-dot" id="d1sn-dot" style="display:none;" onclick="toggleD1snCard()"></span>
             <div class="metric-label">Ready for Pack</div>
             <div class="metric-value" id="m-rfp">--</div>
@@ -1197,6 +1237,36 @@ body { animation: pageEnter 0.28s ease-out both; }
           </div>
         </div>
         <div id="top-items-card" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="flow-root" id="bl-visuals" style="display:none;">
+      <div class="flow-card" id="flow-card-main">
+        <div class="flow-head">
+          <div class="flow-title">Bridged · Packed · Palletized</div>
+          <div class="flow-sub">by hour since midnight</div>
+          <div class="flow-tools"><button class="tk-view-btn" id="flow-main-tbl" onclick="flowToggleTable('main')">Table</button></div>
+        </div>
+        <div class="flow-legend">
+          <span><i style="background:var(--f1)"></i>Bridged — order lines dropped</span>
+          <span><i style="background:var(--f2)"></i>Packed — units</span>
+          <span><i style="background:var(--f3)"></i>Palletized — units</span>
+        </div>
+        <div id="flow-main"></div>
+        <div class="flow-note">Each bar counts what happened in that hour. Palletized = boxes scanned onto an outbound pallet (OB Putaway By Ship Via), the step before the truck — ship confirms land a whole trailer at once, so they are not used here.</div>
+      </div>
+      <div class="flow-card" id="flow-card-pack">
+        <div class="flow-head">
+          <div class="flow-title">Located to the pack line (D1-SN-01)</div>
+          <div class="flow-sub" id="flow-pack-sub">by hour since midnight</div>
+          <div class="flow-tools">
+            <div class="tk-view-seg"><button class="tk-view-btn active" id="flow-pk-orders" onclick="flowSetPackMeasure('orders')">Orders</button><button class="tk-view-btn" id="flow-pk-units" onclick="flowSetPackMeasure('units')">Units</button></div>
+            <button class="tk-view-btn" id="flow-pack-tbl" onclick="flowToggleTable('pack')">Table</button>
+          </div>
+        </div>
+        <div class="flow-legend" id="flow-pack-legend"></div>
+        <div id="flow-pack"></div>
+        <div class="flow-note">Multi = putwall cubby pushed to D1-SN-01 (one order each). Singles and chase = totes put away to D1-SN-01; their orders come from the picks into the tote on that trip.</div>
       </div>
     </div>
 
@@ -1937,6 +2007,136 @@ function toggleRemi() {
 applyRemiToggle();
 if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Backlog",version:"v1.7",sub:"bl-sub",actions:["back-btn","rem-btn"]}, { oldThemeKey: THEME_KEY, applyTheme: applyTheme, find: blFind }));
 else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY) || 'dark');
+// ── Order Backlog › Numbers | Visuals (2026-10-22) ─────────────────────────────
+// Visuals = two plain-HTML bar charts from backlog_live.json: `hourly` (lines dropped) + `flow`
+// (packed, palletized, pack-line arrivals — dc499_refresh.js fetchFlow). Hover = tooltip, Table = numbers.
+var blSub = (function(){ try { return localStorage.getItem('bl_sub_v1') === 'visuals' ? 'visuals' : 'numbers'; } catch(e) { return 'numbers'; } })();
+var flowTbl = { main: false, pack: false }, flowPackMeasure = 'orders';
+function setBlSub(v) {
+  blSub = v === 'visuals' ? 'visuals' : 'numbers';
+  try { localStorage.setItem('bl_sub_v1', blSub); } catch(e) {}
+  document.getElementById('bl-numbers').style.display = blSub === 'numbers' ? '' : 'none';
+  document.getElementById('bl-visuals').style.display = blSub === 'visuals' ? '' : 'none';
+  document.getElementById('bl-sub-numbers').classList.toggle('active', blSub === 'numbers');
+  document.getElementById('bl-sub-visuals').classList.toggle('active', blSub === 'visuals');
+  if (blSub === 'visuals' && lastBlData) renderFlow(lastBlData);
+}
+function openRfpFlow(e) {
+  if (e && e.target && e.target.closest && e.target.closest('.d1sn-dot')) return;   // the dot opens its own card
+  setBlSub('visuals');
+  var c = document.getElementById('flow-card-pack'); if (c) c.scrollIntoView({ block: 'start' });
+}
+function flowToggleTable(which) { flowTbl[which] = !flowTbl[which]; if (lastBlData) renderFlow(lastBlData); }
+function flowSetPackMeasure(m) {
+  flowPackMeasure = m;
+  document.getElementById('flow-pk-orders').classList.toggle('active', m === 'orders');
+  document.getElementById('flow-pk-units').classList.toggle('active', m === 'units');
+  if (lastBlData) renderFlow(lastBlData);
+}
+function flowHourLabel(h) { return (h % 12 || 12) + (h < 12 ? 'a' : 'p'); }
+function flowHourRange(h) { return flowHourLabel(h).replace('a', ' AM').replace('p', ' PM') + ' – ' + flowHourLabel((h + 1) % 24).replace('a', ' AM').replace('p', ' PM'); }
+function flowTicks(max) {
+  if (max <= 0) return [0];
+  var step = Math.pow(10, Math.floor(Math.log10(max))), n = max / step;
+  step *= n > 5 ? 2 : n > 2 ? 1 : 0.5;
+  var out = []; for (var v = 0; v <= max + step * 0.01; v += step) out.push(Math.round(v));
+  if (out[out.length - 1] < max) out.push(Math.round(out[out.length - 1] + step));
+  return out;
+}
+// one chart: cols = [{hour, segs:[{v, color, label}], stacked}], returns html
+function flowChart(cols, stacked, nowHour) {
+  var max = 0;
+  cols.forEach(function(c) { var t = stacked ? c.segs.reduce(function(s, x) { return s + x.v; }, 0) : Math.max.apply(null, c.segs.map(function(x) { return x.v; })); if (t > max) max = t; });
+  var ticks = flowTicks(max), top = ticks[ticks.length - 1] || 1;
+  var html = '<div class="flow-plot">';
+  ticks.forEach(function(t) { if (t) html += '<div class="flow-grid" style="bottom:' + (t / top * 100) + '%"><span>' + t.toLocaleString() + '</span></div>'; });
+  cols.forEach(function(c, i) {
+    html += '<div class="flow-col' + (c.hour === nowHour ? ' now' : '') + '" data-i="' + i + '">';
+    if (stacked) {
+      html += '<div class="flow-stack">' + c.segs.filter(function(x) { return x.v > 0; }).map(function(x) {
+        return '<div class="seg" style="height:' + (x.v / top * 100) + '%;background:' + x.color + '"></div>'; }).join('') + '</div>';
+    } else {
+      c.segs.forEach(function(x) { html += '<div class="flow-bar" style="height:' + (x.v / top * 100) + '%;background:' + x.color + '"></div>'; });
+    }
+    html += '</div>';
+  });
+  html += '</div><div class="flow-x">' + cols.map(function(c) { return '<span>' + flowHourLabel(c.hour) + '</span>'; }).join('') + '</div>';
+  return html;
+}
+function flowBindTips(root, cols, extra) {
+  var tip = document.getElementById('flow-tip');
+  if (!tip) { tip = document.createElement('div'); tip.id = 'flow-tip'; tip.className = 'flow-tip flow-root'; document.body.appendChild(tip); }
+  Array.prototype.forEach.call(root.querySelectorAll('.flow-col'), function(el) {
+    var c = cols[+el.getAttribute('data-i')];
+    el.onmousemove = function(ev) {
+      tip.innerHTML = '<b>' + flowHourRange(c.hour) + '</b>' + c.segs.map(function(x) {
+        return '<div class="r"><span><i style="background:' + x.color + '"></i>' + x.label + '</span><span>' + x.v.toLocaleString() + '</span></div>'; }).join('') + (extra ? extra(c) : '');
+      tip.style.display = 'block';
+      var x = Math.min(ev.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+      tip.style.left = x + 'px'; tip.style.top = (ev.clientY + 14) + 'px';
+    };
+    el.onmouseleave = function() { tip.style.display = 'none'; };
+  });
+}
+function renderFlow(d) {
+  var f = d.flow, hours = (f && f.hours) || [];
+  var main = document.getElementById('flow-main'), pack = document.getElementById('flow-pack');
+  if (!main || !pack) return;
+  if (!hours.length) {
+    main.innerHTML = pack.innerHTML = '<div class="flow-note">No flow data yet — it fills in after the live refresh (option 2) runs with the new code.</div>';
+    return;
+  }
+  var dropped = {}; (d.hourly || []).forEach(function(h) { dropped[h.hour] = h.lines; });
+  var c1 = 'var(--f1)', c2 = 'var(--f2)', c3 = 'var(--f3)';   // theme vars: a theme change recolors without a redraw
+  var nowHour = hours[hours.length - 1].hour;
+  var first = 0; while (first < hours.length - 1 && !(dropped[hours[first].hour] || hours[first].packed_units || hours[first].palletized_units || hours[first].containers)) first++;
+  var hs = hours.slice(first);
+  // chart 1 — bridged | packed | palletized
+  var cols1 = hs.map(function(h) { return { hour: h.hour, segs: [
+    { v: dropped[h.hour] || 0, color: c1, label: 'Bridged (lines)' },
+    { v: h.packed_units, color: c2, label: 'Packed (units)' },
+    { v: h.palletized_units, color: c3, label: 'Palletized (units)' }] }; });
+  if (flowTbl.main) {
+    var t = { b: 0, p: 0, l: 0 };
+    main.innerHTML = '<table class="flow-table"><thead><tr><th>Hour</th><th>Bridged (lines)</th><th>Packed (units)</th><th>Palletized (units)</th></tr></thead><tbody>' +
+      cols1.map(function(c) { t.b += c.segs[0].v; t.p += c.segs[1].v; t.l += c.segs[2].v;
+        return '<tr><td>' + flowHourRange(c.hour) + '</td><td>' + c.segs[0].v.toLocaleString() + '</td><td>' + c.segs[1].v.toLocaleString() + '</td><td>' + c.segs[2].v.toLocaleString() + '</td></tr>'; }).join('') +
+      '<tr class="tot"><td>Today</td><td>' + t.b.toLocaleString() + '</td><td>' + t.p.toLocaleString() + '</td><td>' + t.l.toLocaleString() + '</td></tr></tbody></table>';
+  } else { main.innerHTML = flowChart(cols1, false, nowHour); flowBindTips(main, cols1); }
+  document.getElementById('flow-main-tbl').classList.toggle('active', flowTbl.main);
+  // chart 2 — pack-line arrivals, stacked multi / singles / chase (chase only if any today)
+  var g1 = 'var(--g1)', g2 = 'var(--g2)', g3 = 'var(--g3)';
+  var hasChase = hs.some(function(h) { return h.chase_orders > 0; });
+  var m = flowPackMeasure === 'units' ? 'units' : 'orders';
+  var kinds = [['multi', 'Multi', g1], ['singles', 'Singles', g2]].concat(hasChase ? [['chase', 'Chase', g3]] : []);
+  document.getElementById('flow-pack-legend').innerHTML = kinds.map(function(k) { return '<span><i style="background:' + k[2] + '"></i>' + k[1] + '</span>'; }).join('');
+  var cols2 = hs.map(function(h) { return { hour: h.hour, h: h, segs: kinds.map(function(k) { return { v: h[k[0] + '_' + m] || 0, color: k[2], label: k[1] + ' (' + m + ')' }; }) }; });
+  var tot = { o: 0, u: 0 }; hs.forEach(function(h) { tot.o += h.multi_orders + h.singles_orders + h.chase_orders; tot.u += h.multi_units + h.singles_units + h.chase_units; });
+  document.getElementById('flow-pack-sub').textContent = 'by hour since midnight · ' + tot.o.toLocaleString() + ' orders · ' + tot.u.toLocaleString() + ' units today' +
+    (f.pending_arrivals ? ' · ' + f.pending_arrivals + ' arrivals still being counted' : '');
+  if (flowTbl.pack) {
+    var head = '<tr><th>Hour</th><th>Orders</th><th>Units</th>' + kinds.map(function(k) { return '<th>' + k[1] + ' orders</th><th>' + k[1] + ' units</th>'; }).join('') + '</tr>';
+    var sum = {};
+    var body = hs.map(function(h) {
+      var o = h.multi_orders + h.singles_orders + h.chase_orders, u = h.multi_units + h.singles_units + h.chase_units;
+      sum.o = (sum.o || 0) + o; sum.u = (sum.u || 0) + u;
+      return '<tr><td>' + flowHourRange(h.hour) + '</td><td>' + o.toLocaleString() + '</td><td>' + u.toLocaleString() + '</td>' + kinds.map(function(k) {
+        sum[k[0] + 'o'] = (sum[k[0] + 'o'] || 0) + h[k[0] + '_orders']; sum[k[0] + 'u'] = (sum[k[0] + 'u'] || 0) + h[k[0] + '_units'];
+        return '<td>' + h[k[0] + '_orders'].toLocaleString() + '</td><td>' + h[k[0] + '_units'].toLocaleString() + '</td>'; }).join('') + '</tr>';
+    }).join('');
+    pack.innerHTML = '<table class="flow-table"><thead>' + head + '</thead><tbody>' + body + '<tr class="tot"><td>Today</td><td>' + (sum.o || 0).toLocaleString() + '</td><td>' + (sum.u || 0).toLocaleString() + '</td>' +
+      kinds.map(function(k) { return '<td>' + (sum[k[0] + 'o'] || 0).toLocaleString() + '</td><td>' + (sum[k[0] + 'u'] || 0).toLocaleString() + '</td>'; }).join('') + '</tr></tbody></table>';
+  } else {
+    pack.innerHTML = flowChart(cols2, true, nowHour);
+    flowBindTips(pack, cols2, function(c) {
+      var o = c.h.multi_orders + c.h.singles_orders + c.h.chase_orders, u = c.h.multi_units + c.h.singles_units + c.h.chase_units;
+      return '<div class="r" style="margin-top:4px;border-top:0.5px solid var(--border);padding-top:4px"><span>Total</span><span>' + o.toLocaleString() + ' orders · ' + u.toLocaleString() + ' u</span></div>';
+    });
+  }
+  document.getElementById('flow-pack-tbl').classList.toggle('active', flowTbl.pack);
+}
+setBlSub(blSub);
+
 // quick find (Ctrl+K / 🔍): open the tab, show the row, hand it back to be outlined. null = data not loaded yet
 function blFind(go, id, findText) {
   if (go === 'tab') { setTab(id); return true; }
@@ -2460,6 +2660,7 @@ function renderLastWaveCapsule() {
 }
 
 function renderBacklogData(data) {
+  if (blSub === 'visuals') setTimeout(function () { renderFlow(data); }, 0);   // Visuals sub-tab
   var rtEl    = document.getElementById('bl-run-time');
   var emptyEl = document.getElementById('bl-empty-state');
   var metrEl    = document.getElementById('metrics');
