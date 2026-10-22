@@ -1052,6 +1052,10 @@ body { animation: pageEnter 0.28s ease-out both; }
         <div id="bl-next-refresh" class="run-time" style="margin-top:2px;"></div>
       </div>
       <div class="header-btns">
+        <div class="view-toggle" title="Numbers or charts">
+          <button id="bl-sub-numbers" class="active" onclick="setBlSub('numbers')">Numbers</button>
+          <button id="bl-sub-visuals" onclick="setBlSub('visuals')">Visuals</button>
+        </div>
         <div class="view-toggle">
           <button id="vt-lines"  class="active" onclick="setView('lines')">Order Lines</button>
           <button id="vt-orders"                onclick="setView('orders')">Orders</button>
@@ -1064,14 +1068,6 @@ body { animation: pageEnter 0.28s ease-out both; }
             <div class="theme-option" onclick="document.getElementById('send-picker').classList.remove('open');exportEodEmail()">&#x2709; EOD Email</div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Sub-tabs: Numbers / Visuals -->
-    <div class="tk-view-bar" style="margin-bottom:12px;">
-      <div class="tk-view-seg">
-        <button class="tk-view-btn active" id="bl-sub-numbers" onclick="setBlSub('numbers')">Numbers</button>
-        <button class="tk-view-btn" id="bl-sub-visuals" onclick="setBlSub('visuals')">Visuals</button>
       </div>
     </div>
 
