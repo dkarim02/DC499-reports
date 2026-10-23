@@ -847,7 +847,8 @@ var FLOW_STEPS = [
   { key: 'sort',   typ: 'sorting', label: 'Sort',    who: 'a sorter' },
   { key: 'pack',   typ: 'packing', label: 'Pack',    who: 'a packer' }
 ];
-var FLOW_1ST_END_H = 14;   // 1st shift ends 2:00 PM (no lunch adjustment known for 1st)
+var FLOW_1ST_END_H = 14;
+var FLOW_PACE_MIN_BLOCKS = 3;   // 30 active person-minutes this shift before a step's shift pace is used   // 1st shift ends 2:00 PM (no lunch adjustment known for 1st)
 
 // Pacific wall-clock as a plain number (ms), so row times ("2026-10-22T14:27:54") compare directly.
 function flowWallMs(date) {
@@ -863,6 +864,37 @@ function flowClock(ms) {
   return ((h % 12) || 12) + ':' + (m < 10 ? '0' : '') + m + ' ' + (h < 12 ? 'AM' : 'PM');
 }
 function flowOverlapMin(a, b, c, e) { return Math.max(0, Math.min(b, e) - Math.max(a, c)) / 60000; }
+// Break windows for this shift, as wall-clock ms on the shift's date. From the LMS schedule
+// (d.flow.breaks, agent v3.5); each person takes max_min somewhere inside the window. No schedule ->
+// the old rule: 2nd-shift lunch 6:15-6:45 PM, all of it lost.
+function flowBreakWins(d, day0, shiftW) {
+  var list = (d.flow && d.flow.breaks || []).filter(function(b) { return b.shift === d.shift; });
+  var hm = function(s) { var x = String(s).split(':'); return (+x[0]) * 3600e3 + (+x[1]) * 60e3; };
+  var wins = list.map(function(b) {
+    var a = day0 + hm(b.start), e = day0 + hm(b.end);
+    if (e <= a) e += 864e5;
+    if (a < shiftW - 3600e3) { a += 864e5; e += 864e5; }
+    return { a: a, b: e, max: b.max_min, kind: b.kind };
+  });
+  if (!wins.length && d.shift === '2nd') {
+    var la = day0 + PROD_LUNCH_AFTER * 3600e3;
+    wins = [{ a: la, b: la + 30 * 60e3, max: 30, kind: 'lunch', fallback: true }];
+  }
+  return wins.sort(function(x, y) { return x.a - y.a; });
+}
+// Expected break minutes per person between a and b: each window's max_min, spread over the window.
+function flowLostMin(a, b, wins) {
+  return wins.reduce(function(s, w) {
+    var len = (w.b - w.a) / 60000;
+    return s + (len > 0 ? w.max * flowOverlapMin(a, b, w.a, w.b) / len : 0);
+  }, 0);
+}
+// Work time -> clock time: when `hours` of work starting at t0 is done, breaks included.
+function flowFinishMs(t0, hours, wins) {
+  var t = t0 + hours * 3600e3;
+  for (var k = 0; k < 3; k++) t = t0 + hours * 3600e3 + flowLostMin(t0, t, wins) * 60e3;
+  return t;
+}
 
 // Pure: steps [{key,label,who,units,rate,people}] → {constraint, lines[], light[]}.
 function flowDecide(steps) {
@@ -874,7 +906,9 @@ function flowDecide(steps) {
     lines.push(top.label + ' is the constraint: nobody finished ' + top.label.toLowerCase() + ' work in the last '
       + FLOW_RATE_MIN + ' min and ' + top.units.toLocaleString() + ' u are waiting'
       + (top.pulled ? ' (' + top.pulled.toLocaleString() + ' u pulled, not filled yet)' : '')
-      + '. Send the next person to ' + top.label.toLowerCase() + '.');
+      + '. Send the next person to ' + top.label.toLowerCase() + '.'
+      + (top.needTotal ? ' At this shift\'s pace about ' + top.needTotal + (top.needTotal === 1 ? ' person clears' : ' people clear')
+         + ' it by shift end.' : ''));
     stopped.slice(1).forEach(function(s) {
       lines.push(s.label + ' has also stopped with ' + s.units.toLocaleString() + ' u waiting.');
     });
@@ -916,11 +950,11 @@ function renderFlowCard(d) {
   var shiftW = flowWallMs(new Date(d.shift_start.replace(' ', 'T') + 'Z'));
   var is2nd = d.shift === '2nd';
   var day0 = Date.UTC(new Date(shiftW).getUTCFullYear(), new Date(shiftW).getUTCMonth(), new Date(shiftW).getUTCDate());
-  var lunchA = day0 + PROD_LUNCH_AFTER * 3600e3, lunchB = lunchA + 30 * 60e3;
+  var wins = flowBreakWins(d, day0, shiftW);
   var shiftEndW = day0 + (is2nd ? getProdShiftCap() : FLOW_1ST_END_H) * 3600e3;
   var startW = Math.max(endW - FLOW_RATE_MIN * 60e3, shiftW);
-  var winMin = (endW - startW) / 60000 - (is2nd ? flowOverlapMin(startW, endW, lunchA, lunchB) : 0);
-  var hoursLeft = Math.max(0, (shiftEndW - endW) / 3600e3 - (is2nd ? flowOverlapMin(endW, shiftEndW, lunchA, lunchB) / 60 : 0));
+  var winMin = (endW - startW) / 60000 - flowLostMin(startW, endW, wins);
+  var hoursLeft = Math.max(0, ((shiftEndW - endW) / 60000 - flowLostMin(endW, shiftEndW, wins)) / 60);
 
   var steps = FLOW_STEPS.map(function(st) {
     var tx = getTX()[st.typ] || [], units = 0, ppl = new Set();
@@ -941,11 +975,32 @@ function renderFlowCard(d) {
       if (ms < startW || ms > endW) return;
       pulled += parseFloat(r['Quantity']) || 0; ppl.add((r['Employee'] || '').trim());
     });
+    // Shift pace = this shift's units / active person-hours (10-min blocks in which that person scanned
+    // this step; replen pulls count as active). Used for "needs N" when nobody finished work in the
+    // last hour. Our own number on purpose: the LMS standards are not complete yet (no standard for
+    // pulls or sort units; picking runs at about half its standard).
+    var shiftUnits = 0, blocks = new Set();
+    var shiftRows = d.rows.filter(function(r) {
+      var t = (r['Transaction ID'] || '').trim();
+      if (tx.indexOf(t) === -1 || t === st.skipTx) return false;
+      return st.typ !== 'sorting' || (r['Criteria'] || '').trim() === SORT_CRITERIA;
+    });
+    forEachCountedRow(shiftRows, st.typ, null, function(r, e, v) {
+      if (v <= 0) return;
+      shiftUnits += v; blocks.add(e + '|' + Math.floor(flowRowMs(r['Activity Datetime']) / 6e5));
+    });
+    if (st.pullTx) d.rows.forEach(function(r) {
+      if (st.pullTx.indexOf((r['Transaction ID'] || '').trim()) === -1 || !rowBelongsToEcom(r)) return;
+      blocks.add((r['Employee'] || '').trim() + '|' + Math.floor(flowRowMs(r['Activity Datetime']) / 6e5));
+    });
+    var pace = blocks.size >= FLOW_PACE_MIN_BLOCKS ? shiftUnits / (blocks.size / 6) : 0;
     var q = f[st.key] || {};
     var rate = winMin > 0 ? units * 60 / winMin : 0;
+    var per = rate > 0 ? rate / Math.max(1, ppl.size) : pace;
+    var needTotal = per > 0 && hoursLeft > 0 && (q.units || 0) > 0 ? Math.ceil((q.units || 0) / (per * hoursLeft)) : null;
     return { key: st.key, label: st.label, who: st.who, units: q.units || 0, count: q.lines != null ? q.lines : q.lpns,
       countLabel: q.lines != null ? 'lines' : 'LPNs', oldest: q.oldest_utc, rate: Math.round(rate), people: ppl.size,
-      pulled: Math.round(pulled),
+      pulled: Math.round(pulled), pace: Math.round(pace), needTotal: needTotal,
       hours: rate > 0 ? (q.units || 0) / rate : null };
   });
 
@@ -966,15 +1021,14 @@ function renderFlowCard(d) {
   steps.forEach(function(s) {
     var end;
     if (winMin < FLOW_WARMUP_MIN || hoursLeft <= 0 || !s.units) end = '<span style="color:var(--text-hint);">—</span>';
-    else if (!s.rate && s.pulled) end = '<span style="color:#C47B00;font-weight:600;">' + s.pulled.toLocaleString() + ' u pulled, not filled yet</span>';
-    else if (!s.rate) end = s.units >= FLOW_MIN_UNITS ? '<span style="color:#C0392B;font-weight:600;">Nobody on it</span>' : '<span style="color:var(--text-hint);">—</span>';
-    else if (s.hours <= hoursLeft) end = '<span style="color:#0F6E56;font-weight:600;">&#x2713; done ~' + flowClock(endW + s.hours * 3600e3
-      + (is2nd && endW < lunchA && endW + s.hours * 3600e3 > lunchA ? 30 * 60e3 : 0)) + '</span>';
-    else {
-      var per = s.rate / Math.max(1, s.people);
-      var need = Math.ceil(s.units / (per * hoursLeft)) - s.people;
-      end = '<span style="color:#C0392B;font-weight:600;">&#x2717; needs +' + Math.max(1, need) + '</span>';
+    else if (!s.rate) {
+      var needTxt = s.needTotal ? ' · ' + (s.people ? 'needs +' + Math.max(1, s.needTotal - s.people) : 'needs ' + s.needTotal)
+        + '<div style="font-size:10px;color:var(--text-hint);font-weight:400;">at this shift\'s pace, ' + s.pace + ' u per person-hour</div>' : '';
+      if (s.pulled) end = '<span style="color:#C47B00;font-weight:600;">' + s.pulled.toLocaleString() + ' u pulled, not filled yet' + needTxt + '</span>';
+      else end = s.units >= FLOW_MIN_UNITS ? '<span style="color:#C0392B;font-weight:600;">Nobody on it' + needTxt + '</span>' : '<span style="color:var(--text-hint);">—</span>';
     }
+    else if (s.hours <= hoursLeft) end = '<span style="color:#0F6E56;font-weight:600;">&#x2713; done ~' + flowClock(flowFinishMs(endW, s.hours, wins)) + '</span>';
+    else end = '<span style="color:#C0392B;font-weight:600;">&#x2717; needs +' + Math.max(1, (s.needTotal || 0) - s.people) + '</span>';
     var oldest = s.oldest ? flowClock(flowWallMs(new Date(String(s.oldest).slice(0, 19) + 'Z'))) : '';
     var oldDay = s.oldest && flowWallMs(new Date(String(s.oldest).slice(0, 19) + 'Z')) < day0 ? ' (earlier day)' : '';
     h += '<tr><td><strong>' + s.label + '</strong>' + (oldest ? '<div style="font-size:10px;color:var(--text-hint);">oldest ' + oldest + oldDay + '</div>' : '') + '</td>'
@@ -987,7 +1041,10 @@ function renderFlowCard(d) {
   h += '</tbody></table>';
   h += '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;line-height:1.5;">Waiting = released work only (orders waiting for a batch are not counted): open replen pulls into Ecom shelves, open Ecom pick lines, totes at the putwall drop zones, units at D1-SN. '
     + 'Hours behind = waiting ÷ done per hour. "By shift end" is for the work waiting now — new batches add more. '
-    + (is2nd ? 'The rate leaves out lunch (6:15–6:45 PM). ' : '')
+    + (wins.length ? (wins[0].fallback ? 'The rate leaves out lunch (6:15–6:45 PM). '
+        : 'Breaks (LMS schedule): ' + wins.map(function(w) { return (w.kind === 'lunch' ? 'lunch ' : 'break ') + flowClock(w.a) + '–' + flowClock(w.b) + ' (' + w.max + ' min each)'; }).join(', ')
+          + ' — the rate and hours left leave out each person\'s expected break time. ') : '')
+    + 'With nobody on a step, "needs N" uses this shift\'s pace for it (units per active person-hour). '
     + 'It treats people as interchangeable; training and equipment can say otherwise. Shift end ' + flowClock(shiftEndW) + ', ' + hoursLeft.toFixed(1) + ' h left.</div>';
   return h + '</div>';
 }

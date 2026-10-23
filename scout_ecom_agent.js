@@ -169,12 +169,43 @@ WHERE il.FACILITY_ID = '${FACILITY}'
   AND inv.ON_HAND > 0
 GROUP BY 1`.trim();
 }
-// {generated, steps:{replen|pick|sort|pack: {units, lines|lpns, oldest_utc}}}. Fail-soft: null.
+// Break windows from the LMS schedule (LMC_SCHEDULED_EVENT, 2026-10-22). Shift IDs start with the
+// shift number (1MALLA/1SALLC, 2MALLB/2SALLD; same times every day). Each row is a WINDOW in which
+// each person takes MAXIMUM_DURATION minutes (breaks are staggered). Times sit on a 1970 date in UTC
+// and were entered in PST: 2nd-shift lunch 02:15 UTC = 6:15 PM, the lunch the Ecom page already used.
+// So local = UTC - 8 h, fixed (no DST shift). Read once per BREAKS_TTL_MS; on failure the old value
+// stays (and the page falls back to its 6:15-6:45 PM lunch).
+const BREAKS_TTL_MS = 6 * 3600e3;
+let breaksCache = { at: 0, rows: null };
+async function fetchBreaks(accessToken) {
+  if (breaksCache.rows && Date.now() - breaksCache.at < BREAKS_TTL_MS) return breaksCache.rows;
+  try {
+    const r = await mcpQuery(accessToken, `
+SELECT DISTINCT LEFT(SHIFT_ID,1) AS shift, ACTIVITY_ID AS activity,
+  TIME_FORMAT(START_TIME,'%H:%i') AS start_utc, TIME_FORMAT(END_TIME,'%H:%i') AS end_utc,
+  MAXIMUM_DURATION AS max_min
+FROM default_lmcore.LMC_SCHEDULED_EVENT
+WHERE PROFILE_ID = '${FACILITY}' AND ACTIVITY_ID IN ('Paid Break','Unpaid Break')
+  AND (EFFECTIVE_END_DATETIME IS NULL OR EFFECTIVE_END_DATETIME > NOW())`.trim());
+    const pst = hm => { const [h, m] = hm.split(':').map(Number); const t = (h * 60 + m - 480 + 1440) % 1440;
+      return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+    const rows = (r.rows || []).filter(x => x.start_utc && x.end_utc && /^[12]$/.test(x.shift))
+      .map(x => ({ shift: x.shift === '1' ? '1st' : '2nd', kind: x.activity === 'Unpaid Break' ? 'lunch' : 'break',
+                   start: pst(x.start_utc), end: pst(x.end_utc), max_min: Number(x.max_min) || 0 }));
+    if (rows.length) breaksCache = { at: Date.now(), rows };
+  } catch (e) {
+    console.warn(`[${ts()}] ⚠ break schedule read failed (keeping last): ${e.message}`);
+  }
+  return breaksCache.rows;
+}
+
+// {generated, steps:{replen|pick|sort|pack: {units, lines|lpns, oldest_utc}}, breaks:[...]}. Fail-soft: null.
 async function fetchFlow(accessToken) {
   try {
-    const [rt, rs] = await Promise.all([
+    const [rt, rs, breaks] = await Promise.all([
       mcpQuery(accessToken, sqlFlowTasks()),
       mcpQuery(accessToken, sqlFlowStaged()),
+      fetchBreaks(accessToken),
     ]);
     const steps = {};
     const add = (k, units, cnt, cntKey, oldest) => {
@@ -191,7 +222,7 @@ async function fetchFlow(accessToken) {
     for (const k of ['replen', 'pick']) steps[k] = steps[k] || { units: 0, lines: 0, oldest_utc: null };
     for (const k of ['sort', 'pack'])   steps[k] = steps[k] || { units: 0, lpns: 0, oldest_utc: null };
     console.log(`[${ts()}] Flow queues: replen ${steps.replen.units} · pick ${steps.pick.units} · sort ${steps.sort.units} · pack ${steps.pack.units} u`);
-    return { generated: new Date().toISOString(), steps };
+    return { generated: new Date().toISOString(), steps, breaks };
   } catch (e) {
     console.warn(`[${ts()}] ⚠ flow queues failed (card will say unavailable): ${e.message}`);
     return null;
