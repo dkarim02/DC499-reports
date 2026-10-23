@@ -489,6 +489,8 @@ body.light .footer button:hover,body.carrie .footer button:hover { color: #777; 
 
 /* ── THEME PICKER ─────────────────────────────────────────────── */
 .menu-theme-picker { position: fixed; bottom: 18px; right: 18px; z-index: 100; }
+/* Move settings: top-right corner, mirrors the theme picker (bottom-right) and uses its button look */
+.menu-move-btn { position: fixed; top: 18px; right: 18px; z-index: 100; }
 .menu-theme-btn {
   display: flex; align-items: center; gap: 6px;
   font-size: 11px; cursor: pointer;
@@ -606,9 +608,7 @@ body.carrie .menu-theme-option:hover { background: rgba(11,107,203,0.08); color:
         <span id="shift-label">—</span>
       </div>
       <div class="header-clock" id="clock"></div>
-      <button type="button" class="shift-pill find-pill" onclick="if(window.SCOUT_UI)SCOUT_UI.openFind()" title="Find an order, LPN, tote, task or page">&#x1F50D; Find &middot; Ctrl+K</button>
-      <button type="button" class="shift-pill find-pill" onclick="if(window.SCOUT_UI&&SCOUT_UI.openMove)SCOUT_UI.openMove()" title="Export or import your rosters and settings (GitHub ↔ OneDrive)">&#x21C4; Move settings</button>
-      <a class="shift-pill status-pill" id="status-pill" href="Status.html" style="display:none"
+      <button type="button" class="shift-pill find-pill" onclick="if(window.SCOUT_UI)SCOUT_UI.openFind()" title="Find an order, LPN, tote, task or page">&#x1F50D; Find &middot; Ctrl+K</button>      <a class="shift-pill status-pill" id="status-pill" href="Status.html" style="display:none"
          onclick="openApp('Status.html'); return false;" title="Are the reports up to date?">
         <span class="status-dot" id="status-dot"></span><span id="status-label">Status</span>
       </a>
@@ -640,6 +640,7 @@ body.carrie .menu-theme-option:hover { background: rgba(11,107,203,0.08); color:
   <div id="whats-new-content" style="font-size:12px;color:#555;line-height:1.75;">Loading...</div>
 </div>
 
+<button type="button" class="menu-theme-btn menu-move-btn" onclick="if(window.SCOUT_UI&&SCOUT_UI.openMove)SCOUT_UI.openMove()" title="Export or import your rosters and settings (GitHub ↔ OneDrive)">&#x21C4; Move settings</button>
 <div class="menu-theme-picker" id="menu-theme-picker">
   <button class="menu-theme-btn" onclick="menuToggleThemeMenu()">
     <span id="menu-theme-label">Dark</span>
