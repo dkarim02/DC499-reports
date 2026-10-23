@@ -175,6 +175,14 @@
   .flow-col.now::after{content:'now';position:absolute;top:-16px;font-size:9px;font-weight:700;letter-spacing:.06em;color:var(--text-hint);text-transform:uppercase;}
   .flow-x{display:flex;gap:6px;padding:4px 2px 0 34px;}
   .flow-x span{flex:1;text-align:center;font-size:10px;color:var(--text-hint);min-width:0;overflow:hidden;}
+  .flow-sum{margin-top:14px;padding-top:12px;border-top:0.5px solid var(--border);}
+  .flow-sum-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;}
+  .flow-hrow{display:grid;grid-template-columns:84px 1fr 220px;align-items:center;gap:10px;margin-bottom:6px;font-size:12px;}
+  .flow-hrow .lbl{color:var(--text-muted);}
+  .flow-hrow .trk{height:12px;border-radius:0 4px 4px 0;background:transparent;position:relative;}
+  .flow-hrow .fill{height:100%;border-radius:0 4px 4px 0;}
+  .flow-hrow .val{color:var(--text);font-variant-numeric:tabular-nums;} .flow-hrow .val span{color:var(--text-muted);}
+  .flow-gap{font-size:12px;color:var(--text);margin-top:6px;} .flow-gap b{font-variant-numeric:tabular-nums;}
   .flow-note{font-size:11px;color:var(--text-hint);margin-top:8px;line-height:1.5;}
   .flow-tip{position:fixed;z-index:500;pointer-events:none;background:var(--surface);color:var(--text);border:0.5px solid var(--border-mid);
     border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 6px 18px rgba(0,0,0,.25);display:none;min-width:150px;}
@@ -1249,6 +1257,7 @@ body { animation: pageEnter 0.28s ease-out both; }
           <span><i style="background:var(--f3)"></i>Palletized — units</span>
         </div>
         <div id="flow-main"></div>
+        <div id="flow-main-sum"></div>
         <div class="flow-note">Each bar counts what happened in that hour. Palletized = boxes scanned onto an outbound pallet (OB Putaway By Ship Via), the step before the truck — ship confirms land a whole trailer at once, so they are not used here.</div>
       </div>
       <div class="flow-card" id="flow-card-pack">
@@ -2100,6 +2109,20 @@ function renderFlow(d) {
       '<tr class="tot"><td>Today</td><td>' + t.b.toLocaleString() + '</td><td>' + t.p.toLocaleString() + '</td><td>' + t.l.toLocaleString() + '</td></tr></tbody></table>';
   } else { main.innerHTML = flowChart(cols1, false, nowHour); flowBindTips(main, cols1); }
   document.getElementById('flow-main-tbl').classList.toggle('active', flowTbl.main);
+  // "So far today" — the three totals as horizontal bars (same colors), and how far palletized trails the bridge
+  var tb = 0, tp = 0, tl = 0; cols1.forEach(function(c) { tb += c.segs[0].v; tp += c.segs[1].v; tl += c.segs[2].v; });
+  var big = Math.max(tb, tp, tl, 1);
+  function hrow(lbl, v, unit, color, pct) {
+    return '<div class="flow-hrow"><div class="lbl">' + lbl + '</div><div class="trk"><div class="fill" style="width:' + (v / big * 100) +
+      '%;background:' + color + '"></div></div><div class="val">' + v.toLocaleString() + ' ' + unit + (pct != null ? ' <span>· ' + pct + '% of bridged</span>' : '') + '</div></div>';
+  }
+  var gap = tb - tl;
+  document.getElementById('flow-main-sum').innerHTML = '<div class="flow-sum"><div class="flow-sum-title">So far today</div>' +
+    hrow('Bridged', tb, 'lines', c1, null) +
+    hrow('Packed', tp, 'units', c2, tb ? Math.round(tp / tb * 100) : null) +
+    hrow('Palletized', tl, 'units', c3, tb ? Math.round(tl / tb * 100) : null) +
+    '<div class="flow-gap">' + (gap > 0 ? 'Palletized is <b>' + gap.toLocaleString() + '</b> behind the bridge today.'
+      : 'Palletized is <b>' + (-gap).toLocaleString() + '</b> ahead of the bridge today (working down earlier days).') + '</div></div>';
   // chart 2 — pack-line arrivals, stacked multi / singles / chase (chase only if any today)
   var g1 = 'var(--g1)', g2 = 'var(--g2)', g3 = 'var(--g3)';
   var hasChase = hs.some(function(h) { return h.chase_orders > 0; });
