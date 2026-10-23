@@ -129,7 +129,7 @@ WHERE t.FACILITY_ID = '${FACILITY}'
 ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 }
 
-// ── flow queues ("Where to put people now", 2026-10-22) ──────────────────────
+// ── flow queues ("Processing projections", 2026-10-22) ──────────────────────
 // Work waiting at each Ecom step. The page divides it by the step's last-60-min rate (from the
 // rows above) to get hours behind. Idea from Shubham's retail staffing card, built for the
 // Ecom flow: replen → pick → sort → pack.

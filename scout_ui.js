@@ -326,8 +326,8 @@
   // fileOnly = OneDrive only (Shubham's boards are never on Pages; each sits in its own subfolder).
   var PAGES = [
     { name: 'Menu', file: MENU_PAGE, words: 'home start', what: 'All SCOUT reports' },
-    { name: 'Ecom', file: 'Ecom_v3.html', tracks: 'replen putaway picking packing sorting shipping pph', words: 'throughput pace associates staffing people hours behind nail',
-      what: 'Ecom throughput by associate: replen, putaway, picking, packing, sorting, shipping · PPH · where to put people now' },
+    { name: 'Ecom', file: 'Ecom_v3.html', tracks: 'replen putaway picking packing sorting shipping pph', words: 'throughput pace associates staffing people hours behind projections processing nail',
+      what: 'Ecom throughput by associate: replen, putaway, picking, packing, sorting, shipping · PPH · processing projections' },
     { name: 'Ecom Backlog', file: 'Backlog_live.html', words: 'orders lines waves allocated ready pack rfp hazmat top items visuals dropped packed palletized',
       what: 'Ecom order backlog by day: allocated, ready for pack, waves, top items' },
     { name: 'Ecom Backlog · Batches', file: 'Backlog_live.html', go: 'tab', key: 'batches', words: 'batches putwall release cleared queued',
