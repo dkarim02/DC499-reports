@@ -4893,8 +4893,8 @@ function renderDeadShelves() {
       return row;
     }).join('');
     var more = list.length > shown ? '<button class="ut-more" onclick="utDeadMore(\'' + l.key + '\')">Show ' + Math.min(UT_DEAD_PAGE, list.length - shown) + ' more of ' + fmt(list.length - shown) + '</button>' : '';
-    utDeadCopyText[l.key] = 'Shelf\tItem\tUnits\tLast picked\tDescription\n' +
-      list.map(function(r) { return r.loc + '\t' + r.item + '\t' + r.oh + '\t' + (r.lastPick ? utDeadDate(r.lastPick) : r.lastPick === null ? 'Never' : '') + '\t' + (r.desc || ''); }).join('\n');
+    utDeadCopyText[l.key] = 'Shelf\tItem\tUPC\tUnits\tLast picked\tDescription\n' +
+      list.map(function(r) { return r.loc + '\t' + r.item + '\t' + (r.upc || '') + '\t' + r.oh + '\t' + (r.lastPick ? utDeadDate(r.lastPick) : r.lastPick === null ? 'Never' : '') + '\t' + (r.desc || ''); }).join('\n');
     var does = {
       blocking: 'These idle items sit on a shelf that is holding up an order right now. Moving them makes room for the replen or the pick. Tap a row to see the whole shelf.',
       busy:     'Idle items taking ' + UT_BUSY_PCT + '%+ of a shelf whose other items still get picked. Moving them gives replens room to land.',
