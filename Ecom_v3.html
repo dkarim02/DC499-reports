@@ -6,7 +6,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Report Processor v3.5</title>
+<title>Ecom Report Processor v3.6</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -555,7 +555,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.5</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.6</p>
   </div>
 
   <p class="nordstrom-tag">Dean Karim &middot; Nordstrom &middot; Ecom &middot; Last updated: <span id="last-updated"></span></p>
@@ -580,7 +580,7 @@ var THEME_KEY_ECOM = 'dc499_ecom_theme_v1';
 var THEME_NAMES_ECOM = {dark:'Dark',solid:'Solid',pastel:'Pastel',scout:'✦ Scout',carrie:'Carrie ☁', light:'Light'};
 var THEME_VALS_ECOM  = ['dark','solid','pastel','scout','carrie','light'];
 function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); }
-if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Report Processor",version:"v3.5",sub:"main-subtitle"}, { oldThemeKey: THEME_KEY_ECOM, applyTheme: applyTheme }));
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Report Processor",version:"v3.6",sub:"main-subtitle"}, { oldThemeKey: THEME_KEY_ECOM, applyTheme: applyTheme }));
 else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY_ECOM) || 'dark');
 // big numbers roll to a new value instead of jumping (scout_ui.js)
 if (window.SCOUT_UI && SCOUT_UI.countUp) SCOUT_UI.countUp(['bs-total','bs-ready','bs-alloc']);
@@ -834,9 +834,12 @@ function renderLiveReport(d) {
 
 // ── WHERE TO PUT PEOPLE NOW (v3.5, 2026-10-22) ───────────────────────────────
 // Idea from Shubham's retail staffing card, built for the Ecom flow replen → pick → sort → pack.
-// Queue = work waiting at the step (agent's d.flow). Rate = units the step finished in the last
-// FLOW_RATE_MIN minutes, counted the same way as the tiles but for everyone (any finished unit
-// shrinks the queue). Hours behind = queue ÷ rate.
+// Queue = work waiting at the step (agent's d.flow). Rate = what the step finished so far this shift
+// ÷ worked hours (breaks out), counted the same way as the tiles but for everyone (any finished unit
+// shrinks the queue). Hours behind = queue ÷ rate. v3.6 (10/22, Dean): was the last FLOW_RATE_MIN only,
+// which swung hard (replen at 14 u/hr = "14 h behind"); the last FLOW_RATE_MIN now only decides
+// "stopped" and who is on the step. Replen is in cases (pull lines = cases, fills = distinct
+// containers): units per case vary too much.
 // Differences from the retail card: a step needs FLOW_MIN_UNITS waiting before it can be the call
 // (retail flagged a 48 u replen queue over a 2,819 u pick queue on 10/22); the window skips lunch;
 // the first FLOW_WARMUP_MIN of the shift shows "warming up"; and each step gets a done-by-shift-end check.
@@ -863,6 +866,7 @@ function flowClock(ms) {
   var dt = new Date(ms), h = dt.getUTCHours(), m = dt.getUTCMinutes();
   return ((h % 12) || 12) + ':' + (m < 10 ? '0' : '') + m + ' ' + (h < 12 ? 'AM' : 'PM');
 }
+function flowNum(n) { return n > 0 && n < 10 ? n.toFixed(1) : Math.round(n || 0).toLocaleString(); }
 function flowOverlapMin(a, b, c, e) { return Math.max(0, Math.min(b, e) - Math.max(a, c)) / 60000; }
 // Break windows for this shift, as wall-clock ms on the shift's date. From the LMS schedule
 // (d.flow.breaks, agent v3.5); each person takes max_min somewhere inside the window. No schedule ->
@@ -899,18 +903,18 @@ function flowFinishMs(t0, hours, wins) {
 // Pure: steps [{key,label,who,units,rate,people}] → {constraint, lines[], light[]}.
 function flowDecide(steps) {
   var big = steps.filter(function(s) { return s.units >= FLOW_MIN_UNITS; });
-  var stopped = big.filter(function(s) { return !s.rate; }).sort(function(a, b) { return b.units - a.units; });
+  var stopped = big.filter(function(s) { return !s.rate || s.recent === 0; }).sort(function(a, b) { return b.units - a.units; });
   var lines = [], top = null;
   if (stopped.length) {
     top = stopped[0];
     lines.push(top.label + ' is the constraint: nobody finished ' + top.label.toLowerCase() + ' work in the last '
-      + FLOW_RATE_MIN + ' min and ' + top.units.toLocaleString() + ' u are waiting'
+      + FLOW_RATE_MIN + ' min and ' + (top.waitTxt || top.units.toLocaleString() + ' u') + ' are waiting'
       + (top.pulled ? ' (' + top.pulled.toLocaleString() + ' u pulled, not filled yet)' : '')
       + '. Send the next person to ' + top.label.toLowerCase() + '.'
       + (top.needTotal ? ' At this shift\'s pace about ' + top.needTotal + (top.needTotal === 1 ? ' person clears' : ' people clear')
          + ' it by shift end.' : ''));
     stopped.slice(1).forEach(function(s) {
-      lines.push(s.label + ' has also stopped with ' + s.units.toLocaleString() + ' u waiting.');
+      lines.push(s.label + ' has also stopped with ' + (s.waitTxt || s.units.toLocaleString() + ' u') + ' waiting.');
     });
   } else if (big.length) {
     var byH = big.slice().sort(function(a, b) { return b.hours - a.hours; });
@@ -941,7 +945,7 @@ function flowDecide(steps) {
 function renderFlowCard(d) {
   var h = '<div class="card" style="margin-bottom:1rem;">';
   h += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">Where to put people now'
-    + ' <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">· replen → pick → sort → pack · last ' + FLOW_RATE_MIN + ' min</span></div>';
+    + ' <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">· replen → pick → sort → pack · done / hr = this shift so far</span></div>';
   var f = d.flow && d.flow.steps;
   if (!f || !d.generated || !d.shift_start) {
     return h + '<div style="font-size:12px;color:var(--text-hint);">Queue numbers are not available this cycle.</div></div>';
@@ -953,56 +957,59 @@ function renderFlowCard(d) {
   var wins = flowBreakWins(d, day0, shiftW);
   var shiftEndW = day0 + (is2nd ? getProdShiftCap() : FLOW_1ST_END_H) * 3600e3;
   var startW = Math.max(endW - FLOW_RATE_MIN * 60e3, shiftW);
-  var winMin = (endW - startW) / 60000 - flowLostMin(startW, endW, wins);
+  var shiftMin = (endW - shiftW) / 60000 - flowLostMin(shiftW, endW, wins);   // worked minutes so far
   var hoursLeft = Math.max(0, ((shiftEndW - endW) / 60000 - flowLostMin(endW, shiftEndW, wins)) / 60);
 
   var steps = FLOW_STEPS.map(function(st) {
-    var tx = getTX()[st.typ] || [], units = 0, ppl = new Set();
-    var rows = d.rows.filter(function(r) {
-      var t = (r['Transaction ID'] || '').trim();
-      if (tx.indexOf(t) === -1 || t === st.skipTx) return false;
-      if (st.typ === 'sorting' && (r['Criteria'] || '').trim() !== SORT_CRITERIA) return false;
-      var ms = flowRowMs(r['Activity Datetime']);
-      return ms >= startW && ms <= endW;
-    });
-    forEachCountedRow(rows, st.typ, null, function(r, e, v) { if (v > 0) { units += v; ppl.add(e); } });
-    // Replen: a pull puts the case on a cart; it counts as finished only at the fill. Pulls still
-    // show someone is on it ("pulled, not filled yet"), and that person counts in People.
-    var pulled = 0;
-    if (st.pullTx) d.rows.forEach(function(r) {
-      if (st.pullTx.indexOf((r['Transaction ID'] || '').trim()) === -1 || !rowBelongsToEcom(r)) return;
-      var ms = flowRowMs(r['Activity Datetime']);
-      if (ms < startW || ms > endW) return;
-      pulled += parseFloat(r['Quantity']) || 0; ppl.add((r['Employee'] || '').trim());
-    });
-    // Shift pace = this shift's units / active person-hours (10-min blocks in which that person scanned
-    // this step; replen pulls count as active). Used for "needs N" when nobody finished work in the
-    // last hour. Our own number on purpose: the LMS standards are not complete yet (no standard for
-    // pulls or sort units; picking runs at about half its standard).
-    var shiftUnits = 0, blocks = new Set();
+    var tx = getTX()[st.typ] || [];
+    var cases = !!st.pullTx;   // replen: count cases (distinct filled containers), not units
     var shiftRows = d.rows.filter(function(r) {
       var t = (r['Transaction ID'] || '').trim();
       if (tx.indexOf(t) === -1 || t === st.skipTx) return false;
       return st.typ !== 'sorting' || (r['Criteria'] || '').trim() === SORT_CRITERIA;
     });
+    // done = this shift; recent / ppl = last FLOW_RATE_MIN (is anyone on it right now).
+    // Shift pace = done / active person-hours (10-min blocks in which that person scanned this step;
+    // replen pulls count as active). Our own number on purpose: the LMS standards are not complete
+    // yet (no standard for pulls or sort units; picking runs at about half its standard).
+    var done = 0, recent = 0, ppl = new Set(), blocks = new Set(), seen = new Set(), seenRecent = new Set();
     forEachCountedRow(shiftRows, st.typ, null, function(r, e, v) {
       if (v <= 0) return;
-      shiftUnits += v; blocks.add(e + '|' + Math.floor(flowRowMs(r['Activity Datetime']) / 6e5));
+      var ms = flowRowMs(r['Activity Datetime']), isRecent = ms >= startW && ms <= endW;
+      if (cases) {
+        var cid = (r['Container ID'] || '').trim() || ('row' + ms + e);
+        if (!seen.has(cid)) { seen.add(cid); done++; }
+        if (isRecent && !seenRecent.has(cid)) { seenRecent.add(cid); recent++; }
+      } else { done += v; if (isRecent) recent += v; }
+      if (isRecent) ppl.add(e);
+      blocks.add(e + '|' + Math.floor(ms / 6e5));
     });
+    // Replen: a pull puts the case on a cart; it counts as finished only at the fill. Pulls still
+    // show someone is on it ("pulled, not filled yet"), and that person counts in People.
+    var pulled = 0, pulledSeen = new Set();
     if (st.pullTx) d.rows.forEach(function(r) {
       if (st.pullTx.indexOf((r['Transaction ID'] || '').trim()) === -1 || !rowBelongsToEcom(r)) return;
-      blocks.add((r['Employee'] || '').trim() + '|' + Math.floor(flowRowMs(r['Activity Datetime']) / 6e5));
+      var ms = flowRowMs(r['Activity Datetime']), e = (r['Employee'] || '').trim();
+      blocks.add(e + '|' + Math.floor(ms / 6e5));
+      if (ms < startW || ms > endW) return;
+      var cid = (r['Container ID'] || '').trim() || ('row' + ms + e);
+      if (!pulledSeen.has(cid)) { pulledSeen.add(cid); pulled++; }
+      ppl.add(e);
     });
-    var pace = blocks.size >= FLOW_PACE_MIN_BLOCKS ? shiftUnits / (blocks.size / 6) : 0;
+    var pace = blocks.size >= FLOW_PACE_MIN_BLOCKS ? done / (blocks.size / 6) : 0;
     var q = f[st.key] || {};
-    var rate = winMin > 0 ? units * 60 / winMin : 0;
-    var per = rate > 0 ? rate / Math.max(1, ppl.size) : pace;
-    var needTotal = per > 0 && hoursLeft > 0 && (q.units || 0) > 0 ? Math.ceil((q.units || 0) / (per * hoursLeft)) : null;
-    return { key: st.key, label: st.label, who: st.who, units: q.units || 0, count: q.lines != null ? q.lines : q.lpns,
-      countLabel: q.lines != null ? 'lines' : 'LPNs', oldest: q.oldest_utc, rate: Math.round(rate), people: ppl.size,
-      pulled: Math.round(pulled), pace: Math.round(pace), needTotal: needTotal,
-      hours: rate > 0 ? (q.units || 0) / rate : null };
+    var units = q.units || 0;
+    var work = cases ? (q.cases != null ? q.cases : (q.lines || 0)) : units;   // waiting, in the rate's measure
+    var rate = shiftMin > 0 ? done * 60 / shiftMin : 0;
+    var needTotal = pace > 0 && hoursLeft > 0 && work > 0 ? Math.ceil(work / (pace * hoursLeft)) : null;
+    var m = cases ? 'cases' : 'u';
+    return { key: st.key, label: st.label, who: st.who, units: units, work: work, measure: m,
+      waitTxt: cases ? work.toLocaleString() + (work === 1 ? ' case' : ' cases') + ' (' + units.toLocaleString() + ' u)' : null,
+      count: q.lines != null ? q.lines : q.lpns, countLabel: q.lines != null ? 'lines' : 'LPNs', oldest: q.oldest_utc,
+      rate: rate, recent: recent, people: ppl.size, pulled: pulled, pace: pace, needTotal: needTotal,
+      hours: rate > 0 ? work / rate : null };
   });
+  var winMin = shiftMin;   // warm-up check below: worked minutes into the shift
 
   if (winMin < FLOW_WARMUP_MIN) {
     h += '<div style="font-size:13px;color:var(--text);margin-bottom:8px;">Warming up — the call starts ' + FLOW_WARMUP_MIN
@@ -1021,10 +1028,10 @@ function renderFlowCard(d) {
   steps.forEach(function(s) {
     var end;
     if (winMin < FLOW_WARMUP_MIN || hoursLeft <= 0 || !s.units) end = '<span style="color:var(--text-hint);">—</span>';
-    else if (!s.rate) {
+    else if (!s.rate || s.recent === 0) {
       var needTxt = s.needTotal ? ' · ' + (s.people ? 'needs +' + Math.max(1, s.needTotal - s.people) : 'needs ' + s.needTotal)
-        + '<div style="font-size:10px;color:var(--text-hint);font-weight:400;">at this shift\'s pace, ' + s.pace + ' u per person-hour</div>' : '';
-      if (s.pulled) end = '<span style="color:#C47B00;font-weight:600;">' + s.pulled.toLocaleString() + ' u pulled, not filled yet' + needTxt + '</span>';
+        + '<div style="font-size:10px;color:var(--text-hint);font-weight:400;">at this shift\'s pace, ' + flowNum(s.pace) + ' ' + s.measure + ' per person-hour</div>' : '';
+      if (s.pulled) end = '<span style="color:#C47B00;font-weight:600;">' + s.pulled.toLocaleString() + (s.measure === 'cases' ? (s.pulled === 1 ? ' case' : ' cases') : ' u') + ' pulled, not filled yet' + needTxt + '</span>';
       else end = s.units >= FLOW_MIN_UNITS ? '<span style="color:#C0392B;font-weight:600;">Nobody on it' + needTxt + '</span>' : '<span style="color:var(--text-hint);">—</span>';
     }
     else if (s.hours <= hoursLeft) end = '<span style="color:#0F6E56;font-weight:600;">&#x2713; done ~' + flowClock(flowFinishMs(endW, s.hours, wins)) + '</span>';
@@ -1032,14 +1039,17 @@ function renderFlowCard(d) {
     var oldest = s.oldest ? flowClock(flowWallMs(new Date(String(s.oldest).slice(0, 19) + 'Z'))) : '';
     var oldDay = s.oldest && flowWallMs(new Date(String(s.oldest).slice(0, 19) + 'Z')) < day0 ? ' (earlier day)' : '';
     h += '<tr><td><strong>' + s.label + '</strong>' + (oldest ? '<div style="font-size:10px;color:var(--text-hint);">oldest ' + oldest + oldDay + '</div>' : '') + '</td>'
-      + '<td style="text-align:right;">' + s.units.toLocaleString() + ' u<div style="font-size:10px;color:var(--text-hint);">' + (s.count || 0).toLocaleString() + ' ' + s.countLabel + '</div></td>'
-      + '<td style="text-align:right;">' + s.rate.toLocaleString() + '</td>'
+      + '<td style="text-align:right;">' + (s.measure === 'cases'
+          ? s.work.toLocaleString() + ' cases<div style="font-size:10px;color:var(--text-hint);">' + s.units.toLocaleString() + ' u</div>'
+          : s.units.toLocaleString() + ' u<div style="font-size:10px;color:var(--text-hint);">' + (s.count || 0).toLocaleString() + ' ' + s.countLabel + '</div>') + '</td>'
+      + '<td style="text-align:right;">' + flowNum(s.rate) + (s.measure === 'cases' ? ' cases' : '') + '</td>'
       + '<td style="text-align:right;">' + s.people + '</td>'
       + '<td style="text-align:right;font-weight:600;">' + (s.hours != null ? s.hours.toFixed(1) + ' h' : (s.units ? '—' : '0')) + '</td>'
       + '<td>' + end + '</td></tr>';
   });
   h += '</tbody></table>';
   h += '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;line-height:1.5;">Waiting = released work only (orders waiting for a batch are not counted): open replen pulls into Ecom shelves, open Ecom pick lines, totes at the putwall drop zones, units at D1-SN. '
+    + 'Done / hr = finished so far this shift ÷ worked hours (replen = cases filled, since units per case vary a lot). People = scanned the step in the last ' + FLOW_RATE_MIN + ' min. '
     + 'Hours behind = waiting ÷ done per hour. "By shift end" is for the work waiting now — new batches add more. '
     + (wins.length ? (wins[0].fallback ? 'The rate leaves out lunch (6:15–6:45 PM). '
         : 'Breaks (LMS schedule): ' + wins.map(function(w) { return (w.kind === 'lunch' ? 'lunch ' : 'break ') + flowClock(w.a) + '–' + flowClock(w.b) + ' (' + w.max + ' min each)'; }).join(', ')

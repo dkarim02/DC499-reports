@@ -147,7 +147,8 @@ function sqlFlowTasks() {
   return `
 SELECT CASE WHEN k.TRANSACTION_ID IN (${pick}) THEN 'pick' ELSE 'replen' END AS step,
   ${OWNER_SQL} AS owner,
-  SUM(d.QUANTITY) AS units, COUNT(*) AS line_ct, MIN(d.CREATED_TIMESTAMP) AS oldest_utc
+  SUM(d.QUANTITY) AS units, COUNT(*) AS line_ct, COUNT(DISTINCT d.SOURCE_CONTAINER_ID) AS case_ct,
+  MIN(d.CREATED_TIMESTAMP) AS oldest_utc
 FROM default_pickpack.TSK_TASK_DETAIL d
 JOIN default_task.TSK_TASK k ON k.TASK_ID = d.TASK_ID AND k.FACILITY_ID = d.FACILITY_ID
 LEFT JOIN default_dcinventory.DCI_LOCATION lt ON lt.LOCATION_ID = d.TARGET_LOCATION_ID AND lt.PROFILE_ID = '${FACILITY}'
@@ -217,11 +218,14 @@ async function fetchFlow(accessToken) {
     for (const r of rt.rows || []) {
       if (r.step === 'replen' && r.owner === 'Retail') continue;   // Retail shelf = Reserve's replen
       add(r.step, r.units, r.line_ct, 'lines', r.oldest_utc);
+      // Replen is judged in cases on the page (v3.6): one pull line = one case today, distinct to be safe.
+      if (r.step === 'replen') steps.replen.cases = (steps.replen.cases || 0) + (Number(r.case_ct) || 0);
     }
     for (const r of rs.rows || []) add(r.step, r.units, r.lpns, 'lpns', r.oldest_utc);
     for (const k of ['replen', 'pick']) steps[k] = steps[k] || { units: 0, lines: 0, oldest_utc: null };
+    steps.replen.cases = steps.replen.cases || 0;
     for (const k of ['sort', 'pack'])   steps[k] = steps[k] || { units: 0, lpns: 0, oldest_utc: null };
-    console.log(`[${ts()}] Flow queues: replen ${steps.replen.units} · pick ${steps.pick.units} · sort ${steps.sort.units} · pack ${steps.pack.units} u`);
+    console.log(`[${ts()}] Flow queues: replen ${steps.replen.units} u / ${steps.replen.cases} cases · pick ${steps.pick.units} · sort ${steps.sort.units} · pack ${steps.pack.units} u`);
     return { generated: new Date().toISOString(), steps, breaks };
   } catch (e) {
     console.warn(`[${ts()}] ⚠ flow queues failed (card will say unavailable): ${e.message}`);
