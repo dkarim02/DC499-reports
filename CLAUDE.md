@@ -292,6 +292,8 @@ Output: reserve_live.json + putaway_live.json. Pre-aggregated `GROUP BY CREATED_
 
 **Shift sync (HTML):** `loadLiveData()` auto-syncs app shift to `d.shift` from JSON before calling `renderLiveReport`. Never call `setShift()` from inside `renderLiveReport` — flips storage keys mid-render and crashes headcount reads.
 
+**"This card" hide (v2.3, 10/22):** `disabled_tx` holds card keys (`picking`, `replen`, `putaway`, `bulk_lpn`). `getTeamSet(cardKey)` = enabled AND not hidden from that card (like Ecom's `getTeamSet(typ)`); the tiles, NAIL and Log Day use it per metric (before v2.3 they used the plain enabled list, so a hidden person still counted: 10/22 test 1,877 vs card 1,062). Log Day headcount still = everyone enabled. Test: `.tmp_audit/findtest/rs_card.js [old page]`.
+
 **NAIL button:** `nailFromLiveRS(btn)` — writes to NTP Retail tab (`ntp_dc499_v1`). Picking → "Retail OUT", Replen + Putaway → "Retail IN". `ntpCurrentBlockRS()` filters `NTP_BLOCKS` by `getShift()` — prevents 1st|EOD block matching on 2nd shift during 3–8 PM overlap.
 
 ---

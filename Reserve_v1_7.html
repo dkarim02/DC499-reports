@@ -6,7 +6,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Retail Report Processor v2.2</title>
+<title>Retail Report Processor v2.3</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -517,7 +517,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <p class="roster-notice">&#x26A0; Roster saves to this browser only.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v2.2</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;text-align:right;">v2.3</p>
   </div>
 
   <p class="nordstrom-tag">Nordstrom &middot; Retail &middot; Last updated: <span id="last-updated"></span></p>
@@ -620,7 +620,7 @@ function updateChartTheme(chart, dark) {
   chart.options.scales.y.grid.color = grid;
   chart.update('none');
 }
-if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Retail",title:"Retail Report Processor",version:"v2.2",sub:"main-subtitle",actions:["weekly-btn","retail-board-pill"]}, { oldThemeKey: THEME_KEY_RS, applyTheme: applyTheme }));
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Retail",title:"Retail Report Processor",version:"v2.3",sub:"main-subtitle",actions:["weekly-btn","retail-board-pill"]}, { oldThemeKey: THEME_KEY_RS, applyTheme: applyTheme }));
 else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY_RS) || 'dark');
 
 // ── TABS ──────────────────────────────────────────────
@@ -671,7 +671,10 @@ function loadRoster() {
   return DEFAULT_TEAM.map(function(m) { return {email:m.email, enabled:m.enabled, disabled_tx:[]}; });
 }
 function saveRoster(r) { try { localStorage.setItem(rosterKey(), JSON.stringify(r)); flashBadge('saved-badge'); } catch(e) {} }
-function getTeamSet() { return new Set(loadRoster().filter(function(m) { return m.enabled; }).map(function(m) { return m.email; })); }
+// cardKey (optional, 10/22): also leave out people hidden from that card with "This card", like Ecom's
+// getTeamSet(typ). Before, the tiles, NAIL and Log Day used the plain enabled list, so a person hidden
+// from a card still counted in its tile, in Nail the Plan and in the weekly recap.
+function getTeamSet(cardKey) { return new Set(loadRoster().filter(function(m) { return m.enabled && (!cardKey || (m.disabled_tx || []).indexOf(cardKey) === -1); }).map(function(m) { return m.email; })); }
 function isTMEnabledForCard(roster, emp, cardKey) {
   var m = roster.find(function(r){ return r.email === emp; });
   if (!m) return false;
@@ -1685,13 +1688,16 @@ function renderLiveReport(d) {
 
   // ── Summary tiles ──────────────────────────────────────
   // Picking = F1+F2 merged; Replen and Putaway separate
+  // Each tile counts the people its card counts (enabled, not hidden from that card) → tile = card total
+  var T_PICK = getTeamSet('picking'), T_REPLEN = getTeamSet('replen'), T_PUT = getTeamSet('putaway'), T_BULK = getTeamSet('bulk_lpn');
   var pickingGrand = 0;
   Object.keys(d.associates).forEach(function(emp) {
-    if (TEAM.has(emp)) pickingGrand += (d.associates[emp].pick_f1 || 0) + (d.associates[emp].pick_f2 || 0);
+    if (T_PICK.has(emp)) pickingGrand += (d.associates[emp].pick_f1 || 0) + (d.associates[emp].pick_f2 || 0);
   });
   var replenGrand = 0, putawayGrand = 0;
   Object.keys(d.associates).forEach(function(emp) {
-    if (TEAM.has(emp)) { replenGrand += (d.associates[emp].replen || 0); putawayGrand += (d.associates[emp].putaway || 0); }
+    if (T_REPLEN.has(emp)) replenGrand += (d.associates[emp].replen || 0);
+    if (T_PUT.has(emp)) putawayGrand += (d.associates[emp].putaway || 0);
   });
 
   var html = '<div class="card" style="margin-bottom:1rem;">';
@@ -1704,7 +1710,7 @@ function renderLiveReport(d) {
     var pace = getTilePaceRS('pick', pickingGrand);
     var f1 = 0, f2 = 0;
     Object.keys(d.associates).forEach(function(emp) {
-      if (TEAM.has(emp)) { f1 += (d.associates[emp].pick_f1 || 0); f2 += (d.associates[emp].pick_f2 || 0); }
+      if (T_PICK.has(emp)) { f1 += (d.associates[emp].pick_f1 || 0); f2 += (d.associates[emp].pick_f2 || 0); }
     });
     html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="picking" onclick="clickLiveTile(this.dataset.livtyp)" style="color:#0891B2;cursor:pointer;grid-column:span 2;">';
     html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Picking</div>';
@@ -1729,7 +1735,7 @@ function renderLiveReport(d) {
     var pace = getTilePaceRS('replen', replenGrand);
     var replenContainersGrand = 0;
     Object.keys(d.associates).forEach(function(emp) {
-      if (TEAM.has(emp)) replenContainersGrand += (d.associates[emp].replen_containers || 0);
+      if (T_REPLEN.has(emp)) replenContainersGrand += (d.associates[emp].replen_containers || 0);
     });
     html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="replen" onclick="clickLiveTile(this.dataset.livtyp)" style="color:#6366F1;cursor:pointer;">';
     html += '<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Replenishment</div>';
@@ -1766,7 +1772,7 @@ function renderLiveReport(d) {
   (function() {
     var bulkGrand = 0;
     Object.keys(d.associates).forEach(function(emp) {
-      if (TEAM.has(emp)) bulkGrand += (d.associates[emp].bulk_lpn || 0);
+      if (T_BULK.has(emp)) bulkGrand += (d.associates[emp].bulk_lpn || 0);
     });
     var isActive = _activeLiveTile === 'bulk_lpn';
     html += '<div class="full-tile' + (isActive ? ' active' : '') + '" data-livtyp="bulk_lpn" onclick="clickLiveTile(this.dataset.livtyp)" style="color:#E11D48;cursor:pointer;grid-column:span 2;">';
@@ -1976,14 +1982,14 @@ function nailFromLiveRS(btn) {
   var block = ntpCurrentBlockRS();
   if (!block) { alert('Outside shift hours — no active Nail the Plan checkpoint right now.'); return; }
   var cpKey = block.shift + '|' + block.cp;
-  var TEAM  = getTeamSet();
+  // same people as each card (hidden-from-card people left out), so NAIL sends what the tiles show
+  var T_PICK = getTeamSet('picking'), T_REPLEN = getTeamSet('replen'), T_PUT = getTeamSet('putaway');
   var pick = 0, replen = 0, putaway = 0;
   Object.keys(rsLiveData.associates).forEach(function(emp) {
-    if (!TEAM.has(emp)) return;
     var a = rsLiveData.associates[emp];
-    pick    += (a.pick_f1 || 0) + (a.pick_f2 || 0);
-    replen  += (a.replen  || 0);
-    putaway += (a.putaway || 0);
+    if (T_PICK.has(emp))   pick    += (a.pick_f1 || 0) + (a.pick_f2 || 0);
+    if (T_REPLEN.has(emp)) replen  += (a.replen  || 0);
+    if (T_PUT.has(emp))    putaway += (a.putaway || 0);
   });
   var state;
   try { state = JSON.parse(localStorage.getItem(NTP_KEY) || 'null'); } catch(e) { state = null; }
@@ -2044,15 +2050,15 @@ function saveWeeklyData(obj) {
 }
 function logDay(btn) {
   if (!rsLiveData || !rsLiveData.associates) { alert('No live data — run Option 11 in dc499.bat first, then refresh.'); return; }
-  var TEAM = getTeamSet();
+  // headcount = everyone enabled; each metric leaves out people hidden from its card (same as the tiles)
+  var TEAM = getTeamSet(), T_PICK = getTeamSet('picking'), T_REPLEN = getTeamSet('replen'), T_PUT = getTeamSet('putaway');
   var pick_f1 = 0, pick_f2 = 0, replen = 0, putaway = 0, headcount = 0;
   Object.keys(rsLiveData.associates).forEach(function(emp) {
     if (!TEAM.has(emp)) return;
     var a = rsLiveData.associates[emp];
-    pick_f1 += (a.pick_f1 || 0);
-    pick_f2 += (a.pick_f2 || 0);
-    replen  += (a.replen  || 0);
-    putaway += (a.putaway || 0);
+    if (T_PICK.has(emp))   { pick_f1 += (a.pick_f1 || 0); pick_f2 += (a.pick_f2 || 0); }
+    if (T_REPLEN.has(emp)) replen  += (a.replen  || 0);
+    if (T_PUT.has(emp))    putaway += (a.putaway || 0);
     headcount++;
   });
   var hcStored = loadHeadcount();
@@ -2064,7 +2070,9 @@ function logDay(btn) {
   Object.keys(rsLiveData.associates).forEach(function(emp) {
     if (!TEAM.has(emp)) return;
     var a = rsLiveData.associates[emp];
-    employees[emp] = { pick_f1: a.pick_f1||0, pick_f2: a.pick_f2||0, replen: a.replen||0, putaway: a.putaway||0 };
+    var p = T_PICK.has(emp);
+    employees[emp] = { pick_f1: p ? a.pick_f1||0 : 0, pick_f2: p ? a.pick_f2||0 : 0,
+                       replen: T_REPLEN.has(emp) ? a.replen||0 : 0, putaway: T_PUT.has(emp) ? a.putaway||0 : 0 };
   });
   weekly[dateKey] = {
     pick: pick_f1 + pick_f2, pick_f1: pick_f1, pick_f2: pick_f2,
