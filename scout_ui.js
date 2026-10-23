@@ -616,6 +616,121 @@
     }
   }
 
+  // ── move settings (export / import, 2026-10-22) ──
+  // Rosters and settings live in the browser per site, so GitHub Pages and the OneDrive copy (file://)
+  // each start empty. Export writes one file with every roster + setting below; Import on the other
+  // site ADDS it: rosters merge by email (people already there stay as they are), name lists merge by
+  // LAN ID, and other settings only fill in where nothing is set yet. Nothing is ever deleted.
+  // New roster/setting key on a page → add it here.
+  var MOVE_KEYS = [
+    ['sc_roster_2nd_v5', 'Ecom roster · 2nd shift'], ['sc_roster_1st_v1', 'Ecom roster · 1st shift'],
+    ['ecom_headcount_v1', 'Ecom headcount'], ['ecom_pph_v1', 'Ecom PPH targets'], ['ecom_shift_hours_v1', 'Ecom shift hours'],
+    ['rs_roster_v1_2nd', 'Retail roster · 2nd shift'], ['rs_roster_v1_1st', 'Retail roster · 1st shift'],
+    ['rs_roster_v1', 'Retail roster (older save)'], ['rs_goals_v1', 'Retail goals'],
+    ['ip_roster_2nd_v1', 'Item Prep roster · 2nd shift'], ['ip_roster_1st_v1', 'Item Prep roster · 1st shift'], ['ip_goals_v1', 'Item Prep goals'],
+    ['shipping_lan_map_v1', 'Shipping names'], ['recv_lan_map_v1', 'Receiving names'], ['recv_live_roster_v2', 'Receiving roster (older save)'],
+    ['dc499_theme_v1', 'Theme'], ['dc499_remi_enabled_v1', 'Remi on / off']
+  ];
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function parseVal(s) { try { return JSON.parse(s); } catch (e) { return s; } }
+  function personId(x) { return x && typeof x === 'object' ? String(x.email || x.id || x.name || JSON.stringify(x)).toLowerCase() : String(x).toLowerCase(); }
+  function describe(v) {
+    if (Array.isArray(v)) return v.length + (v.length === 1 ? ' person' : ' people');
+    if (v && typeof v === 'object') { var n = Object.keys(v).length; return n + (n === 1 ? ' entry' : ' entries'); }
+    return String(v);
+  }
+  // existing (raw string or null) + imported (raw string) → {raw to save or null, note}
+  function mergeVal(have, got) {
+    if (have == null || have === '') return { raw: got, note: 'added' };
+    var a = parseVal(have), b = parseVal(got);
+    if (Array.isArray(a) && Array.isArray(b)) {
+      var ids = {}; a.forEach(function (x) { ids[personId(x)] = 1; });
+      var add = b.filter(function (x) { return !ids[personId(x)]; });
+      return add.length ? { raw: JSON.stringify(a.concat(add)), note: '+' + add.length + ' added, ' + a.length + ' already here kept' }
+                        : { raw: null, note: 'everyone already here' };
+    }
+    if (a && b && typeof a === 'object' && typeof b === 'object' && !Array.isArray(a) && !Array.isArray(b)) {
+      var n = 0; Object.keys(b).forEach(function (k) { if (!(k in a)) { a[k] = b[k]; n++; } });
+      return n ? { raw: JSON.stringify(a), note: '+' + n + ' added, the rest kept as set here' } : { raw: null, note: 'already set here — kept' };
+    }
+    return { raw: null, note: 'already set here — kept' };
+  }
+  function exportSettings() {
+    var keys = {}, n = 0;
+    MOVE_KEYS.forEach(function (m) { var v = lsGet(m[0]); if (v != null && v !== '') { keys[m[0]] = v; n++; } });
+    if (!n) { moveMsg('Nothing to export yet — no rosters or settings are saved in this browser for this site.'); return; }
+    var d = new Date(), stamp = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    var file = { scout_settings: 1, exported: d.toISOString(), from: location.protocol === 'file:' ? 'OneDrive' : location.hostname, keys: keys };
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' }));
+    a.download = 'SCOUT settings ' + stamp + '.json';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    moveMsg('Saved <b>' + esc(a.download) + '</b> (' + n + ' rosters / settings) to your Downloads. Open SCOUT the other way (OneDrive or GitHub), open the Menu, choose Move settings → Import and pick this file.'
+      + '<div style="margin-top:6px;opacity:0.7;">The file has your team\'s work emails in it — keep it to yourself and delete it when you are done.</div>');
+  }
+  var moveEl = null, movePending = null;
+  function moveMsg(html) { var m = moveEl && moveEl.querySelector('.sui-move-msg'); if (m) m.innerHTML = html; }
+  function readImport(fileObj) {
+    var r = new FileReader();
+    r.onload = function () {
+      var f = null; try { f = JSON.parse(r.result); } catch (e) {}
+      if (!f || f.scout_settings !== 1 || !f.keys) { movePending = null; moveMsg('That file is not a SCOUT settings export.'); return; }
+      var rows = [], plan = [];
+      MOVE_KEYS.forEach(function (m) {
+        if (!(m[0] in f.keys)) return;
+        var res = mergeVal(lsGet(m[0]), f.keys[m[0]]);
+        rows.push('<tr><td>' + esc(m[1]) + '</td><td>' + esc(describe(parseVal(f.keys[m[0]]))) + '</td><td>' + esc(res.note) + '</td></tr>');
+        if (res.raw != null) plan.push([m[0], res.raw]);
+      });
+      movePending = plan;
+      moveMsg('<div style="margin-bottom:6px;">From ' + esc(f.from || 'another site') + ', exported ' + esc(new Date(f.exported).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + ':</div>'
+        + '<table class="sui-move-tab"><tr><th>What</th><th>In the file</th><th>Here</th></tr>' + rows.join('') + '</table>'
+        + (plan.length ? '<button type="button" class="sui-move-btn sui-move-go">Add these</button>' : '<div style="margin-top:8px;">Nothing new to add — this browser already has all of it.</div>'));
+    };
+    r.readAsText(fileObj);
+  }
+  function applyImport() {
+    if (!movePending) return;
+    var ok = 0; movePending.forEach(function (p) { try { localStorage.setItem(p[0], p[1]); ok++; } catch (e) {} });
+    movePending = null;
+    moveMsg('Done — ' + ok + ' added. Pages that are already open: refresh them to see the rosters.');
+  }
+  function openMove() {
+    if (!document.getElementById('sui-pal-css')) { var st = document.createElement('style'); st.id = 'sui-pal-css'; st.textContent = PAL_CSS; document.head.appendChild(st); }
+    if (!document.getElementById('sui-move-css')) {
+      var s2 = document.createElement('style'); s2.id = 'sui-move-css';
+      s2.textContent = '.sui-move{padding:16px 18px;font-size:13px;line-height:1.5;}.sui-move h3{margin:0 0 6px;font-size:15px;}'
+        + '.sui-move-btn{font:inherit;font-size:13px;font-weight:600;padding:7px 14px;margin:8px 8px 0 0;border-radius:8px;cursor:pointer;'
+        + 'border:1px solid rgba(14,158,142,0.6);background:rgba(14,158,142,0.16);color:inherit;}'
+        + '.sui-move-msg{margin-top:12px;font-size:12px;}.sui-move-tab{border-collapse:collapse;width:100%;font-size:12px;}'
+        + '.sui-move-tab th,.sui-move-tab td{text-align:left;padding:3px 8px 3px 0;border-bottom:1px solid rgba(127,127,127,0.2);}';
+      document.head.appendChild(s2);
+    }
+    if (!moveEl) {
+      moveEl = document.createElement('div'); moveEl.className = 'sui-pal-back';
+      moveEl.innerHTML = '<div class="sui-pal" role="dialog" aria-label="Move settings"><div class="sui-move"><h3>Move your rosters and settings</h3>'
+        + '<div style="opacity:0.8;">GitHub and the OneDrive copy keep rosters separately. Export here, then Import on the other one. '
+        + 'Import only adds: people already on a roster stay, and settings you already set are kept.</div>'
+        + '<button type="button" class="sui-move-btn sui-move-exp">&#x2B07; Export my settings</button>'
+        + '<button type="button" class="sui-move-btn sui-move-imp">&#x2B06; Import from a file</button>'
+        + '<input type="file" accept=".json,application/json" style="display:none">'
+        + '<div class="sui-move-msg"></div></div><div class="sui-pal-foot">Esc or click outside to close</div></div>';
+      document.body.appendChild(moveEl);
+      var fi = moveEl.querySelector('input[type=file]');
+      moveEl.querySelector('.sui-move-exp').onclick = exportSettings;
+      moveEl.querySelector('.sui-move-imp').onclick = function () { fi.value = ''; fi.click(); };
+      fi.onchange = function () { if (fi.files && fi.files[0]) readImport(fi.files[0]); };
+      moveEl.addEventListener('click', function (e) {
+        if (e.target === moveEl) moveEl.classList.remove('open');
+        if (e.target.classList && e.target.classList.contains('sui-move-go')) applyImport();
+      });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && moveEl) moveEl.classList.remove('open'); });
+    }
+    moveEl.querySelector('.sui-pal').classList.toggle('sui-light', !!pageIsLight());
+    movePending = null; moveMsg('');
+    moveEl.classList.add('open');
+  }
+
   // another tab changed the theme → follow it
   window.addEventListener('storage', function (e) { if (e.key === THEME_KEY && valid(e.newValue)) applyTheme(e.newValue, false); });
 
@@ -628,6 +743,8 @@
     menuPage: MENU_PAGE,
     // quick find for a page without the bar (the Menu): SCOUT_UI.initFind()
     initFind: function (o) { if (o) opts = o; initFind(); },
-    openFind: function () { openPalette(); }
+    openFind: function () { openPalette(); },
+    // export / import rosters + settings between GitHub Pages and the OneDrive copy (Menu button)
+    openMove: function () { openMove(); }
   };
 })();
