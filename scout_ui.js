@@ -55,10 +55,45 @@
     return null;
   }
 
+  // ── Shubham's boards: all 8 themes (10/22) ──
+  // His pages have only dark + light, built on CSS variables (--page, --surface-1, --text-primary …).
+  // The team copy switches data-theme dark/light (Carrie/Starr/Light → his light), so Solid, Pastel,
+  // Rem and Scout looked like Dark, and Carrie/Starr like Light. On a page that defines --surface-1
+  // (only his do), this sets data-sui-theme and adds each theme's colors on top of his dark or light
+  // base. Status colors and the location-utilization ramp stay his. His own page is not touched.
+  var BOARD_PAL = {   // page, surface, grid, axis, border, text, text-secondary, text-muted
+    solid:  ['#13172b', '#1b2035', '#232840', '#3a4360', '#2e3650', '#e4e8f4', '#b2bcd2', '#8090b0'],
+    pastel: ['#1a1c24', '#232631', '#2c2f3e', '#484c60', '#3c3f52', '#d4d0e8', '#b0adc9', '#8b8aaa'],
+    remi:   ['#0e0b18', '#16112a', '#1e1838', '#3a3060', '#2e2550', '#e8e0f8', '#c0b0e2', '#9880cc'],
+    scout:  ['#0c0d14', '#111420', '#171b2a', '#222a3c', '#1c2232', '#e2e8e8', '#a8bdbc', '#6f9290'],
+    carrie: ['#c9e6f8', '#f5fbff', '#e4f2fc', '#a6cde8', '#cde4f4', '#0e2a40', '#2a4a65', '#46698a'],
+    starr:  ['#e8a8c8', '#fdf0f8', '#f5cfe8', '#d888b8', '#e8c0d8', '#1e0a16', '#44152f', '#6b2048']
+  };
+  function isBoardPage() {
+    try { return !!getComputedStyle(document.documentElement).getPropertyValue('--surface-1').trim(); } catch (e) { return false; }
+  }
+  function boardTheme(t) {
+    var root = document.documentElement;
+    if (!root.hasAttribute('data-sui-board')) {
+      if (!isBoardPage()) return;
+      root.setAttribute('data-sui-board', '1');
+      var css = Object.keys(BOARD_PAL).map(function (k) {
+        var p = BOARD_PAL[k], sel = ':root[data-sui-board][data-sui-theme="' + k + '"]';
+        return sel + '{--page:' + p[0] + ';--surface-1:' + p[1] + ';--grid:' + p[2] + ';--axis:' + p[3] + ';--deemph:' + p[3]
+          + ';--border:' + p[4] + ';--text-primary:' + p[5] + ';--text-secondary:' + p[6] + ';--text-muted:' + p[7] + ';}';
+      }).join('\n') + '\n:root[data-sui-board][data-sui-theme="scout"] body{background:radial-gradient(ellipse 70% 55% at 0% 0%,rgba(14,158,142,0.13) 0%,transparent 65%),'
+        + 'radial-gradient(ellipse 60% 50% at 100% 100%,rgba(24,95,165,0.12) 0%,transparent 65%),#0c0d14;background-attachment:fixed;}';
+      var st = document.createElement('style'); st.id = 'sui-board-themes'; st.textContent = css;
+      (document.head || root).appendChild(st);
+    }
+    root.setAttribute('data-sui-theme', t);
+  }
+
   function applyTheme(t, save) {
     if (!valid(t)) t = 'dark';
     if (save) store(THEME_KEY, t);
     if (opts && opts.applyTheme) { try { opts.applyTheme(t); } catch (e) { console.warn('[scout_ui] applyTheme', e); } }
+    boardTheme(t);
     if (barEl) {
       var light = pageIsLight();
       barEl.classList.toggle('sui-light', light == null ? !!LIGHT_THEMES[t] : light);
@@ -730,6 +765,10 @@
     movePending = null; moveMsg('');
     moveEl.classList.add('open');
   }
+
+  // Shubham's board: colors right away (this file loads in his <head>, after his styles), so the
+  // page does not flash plain dark before the bar starts at the end of the page.
+  try { var t0 = getTheme(); if (valid(t0)) boardTheme(t0); } catch (e) {}
 
   // another tab changed the theme → follow it
   window.addEventListener('storage', function (e) { if (e.key === THEME_KEY && valid(e.newValue)) applyTheme(e.newValue, false); });
