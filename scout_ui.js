@@ -296,21 +296,30 @@
     ['Receiving', 'Receiving_live.html', 'receiving'], ['Retail', 'Reserve_v1_7.html', 'retail reserve stock'],
     ['Retail Weekly Recap', 'Reserve_weekly.html', 'weekly recap retail'],
     ['Item Prep', 'ItemPrep_v2.0.html', 'item prep'], ['Container Watch', 'Container_watch.html', 'container watch cup'],
-    ['CC Pick List', 'CustomerCare_live.html', 'customer care gwp'], ['Change log', 'Changelog.html', 'changelog notes']
+    ['CC Pick List', 'CustomerCare_live.html', 'customer care gwp'], ['Change log', 'Changelog.html', 'changelog notes'],
+    // Shubham's boards: OneDrive only (never on Pages), each in its own subfolder
+    ['Retail Board', 'Retail%20board/dc499-board.html', 'retail board shubham ops ie', '', '', true],
+    ['Item Prep Board', 'Item%20Prep%20board/itemprep-board.html', 'item prep board sla shubham', '', '', true]
   ];
   var findIdx = null, findAt = 0, findLoading = null;
+  var pageText = '';   // the page's visible text, read once each time the palette opens (before it shows)
+
+  // A page in a subfolder (Shubham's boards in SCOUT Team: "Retail board/…", menu '../Menu_v2.0.html')
+  // reads SCOUT's data and opens results one folder up. Before 10/22 it looked for filedata/ next to
+  // itself, found nothing, and every search came back "not on any SCOUT list".
+  function root() { var m = opts && opts.menu; return m && /\//.test(m) ? m.replace(/[^\/]*$/, '') : ''; }
 
   function loadData(name) {
-    if (location.protocol === 'file:' && !window.SCOUT_FILE_MODE) {        // page without the file-mode shim
+    if (location.protocol === 'file:' && (!window.SCOUT_FILE_MODE || root())) {   // no shim, or shim looks in the wrong folder
       return new Promise(function (res) {
         var s = document.createElement('script');
-        s.src = 'filedata/' + name.replace(/\.json$/, '.js') + '?t=' + Date.now();
+        s.src = root() + 'filedata/' + name.replace(/\.json$/, '.js') + '?t=' + Date.now();
         s.onload = function () { s.remove(); res((window.SCOUT_FILE_DATA || {})[name] || null); };
         s.onerror = function () { s.remove(); res(null); };
         document.head.appendChild(s);
       });
     }
-    return fetch(name + '?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; })
+    return fetch(root() + name + '?t=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; })
       .catch(function () { return null; });
   }
   var XPD_ST = { '1000': 'Ready', '2090': 'Allocated', '7100': 'Packing', '7200': 'Packed', '7600': 'Manifested' };
@@ -399,9 +408,18 @@
     });
     res.sort(function (a, b) { return b.s - a.s; });
     var low = String(q).toLowerCase().trim();
-    var pages = PAGES.filter(function (p) { return low.length >= 2 && (p[0] + ' ' + p[2]).toLowerCase().indexOf(low) !== -1; });
-    return res.slice(0, 12).map(function (r) { return r.e; }).concat(pages.map(function (p) {
-      return { page: p[1], kind: 'Page', where: p[0], detail: '', go: p[3] || '', key: p[4] || '', isPage: true };
+    var pages = PAGES.filter(function (p) {
+      if (p[5] && location.protocol !== 'file:') return false;                // board pages: OneDrive only
+      return low.length >= 2 && (p[0] + ' ' + p[2]).toLowerCase().indexOf(low) !== -1;
+    });
+    // On this page: what you typed is in the page's visible text (e.g. a store, order or lane on
+    // Shubham's board, which SCOUT's data files don't carry). Enter jumps to the first match.
+    var here_ = [];
+    if (n.length >= 3 && pageText.indexOf(n) !== -1)
+      here_.push({ id: String(q).trim(), page: '', kind: 'Here', where: 'On this page', detail: 'jump to the first match',
+                   go: '__here', key: String(q).trim(), here: true });
+    return res.slice(0, 12).map(function (r) { return r.e; }).concat(here_, pages.map(function (p) {
+      return { page: root() + p[1], kind: 'Page', where: p[0], detail: '', go: p[3] || '', key: p[4] || '', isPage: true };
     }));
   }
 
@@ -470,6 +488,7 @@
       });
     }
     palEl.querySelector('.sui-pal').classList.toggle('sui-light', !!pageIsLight());
+    try { pageText = norm(document.body.innerText); } catch (e) { pageText = ''; }   // palette still hidden here
     palEl.classList.add('open');
     var inp2 = palEl.querySelector('input'); inp2.value = ''; inp2.focus();
     palRes = []; palDraw('', findIdx ? null : 'Loading what SCOUT is showing…');
@@ -482,8 +501,10 @@
     closePalette();
     if (!r) return;
     var id = r.key;
-    if (here(r.page)) { if (r.go) runFind(r.go, id); return; }
-    var url = r.page + (r.go ? '?sui_go=' + encodeURIComponent(r.go) + '&sui_find=' + encodeURIComponent(id) : '');
+    if (r.here) { runFind('__here', id); return; }
+    var page = r.isPage ? r.page : root() + r.page;                 // data results: page names are top-level
+    if (here(page.split('/').pop())) { if (r.go) runFind(r.go, id); return; }
+    var url = page + (r.go ? '?sui_go=' + encodeURIComponent(r.go) + '&sui_find=' + encodeURIComponent(id) : '');
     location.href = url;
   }
   function toast(msg) {
@@ -514,7 +535,7 @@
     var hook = opts && opts.find, tries = 0, redo = 0;
     (function attempt() {
       var el = null;
-      try { el = hook ? hook(go, id, findText) : findText(document.body, id); } catch (e) { console.warn('[scout_ui] find', e); }
+      try { el = hook && go !== '__here' ? hook(go, id, findText) : findText(document.body, id); } catch (e) { console.warn('[scout_ui] find', e); }
       if (el && el.nodeType === 1) {
         highlight(el);
         // the page may redraw its table right after (data still landing) — find the new row again
