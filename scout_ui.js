@@ -285,22 +285,76 @@
   // Never shows associate names (Container Watch rows carry them; they stay in the page's detail).
   var FIND_SOURCES = ['backlog_live.json', 'expedite_live.json', 'untasked_live.json',
                       'container_watch_live.json', 'totes_live.json', 'tasks_live.json'];
+  // Pages by name AND by the work they show (10/22, Dean: "picking" should list every picking page).
+  // words = what you might type; what = the line shown under the result. Word forms match by prefix
+  // (pick / picks / picking, replen / replenishment), see pageScore(). go/key = open a Backlog tab.
+  // fileOnly = OneDrive only (Shubham's boards are never on Pages; each sits in its own subfolder).
   var PAGES = [
-    ['Menu', MENU_PAGE, 'home'], ['Ecom', 'Ecom_v3.html', 'ecom live pph'],
-    ['Ecom Backlog', 'Backlog_live.html', 'backlog orders'],
-    ['Ecom Backlog · Batches', 'Backlog_live.html', 'batches putwall', 'tab', 'batches'],
-    ['Ecom Backlog · Tasks', 'Backlog_live.html', 'tasks carts', 'tab', 'tasks'],
-    ['Ecom Backlog · Expedite', 'Backlog_live.html', 'expedite 1dd 2dd', 'tab', 'expedite'],
-    ['Ecom Backlog · Floor Check', 'Backlog_live.html', 'floor check no task untasked', 'tab', 'untasked'],
-    ['Open Totes', 'Totes_live.html', 'totes'], ['Shipping', 'Shipping_live.html', 'shipping palletize'],
-    ['Receiving', 'Receiving_live.html', 'receiving'], ['Retail', 'Reserve_v1_7.html', 'retail reserve stock'],
-    ['Retail Weekly Recap', 'Reserve_weekly.html', 'weekly recap retail'],
-    ['Item Prep', 'ItemPrep_v2.0.html', 'item prep'], ['Container Watch', 'Container_watch.html', 'container watch cup'],
-    ['CC Pick List', 'CustomerCare_live.html', 'customer care gwp'], ['Change log', 'Changelog.html', 'changelog notes'],
-    // Shubham's boards: OneDrive only (never on Pages), each in its own subfolder
-    ['Retail Board', 'Retail%20board/dc499-board.html', 'retail board shubham ops ie', '', '', true],
-    ['Item Prep Board', 'Item%20Prep%20board/itemprep-board.html', 'item prep board sla shubham', '', '', true]
+    { name: 'Menu', file: MENU_PAGE, words: 'home start', what: 'All SCOUT reports' },
+    { name: 'Ecom', file: 'Ecom_v3.html', tracks: 'replen putaway picking packing sorting shipping pph', words: 'throughput pace associates staffing people hours behind nail',
+      what: 'Ecom throughput by associate: replen, putaway, picking, packing, sorting, shipping · PPH · where to put people now' },
+    { name: 'Ecom Backlog', file: 'Backlog_live.html', words: 'orders lines waves allocated ready pack rfp hazmat top items visuals dropped packed palletized',
+      what: 'Ecom order backlog by day: allocated, ready for pack, waves, top items' },
+    { name: 'Ecom Backlog · Batches', file: 'Backlog_live.html', go: 'tab', key: 'batches', words: 'batches putwall release cleared queued',
+      what: 'Putwall batches: released, picking, cleared' },
+    { name: 'Ecom Backlog · Tasks', file: 'Backlog_live.html', go: 'tab', key: 'tasks', words: 'tasks picking replen carts pick zone queued assigned',
+      what: 'Open Ecom pick and replen tasks, carts, replen by pick zone' },
+    { name: 'Ecom Backlog · Expedite', file: 'Backlog_live.html', go: 'tab', key: 'expedite', words: 'expedite 1dd 2dd late held cutoff splits boxes olpn pallet',
+      what: '1DD / 2DD orders: late, at risk, held, split boxes' },
+    { name: 'Ecom Backlog · Floor Check', file: 'Backlog_live.html', go: 'tab', key: 'untasked', words: 'floor check no task untasked short shelf replen ghost allocation case pick stuck',
+      what: 'Ecom orders allocated with no pick task, and why' },
+    { name: 'Open Totes', file: 'Totes_live.html', words: 'totes putwall sorting hospital mixed olpn',
+      what: 'Open totes and putwalls, how long they have waited' },
+    { name: 'Shipping', file: 'Shipping_live.html', tracks: 'shipping palletize floor load', words: 'containers outbound trailer',
+      what: 'Shipping throughput: palletize and floor load by associate' },
+    { name: 'Receiving', file: 'Receiving_live.html', tracks: 'receiving receive', words: 'inbound dock lpn small parcel rcv',
+      what: 'Receiving throughput: LPN and small parcel receive by associate' },
+    { name: 'Retail', file: 'Reserve_v1_7.html', tracks: 'picking replen putaway', words: 'reserve stock throughput full lpn hourly associates nail',
+      what: 'Retail throughput by associate: picking F1 / F2, replen, putaway, full LPN pick' },
+    { name: 'Retail Weekly Recap', file: 'Reserve_weekly.html', tracks: 'picking replen putaway', words: 'weekly recap week',
+      what: 'Retail throughput for the week, by day and associate' },
+    { name: 'Item Prep', file: 'ItemPrep_v2.0.html', tracks: 'receive condition code', words: 'item level crossdock',
+      what: 'Item Prep throughput: item level receive, condition code removal' },
+    { name: 'Container Watch', file: 'Container_watch.html', words: 'cup lost missing staging splits ghost found freight p1-fc p1-pk',
+      what: 'Containers at risk of going missing: staging, Item Prep splits, found freight' },
+    { name: 'CC Pick List', file: 'CustomerCare_live.html', words: 'customer care gwp pick list',
+      what: 'Customer Care pick list from an upload' },
+    { name: 'Change log', file: 'Changelog.html', words: 'changelog notes updates what changed',
+      what: 'What changed in SCOUT, by day' },
+    { name: 'Retail Board', file: 'Retail%20board/dc499-board.html', fileOnly: true,
+      tracks: 'picking replen', words: 'shubham ops ie open orders pick zones pez staffing people waves bridge dead shelves olpn blocking location',
+      what: "Shubham's Retail Board: open orders by pick zone, replen, where to put people, waves" },
+    { name: 'Item Prep Board', file: 'Item%20Prep%20board/itemprep-board.html', fileOnly: true,
+      tracks: 'sla', words: 'shubham lanes aging past retail ticketing l2ip splits',
+      what: "Shubham's Item Prep SLA Board: lanes, aging, past SLA" }
   ];
+  // 0 = no match. Every typed word must match the page's name, the work it measures (tracks) or a word
+  // it shows (words). Same word = 4+ letters in common, allowing a 2-letter ending (pick / picks /
+  // picking, packed / packing, replen / replenishment); 2-3 letters typed = start of a word only.
+  // Score per word: name 3, measures 2, shows 1 — so "picking" lists Ecom and Retail (they measure
+  // picking) before pages that only show pick tasks. Ties keep the list order.
+  function pageScore(p, q) {
+    var toks = String(q).toLowerCase().split(/[^a-z0-9-]+/).filter(function (t) { return t.length >= 2; });
+    if (!toks.length) return 0;
+    var sp = function (s) { return String(s || '').toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean); };
+    var nameW = sp(p.name), trackW = sp(p.tracks), workW = sp(p.words);
+    var same = function (t, w) {
+      if (t.length < 4 || w.length < 4) return w.indexOf(t) === 0;
+      var n = 0; while (n < t.length && n < w.length && t[n] === w[n]) n++;
+      return n >= 4 && n >= Math.min(t.length, w.length) - 2 || (n >= 4 && n === Math.min(t.length, w.length));
+    };
+    var any = function (t, list) { return list.some(function (w) { return same(t, w); }); };
+    var score = 0;
+    for (var i = 0; i < toks.length; i++) {
+      var t = toks[i];
+      if (nameW.some(function (w) { return w.indexOf(t) === 0; })) score += 3;   // typed the start of a name word
+      else if (any(t, nameW)) score += 2;                                          // other form of a name word
+      else if (any(t, trackW)) score += 2;
+      else if (any(t, workW)) score += 1;
+      else return 0;
+    }
+    return score;
+  }
   var findIdx = null, findAt = 0, findLoading = null;
   var pageText = '';   // the page's visible text, read once each time the palette opens (before it shows)
 
@@ -408,10 +462,11 @@
     });
     res.sort(function (a, b) { return b.s - a.s; });
     var low = String(q).toLowerCase().trim();
-    var pages = PAGES.filter(function (p) {
-      if (p[5] && location.protocol !== 'file:') return false;                // board pages: OneDrive only
-      return low.length >= 2 && (p[0] + ' ' + p[2]).toLowerCase().indexOf(low) !== -1;
-    });
+    var pages = PAGES.map(function (p, i) {
+      if (p.fileOnly && location.protocol !== 'file:') return null;           // board pages: OneDrive only
+      var s = pageScore(p, low);
+      return s ? { p: p, s: s, i: i } : null;
+    }).filter(Boolean).sort(function (a, b) { return b.s - a.s || a.i - b.i; }).slice(0, 10).map(function (x) { return x.p; });
     // On this page: what you typed is in the page's visible text (e.g. a store, order or lane on
     // Shubham's board, which SCOUT's data files don't carry). Enter jumps to the first match.
     var here_ = [];
@@ -419,7 +474,7 @@
       here_.push({ id: String(q).trim(), page: '', kind: 'Here', where: 'On this page', detail: 'jump to the first match',
                    go: '__here', key: String(q).trim(), here: true });
     return res.slice(0, 12).map(function (r) { return r.e; }).concat(here_, pages.map(function (p) {
-      return { page: root() + p[1], kind: 'Page', where: p[0], detail: '', go: p[3] || '', key: p[4] || '', isPage: true };
+      return { page: root() + p.file, kind: 'Page', where: p.name, detail: p.what || '', go: p.go || '', key: p.key || '', isPage: true };
     }));
   }
 
