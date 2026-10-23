@@ -49,7 +49,15 @@
   function pageIsLight() {
     var els = [document.body, document.documentElement];
     for (var i = 0; i < els.length; i++) {
-      var m = (getComputedStyle(els[i]).backgroundColor || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+      if (!els[i]) continue;
+      // Read the FINAL color, not one mid-fade: Backlog fades its background 0.2 s from its light
+      // default, and a reading inside that fade left the bar light grey on dark themes (10/22).
+      // Turning the transition off for the reading ends the fade at its target color.
+      var el = els[i], prev = el.style.transition, bg;
+      el.style.transition = 'none';
+      bg = getComputedStyle(el).backgroundColor;
+      el.style.transition = prev;
+      var m = (bg || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
       if (m && (m[4] === undefined || Number(m[4]) > 0.1)) return (0.299 * m[1] + 0.587 * m[2] + 0.114 * m[3]) > 150;
     }
     return null;
@@ -89,14 +97,19 @@
     root.setAttribute('data-sui-theme', t);
   }
 
+  function barTone(t) {
+    if (!barEl) return;
+    var light = pageIsLight();
+    barEl.classList.toggle('sui-light', light == null ? !!LIGHT_THEMES[t] : light);
+  }
+
   function applyTheme(t, save) {
     if (!valid(t)) t = 'dark';
     if (save) store(THEME_KEY, t);
     if (opts && opts.applyTheme) { try { opts.applyTheme(t); } catch (e) { console.warn('[scout_ui] applyTheme', e); } }
     boardTheme(t);
     if (barEl) {
-      var light = pageIsLight();
-      barEl.classList.toggle('sui-light', light == null ? !!LIGHT_THEMES[t] : light);
+      barTone(t);
       var lbl = barEl.querySelector('.sui-theme-label');
       if (lbl) lbl.textContent = label(t);
       var items = barEl.querySelectorAll('.sui-theme-opt');
