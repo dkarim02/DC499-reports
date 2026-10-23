@@ -3668,7 +3668,7 @@ function renderTasksData(data) {
 
 // Share of this shift's replen task lines (open + done, cancelled left out) going to each pick zone.
 // Zone = first 3 characters of each line's own target shelf. Any other zone shows as "Other".
-var TK_RZ_ZONES = ['F1A','F1B','F2C','P1C','F1D'];
+var TK_RZ_ZONES = ['F1A','F1B','P1C','F1D'];
 function renderReplenZones(data) {
   var box = document.getElementById('tk-rz');
   var src = data.replen_zones;
