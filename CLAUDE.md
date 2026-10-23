@@ -264,6 +264,8 @@ Output: ecom_live.json. Query groups A/B/C/D/E fire in parallel (`Promise.all`).
 
 **Pending TX type:** `Returns System Directed Putaway` — not yet assigned to a group.
 
+**Where to put people now (v3.5, 2026-10-22)** — card below the Live table (`renderFlowCard`, pure rule `flowDecide`). Ecom take on Shubham's retail staffing card (`staffing_call.py`), steps replen → pick → sort → pack (Dean: no palletize/load). Queues come from the agent's `flow` block (`fetchFlow`, 2 queries in parallel with groups A–E, ~1 s, failure → `flow: null` + "not available"): open detail lines (STATUS 1000) of Ecom pick tasks / iLPN Replen Pull into non-Retail shelves — **by the task's TRANSACTION_ID, not the shelf** (reserve also holds RTV LPN PICK work) — plus units at D1-PW* (sort) and D1-SN* (pack). Rates = last 60 min of `rows`, counted via `forEachCountedRow` for everyone (no roster filter; bulk LPN picks left out like the queue). Rules: hours behind = queue ÷ rate; a step needs ≥ 50 u to be the call (Shubham's card picked a 48 u replen over 2,819 u of picks on 10/22 — fixed only here, Dean); stopped big queue wins outright, else top hours, "close" if < 1.5× the next; steps with < 15 min of work and people on them → "can help". Window skips lunch 6:15–6:45 (2nd); first 30 min = warming up; replen pulls with no fill show "pulled, not filled yet" (fills are the rate). By shift end: `getProdShiftCap()` (2nd), 2:00 PM (1st); "needs +N" = queue ÷ (per-person rate × hours left). Tests: `.tmp_audit/flow/test_decide.js`, `run_flow.js` (queries only, writes nothing).
+
 ---
 
 ## Shipping Live (scout_shipping_agent.js)

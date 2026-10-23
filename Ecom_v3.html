@@ -6,7 +6,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Report Processor v3.4</title>
+<title>Ecom Report Processor v3.5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -555,7 +555,7 @@ body { animation: pageEnter 0.28s ease-out both; }
       <p class="roster-notice">&#x26A0; Roster saves to this browser only. Each device needs to be set up once.</p>
     </div>
 
-    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.4</p>
+    <p class="nordstrom-tag" style="margin-top:1.5rem;">v3.5</p>
   </div>
 
   <p class="nordstrom-tag">Dean Karim &middot; Nordstrom &middot; Ecom &middot; Last updated: <span id="last-updated"></span></p>
@@ -580,7 +580,7 @@ var THEME_KEY_ECOM = 'dc499_ecom_theme_v1';
 var THEME_NAMES_ECOM = {dark:'Dark',solid:'Solid',pastel:'Pastel',scout:'✦ Scout',carrie:'Carrie ☁', light:'Light'};
 var THEME_VALS_ECOM  = ['dark','solid','pastel','scout','carrie','light'];
 function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); }
-if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Report Processor",version:"v3.4",sub:"main-subtitle"}, { oldThemeKey: THEME_KEY_ECOM, applyTheme: applyTheme }));
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Report Processor",version:"v3.5",sub:"main-subtitle"}, { oldThemeKey: THEME_KEY_ECOM, applyTheme: applyTheme }));
 else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY_ECOM) || 'dark');
 // big numbers roll to a new value instead of jumping (scout_ui.js)
 if (window.SCOUT_UI && SCOUT_UI.countUp) SCOUT_UI.countUp(['bs-total','bs-ready','bs-alloc']);
@@ -826,8 +826,170 @@ function renderLiveReport(d) {
   });
   html += '</div>';
 
+  html += renderFlowCard(d);
+
   if (content) content.innerHTML = html;
   if (content && window.SCOUT_UI && SCOUT_UI.countKeys) SCOUT_UI.countKeys(content);   // tile numbers roll
+}
+
+// ── WHERE TO PUT PEOPLE NOW (v3.5, 2026-10-22) ───────────────────────────────
+// Idea from Shubham's retail staffing card, built for the Ecom flow replen → pick → sort → pack.
+// Queue = work waiting at the step (agent's d.flow). Rate = units the step finished in the last
+// FLOW_RATE_MIN minutes, counted the same way as the tiles but for everyone (any finished unit
+// shrinks the queue). Hours behind = queue ÷ rate.
+// Differences from the retail card: a step needs FLOW_MIN_UNITS waiting before it can be the call
+// (retail flagged a 48 u replen queue over a 2,819 u pick queue on 10/22); the window skips lunch;
+// the first FLOW_WARMUP_MIN of the shift shows "warming up"; and each step gets a done-by-shift-end check.
+var FLOW_RATE_MIN = 60, FLOW_WARMUP_MIN = 30, FLOW_MIN_UNITS = 50, FLOW_RATIO = 1.5, FLOW_LIGHT_H = 0.25;
+var FLOW_STEPS = [
+  { key: 'replen', typ: 'replen',  label: 'Replen',  who: 'a replen person', pullTx: ['iLPN Replen Pull', 'iLPN Replen Pull Large'] },
+  { key: 'pick',   typ: 'picking', label: 'Pick',    who: 'a picker', skipTx: 'Ecom Singles Bulk LPN Pick' },
+  { key: 'sort',   typ: 'sorting', label: 'Sort',    who: 'a sorter' },
+  { key: 'pack',   typ: 'packing', label: 'Pack',    who: 'a packer' }
+];
+var FLOW_1ST_END_H = 14;   // 1st shift ends 2:00 PM (no lunch adjustment known for 1st)
+
+// Pacific wall-clock as a plain number (ms), so row times ("2026-10-22T14:27:54") compare directly.
+function flowWallMs(date) {
+  var p = {};
+  new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hourCycle: 'h23', year: 'numeric',
+    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    .formatToParts(date).forEach(function(x) { p[x.type] = x.value; });
+  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+}
+function flowRowMs(s) { return Date.parse(String(s || '').slice(0, 19) + 'Z'); }
+function flowClock(ms) {
+  var dt = new Date(ms), h = dt.getUTCHours(), m = dt.getUTCMinutes();
+  return ((h % 12) || 12) + ':' + (m < 10 ? '0' : '') + m + ' ' + (h < 12 ? 'AM' : 'PM');
+}
+function flowOverlapMin(a, b, c, e) { return Math.max(0, Math.min(b, e) - Math.max(a, c)) / 60000; }
+
+// Pure: steps [{key,label,who,units,rate,people}] → {constraint, lines[], light[]}.
+function flowDecide(steps) {
+  var big = steps.filter(function(s) { return s.units >= FLOW_MIN_UNITS; });
+  var stopped = big.filter(function(s) { return !s.rate; }).sort(function(a, b) { return b.units - a.units; });
+  var lines = [], top = null;
+  if (stopped.length) {
+    top = stopped[0];
+    lines.push(top.label + ' is the constraint: nobody finished ' + top.label.toLowerCase() + ' work in the last '
+      + FLOW_RATE_MIN + ' min and ' + top.units.toLocaleString() + ' u are waiting'
+      + (top.pulled ? ' (' + top.pulled.toLocaleString() + ' u pulled, not filled yet)' : '')
+      + '. Send the next person to ' + top.label.toLowerCase() + '.');
+    stopped.slice(1).forEach(function(s) {
+      lines.push(s.label + ' has also stopped with ' + s.units.toLocaleString() + ' u waiting.');
+    });
+  } else if (big.length) {
+    var byH = big.slice().sort(function(a, b) { return b.hours - a.hours; });
+    top = byH[0];
+    var next = byH[1];
+    if (next && top.hours < FLOW_RATIO * next.hours) {
+      lines.push(top.label + ' (' + top.hours.toFixed(1) + ' h) and ' + next.label + ' (' + next.hours.toFixed(1)
+        + ' h) are close. Keep the split, or send the next person to ' + top.label.toLowerCase() + '.');
+    } else {
+      lines.push(top.label + ' is the constraint: ' + top.hours.toFixed(1) + ' h behind with ' + top.people
+        + (top.people === 1 ? ' person' : ' people') + '. Send the next person to ' + top.label.toLowerCase() + '.');
+    }
+  } else {
+    lines.push('No step has ' + FLOW_MIN_UNITS + '+ units waiting. Keep the split.');
+  }
+  var light = [];
+  if (top) steps.forEach(function(s) {
+    if (s === top || !s.people) return;
+    if (s.units < FLOW_MIN_UNITS || (s.hours != null && s.hours < FLOW_LIGHT_H)) light.push(s);
+  });
+  light.forEach(function(s) {
+    lines.push(s.label + ' has under ' + Math.round(FLOW_LIGHT_H * 60) + ' min of work — ' + s.who + ' can help '
+      + top.label.toLowerCase() + '.');
+  });
+  return { constraint: top ? top.key : null, lines: lines, light: light.map(function(s) { return s.key; }) };
+}
+
+function renderFlowCard(d) {
+  var h = '<div class="card" style="margin-bottom:1rem;">';
+  h += '<div style="font-size:12px;font-weight:500;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">Where to put people now'
+    + ' <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;">· replen → pick → sort → pack · last ' + FLOW_RATE_MIN + ' min</span></div>';
+  var f = d.flow && d.flow.steps;
+  if (!f || !d.generated || !d.shift_start) {
+    return h + '<div style="font-size:12px;color:var(--text-hint);">Queue numbers are not available this cycle.</div></div>';
+  }
+  var endW = flowWallMs(new Date(d.generated));
+  var shiftW = flowWallMs(new Date(d.shift_start.replace(' ', 'T') + 'Z'));
+  var is2nd = d.shift === '2nd';
+  var day0 = Date.UTC(new Date(shiftW).getUTCFullYear(), new Date(shiftW).getUTCMonth(), new Date(shiftW).getUTCDate());
+  var lunchA = day0 + PROD_LUNCH_AFTER * 3600e3, lunchB = lunchA + 30 * 60e3;
+  var shiftEndW = day0 + (is2nd ? getProdShiftCap() : FLOW_1ST_END_H) * 3600e3;
+  var startW = Math.max(endW - FLOW_RATE_MIN * 60e3, shiftW);
+  var winMin = (endW - startW) / 60000 - (is2nd ? flowOverlapMin(startW, endW, lunchA, lunchB) : 0);
+  var hoursLeft = Math.max(0, (shiftEndW - endW) / 3600e3 - (is2nd ? flowOverlapMin(endW, shiftEndW, lunchA, lunchB) / 60 : 0));
+
+  var steps = FLOW_STEPS.map(function(st) {
+    var tx = getTX()[st.typ] || [], units = 0, ppl = new Set();
+    var rows = d.rows.filter(function(r) {
+      var t = (r['Transaction ID'] || '').trim();
+      if (tx.indexOf(t) === -1 || t === st.skipTx) return false;
+      if (st.typ === 'sorting' && (r['Criteria'] || '').trim() !== SORT_CRITERIA) return false;
+      var ms = flowRowMs(r['Activity Datetime']);
+      return ms >= startW && ms <= endW;
+    });
+    forEachCountedRow(rows, st.typ, null, function(r, e, v) { if (v > 0) { units += v; ppl.add(e); } });
+    // Replen: a pull puts the case on a cart; it counts as finished only at the fill. Pulls still
+    // show someone is on it ("pulled, not filled yet"), and that person counts in People.
+    var pulled = 0;
+    if (st.pullTx) d.rows.forEach(function(r) {
+      if (st.pullTx.indexOf((r['Transaction ID'] || '').trim()) === -1 || !rowBelongsToEcom(r)) return;
+      var ms = flowRowMs(r['Activity Datetime']);
+      if (ms < startW || ms > endW) return;
+      pulled += parseFloat(r['Quantity']) || 0; ppl.add((r['Employee'] || '').trim());
+    });
+    var q = f[st.key] || {};
+    var rate = winMin > 0 ? units * 60 / winMin : 0;
+    return { key: st.key, label: st.label, who: st.who, units: q.units || 0, count: q.lines != null ? q.lines : q.lpns,
+      countLabel: q.lines != null ? 'lines' : 'LPNs', oldest: q.oldest_utc, rate: Math.round(rate), people: ppl.size,
+      pulled: Math.round(pulled),
+      hours: rate > 0 ? (q.units || 0) / rate : null };
+  });
+
+  if (winMin < FLOW_WARMUP_MIN) {
+    h += '<div style="font-size:13px;color:var(--text);margin-bottom:8px;">Warming up — the call starts ' + FLOW_WARMUP_MIN
+      + ' min into the shift, so one early scan can\'t swing it.</div>';
+  } else {
+    var call = flowDecide(steps);
+    call.lines.forEach(function(l, i) {
+      h += '<div style="font-size:' + (i ? 12 : 13) + 'px;' + (i ? 'color:var(--text-muted);' : 'font-weight:600;color:var(--text);')
+        + 'margin-bottom:4px;">' + (i ? '' : '&#x25B6; ') + l + '</div>';
+    });
+  }
+
+  h += '<table class="full-table" style="margin-top:8px;"><thead><tr><th>Step</th><th style="text-align:right;">Waiting</th>'
+    + '<th style="text-align:right;">Done / hr</th><th style="text-align:right;">People</th><th style="text-align:right;">Hours behind</th>'
+    + '<th>By shift end?</th></tr></thead><tbody>';
+  steps.forEach(function(s) {
+    var end;
+    if (winMin < FLOW_WARMUP_MIN || hoursLeft <= 0 || !s.units) end = '<span style="color:var(--text-hint);">—</span>';
+    else if (!s.rate && s.pulled) end = '<span style="color:#C47B00;font-weight:600;">' + s.pulled.toLocaleString() + ' u pulled, not filled yet</span>';
+    else if (!s.rate) end = s.units >= FLOW_MIN_UNITS ? '<span style="color:#C0392B;font-weight:600;">Nobody on it</span>' : '<span style="color:var(--text-hint);">—</span>';
+    else if (s.hours <= hoursLeft) end = '<span style="color:#0F6E56;font-weight:600;">&#x2713; done ~' + flowClock(endW + s.hours * 3600e3
+      + (is2nd && endW < lunchA && endW + s.hours * 3600e3 > lunchA ? 30 * 60e3 : 0)) + '</span>';
+    else {
+      var per = s.rate / Math.max(1, s.people);
+      var need = Math.ceil(s.units / (per * hoursLeft)) - s.people;
+      end = '<span style="color:#C0392B;font-weight:600;">&#x2717; needs +' + Math.max(1, need) + '</span>';
+    }
+    var oldest = s.oldest ? flowClock(flowWallMs(new Date(String(s.oldest).slice(0, 19) + 'Z'))) : '';
+    var oldDay = s.oldest && flowWallMs(new Date(String(s.oldest).slice(0, 19) + 'Z')) < day0 ? ' (earlier day)' : '';
+    h += '<tr><td><strong>' + s.label + '</strong>' + (oldest ? '<div style="font-size:10px;color:var(--text-hint);">oldest ' + oldest + oldDay + '</div>' : '') + '</td>'
+      + '<td style="text-align:right;">' + s.units.toLocaleString() + ' u<div style="font-size:10px;color:var(--text-hint);">' + (s.count || 0).toLocaleString() + ' ' + s.countLabel + '</div></td>'
+      + '<td style="text-align:right;">' + s.rate.toLocaleString() + '</td>'
+      + '<td style="text-align:right;">' + s.people + '</td>'
+      + '<td style="text-align:right;font-weight:600;">' + (s.hours != null ? s.hours.toFixed(1) + ' h' : (s.units ? '—' : '0')) + '</td>'
+      + '<td>' + end + '</td></tr>';
+  });
+  h += '</tbody></table>';
+  h += '<div style="font-size:10px;color:var(--text-hint);margin-top:8px;line-height:1.5;">Waiting = released work only (orders waiting for a batch are not counted): open replen pulls into Ecom shelves, open Ecom pick lines, totes at the putwall drop zones, units at D1-SN. '
+    + 'Hours behind = waiting ÷ done per hour. "By shift end" is for the work waiting now — new batches add more. '
+    + (is2nd ? 'The rate leaves out lunch (6:15–6:45 PM). ' : '')
+    + 'It treats people as interchangeable; training and equipment can say otherwise. Shift end ' + flowClock(shiftEndW) + ', ' + hoursLeft.toFixed(1) + ' h left.</div>';
+  return h + '</div>';
 }
 
 function toggleTMFromLive(emp, typ) {

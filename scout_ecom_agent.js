@@ -129,6 +129,75 @@ WHERE t.FACILITY_ID = '${FACILITY}'
 ORDER BY t.ACTIVITY_DATE_TIME ASC`.trim();
 }
 
+// ── flow queues ("Where to put people now", 2026-10-22) ──────────────────────
+// Work waiting at each Ecom step. The page divides it by the step's last-60-min rate (from the
+// rows above) to get hours behind. Idea from Shubham's retail staffing card, built for the
+// Ecom flow: replen → pick → sort → pack.
+// Pick + replen = open task lines (detail STATUS 1000 = not done). The task's TRANSACTION_ID decides,
+// not the shelf: reserve also holds RTV LPN PICK work on Ecom shelves (250 u on 10/22). Replen =
+// the iLPN Replen Pull leg into an Ecom-owned shelf (same OWNER_SQL rule as the tiles).
+// Sort = units in totes at the putwall drop zones (D1-PW-*), pack = units at D1-SN-* (Ready for Pack).
+// Released work only: orders waiting for a batch are not counted.
+const FLOW_PICK_TX   = ['Ecom Mezz Pick To Putwall Cart', 'Ecom Non-Mezz Pick To Putwall Cart'];
+const FLOW_REPLEN_TX = ['iLPN Replen Pull', 'iLPN Replen Pull Large'];
+const FLOW_OPEN_DAYS = 30;
+function sqlFlowTasks() {
+  const tx = FLOW_PICK_TX.concat(FLOW_REPLEN_TX).map(t => `'${t}'`).join(',');
+  const pick = FLOW_PICK_TX.map(t => `'${t}'`).join(',');
+  return `
+SELECT CASE WHEN k.TRANSACTION_ID IN (${pick}) THEN 'pick' ELSE 'replen' END AS step,
+  ${OWNER_SQL} AS owner,
+  SUM(d.QUANTITY) AS units, COUNT(*) AS line_ct, MIN(d.CREATED_TIMESTAMP) AS oldest_utc
+FROM default_pickpack.TSK_TASK_DETAIL d
+JOIN default_task.TSK_TASK k ON k.TASK_ID = d.TASK_ID AND k.FACILITY_ID = d.FACILITY_ID
+LEFT JOIN default_dcinventory.DCI_LOCATION lt ON lt.LOCATION_ID = d.TARGET_LOCATION_ID AND lt.PROFILE_ID = '${FACILITY}'
+LEFT JOIN default_dcinventory.DCI_LOCATION ls ON ls.LOCATION_ID = d.SOURCE_LOCATION_ID AND ls.PROFILE_ID = '${FACILITY}'
+WHERE d.FACILITY_ID = '${FACILITY}' AND d.STATUS = '1000'
+  AND d.TYPE_ID IN ('PICK/PACK','REPLENISHMENT')
+  AND d.CREATED_TIMESTAMP >= NOW() - INTERVAL ${FLOW_OPEN_DAYS} DAY
+  AND k.TRANSACTION_ID IN (${tx})
+GROUP BY 1, 2`.trim();
+}
+function sqlFlowStaged() {
+  return `
+SELECT CASE WHEN il.CURRENT_LOCATION_ID LIKE 'D1-PW%' THEN 'sort' ELSE 'pack' END AS step,
+  COUNT(DISTINCT il.ILPN_ID) AS lpns, SUM(inv.ON_HAND) AS units, MIN(il.UPDATED_TIMESTAMP) AS oldest_utc
+FROM default_dcinventory.DCI_ILPN il
+JOIN default_dcinventory.DCI_INVENTORY inv ON inv.ILPN_ID = il.ILPN_ID AND inv.FACILITY_ID = il.FACILITY_ID
+WHERE il.FACILITY_ID = '${FACILITY}'
+  AND (il.CURRENT_LOCATION_ID LIKE 'D1-PW%' OR il.CURRENT_LOCATION_ID LIKE 'D1-SN%')
+  AND inv.ON_HAND > 0
+GROUP BY 1`.trim();
+}
+// {generated, steps:{replen|pick|sort|pack: {units, lines|lpns, oldest_utc}}}. Fail-soft: null.
+async function fetchFlow(accessToken) {
+  try {
+    const [rt, rs] = await Promise.all([
+      mcpQuery(accessToken, sqlFlowTasks()),
+      mcpQuery(accessToken, sqlFlowStaged()),
+    ]);
+    const steps = {};
+    const add = (k, units, cnt, cntKey, oldest) => {
+      const s = steps[k] || (steps[k] = { units: 0, [cntKey]: 0, oldest_utc: null });
+      s.units += Math.round(Number(units) || 0);
+      s[cntKey] += Number(cnt) || 0;
+      if (oldest && (!s.oldest_utc || String(oldest) < s.oldest_utc)) s.oldest_utc = String(oldest);
+    };
+    for (const r of rt.rows || []) {
+      if (r.step === 'replen' && r.owner === 'Retail') continue;   // Retail shelf = Reserve's replen
+      add(r.step, r.units, r.line_ct, 'lines', r.oldest_utc);
+    }
+    for (const r of rs.rows || []) add(r.step, r.units, r.lpns, 'lpns', r.oldest_utc);
+    for (const k of ['replen', 'pick']) steps[k] = steps[k] || { units: 0, lines: 0, oldest_utc: null };
+    for (const k of ['sort', 'pack'])   steps[k] = steps[k] || { units: 0, lpns: 0, oldest_utc: null };
+    console.log(`[${ts()}] Flow queues: replen ${steps.replen.units} · pick ${steps.pick.units} · sort ${steps.sort.units} · pack ${steps.pack.units} u`);
+    return { generated: new Date().toISOString(), steps };
+  } catch (e) {
+    console.warn(`[${ts()}] ⚠ flow queues failed (card will say unavailable): ${e.message}`);
+    return null;
+  }
+}
+
 // ── history snapshot ───────────────────────────────────────────────────────────
 // Retail shelf? Uses the Owner column from the query (see OWNER_SQL). Rows without it fall back
 // to the old guess: zone H (3rd character 'H') in any location field.
@@ -225,12 +294,13 @@ async function fetchEcomLive(accessToken) {
   const { utc: shiftStart, label: shift } = shiftStartUtc();
 
   console.log(`[${ts()}] Querying Groups A-E in parallel since ${shiftStart}...`);
-  const [respA, respB, respC, respD, respE] = await Promise.all([
+  const [respA, respB, respC, respD, respE, flow] = await Promise.all([
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_A, null, true)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_B)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_C)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_D)),
     mcpQuery(accessToken, buildSql(shiftStart, ECOM_TX_E, 'NRDR_SORT_TO_PUTWALL_CUBBIES_CRITERIA')),
+    fetchFlow(accessToken),
   ]);
   const rowsA = respA.rows || [];
   const rowsB = respB.rows || [];
@@ -255,6 +325,7 @@ async function fetchEcomLive(accessToken) {
     facility:     FACILITY,
     row_count:    rows.length,
     truncated:    truncated,
+    flow:         flow,
     rows:         rows,
   };
 
