@@ -1434,6 +1434,17 @@ function loadTaskDetailCache() {
         if (t.task_id && t.detail_count != null) taskDetailCache.set(t.task_id, t.detail_count);
   } catch (_) {}
 }
+// Replen lines per zone, per task: {lines:{F1D:{open,done}, …}, final}. final = read after the task
+// finished, so it is reused without a fresh read. Seeded the same way so a restart doesn't re-read the shift.
+let replenZoneCache = null;
+function loadReplenZoneCache() {
+  replenZoneCache = new Map();
+  try {
+    const prev = JSON.parse(fs.readFileSync(TASKS_FILE, 'utf8'));
+    for (const t of ((prev.replen && prev.replen.tasks) || []))
+      if (t.task_id && t.zone_lines) replenZoneCache.set(t.task_id, { lines: t.zone_lines, final: t.status === '8000' });
+  } catch (_) {}
+}
 
 async function fetchTaskData(accessToken) {
   // 1st 3:00 AM, 2nd 2:00 PM local (DST-aware)
@@ -1566,6 +1577,42 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
   const liveIds = new Set(allTasks.map(t => t.task_id));
   for (const id of taskDetailCache.keys()) if (!liveIds.has(id)) taskDetailCache.delete(id);
 
+  // Replen lines per pick zone (Tasks tab pills). Counted per detail line, by the line's own shelf:
+  // one task can fill shelves in several zones, and TSK_TASK.TARGET_LOCATION_ID is just one of them
+  // (null when every real line was cancelled). Cancelled lines (9000) are left out.
+  // A finished task's lines don't change, so it is read once and kept in replenZoneCache.
+  if (!replenZoneCache) loadReplenZoneCache();
+  const zoneIds = replenTasks.filter(t => !(t.status === '8000' && (replenZoneCache.get(t.task_id) || {}).final)).map(t => t.task_id);
+  const ZONE_BATCH = 30;
+  const zoneStarts = [];
+  for (let i = 0; i < zoneIds.length; i += ZONE_BATCH) zoneStarts.push(i);
+  const zoneFresh = {};
+  await Promise.all(zoneStarts.map(async i => {
+    const ids = zoneIds.slice(i, i + ZONE_BATCH);
+    const sqlZone = `SELECT TASK_ID, LEFT(TARGET_LOCATION_ID, 3) AS zone, STATUS, COUNT(*) AS n FROM default_task.TSK_TASK_DETAIL WHERE FACILITY_ID = '${FACILITY}' AND TASK_ID IN (${ids.map(id => `'${id}'`).join(',')}) AND STATUS != '9000' AND TARGET_LOCATION_ID IS NOT NULL GROUP BY TASK_ID, LEFT(TARGET_LOCATION_ID, 3), STATUS`;
+    try {
+      const zr = await mcpQuery(accessToken, sqlZone);
+      for (const id of ids) zoneFresh[id] = {};
+      for (const r of (zr.rows || [])) {
+        const z = zoneFresh[r.TASK_ID][r.zone] || (zoneFresh[r.TASK_ID][r.zone] = { open: 0, done: 0 });
+        if (String(r.STATUS) === '8000') z.done += Number(r.n) || 0; else z.open += Number(r.n) || 0;
+      }
+    } catch (e) {
+      console.warn(`  Replen zone batch ${Math.floor(i/ZONE_BATCH)+1} failed: ${e.message}`);
+    }
+  }));
+  const replen_zones = {};
+  for (const t of replenTasks) {
+    if (zoneFresh[t.task_id]) replenZoneCache.set(t.task_id, { lines: zoneFresh[t.task_id], final: t.status === '8000' });
+    t.zone_lines = (replenZoneCache.get(t.task_id) || {}).lines || null;   // last good read if this cycle's batch failed
+    for (const [z, c] of Object.entries(t.zone_lines || {})) {
+      const agg = replen_zones[z] || (replen_zones[z] = { open: 0, done: 0 });
+      agg.open += c.open; agg.done += c.done;
+    }
+  }
+  for (const id of replenZoneCache.keys()) if (!liveIds.has(id)) replenZoneCache.delete(id);
+  const replen_zones_missing = replenTasks.filter(t => !t.zone_lines).length;
+
   function summarize(tasks) {
     const counts = { queued:0, assigned:0, in_progress:0, completed:0, total_open:0 };
     for (const t of tasks) {
@@ -1603,6 +1650,8 @@ ORDER BY i.CURRENT_LOCATION_ID, i.UPDATED_TIMESTAMP`.trim();
     facility:    FACILITY,
     picking:  { ...summarize(pickTasks),   tasks: pickTasks   },
     replen:   { ...summarize(replenTasks), tasks: replenTasks },
+    replen_zones,
+    replen_zones_missing,
     pick_drop_carts,
     flow_carts,
   };

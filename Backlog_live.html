@@ -6,7 +6,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ecom Backlog Live v1.7 -- DC499</title>
+<title>Ecom Backlog Live v1.8 -- DC499</title>
 <style>
   :root {
     --bg:#f5f5f3;--surface:#fff;--surface2:#efefed;--border:#ddd;--border-light:#f0f0f0;--border-mid:#e5e5e5;
@@ -962,6 +962,20 @@
   .tk-show-done-wrap{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--text-muted);cursor:pointer;margin-left:auto;}
   .tk-show-done-wrap input{cursor:pointer;}
 
+  /* ── Replen by pick zone pills ──────────────────────────────────────────── */
+  .tk-rz{margin:-0.25rem 0 1.25rem;}
+  .tk-rz-title{font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+  .tk-rz-title span{text-transform:none;letter-spacing:0;font-weight:500;color:var(--text-hint);margin-left:6px;}
+  .tk-rz-row{display:flex;flex-wrap:wrap;gap:8px;}
+  .tk-rz-pill{min-width:120px;background:var(--surface);border:0.5px solid var(--border);border-radius:999px;padding:6px 14px 7px;}
+  .tk-rz-pill.zero{opacity:.5;}
+  .tk-rz-top{display:flex;align-items:baseline;gap:8px;white-space:nowrap;}
+  .tk-rz-zone{font-size:12px;font-weight:700;font-family:monospace;color:var(--text);}
+  .tk-rz-pct{font-size:14px;font-weight:700;color:var(--accent);}
+  .tk-rz-n{font-size:11px;color:var(--text-muted);margin-left:auto;}
+  .tk-rz-bar{height:3px;border-radius:2px;background:var(--border-light);margin-top:4px;overflow:hidden;}
+  .tk-rz-bar div{height:100%;background:var(--accent);}
+
   /* ── Pie chart cards ────────────────────────────────────────────────────── */
   .tk-pie-grid{display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:0;}
   .tk-pie-grid.visible{display:grid;}
@@ -1454,6 +1468,9 @@ body { animation: pageEnter 0.28s ease-out both; }
         <div class="tile-sub">this shift</div>
       </div>
     </div>
+
+    <!-- Replen share by pick zone (task lines, this shift) -->
+    <div class="tk-rz" id="tk-rz" style="display:none;"></div>
 
     <!-- Picking + Replen side by side -->
     <div id="tk-cards-grid" style="display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
@@ -2010,7 +2027,7 @@ function toggleRemi() {
   applyRemiToggle();
 }
 applyRemiToggle();
-if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Backlog",version:"v1.7",sub:"bl-sub",actions:["back-btn","rem-btn"]}, { oldThemeKey: THEME_KEY, applyTheme: applyTheme, find: blFind }));
+if (window.SCOUT_UI) SCOUT_UI.bar(Object.assign({mount:"scout-bar",dept:"Ecom",title:"Ecom Backlog",version:"v1.8",sub:"bl-sub",actions:["back-btn","rem-btn"]}, { oldThemeKey: THEME_KEY, applyTheme: applyTheme, find: blFind }));
 else applyTheme(localStorage.getItem('dc499_theme_v1') || localStorage.getItem(THEME_KEY) || 'dark');
 // ── Order Backlog › Numbers | Visuals (2026-10-22) ─────────────────────────────
 // Visuals = two plain-HTML bar charts from backlog_live.json: `hourly` (lines dropped) + `flow`
@@ -3612,6 +3629,7 @@ function renderTasksData(data) {
   if (!data || (!data.picking && !data.replen)) {
     document.getElementById('tk-empty-state').style.display = 'block';
     document.getElementById('tk-summary-tiles').style.display = 'none';
+    document.getElementById('tk-rz').style.display = 'none';
     document.getElementById('tk-view-bar').style.display = 'none';
     document.getElementById('tk-cards-grid').style.display = 'none';
     return;
@@ -3645,6 +3663,43 @@ function renderTasksData(data) {
   if (_tkView === 'chart') { renderTaskPie('picking'); renderTaskPie('replen'); }
   renderPickDropCarts(data.pick_drop_carts || []);
   renderFlowCarts(data.flow_carts || []);
+  renderReplenZones(data);
+}
+
+// Share of this shift's replen task lines (open + done, cancelled left out) going to each pick zone.
+// Zone = first 3 characters of each line's own target shelf. Any other zone shows as "Other".
+var TK_RZ_ZONES = ['F1A','F1B','F2C','P1C','F1D'];
+function renderReplenZones(data) {
+  var box = document.getElementById('tk-rz');
+  var src = data.replen_zones;
+  if (!src) { box.style.display = 'none'; return; }   // older agent, no zone data yet
+  var rows = TK_RZ_ZONES.map(function(z) { return { zone: z, open: 0, done: 0 }; });
+  var other = { zone: 'Other', open: 0, done: 0, list: [] };
+  Object.keys(src).forEach(function(z) {
+    var c = src[z] || {};
+    var row = rows.find(function(r) { return r.zone === z; });
+    if (!row) { row = other; other.list.push(z); }
+    row.open += c.open || 0; row.done += c.done || 0;
+  });
+  if (other.open + other.done > 0) rows.push(other);
+  rows.forEach(function(r) { r.total = r.open + r.done; });
+  var all = rows.reduce(function(s, r) { return s + r.total; }, 0);
+  rows.sort(function(a, b) { return b.total - a.total || TK_RZ_ZONES.indexOf(a.zone) - TK_RZ_ZONES.indexOf(b.zone); });
+
+  var note = all.toLocaleString() + ' line' + (all === 1 ? '' : 's') + ' · open + done';
+  if (data.replen_zones_missing) note += ' · ' + data.replen_zones_missing + ' task' + (data.replen_zones_missing === 1 ? '' : 's') + ' not read yet';
+  var html = '<div class="tk-rz-title">Replen by pick zone — this shift<span>' + note + '</span></div><div class="tk-rz-row">';
+  rows.forEach(function(r) {
+    var pct = all ? Math.round(r.total / all * 100) : 0;
+    var tip = r.zone + ': ' + r.total.toLocaleString() + ' lines — ' + r.done.toLocaleString() + ' done · ' + r.open.toLocaleString() + ' open'
+            + (r.list && r.list.length ? ' (' + r.list.join(', ') + ')' : '');
+    html += '<div class="tk-rz-pill' + (r.total ? '' : ' zero') + '" title="' + tip + '">'
+          + '<div class="tk-rz-top"><span class="tk-rz-zone">' + r.zone + '</span><span class="tk-rz-pct">' + pct + '%</span>'
+          + '<span class="tk-rz-n">' + r.total.toLocaleString() + '</span></div>'
+          + '<div class="tk-rz-bar"><div style="width:' + (all ? (r.total / all * 100).toFixed(1) : 0) + '%"></div></div></div>';
+  });
+  box.innerHTML = html + '</div>';
+  box.style.display = '';
 }
 
 function agingThreshold(carts) {
