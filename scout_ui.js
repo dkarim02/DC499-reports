@@ -708,14 +708,18 @@
     MOVE_KEYS.forEach(function (m) { var v = lsGet(m[0]); if (v != null && v !== '') { keys[m[0]] = v; n++; } });
     if (!n) { moveMsg('Nothing to export yet — no rosters or settings are saved in this browser for this site.'); return; }
     var d = new Date(), stamp = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
-    var file = { scout_settings: 1, exported: d.toISOString(), from: location.protocol === 'file:' ? 'OneDrive' : location.hostname, keys: keys };
+    var file = { scout_settings: 1, exported: d.toISOString(), from: isNewScout() ? 'new' : 'old', keys: keys };
     var a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' }));
     a.download = 'SCOUT settings ' + stamp + '.json';
     document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    moveMsg('Saved <b>' + esc(a.download) + '</b> (' + n + ' rosters / settings) to your Downloads. Open SCOUT the other way (OneDrive or GitHub), open the Menu, choose Move settings → Import and pick this file.'
+    moveMsg('Saved <b>' + esc(a.download) + '</b> (' + n + ' rosters / settings) to your Downloads. ' + (isNewScout() ? 'To copy them to the old SCOUT, open its Menu' : 'Now open the <b>new SCOUT</b>, go to its Menu')
+      + ', choose Move settings → Import and pick this file.'
       + '<div style="margin-top:6px;opacity:0.7;">The file has your team\'s work emails in it — keep it to yourself and delete it when you are done.</div>');
   }
+  // "old SCOUT" = the web version (GitHub Pages), "new SCOUT" = the OneDrive copy (file://). Most of the
+  // team does not know those names (Dean, 10/22), so the dialog only ever says old / new.
+  function isNewScout() { return location.protocol === 'file:'; }
   var moveEl = null, movePending = null;
   function moveMsg(html) { var m = moveEl && moveEl.querySelector('.sui-move-msg'); if (m) m.innerHTML = html; }
   function readImport(fileObj) {
@@ -731,7 +735,7 @@
         if (res.raw != null) plan.push([m[0], res.raw]);
       });
       movePending = plan;
-      moveMsg('<div style="margin-bottom:6px;">From ' + esc(f.from || 'another site') + ', exported ' + esc(new Date(f.exported).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + ':</div>'
+      moveMsg('<div style="margin-bottom:6px;">From the ' + (f.from === 'new' || f.from === 'OneDrive' ? 'new' : 'old') + ' SCOUT, exported ' + esc(new Date(f.exported).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) + ':</div>'
         + '<table class="sui-move-tab"><tr><th>What</th><th>In the file</th><th>Here</th></tr>' + rows.join('') + '</table>'
         + (plan.length ? '<button type="button" class="sui-move-btn sui-move-go">Add these</button>' : '<div style="margin-top:8px;">Nothing new to add — this browser already has all of it.</div>'));
     };
@@ -757,7 +761,8 @@
     if (!moveEl) {
       moveEl = document.createElement('div'); moveEl.className = 'sui-pal-back';
       moveEl.innerHTML = '<div class="sui-pal" role="dialog" aria-label="Move settings"><div class="sui-move"><h3>Move your rosters and settings</h3>'
-        + '<div style="opacity:0.8;">GitHub and the OneDrive copy keep rosters separately. Export here, then Import on the other one. '
+        + '<div class="sui-move-where" style="font-weight:600;margin-bottom:4px;"></div>'
+        + '<div style="opacity:0.8;">The old SCOUT and the new SCOUT keep rosters separately. Export them from the old SCOUT, then Import the file in the new one. '
         + 'Import only adds: people already on a roster stay, and settings you already set are kept.</div>'
         + '<button type="button" class="sui-move-btn sui-move-exp">&#x2B07; Export my settings</button>'
         + '<button type="button" class="sui-move-btn sui-move-imp">&#x2B06; Import from a file</button>'
@@ -776,6 +781,8 @@
     }
     moveEl.querySelector('.sui-pal').classList.toggle('sui-light', !!pageIsLight());
     movePending = null; moveMsg('');
+    moveEl.querySelector('.sui-move-where').textContent = isNewScout()
+      ? 'You are on the new SCOUT — Import your file here.' : 'You are on the old SCOUT — Export your settings here.';
     moveEl.classList.add('open');
   }
 
